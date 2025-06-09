@@ -53,9 +53,14 @@ git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
 ### 3. Configure Claude Desktop
 Add the server to your `claude_desktop_config.json`:
 
-**Find your config file:**
+**Option A: Edit the config file directly**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+**Option B: Use Claude Desktop UI (macOS)**
+- Open Claude Desktop
+- Go to **Settings** → **Developer** → **Edit Config**
+- This will open the `claude_desktop_config.json` file in your default editor
 
 **Add this configuration** (replace with YOUR actual paths):
 
