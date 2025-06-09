@@ -664,5 +664,3 @@ Built with the power of **Claude + Gemini** collaboration 🤝
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
 - [Claude Code](https://claude.ai/code) - Your AI coding assistant
 - [Gemini 2.5 Pro](https://ai.google.dev/) - Extended thinking & analysis engine
-
-*Where Claude's brilliance meets Gemini's depth for the ultimate development experience.*
