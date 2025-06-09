@@ -2,9 +2,13 @@
 Pytest configuration for Gemini MCP Server tests
 """
 
+import asyncio
 import os
 import sys
+import tempfile
 from pathlib import Path
+
+import pytest
 
 # Ensure the parent directory is in the Python path for imports
 parent_dir = Path(__file__).resolve().parent.parent
@@ -17,21 +21,13 @@ if "GEMINI_API_KEY" not in os.environ:
 
 # Set MCP_PROJECT_ROOT to a temporary directory for tests
 # This provides a safe sandbox for file operations during testing
-import tempfile
-
 # Create a temporary directory that will be used as the project root for all tests
 test_root = tempfile.mkdtemp(prefix="gemini_mcp_test_")
 os.environ["MCP_PROJECT_ROOT"] = test_root
 
 # Configure asyncio for Windows compatibility
 if sys.platform == "win32":
-    import asyncio
-
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-
-# Pytest fixtures
-import pytest
 
 
 @pytest.fixture
