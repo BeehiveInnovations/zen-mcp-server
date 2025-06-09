@@ -25,7 +25,7 @@ class TestServerTools:
         assert "debug_issue" in tool_names
         assert "analyze" in tool_names
         assert "chat" in tool_names
-        assert "review_pending_changes" in tool_names
+        assert "review_changes" in tool_names
         assert "list_models" in tool_names
         assert "get_version" in tool_names
 

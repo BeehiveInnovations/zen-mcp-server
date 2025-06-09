@@ -14,7 +14,7 @@ Claude is brilliant, but sometimes you need:
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
 - **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#2-think_deeper---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#3-review_code---professional-code-review))
-- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_pending_changes`](#4-review_pending_changes---pre-commit-validation))
+- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_changes`](#4-review_changes---pre-commit-validation))
 - **Expert debugging** for tricky issues with full system context ([`debug_issue`](#5-debug_issue---expert-debugging-assistant))
 - **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#6-analyze---smart-file-analysis))
 - **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
@@ -119,7 +119,7 @@ Just ask Claude naturally:
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
 - **Need deeper thinking?** → `think_deeper` (extends Claude's analysis, finds edge cases)
 - **Code needs review?** → `review_code` (bugs, security, performance issues)
-- **Pre-commit validation?** → `review_pending_changes` (validate git changes before committing)
+- **Pre-commit validation?** → `review_changes` (validate git changes before committing)
 - **Something's broken?** → `debug_issue` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Check models?** → `list_models` (see available Gemini models)
@@ -129,7 +129,7 @@ Just ask Claude naturally:
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
 2. [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning and problem-solving
 3. [`review_code`](#3-review_code---professional-code-review) - Professional code review with severity levels
-4. [`review_pending_changes`](#4-review_pending_changes---pre-commit-validation) - Validate git changes before committing
+4. [`review_changes`](#4-review_changes---pre-commit-validation) - Validate git changes before committing
 5. [`debug_issue`](#5-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`list_models`](#7-list_models---see-available-gemini-models) - List available Gemini models
@@ -244,7 +244,7 @@ make any necessary adjustments and show me the final secure implementation."
 
 **Triggers:** review code, check for issues, find bugs, security check
 
-### 4. `review_pending_changes` - Pre-Commit Validation
+### 4. `review_changes` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
 #### Example Prompts:

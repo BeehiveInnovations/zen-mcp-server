@@ -26,8 +26,8 @@ from tools import (
     AnalyzeTool,
     ChatTool,
     DebugIssueTool,
+    ReviewChanges,
     ReviewCodeTool,
-    ReviewPendingChanges,
     ThinkDeeperTool,
 )
 
@@ -45,7 +45,7 @@ TOOLS = {
     "debug_issue": DebugIssueTool(),
     "analyze": AnalyzeTool(),
     "chat": ChatTool(),
-    "review_pending_changes": ReviewPendingChanges(),
+    "review_changes": ReviewChanges(),
 }
 
 

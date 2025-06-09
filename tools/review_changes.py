@@ -9,15 +9,15 @@ from typing import Any, Dict, Literal, Optional
 from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
-from prompts.tool_prompts import REVIEW_PENDING_CHANGES_PROMPT
+from prompts.tool_prompts import REVIEW_CHANGES_PROMPT
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
 from .base import BaseTool, ToolRequest
 
 
-class ReviewPendingChangesRequest(ToolRequest):
-    """Request model for review_pending_changes tool"""
+class ReviewChangesRequest(ToolRequest):
+    """Request model for review_changes tool"""
 
     path: str = Field(
         ...,
@@ -65,11 +65,11 @@ class ReviewPendingChangesRequest(ToolRequest):
     )
 
 
-class ReviewPendingChanges(BaseTool):
-    """Tool for reviewing pending git changes across multiple repositories."""
+class ReviewChanges(BaseTool):
+    """Tool for reviewing git changes across multiple repositories."""
 
     def get_name(self) -> str:
-        return "review_pending_changes"
+        return "review_changes"
 
     def get_description(self) -> str:
         return (
@@ -86,10 +86,10 @@ class ReviewPendingChanges(BaseTool):
         return self.get_request_model().model_json_schema()
 
     def get_system_prompt(self) -> str:
-        return REVIEW_PENDING_CHANGES_PROMPT
+        return REVIEW_CHANGES_PROMPT
 
     def get_request_model(self):
-        return ReviewPendingChangesRequest
+        return ReviewChangesRequest
 
     def get_default_temperature(self) -> float:
         """Use analytical temperature for code review."""
@@ -106,7 +106,7 @@ class ReviewPendingChanges(BaseTool):
         # Limit length to avoid filesystem issues
         return name[:100]
 
-    async def prepare_prompt(self, request: ReviewPendingChangesRequest) -> str:
+    async def prepare_prompt(self, request: ReviewChangesRequest) -> str:
         """Prepare the prompt with git diff information."""
         # Find all git repositories
         repositories = find_git_repositories(request.path, request.max_depth)

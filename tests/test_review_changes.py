@@ -1,5 +1,5 @@
 """
-Tests for the review_pending_changes tool
+Tests for the review_changes tool
 """
 
 import json
@@ -7,23 +7,23 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools.review_pending_changes import (
-    ReviewPendingChanges,
-    ReviewPendingChangesRequest,
+from tools.review_changes import (
+    ReviewChanges,
+    ReviewChangesRequest,
 )
 
 
-class TestReviewPendingChangesTool:
-    """Test the review_pending_changes tool"""
+class TestReviewChangesTool:
+    """Test the review_changes tool"""
 
     @pytest.fixture
     def tool(self):
         """Create tool instance"""
-        return ReviewPendingChanges()
+        return ReviewChanges()
 
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
-        assert tool.get_name() == "review_pending_changes"
+        assert tool.get_name() == "review_changes"
         assert "REVIEW PENDING GIT CHANGES" in tool.get_description()
         assert "pre-commit review" in tool.get_description()
 
@@ -37,7 +37,7 @@ class TestReviewPendingChangesTool:
 
     def test_request_model_defaults(self):
         """Test request model default values"""
-        request = ReviewPendingChangesRequest(path="/some/absolute/path")
+        request = ReviewChangesRequest(path="/some/absolute/path")
         assert request.path == "/some/absolute/path"
         assert request.original_request is None
         assert request.compare_to is None
@@ -77,21 +77,21 @@ class TestReviewPendingChangesTool:
         assert "./relative/path" in response["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.review_pending_changes.find_git_repositories")
+    @patch("tools.review_changes.find_git_repositories")
     async def test_no_repositories_found(self, mock_find_repos, tool):
         """Test when no git repositories are found"""
         mock_find_repos.return_value = []
 
-        request = ReviewPendingChangesRequest(path="/absolute/path/no-git")
+        request = ReviewChangesRequest(path="/absolute/path/no-git")
         result = await tool.prepare_prompt(request)
 
         assert result == "No git repositories found in the specified path."
         mock_find_repos.assert_called_once_with("/absolute/path/no-git", 5)
 
     @pytest.mark.asyncio
-    @patch("tools.review_pending_changes.find_git_repositories")
-    @patch("tools.review_pending_changes.get_git_status")
-    @patch("tools.review_pending_changes.run_git_command")
+    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.review_changes.get_git_status")
+    @patch("tools.review_changes.run_git_command")
     async def test_no_changes_found(
         self, mock_run_git, mock_status, mock_find_repos, tool
     ):
@@ -112,15 +112,15 @@ class TestReviewPendingChangesTool:
             (True, ""),  # unstaged files (empty)
         ]
 
-        request = ReviewPendingChangesRequest(path="/absolute/repo/path")
+        request = ReviewChangesRequest(path="/absolute/repo/path")
         result = await tool.prepare_prompt(request)
 
         assert result == "No pending changes found in any of the git repositories."
 
     @pytest.mark.asyncio
-    @patch("tools.review_pending_changes.find_git_repositories")
-    @patch("tools.review_pending_changes.get_git_status")
-    @patch("tools.review_pending_changes.run_git_command")
+    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.review_changes.get_git_status")
+    @patch("tools.review_changes.run_git_command")
     async def test_staged_changes_review(
         self,
         mock_run_git,
@@ -149,7 +149,7 @@ class TestReviewPendingChangesTool:
             (True, ""),  # unstaged files (empty)
         ]
 
-        request = ReviewPendingChangesRequest(
+        request = ReviewChangesRequest(
             path="/absolute/repo/path",
             original_request="Add hello message",
             review_type="security",
@@ -166,9 +166,9 @@ class TestReviewPendingChangesTool:
         assert "## Git Diffs" in result
 
     @pytest.mark.asyncio
-    @patch("tools.review_pending_changes.find_git_repositories")
-    @patch("tools.review_pending_changes.get_git_status")
-    @patch("tools.review_pending_changes.run_git_command")
+    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.review_changes.get_git_status")
+    @patch("tools.review_changes.run_git_command")
     async def test_compare_to_invalid_ref(
         self, mock_run_git, mock_status, mock_find_repos, tool
     ):
@@ -181,7 +181,7 @@ class TestReviewPendingChangesTool:
             (False, "fatal: not a valid ref"),  # rev-parse fails
         ]
 
-        request = ReviewPendingChangesRequest(
+        request = ReviewChangesRequest(
             path="/absolute/repo/path", compare_to="invalid-branch"
         )
         result = await tool.prepare_prompt(request)
@@ -190,7 +190,7 @@ class TestReviewPendingChangesTool:
         assert "No pending changes found in any of the git repositories." in result
 
     @pytest.mark.asyncio
-    @patch("tools.review_pending_changes.ReviewPendingChanges.execute")
+    @patch("tools.review_changes.ReviewChanges.execute")
     async def test_execute_integration(self, mock_execute, tool):
         """Test execute method integration"""
         # Mock the execute to return a standardized response
@@ -212,9 +212,9 @@ class TestReviewPendingChangesTool:
         assert tool.get_default_temperature() == TEMPERATURE_ANALYTICAL
 
     @pytest.mark.asyncio
-    @patch("tools.review_pending_changes.find_git_repositories")
-    @patch("tools.review_pending_changes.get_git_status")
-    @patch("tools.review_pending_changes.run_git_command")
+    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.review_changes.get_git_status")
+    @patch("tools.review_changes.run_git_command")
     async def test_mixed_staged_unstaged_changes(
         self,
         mock_run_git,
@@ -240,7 +240,7 @@ class TestReviewPendingChangesTool:
             (True, "diff --git a/file2.py..."),  # diff for file2.py
         ]
 
-        request = ReviewPendingChangesRequest(
+        request = ReviewChangesRequest(
             path="/absolute/repo/path",
             focus_on="error handling",
             severity_filter="high",

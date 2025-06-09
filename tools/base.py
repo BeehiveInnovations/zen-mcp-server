@@ -86,7 +86,7 @@ class BaseTool(ABC):
                         f"Please provide the full absolute path starting with '/'"
                     )
 
-        # Check if request has 'path' attribute (for review_pending_changes)
+        # Check if request has 'path' attribute (for review_changes)
         if hasattr(request, "path") and request.path:
             if not os.path.isabs(request.path):
                 return (

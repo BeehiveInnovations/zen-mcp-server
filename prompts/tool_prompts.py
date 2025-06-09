@@ -137,7 +137,7 @@ the ideal thinking partner who helps explore ideas deeply, validates approaches,
 insights that might be missed in solo analysis. Think step by step through complex problems 
 and don't hesitate to explore tangential but relevant considerations."""
 
-REVIEW_PENDING_CHANGES_PROMPT = """You are an expert code change analyst specializing in pre-commit review of git diffs.
+REVIEW_CHANGES_PROMPT = """You are an expert code change analyst specializing in pre-commit review of git diffs.
 Your role is to act as a seasoned senior developer performing a final review before code is committed.
 
 IMPORTANT: If you need additional context (e.g., related files not in the diff, test files, configuration) 
