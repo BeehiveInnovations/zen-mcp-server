@@ -73,12 +73,13 @@ class ReviewPendingChanges(BaseTool):
 
     def get_description(self) -> str:
         return (
-            "REVIEW PENDING GIT CHANGES - Comprehensive pre-commit review of staged/unstaged changes "
-            "or branch comparisons across multiple repositories. Searches recursively for git repos "
-            "and analyzes diffs for bugs, security issues, incomplete implementations, and alignment "
-            "with original requirements. Perfect for final review before committing. "
-            "Triggers: 'review pending changes', 'check my changes', 'validate changes', 'pre-commit review'. "
-            "Use this when you want to ensure changes are complete, correct, and ready to commit."
+            "REVIEW PENDING GIT CHANGES BEFORE COMMITTING - ALWAYS use this tool before creating any git commit! "
+            "Comprehensive pre-commit validation that catches bugs, security issues, incomplete implementations, "
+            "and ensures changes match the original requirements. Searches all git repositories recursively and "
+            "provides deep analysis of staged/unstaged changes. Essential for code quality and preventing bugs. "
+            "Triggers: 'before commit', 'review changes', 'check my changes', 'validate changes', 'pre-commit review', "
+            "'about to commit', 'ready to commit'. Claude should proactively suggest using this tool whenever "
+            "the user mentions committing or when changes are complete."
         )
 
     def get_input_schema(self) -> Dict[str, Any]:
