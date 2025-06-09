@@ -2,7 +2,6 @@
 Tests for the main server functionality
 """
 
-import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -26,11 +25,10 @@ class TestServerTools:
         assert "analyze" in tool_names
         assert "chat" in tool_names
         assert "review_changes" in tool_names
-        assert "list_models" in tool_names
         assert "get_version" in tool_names
 
-        # Should have exactly 8 tools
-        assert len(tools) == 8
+        # Should have exactly 7 tools
+        assert len(tools) == 7
 
         # Check descriptions are verbose
         for tool in tools:
@@ -68,22 +66,6 @@ class TestServerTools:
             response_data = json.loads(result[0].text)
             assert response_data["status"] == "success"
             assert response_data["content"] == "Chat response"
-
-    @pytest.mark.asyncio
-    async def test_handle_list_models(self):
-        """Test listing models"""
-        result = await handle_call_tool("list_models", {})
-        assert len(result) == 1
-
-        # Check if we got models or an error
-        text = result[0].text
-        if "Error" in text:
-            # API key not set in test environment
-            assert "GEMINI_API_KEY" in text
-        else:
-            # Should have models
-            models = json.loads(text)
-            assert len(models) >= 1
 
     @pytest.mark.asyncio
     async def test_handle_get_version(self):

@@ -24,7 +24,7 @@ setup(
     install_requires=[
         "mcp>=1.0.0",
         "google-genai>=1.19.0",
-        "python-dotenv>=1.0.0",
+        "pydantic>=2.0.0",
     ],
     extras_require={
         "dev": [

@@ -122,7 +122,6 @@ Just ask Claude naturally:
 - **Pre-commit validation?** → `review_changes` (validate git changes before committing)
 - **Something's broken?** → `debug_issue` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
-- **Check models?** → `list_models` (see available Gemini models)
 - **Server info?** → `get_version` (version and configuration details)
 
 **Tools Overview:**
@@ -132,8 +131,7 @@ Just ask Claude naturally:
 4. [`review_changes`](#4-review_changes---pre-commit-validation) - Validate git changes before committing
 5. [`debug_issue`](#5-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
-7. [`list_models`](#7-list_models---see-available-gemini-models) - List available Gemini models
-8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
+7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -346,13 +344,7 @@ Combine your findings with gemini's to create a comprehensive security report."
 
 **Triggers:** analyze, examine, look at, understand, inspect
 
-### 7. `list_models` - See Available Gemini Models
-```
-"Use gemini to list available models"
-"Get gemini to show me what models I can use"
-```
-
-### 8. `get_version` - Server Information
+### 7. `get_version` - Server Information
 ```
 "Use gemini for its version"
 "Get gemini to show server configuration"
@@ -530,7 +522,7 @@ All tools support a `thinking_mode` parameter that controls Gemini's thinking bu
 The server includes several configurable properties that control its behavior:
 
 ### Model Configuration
-- **`DEFAULT_MODEL`**: `"gemini-2.5-pro-preview-06-05"` - The latest Gemini 2.5 Pro model with native thinking support
+- **`GEMINI_MODEL`**: `"gemini-2.5-pro-preview-06-05"` - The latest Gemini 2.5 Pro model with native thinking support
 - **`MAX_CONTEXT_TOKENS`**: `1,000,000` - Maximum input context (1M tokens for Gemini 2.5 Pro)
 
 ### Temperature Defaults

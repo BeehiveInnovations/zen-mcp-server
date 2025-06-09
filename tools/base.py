@@ -1,5 +1,16 @@
 """
 Base class for all Gemini MCP tools
+
+This module provides the abstract base class that all tools must inherit from.
+It defines the contract that tools must implement and provides common functionality
+for request validation, error handling, and response formatting.
+
+Key responsibilities:
+- Define the tool interface (abstract methods that must be implemented)
+- Handle request validation and file path security
+- Manage Gemini model creation with appropriate configurations
+- Standardize response formatting and error handling
+- Support for clarification requests when more information is needed
 """
 
 from abc import ABC, abstractmethod
@@ -16,7 +27,13 @@ from .models import ToolOutput, ClarificationRequest
 
 
 class ToolRequest(BaseModel):
-    """Base request model for all tools"""
+    """
+    Base request model for all tools.
+
+    This Pydantic model defines common parameters that can be used by any tool.
+    Tools can extend this model to add their specific parameters while inheriting
+    these common fields.
+    """
 
     model: Optional[str] = Field(
         None, description="Model to use (defaults to Gemini 2.5 Pro)"
@@ -24,6 +41,8 @@ class ToolRequest(BaseModel):
     temperature: Optional[float] = Field(
         None, description="Temperature for response (tool-specific defaults)"
     )
+    # Thinking mode controls how much computational budget the model uses for reasoning
+    # Higher values allow for more complex reasoning but increase latency and cost
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
         None,
         description="Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
@@ -31,52 +50,130 @@ class ToolRequest(BaseModel):
 
 
 class BaseTool(ABC):
-    """Base class for all Gemini tools"""
+    """
+    Abstract base class for all Gemini tools.
+
+    This class defines the interface that all tools must implement and provides
+    common functionality for request handling, model creation, and response formatting.
+
+    To create a new tool:
+    1. Create a new class that inherits from BaseTool
+    2. Implement all abstract methods
+    3. Define a request model that inherits from ToolRequest
+    4. Register the tool in server.py's TOOLS dictionary
+    """
 
     def __init__(self):
+        # Cache tool metadata at initialization to avoid repeated calls
         self.name = self.get_name()
         self.description = self.get_description()
         self.default_temperature = self.get_default_temperature()
 
     @abstractmethod
     def get_name(self) -> str:
-        """Return the tool name"""
+        """
+        Return the unique name identifier for this tool.
+
+        This name is used by MCP clients to invoke the tool and must be
+        unique across all registered tools.
+
+        Returns:
+            str: The tool's unique name (e.g., "review_code", "analyze")
+        """
         pass
 
     @abstractmethod
     def get_description(self) -> str:
-        """Return the verbose tool description for Claude"""
+        """
+        Return a detailed description of what this tool does.
+
+        This description is shown to MCP clients (like Claude) to help them
+        understand when and how to use the tool. It should be comprehensive
+        and include trigger phrases.
+
+        Returns:
+            str: Detailed tool description with usage examples
+        """
         pass
 
     @abstractmethod
     def get_input_schema(self) -> Dict[str, Any]:
-        """Return the JSON schema for tool inputs"""
+        """
+        Return the JSON Schema that defines this tool's parameters.
+
+        This schema is used by MCP clients to validate inputs before
+        sending requests. It should match the tool's request model.
+
+        Returns:
+            Dict[str, Any]: JSON Schema object defining required and optional parameters
+        """
         pass
 
     @abstractmethod
     def get_system_prompt(self) -> str:
-        """Return the system prompt for this tool"""
+        """
+        Return the system prompt that configures the AI model's behavior.
+
+        This prompt sets the context and instructions for how the model
+        should approach the task. It's prepended to the user's request.
+
+        Returns:
+            str: System prompt with role definition and instructions
+        """
         pass
 
     def get_default_temperature(self) -> float:
-        """Return default temperature for this tool"""
+        """
+        Return the default temperature setting for this tool.
+
+        Override this method to set tool-specific temperature defaults.
+        Lower values (0.0-0.3) for analytical tasks, higher (0.7-1.0) for creative tasks.
+
+        Returns:
+            float: Default temperature between 0.0 and 1.0
+        """
         return 0.5
 
     def get_default_thinking_mode(self) -> str:
-        """Return default thinking_mode for this tool"""
+        """
+        Return the default thinking mode for this tool.
+
+        Thinking mode controls computational budget for reasoning.
+        Override for tools that need more or less reasoning depth.
+
+        Returns:
+            str: One of "minimal", "low", "medium", "high", "max"
+        """
         return "medium"  # Default to medium thinking for better reasoning
 
     @abstractmethod
     def get_request_model(self):
-        """Return the Pydantic model for request validation"""
+        """
+        Return the Pydantic model class used for validating requests.
+
+        This model should inherit from ToolRequest and define all
+        parameters specific to this tool.
+
+        Returns:
+            Type[ToolRequest]: The request model class
+        """
         pass
 
     def validate_file_paths(self, request) -> Optional[str]:
         """
         Validate that all file paths in the request are absolute.
-        Returns error message if validation fails, None if all paths are valid.
+
+        This is a critical security function that prevents path traversal attacks
+        and ensures all file access is properly controlled. All file paths must
+        be absolute to avoid ambiguity and security issues.
+
+        Args:
+            request: The validated request object
+
+        Returns:
+            Optional[str]: Error message if validation fails, None if all paths are valid
         """
-        # Check if request has 'files' attribute
+        # Check if request has 'files' attribute (used by most tools)
         if hasattr(request, "files") and request.files:
             for file_path in request.files:
                 if not os.path.isabs(file_path):
@@ -86,7 +183,7 @@ class BaseTool(ABC):
                         f"Please provide the full absolute path starting with '/'"
                     )
 
-        # Check if request has 'path' attribute (for review_changes)
+        # Check if request has 'path' attribute (used by review_changes tool)
         if hasattr(request, "path") and request.path:
             if not os.path.isabs(request.path):
                 return (
@@ -98,13 +195,31 @@ class BaseTool(ABC):
         return None
 
     async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
-        """Execute the tool with given arguments"""
+        """
+        Execute the tool with the provided arguments.
+
+        This is the main entry point for tool execution. It handles:
+        1. Request validation using the tool's Pydantic model
+        2. File path security validation
+        3. Prompt preparation
+        4. Model creation and configuration
+        5. Response generation and formatting
+        6. Error handling and recovery
+
+        Args:
+            arguments: Dictionary of arguments from the MCP client
+
+        Returns:
+            List[TextContent]: Formatted response as MCP TextContent objects
+        """
         try:
-            # Validate request
+            # Validate request using the tool's Pydantic model
+            # This ensures all required fields are present and properly typed
             request_model = self.get_request_model()
             request = request_model(**arguments)
 
-            # Validate file paths
+            # Validate file paths for security
+            # This prevents path traversal attacks and ensures proper access control
             path_error = self.validate_file_paths(request)
             if path_error:
                 error_output = ToolOutput(
@@ -114,13 +229,14 @@ class BaseTool(ABC):
                 )
                 return [TextContent(type="text", text=error_output.model_dump_json())]
 
-            # Prepare the prompt
+            # Prepare the full prompt by combining system prompt with user request
+            # This is delegated to the tool implementation for customization
             prompt = await self.prepare_prompt(request)
 
-            # Get model configuration
-            from config import DEFAULT_MODEL
+            # Extract model configuration from request or use defaults
+            from config import GEMINI_MODEL
 
-            model_name = getattr(request, "model", None) or DEFAULT_MODEL
+            model_name = getattr(request, "model", None) or GEMINI_MODEL
             temperature = getattr(request, "temperature", None)
             if temperature is None:
                 temperature = self.get_default_temperature()
@@ -128,20 +244,23 @@ class BaseTool(ABC):
             if thinking_mode is None:
                 thinking_mode = self.get_default_thinking_mode()
 
-            # Create and configure model
+            # Create model instance with appropriate configuration
+            # This handles both regular models and thinking-enabled models
             model = self.create_model(model_name, temperature, thinking_mode)
 
-            # Generate response
+            # Generate AI response using the configured model
             response = model.generate_content(prompt)
 
-            # Handle response and create standardized output
+            # Process the model's response
             if response.candidates and response.candidates[0].content.parts:
                 raw_text = response.candidates[0].content.parts[0].text
 
-                # Check if this is a clarification request
+                # Parse response to check for clarification requests or format output
                 tool_output = self._parse_response(raw_text, request)
 
             else:
+                # Handle cases where the model couldn't generate a response
+                # This might happen due to safety filters or other constraints
                 finish_reason = (
                     response.candidates[0].finish_reason
                     if response.candidates
@@ -153,10 +272,12 @@ class BaseTool(ABC):
                     content_type="text",
                 )
 
-            # Serialize the standardized output as JSON
+            # Return standardized JSON response for consistent client handling
             return [TextContent(type="text", text=tool_output.model_dump_json())]
 
         except Exception as e:
+            # Catch all exceptions to prevent server crashes
+            # Return error information in standardized format
             error_output = ToolOutput(
                 status="error",
                 content=f"Error in {self.name}: {str(e)}",
@@ -165,7 +286,19 @@ class BaseTool(ABC):
             return [TextContent(type="text", text=error_output.model_dump_json())]
 
     def _parse_response(self, raw_text: str, request) -> ToolOutput:
-        """Parse the raw response and determine if it's a clarification request"""
+        """
+        Parse the raw response and determine if it's a clarification request.
+
+        Some tools may return JSON indicating they need more information.
+        This method detects such responses and formats them appropriately.
+
+        Args:
+            raw_text: The raw text response from the model
+            request: The original request for context
+
+        Returns:
+            ToolOutput: Standardized output object
+        """
         try:
             # Try to parse as JSON to check for clarification requests
             potential_json = json.loads(raw_text.strip())
@@ -214,40 +347,79 @@ class BaseTool(ABC):
 
     @abstractmethod
     async def prepare_prompt(self, request) -> str:
-        """Prepare the full prompt for Gemini"""
+        """
+        Prepare the complete prompt for the Gemini model.
+
+        This method should combine the system prompt with the user's request
+        and any additional context (like file contents) needed for the task.
+
+        Args:
+            request: The validated request object
+
+        Returns:
+            str: Complete prompt ready for the model
+        """
         pass
 
     def format_response(self, response: str, request) -> str:
-        """Format the response for display (can be overridden)"""
+        """
+        Format the model's response for display.
+
+        Override this method to add tool-specific formatting like headers,
+        summaries, or structured output. Default implementation returns
+        the response unchanged.
+
+        Args:
+            response: The raw response from the model
+            request: The original request for context
+
+        Returns:
+            str: Formatted response
+        """
         return response
 
     def create_model(
         self, model_name: str, temperature: float, thinking_mode: str = "medium"
     ):
-        """Create a configured Gemini model with thinking configuration"""
-        # Map thinking modes to budget values
+        """
+        Create a configured Gemini model instance.
+
+        This method handles model creation with appropriate settings including
+        temperature and thinking budget configuration for models that support it.
+
+        Args:
+            model_name: Name of the Gemini model to use
+            temperature: Temperature setting for response generation
+            thinking_mode: Thinking depth mode (affects computational budget)
+
+        Returns:
+            Model instance configured and ready for generation
+        """
+        # Map thinking modes to computational budget values
+        # Higher budgets allow for more complex reasoning but increase latency
         thinking_budgets = {
-            "minimal": 128,  # Minimum for 2.5 Pro
-            "low": 2048,
-            "medium": 8192,
-            "high": 16384,
-            "max": 32768,
+            "minimal": 128,  # Minimum for 2.5 Pro - fast responses
+            "low": 2048,  # Light reasoning tasks
+            "medium": 8192,  # Balanced reasoning (default)
+            "high": 16384,  # Complex analysis
+            "max": 32768,  # Maximum reasoning depth
         }
 
         thinking_budget = thinking_budgets.get(thinking_mode, 8192)
 
-        # For models supporting thinking config, use the new API
-        # Skip in test environment to allow mocking
+        # Gemini 2.5 models support thinking configuration for enhanced reasoning
+        # Skip special handling in test environment to allow mocking
         if "2.5" in model_name and not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
-                # Get API key
+                # Retrieve API key for Gemini client creation
                 api_key = os.environ.get("GEMINI_API_KEY")
                 if not api_key:
                     raise ValueError("GEMINI_API_KEY environment variable is required")
 
                 client = genai.Client(api_key=api_key)
 
-                # Create a wrapper to match the expected interface
+                # Create a wrapper class to provide a consistent interface
+                # This abstracts the differences between API versions
                 class ModelWrapper:
                     def __init__(
                         self, client, model_name, temperature, thinking_budget
@@ -270,7 +442,8 @@ class BaseTool(ABC):
                             ),
                         )
 
-                        # Convert to match expected format
+                        # Wrap the response to match the expected format
+                        # This ensures compatibility across different API versions
                         class ResponseWrapper:
                             def __init__(self, text):
                                 self.text = text
@@ -302,18 +475,19 @@ class BaseTool(ABC):
                 return ModelWrapper(client, model_name, temperature, thinking_budget)
 
             except Exception:
-                # Fall back to regular genai model if new API fails
+                # Fall back to regular API if thinking configuration fails
+                # This ensures the tool remains functional even with API changes
                 pass
 
-        # For non-2.5 models or if thinking not needed, use regular API
-        # Get API key
+        # For models that don't support thinking configuration, use standard API
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
 
         client = genai.Client(api_key=api_key)
 
-        # Create wrapper for consistency
+        # Create a simple wrapper for models without thinking configuration
+        # This provides the same interface as the thinking-enabled wrapper
         class SimpleModelWrapper:
             def __init__(self, client, model_name, temperature):
                 self.client = client

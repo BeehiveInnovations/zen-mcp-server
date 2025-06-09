@@ -1,5 +1,17 @@
 """
 Code Review tool - Comprehensive code analysis and review
+
+This tool provides professional-grade code review capabilities using
+Gemini's understanding of code patterns, best practices, and common issues.
+It can analyze individual files or entire codebases, providing actionable
+feedback categorized by severity.
+
+Key Features:
+- Multi-file and directory support
+- Configurable review types (full, security, performance, quick)
+- Severity-based issue filtering
+- Custom focus areas and coding standards
+- Structured output with specific remediation steps
 """
 
 from typing import Any, Dict, List, Optional
@@ -14,7 +26,13 @@ from .base import BaseTool, ToolRequest
 
 
 class ReviewCodeRequest(ToolRequest):
-    """Request model for review_code tool"""
+    """
+    Request model for the code review tool.
+
+    This model defines all parameters that can be used to customize
+    the code review process, from selecting files to specifying
+    review focus and standards.
+    """
 
     files: List[str] = Field(
         ...,
@@ -36,7 +54,13 @@ class ReviewCodeRequest(ToolRequest):
 
 
 class ReviewCodeTool(BaseTool):
-    """Professional code review tool"""
+    """
+    Professional code review tool implementation.
+
+    This tool analyzes code for bugs, security vulnerabilities, performance
+    issues, and code quality problems. It provides detailed feedback with
+    severity ratings and specific remediation steps.
+    """
 
     def get_name(self) -> str:
         return "review_code"
@@ -105,11 +129,25 @@ class ReviewCodeTool(BaseTool):
         return ReviewCodeRequest
 
     async def prepare_prompt(self, request: ReviewCodeRequest) -> str:
-        """Prepare the code review prompt"""
-        # Read all files
+        """
+        Prepare the code review prompt with customized instructions.
+
+        This method reads the requested files, validates token limits,
+        and constructs a detailed prompt based on the review parameters.
+
+        Args:
+            request: The validated review request
+
+        Returns:
+            str: Complete prompt for the Gemini model
+
+        Raises:
+            ValueError: If the code exceeds token limits
+        """
+        # Read all requested files, expanding directories as needed
         file_content, summary = read_files(request.files)
 
-        # Check token limits
+        # Validate that the code fits within model context limits
         within_limit, estimated_tokens = check_token_limit(file_content)
         if not within_limit:
             raise ValueError(
@@ -117,7 +155,7 @@ class ReviewCodeTool(BaseTool):
                 f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
             )
 
-        # Build review instructions
+        # Build customized review instructions based on review type
         review_focus = []
         if request.review_type == "security":
             review_focus.append(
@@ -132,12 +170,15 @@ class ReviewCodeTool(BaseTool):
                 "Provide a quick review focusing on critical issues only"
             )
 
+        # Add any additional focus areas specified by the user
         if request.focus_on:
             review_focus.append(f"Pay special attention to: {request.focus_on}")
 
+        # Include custom coding standards if provided
         if request.standards:
             review_focus.append(f"Enforce these standards: {request.standards}")
 
+        # Apply severity filtering to reduce noise if requested
         if request.severity_filter != "all":
             review_focus.append(
                 f"Only report issues of {request.severity_filter} severity or higher"
@@ -145,7 +186,7 @@ class ReviewCodeTool(BaseTool):
 
         focus_instruction = "\n".join(review_focus) if review_focus else ""
 
-        # Combine everything
+        # Construct the complete prompt with system instructions and code
         full_prompt = f"""{self.get_system_prompt()}
 
 {focus_instruction}
@@ -159,7 +200,19 @@ Please provide a comprehensive code review following the format specified in the
         return full_prompt
 
     def format_response(self, response: str, request: ReviewCodeRequest) -> str:
-        """Format the review response"""
+        """
+        Format the review response with appropriate headers.
+
+        Adds context about the review type and focus area to help
+        users understand the scope of the review.
+
+        Args:
+            response: The raw review from the model
+            request: The original request for context
+
+        Returns:
+            str: Formatted response with headers
+        """
         header = f"Code Review ({request.review_type.upper()})"
         if request.focus_on:
             header += f" - Focus: {request.focus_on}"
