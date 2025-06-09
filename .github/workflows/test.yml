@@ -64,8 +64,8 @@ jobs:
 
   live-tests:
     runs-on: ubuntu-latest
-    # Only run live tests if API key secret is available
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.GEMINI_API_KEY != ''
+    # Only run live tests on main branch pushes (requires manual API key setup)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v4
     
@@ -79,9 +79,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
+    - name: Check API key availability
+      id: check-key
+      run: |
+        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+          echo "api_key_available=false" >> $GITHUB_OUTPUT
+          echo "⚠️ GEMINI_API_KEY secret not configured - skipping live tests"
+        else
+          echo "api_key_available=true" >> $GITHUB_OUTPUT
+          echo "✅ GEMINI_API_KEY found - running live tests"
+        fi
+    
     - name: Run live integration tests
+      if: steps.check-key.outputs.api_key_available == 'true'
       run: |
         # Run live tests that make actual API calls
         python tests/test_live_integration.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    
+    - name: Skip live tests
+      if: steps.check-key.outputs.api_key_available == 'false'
+      run: |
+        echo "🔒 Live integration tests skipped (no API key configured)"
+        echo "To enable live tests, add GEMINI_API_KEY as a repository secret"
