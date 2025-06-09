@@ -130,6 +130,11 @@ Just ask Claude naturally:
 7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
 
 ### 1. `think_deeper` - Extended Reasoning Partner
+
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
+</div>
+
 **Get a second opinion to augment Claude's own extended thinking**
 
 #### Example Prompts:
