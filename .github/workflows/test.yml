@@ -30,16 +30,10 @@ jobs:
       run: |
         # Run all tests except live integration tests
         # These tests use mocks and don't require API keys
-        python -m pytest tests/ --ignore=tests/test_live_integration.py -v --cov=. --cov-report=xml
+        python -m pytest tests/ --ignore=tests/test_live_integration.py -v
       env:
         # Ensure no API key is accidentally used in CI
         GEMINI_API_KEY: ""
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
 
   lint:
     runs-on: ubuntu-latest
