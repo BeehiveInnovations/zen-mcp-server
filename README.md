@@ -47,16 +47,21 @@ Claude is brilliant, but sometimes you need:
 - **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#6-analyze---smart-file-analysis))
 - **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
 - **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
+- **Smart file handling** - Automatically expands directories, filters irrelevant files, and manages token limits when analyzing `"main.py, src/, tests/"`
 
 This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
 
-## File & Directory Support
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
+</div>
 
-All tools accept both individual files and entire directories. The server:
-- **Automatically expands directories** to find all code files recursively
-- **Intelligently filters** hidden files, caches, and non-code files
-- **Handles mixed inputs** like `"analyze main.py, src/, and tests/"`
-- **Manages token limits** by loading as many files as possible within Gemini's context
+**Example Workflow:**
+```
+Study the code properly, think deeply about what this does and then see if there's any room for improvement in
+terms of performance optimizations, brainstorm with gemini on this to get feedback and then confirm any change by
+first adding a unit test with `measure` and measuring current code and then implementing the optimization and
+measuring again to ensure it improved, then share results. Check with gemini in between as you make tweaks.
+```
 
 ## Quickstart (5 minutes)
 
@@ -462,18 +467,6 @@ Combine both perspectives to create a comprehensive caching implementation guide
 **Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
 
 ### 2. `think_deeper` - Extended Reasoning Partner
-
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
-</div>
-
-**Prompt:**
-```
-Study the code properly, think deeply about what this does and then see if there's any room for improvement in
-terms of performance optimizations, brainstorm with gemini on this to get feedback and then confirm any change by
-first adding a unit test with `measure` and measuring current code and then implementing the optimization and
-measuring again to ensure it improved, then share results. Check with gemini in between as you make tweaks.
-```
 
 **Get a second opinion to augment Claude's own extended thinking**
 
