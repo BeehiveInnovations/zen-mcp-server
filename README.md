@@ -32,6 +32,10 @@ All tools accept both individual files and entire directories. The server:
 
 ## Quickstart (5 minutes)
 
+### Prerequisites
+- **Python 3.10 or higher** (required by the `mcp` package)
+- Git
+
 ### 1. Get a Gemini API Key
 Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 
@@ -890,11 +894,16 @@ This error occurs when Claude Desktop (running on Windows) can't properly execut
 
 ### Common Issues
 
-**"ModuleNotFoundError: No module named 'mcp'"**
-- This means Python dependencies aren't installed
-- **Solution**: Run the setup script:
-  - macOS/Linux: `./setup.sh` 
-  - Windows: `setup.bat`
+**"ModuleNotFoundError: No module named 'mcp'" or "No matching distribution found for mcp"**
+- This means either:
+  1. Python dependencies aren't installed - run the setup script
+  2. Your Python version is too old - the `mcp` package requires Python 3.10+
+- **Solution**: 
+  - First check your Python version: `python3 --version` or `python --version`
+  - If below 3.10, upgrade Python from https://python.org
+  - Then run the setup script:
+    - macOS/Linux: `./setup.sh` 
+    - Windows: `setup.bat`
 - If you still see this error, manually activate the virtual environment and install:
   ```bash
   # macOS/Linux:

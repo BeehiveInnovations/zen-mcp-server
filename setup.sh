@@ -21,6 +21,24 @@ fi
 PYTHON_VERSION=$(python3 --version)
 echo "✓ Found $PYTHON_VERSION"
 
+# Check Python version is at least 3.10
+PYTHON_VERSION_MAJOR=$(python3 -c 'import sys; print(sys.version_info.major)')
+PYTHON_VERSION_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+
+if [ "$PYTHON_VERSION_MAJOR" -lt 3 ] || ([ "$PYTHON_VERSION_MAJOR" -eq 3 ] && [ "$PYTHON_VERSION_MINOR" -lt 10 ]); then
+    echo "❌ Error: Python 3.10 or higher is required (you have Python $PYTHON_VERSION_MAJOR.$PYTHON_VERSION_MINOR)"
+    echo ""
+    echo "The 'mcp' package requires Python 3.10 or newer."
+    echo "Please upgrade Python from https://python.org"
+    echo ""
+    echo "On macOS with Homebrew:"
+    echo "  brew install python@3.12"
+    echo ""
+    echo "On Ubuntu/Debian:"
+    echo "  sudo apt update && sudo apt install python3.12 python3.12-venv"
+    exit 1
+fi
+
 # Check if venv exists
 if [ -d "venv" ]; then
     echo "✓ Virtual environment already exists"

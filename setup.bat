@@ -22,6 +22,31 @@ REM Display Python version
 echo Found Python:
 python --version
 
+REM Check Python version is at least 3.10
+for /f "tokens=2 delims= " %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
+    set PYTHON_MAJOR=%%a
+    set PYTHON_MINOR=%%b
+)
+
+if %PYTHON_MAJOR% LSS 3 (
+    goto :pythonTooOld
+)
+if %PYTHON_MAJOR% EQU 3 if %PYTHON_MINOR% LSS 10 (
+    goto :pythonTooOld
+)
+goto :pythonOk
+
+:pythonTooOld
+echo Error: Python 3.10 or higher is required (you have Python %PYTHON_VERSION%)
+echo.
+echo The 'mcp' package requires Python 3.10 or newer.
+echo Please download and install Python from https://python.org
+echo Make sure to check "Add Python to PATH" during installation.
+exit /b 1
+
+:pythonOk
+
 REM Check if venv exists
 if exist "venv\" (
     echo Virtual environment already exists
