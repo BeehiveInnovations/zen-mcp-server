@@ -307,60 +307,52 @@ The Docker setup provides a consistent, hassle-free experience across all platfo
 - **Easy Updates**: Just pull the latest image or rebuild
 - **Isolated Dependencies**: No conflicts with your system Python packages
 
+### Quick Setup Guide
+
+The setup scripts do all the heavy lifting for you:
+
+1. **Run the setup script for your platform:**
+   ```bash
+   # macOS/Linux:
+   ./setup-docker-env.sh
+   
+   # Windows (PowerShell):
+   .\setup-docker-env.ps1
+   
+   # Windows (Command Prompt):
+   setup-docker-env.bat
+   ```
+
+2. **The script will:**
+   - Create a `.env` file with your current directory as the workspace
+   - Display the exact Claude Desktop configuration to copy
+   - Show you where to paste it
+
+3. **Edit `.env` and add your Gemini API key**
+
+4. **Build the Docker image:**
+   ```bash
+   docker build -t gemini-mcp-server .
+   ```
+
+5. **Copy the configuration from step 1 into Claude Desktop**
+
+That's it! The setup script generates everything you need.
+
 ### How It Works
 
-1. **Path Translation**: The server automatically translates file paths between your host system and the Docker container
-2. **Workspace Mounting**: Your project directory is mounted to `/workspace` inside the container
-3. **Environment Variables**: API keys and settings are managed via `.env` file
-4. **stdio Communication**: Docker preserves the stdin/stdout communication required by MCP
+- **Path Translation**: The server automatically translates file paths between your host and the container
+- **Workspace Mounting**: Your project directory is mounted to `/workspace` inside the container
+- **stdio Communication**: Docker's `-i` flag preserves the MCP communication channel
 
-### Docker Architecture
-
-```
-Your Machine                     Docker Container
------------                     ----------------
-Claude Desktop  --stdio-->  Docker CLI  --stdio-->  MCP Server
-  |                              |                      |
-  v                              v                      v
-/your/project  <--mount-->  /workspace  <--access-->  File Analysis
-```
-
-### Testing Docker Setup
-
-You can test your Docker setup before configuring Claude:
+### Testing Your Setup
 
 ```bash
-# Test that the image builds successfully
-docker build -t gemini-mcp-server .
-
 # Test that the server starts correctly
 docker run --rm -i --env-file .env -v "$(pwd):/workspace:ro" gemini-mcp-server:latest
 
 # You should see "INFO:__main__:Gemini API key found"
-# The server will then wait for MCP commands (no further output)
 # Press Ctrl+C to exit
-```
-
-### Quick Docker Commands
-
-```bash
-# Build the image
-docker build -t gemini-mcp-server .
-
-# Update to latest version
-git pull && docker build -t gemini-mcp-server .
-
-# Test the server manually (replace paths as needed)
-docker run --rm -i --env-file .env -v "$(pwd):/workspace:ro" gemini-mcp-server:latest
-```
-
-### Publishing to Docker Hub
-
-Once stable, we'll publish pre-built images to Docker Hub, eliminating the build step:
-
-```bash
-# Future: Just pull and run
-docker pull beehiveinnovations/gemini-mcp-server:latest
 ```
 
 ## Windows Setup Guide
