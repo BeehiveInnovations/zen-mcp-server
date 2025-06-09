@@ -143,6 +143,8 @@ Just ask Claude naturally:
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Server info?** → `get_version` (version and configuration details)
 
+**Pro Tip:** You can control the depth of Gemini's analysis with thinking modes to manage token costs. For quick tasks use "minimal" or "low" to save tokens, for complex problems use "high" or "max" when quality matters more than cost. [Learn more about thinking modes](#thinking-modes-managing-token-costs-quality)
+
 ## Windows Setup Guide
 
 ### Option 1: Native Windows (Recommended)
@@ -201,6 +203,8 @@ If you prefer to use WSL (Windows Subsystem for Linux):
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
 
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `low` for quick questions to save tokens, or `high` for complex discussions when thoroughness matters.
+
 #### Example Prompts:
 
 **Basic Usage:**
@@ -209,6 +213,19 @@ If you prefer to use WSL (Windows Subsystem for Linux):
 "Get gemini to compare Redis vs Memcached for session storage"
 "Share my authentication design with gemini and get their opinion"
 "Brainstorm with gemini about scaling strategies for our API"
+```
+
+**Managing Token Costs:**
+```
+# Save tokens (~6k) for simple questions
+"Use gemini with minimal thinking to explain what a REST API is"
+"Chat with gemini using low thinking mode about Python naming conventions"
+
+# Use default for balanced analysis
+"Get gemini to review my database schema design" (uses default medium)
+
+# Invest tokens for complex discussions
+"Use gemini with high thinking to brainstorm distributed system architecture"
 ```
 
 **Collaborative Workflow:**
@@ -250,12 +267,27 @@ measuring again to ensure it improved, then share results. Check with gemini in 
 
 **Get a second opinion to augment Claude's own extended thinking**
 
+**Thinking Mode:** Default is `max` (32,768 tokens) for deepest analysis. Reduce to save tokens if you need faster/cheaper responses.
+
 #### Example Prompts:
 
 **Basic Usage:**
 ```
 "Use gemini to think deeper about my authentication design"
 "Use gemini to extend my analysis of this distributed system architecture"
+```
+
+**Managing Token Costs:**
+```
+# Save significant tokens when deep analysis isn't critical
+"Use gemini to think deeper with medium thinking about this refactoring approach" (saves ~24k tokens)
+"Get gemini to think deeper using high thinking mode about this design" (saves ~16k tokens)
+
+# Use default max only for critical analysis
+"Use gemini to think deeper about this security architecture" (uses default max - 32k tokens)
+
+# For simple validations
+"Use gemini with low thinking to validate my basic approach" (saves ~30k tokens!)
 ```
 
 **Collaborative Workflow:**
@@ -281,12 +313,28 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 ### 3. `review_code` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
 
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for security-critical code (worth the extra tokens) or `low` for quick style checks (saves ~6k tokens).
+
 #### Example Prompts:
 
 **Basic Usage:**
 ```
 "Use gemini to review auth.py for issues"
 "Use gemini to do a security review of auth/ focusing on authentication"
+```
+
+**Managing Token Costs:**
+```
+# Save tokens for style/formatting reviews
+"Use gemini with minimal thinking to check code style in utils.py" (saves ~8k tokens)
+"Review this file with gemini using low thinking for basic issues" (saves ~6k tokens)
+
+# Default for standard reviews
+"Use gemini to review the API endpoints" (uses default medium)
+
+# Invest tokens for critical code
+"Get gemini to review auth.py with high thinking mode for security issues" (adds ~8k tokens)
+"Use gemini with max thinking to audit our encryption module" (adds ~24k tokens - justified for security)
 ```
 
 **Collaborative Workflow:**
@@ -310,6 +358,8 @@ make any necessary adjustments and show me the final secure implementation."
 ### 4. `review_changes` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` or `max` for critical releases when thorough validation justifies the token cost.
+
 #### Example Prompts:
 
 **Basic Usage:**
@@ -317,6 +367,20 @@ make any necessary adjustments and show me the final secure implementation."
 "Use gemini to review my pending changes before I commit"
 "Get gemini to validate all my git changes match the original requirements"
 "Review pending changes in the frontend/ directory"
+```
+
+**Managing Token Costs:**
+```
+# Save tokens for small changes
+"Use gemini with low thinking to review my README updates" (saves ~6k tokens)
+"Review my config changes with gemini using minimal thinking" (saves ~8k tokens)
+
+# Default for regular commits
+"Use gemini to review my feature changes" (uses default medium)
+
+# Invest tokens for critical releases
+"Use gemini with high thinking to review changes before production release" (adds ~8k tokens)
+"Get gemini to validate all changes with max thinking for this security patch" (adds ~24k tokens - worth it!)
 ```
 
 **Collaborative Workflow:**
@@ -351,12 +415,28 @@ implementations or missing test coverage. Update the code based on gemini's find
 ### 5. `debug_issue` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for tricky bugs (investment in finding root cause) or `low` for simple errors (save tokens).
+
 #### Example Prompts:
 
 **Basic Usage:**
 ```
 "Use gemini to debug this TypeError: 'NoneType' object has no attribute 'split'"
 "Get gemini to debug why my API returns 500 errors with the full stack trace: [paste traceback]"
+```
+
+**Managing Token Costs:**
+```
+# Save tokens for simple errors
+"Use gemini with minimal thinking to debug this syntax error" (saves ~8k tokens)
+"Debug this import error with gemini using low thinking" (saves ~6k tokens)
+
+# Default for standard debugging
+"Use gemini to debug why this function returns null" (uses default medium)
+
+# Invest tokens for complex bugs
+"Use gemini with high thinking to debug this race condition" (adds ~8k tokens)
+"Get gemini to debug this memory leak with max thinking mode" (adds ~24k tokens - find that leak!)
 ```
 
 **Collaborative Workflow:**
@@ -383,12 +463,28 @@ suggest preventive measures."
 ### 6. `analyze` - Smart File Analysis
 **General-purpose code understanding and exploration**
 
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for architecture analysis (comprehensive insights worth the cost) or `low` for quick file overviews (save ~6k tokens).
+
 #### Example Prompts:
 
 **Basic Usage:**
 ```
 "Use gemini to analyze main.py to understand how it works"
 "Get gemini to do an architecture analysis of the src/ directory"
+```
+
+**Managing Token Costs:**
+```
+# Save tokens for quick overviews
+"Use gemini with minimal thinking to analyze what config.py does" (saves ~8k tokens)
+"Analyze this utility file with gemini using low thinking" (saves ~6k tokens)
+
+# Default for standard analysis
+"Use gemini to analyze the API structure" (uses default medium)
+
+# Invest tokens for deep analysis
+"Use gemini with high thinking to analyze the entire codebase architecture" (adds ~8k tokens)
+"Get gemini to analyze system design with max thinking for refactoring plan" (adds ~24k tokens)
 ```
 
 **Collaborative Workflow:**
@@ -528,6 +624,70 @@ To help choose the right tool for your needs:
 - `chat` vs `think_deeper`: chat is open-ended, think_deeper extends specific analysis
 - `debug_issue` vs `review_code`: debug diagnoses runtime errors, review finds static issues
 
+## Thinking Modes - Managing Token Costs & Quality
+
+Control Gemini's reasoning depth to balance between response quality and token consumption. Each thinking mode uses a different amount of tokens, directly affecting API costs and response time.
+
+### Thinking Modes & Token Budgets
+
+| Mode | Token Budget | Use Case | Cost Impact |
+|------|-------------|----------|-------------|
+| `minimal` | 128 tokens | Simple, straightforward tasks | Lowest cost |
+| `low` | 2,048 tokens | Basic reasoning tasks | 16x more than minimal |
+| `medium` | 8,192 tokens | **Default** - Most development tasks | 64x more than minimal |
+| `high` | 16,384 tokens | Complex problems requiring thorough analysis | 128x more than minimal |
+| `max` | 32,768 tokens | Exhaustive reasoning (default for `think_deeper`) | 256x more than minimal |
+
+### How to Use Thinking Modes
+
+You can control thinking modes using natural language in your prompts. Remember: higher thinking modes = more tokens = higher cost but better quality:
+
+#### Natural Language Examples
+
+| Your Goal | Example Prompt |
+|-----------|----------------|
+| **Quick task** | "Use gemini to format this code with minimal thinking" |
+| **Standard analysis** | "Get gemini to review auth.py" (uses default `medium`) |
+| **Deep analysis** | "Use gemini to review this security module with high thinking mode" |
+| **Maximum depth** | "Get gemini to think deeper with max thinking about this architecture" |
+| **Compare approaches** | "First analyze this with low thinking, then again with high thinking" |
+
+#### Optimizing Token Usage & Costs
+
+**Use lower modes (`minimal`, `low`) to save tokens when:**
+- Doing simple formatting or style checks
+- Getting quick explanations of basic concepts
+- Working with straightforward code
+- You need faster responses
+- Working within tight token budgets
+
+**Use higher modes (`high`, `max`) when quality justifies the cost:**
+- Debugging complex issues (worth the extra tokens to find root causes)
+- Reviewing security-critical code (cost of tokens < cost of vulnerabilities)
+- Analyzing system architecture (comprehensive analysis saves development time)
+- Finding subtle bugs or edge cases
+- Working on performance optimizations
+
+**Token Cost Examples:**
+- `minimal` (128 tokens) vs `max` (32,768 tokens) = 256x difference in thinking tokens
+- For a simple formatting check, using `minimal` instead of the default `medium` saves ~8,000 thinking tokens
+- For critical security reviews, the extra tokens in `high` or `max` mode are a worthwhile investment
+
+**Examples by scenario:**
+```
+# Quick style check
+"Use gemini to review formatting in utils.py with minimal thinking"
+
+# Security audit
+"Get gemini to do a security review of auth/ with thinking mode high"
+
+# Complex debugging
+"Use gemini to debug this race condition with max thinking mode"
+
+# Architecture analysis
+"Analyze the entire src/ directory architecture with high thinking"
+```
+
 ## Advanced Features
 
 ### Dynamic Context Requests
@@ -556,31 +716,6 @@ All tools now return structured JSON responses for consistent handling:
 ```
 
 This enables better integration, error handling, and support for the dynamic context request feature.
-
-### Enhanced Thinking Models
-
-All tools support a `thinking_mode` parameter that controls Gemini's thinking budget for deeper reasoning:
-
-```
-"Use gemini to review auth.py with thinking_mode=max"
-"Get gemini to analyze the architecture with thinking_mode=medium"
-```
-
-**Thinking Modes:**
-- `minimal`: Minimum thinking (128 tokens for Gemini 2.5 Pro)
-- `low`: Light reasoning (2,048 token thinking budget)
-- `medium`: Balanced reasoning (8,192 token thinking budget - default for all tools)
-- `high`: Deep reasoning (16,384 token thinking budget)
-- `max`: Maximum reasoning (32,768 token thinking budget - default for think_deeper)
-
-**When to use:**
-- `minimal`: For simple, straightforward tasks
-- `low`: For tasks requiring basic reasoning
-- `medium`: For most development tasks (default)
-- `high`: For complex problems requiring thorough analysis
-- `max`: For the most complex problems requiring exhaustive reasoning
-
-**Note:** Gemini 2.5 Pro requires a minimum of 128 thinking tokens, so thinking cannot be fully disabled
 
 ## Configuration
 
