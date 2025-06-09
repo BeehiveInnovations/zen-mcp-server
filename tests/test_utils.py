@@ -2,8 +2,7 @@
 Tests for utility functions
 """
 
-from utils import (check_token_limit, estimate_tokens, read_file_content,
-                   read_files)
+from utils import check_token_limit, estimate_tokens, read_file_content, read_files
 
 
 class TestFileUtils:
@@ -12,9 +11,7 @@ class TestFileUtils:
     def test_read_file_content_success(self, tmp_path):
         """Test successful file reading"""
         test_file = tmp_path / "test.py"
-        test_file.write_text(
-            "def hello():\n    return 'world'", encoding="utf-8"
-        )
+        test_file.write_text("def hello():\n    return 'world'", encoding="utf-8")
 
         content, tokens = read_file_content(str(test_file))
         assert "--- BEGIN FILE:" in content
@@ -71,18 +68,18 @@ class TestFileUtils:
         (tmp_path / "file1.py").write_text("print('file1')", encoding="utf-8")
         (tmp_path / "file2.js").write_text("console.log('file2')", encoding="utf-8")
         (tmp_path / "readme.md").write_text("# README", encoding="utf-8")
-        
+
         # Create subdirectory
         subdir = tmp_path / "src"
         subdir.mkdir()
         (subdir / "module.py").write_text("class Module: pass", encoding="utf-8")
-        
+
         # Create hidden file (should be skipped)
         (tmp_path / ".hidden").write_text("secret", encoding="utf-8")
-        
+
         # Read the directory
         content, summary = read_files([str(tmp_path)])
-        
+
         # Check files are included
         assert "file1.py" in content
         assert "file2.js" in content
@@ -90,17 +87,17 @@ class TestFileUtils:
         # Handle both forward and backslashes for cross-platform compatibility
         assert "module.py" in content
         assert "class Module: pass" in content
-        
+
         # Check content
         assert "print('file1')" in content
         assert "console.log('file2')" in content
         assert "# README" in content
         assert "class Module: pass" in content
-        
+
         # Hidden file should not be included
         assert ".hidden" not in content
         assert "secret" not in content
-        
+
         # Check summary
         assert "Processed 1 dir(s)" in summary
         assert "Read 4 file(s)" in summary
@@ -110,23 +107,23 @@ class TestFileUtils:
         # Create files
         file1 = tmp_path / "direct.py"
         file1.write_text("# Direct file", encoding="utf-8")
-        
+
         # Create directory with files
         subdir = tmp_path / "subdir"
         subdir.mkdir()
         (subdir / "sub1.py").write_text("# Sub file 1", encoding="utf-8")
         (subdir / "sub2.py").write_text("# Sub file 2", encoding="utf-8")
-        
+
         # Read mix of direct file and directory
         content, summary = read_files([str(file1), str(subdir)])
-        
+
         assert "direct.py" in content
         assert "sub1.py" in content
         assert "sub2.py" in content
         assert "# Direct file" in content
         assert "# Sub file 1" in content
         assert "# Sub file 2" in content
-        
+
         assert "Processed 1 dir(s)" in summary
         assert "Read 3 file(s)" in summary
 
@@ -135,19 +132,19 @@ class TestFileUtils:
         # Create files with known token counts
         # ~250 tokens each (1000 chars)
         large_content = "x" * 1000
-        
+
         for i in range(5):
             (tmp_path / f"file{i}.txt").write_text(large_content, encoding="utf-8")
-        
+
         # Read with small token limit (should skip some files)
         # Reserve 50k tokens, limit to 51k total = 1k available
         # Each file ~250 tokens, so should read ~3-4 files
         content, summary = read_files([str(tmp_path)], max_tokens=51_000)
-        
+
         assert "Skipped" in summary
         assert "token limit" in summary
         assert "--- SKIPPED FILES (TOKEN LIMIT) ---" in content
-        
+
         # Count how many files were read
         read_count = content.count("--- BEGIN FILE:")
         assert 2 <= read_count <= 4  # Should read some but not all
@@ -157,9 +154,9 @@ class TestFileUtils:
         # Create a file larger than max_size (1MB)
         large_file = tmp_path / "large.txt"
         large_file.write_text("x" * 2_000_000, encoding="utf-8")  # 2MB
-        
+
         content, summary = read_files([str(large_file)])
-        
+
         assert "--- FILE TOO LARGE:" in content
         assert "2,000,000 bytes" in content
         assert "Read 1 file(s)" in summary  # File is counted but shows error message
@@ -171,13 +168,13 @@ class TestFileUtils:
         (tmp_path / "style.css").write_text("css", encoding="utf-8")
         (tmp_path / "binary.exe").write_text("exe", encoding="utf-8")
         (tmp_path / "image.jpg").write_text("jpg", encoding="utf-8")
-        
+
         content, summary = read_files([str(tmp_path)])
-        
+
         # Code files should be included
         assert "code.py" in content
         assert "style.css" in content
-        
+
         # Binary files should not be included (not in CODE_EXTENSIONS)
         assert "binary.exe" not in content
         assert "image.jpg" not in content

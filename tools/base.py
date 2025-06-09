@@ -11,6 +11,7 @@ from google.genai import types
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
+
 class ToolRequest(BaseModel):
     """Base request model for all tools"""
 
@@ -21,7 +22,8 @@ class ToolRequest(BaseModel):
         None, description="Temperature for response (tool-specific defaults)"
     )
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
-        None, description="Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)"
+        None,
+        description="Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
     )
 
 
@@ -128,15 +130,15 @@ class BaseTool(ABC):
         """Create a configured Gemini model with thinking configuration"""
         # Map thinking modes to budget values
         thinking_budgets = {
-            "minimal": 128,    # Minimum for 2.5 Pro
+            "minimal": 128,  # Minimum for 2.5 Pro
             "low": 2048,
             "medium": 8192,
             "high": 16384,
-            "max": 32768
+            "max": 32768,
         }
-        
+
         thinking_budget = thinking_budgets.get(thinking_mode, 8192)
-        
+
         # For models supporting thinking config, use the new API
         # Skip in test environment to allow mocking
         if "2.5" in model_name and not os.environ.get("PYTEST_CURRENT_TEST"):
@@ -145,17 +147,19 @@ class BaseTool(ABC):
                 api_key = os.environ.get("GEMINI_API_KEY")
                 if not api_key:
                     raise ValueError("GEMINI_API_KEY environment variable is required")
-                
+
                 client = genai.Client(api_key=api_key)
-                
+
                 # Create a wrapper to match the expected interface
                 class ModelWrapper:
-                    def __init__(self, client, model_name, temperature, thinking_budget):
+                    def __init__(
+                        self, client, model_name, temperature, thinking_budget
+                    ):
                         self.client = client
                         self.model_name = model_name
                         self.temperature = temperature
                         self.thinking_budget = thinking_budget
-                    
+
                     def generate_content(self, prompt):
                         response = self.client.models.generate_content(
                             model=self.model_name,
@@ -163,43 +167,62 @@ class BaseTool(ABC):
                             config=types.GenerateContentConfig(
                                 temperature=self.temperature,
                                 candidate_count=1,
-                                thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget)
+                                thinking_config=types.ThinkingConfig(
+                                    thinking_budget=self.thinking_budget
+                                ),
                             ),
                         )
+
                         # Convert to match expected format
                         class ResponseWrapper:
                             def __init__(self, text):
                                 self.text = text
-                                self.candidates = [type('obj', (object,), {
-                                    'content': type('obj', (object,), {
-                                        'parts': [type('obj', (object,), {'text': text})]
-                                    })(),
-                                    'finish_reason': 'STOP'
-                                })]
-                        
+                                self.candidates = [
+                                    type(
+                                        "obj",
+                                        (object,),
+                                        {
+                                            "content": type(
+                                                "obj",
+                                                (object,),
+                                                {
+                                                    "parts": [
+                                                        type(
+                                                            "obj",
+                                                            (object,),
+                                                            {"text": text},
+                                                        )
+                                                    ]
+                                                },
+                                            )(),
+                                            "finish_reason": "STOP",
+                                        },
+                                    )
+                                ]
+
                         return ResponseWrapper(response.text)
-                
+
                 return ModelWrapper(client, model_name, temperature, thinking_budget)
-                
-            except Exception as e:
+
+            except Exception:
                 # Fall back to regular genai model if new API fails
                 pass
-        
+
         # For non-2.5 models or if thinking not needed, use regular API
         # Get API key
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
-        
+
         client = genai.Client(api_key=api_key)
-        
+
         # Create wrapper for consistency
         class SimpleModelWrapper:
             def __init__(self, client, model_name, temperature):
                 self.client = client
                 self.model_name = model_name
                 self.temperature = temperature
-            
+
             def generate_content(self, prompt):
                 response = self.client.models.generate_content(
                     model=self.model_name,
@@ -209,18 +232,30 @@ class BaseTool(ABC):
                         candidate_count=1,
                     ),
                 )
-                
+
                 # Convert to match expected format
                 class ResponseWrapper:
                     def __init__(self, text):
                         self.text = text
-                        self.candidates = [type('obj', (object,), {
-                            'content': type('obj', (object,), {
-                                'parts': [type('obj', (object,), {'text': text})]
-                            })(),
-                            'finish_reason': 'STOP'
-                        })]
-                
+                        self.candidates = [
+                            type(
+                                "obj",
+                                (object,),
+                                {
+                                    "content": type(
+                                        "obj",
+                                        (object,),
+                                        {
+                                            "parts": [
+                                                type("obj", (object,), {"text": text})
+                                            ]
+                                        },
+                                    )(),
+                                    "finish_reason": "STOP",
+                                },
+                            )
+                        ]
+
                 return ResponseWrapper(response.text)
-        
+
         return SimpleModelWrapper(client, model_name, temperature)

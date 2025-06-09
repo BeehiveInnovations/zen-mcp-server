@@ -130,7 +130,9 @@ class ThinkDeeperTool(BaseTool):
         focus_instruction = ""
         if request.focus_areas:
             areas = ", ".join(request.focus_areas)
-            focus_instruction = f"\n\nFOCUS AREAS: Please pay special attention to {areas} aspects."
+            focus_instruction = (
+                f"\n\nFOCUS AREAS: Please pay special attention to {areas} aspects."
+            )
 
         # Combine system prompt with context
         full_prompt = f"""{self.get_system_prompt()}{focus_instruction}
@@ -146,8 +148,6 @@ Please provide deep analysis that extends Claude's thinking with:
 
         return full_prompt
 
-    def format_response(
-        self, response: str, request: ThinkDeeperRequest
-    ) -> str:
+    def format_response(self, response: str, request: ThinkDeeperRequest) -> str:
         """Format the response with clear attribution"""
         return f"Extended Analysis by Gemini:\n\n{response}"

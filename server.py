@@ -10,14 +10,18 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from google import genai
-from google.genai import types
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from config import (DEFAULT_MODEL, MAX_CONTEXT_TOKENS, __author__, __updated__,
-                    __version__)
+from config import (
+    DEFAULT_MODEL,
+    MAX_CONTEXT_TOKENS,
+    __author__,
+    __updated__,
+    __version__,
+)
 from tools import AnalyzeTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
 
 # Configure logging
@@ -125,9 +129,7 @@ async def handle_list_tools() -> List[Tool]:
 
 
 @server.call_tool()
-async def handle_call_tool(
-    name: str, arguments: Dict[str, Any]
-) -> List[TextContent]:
+async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle tool execution requests"""
 
     # Handle dynamic tools
@@ -151,7 +153,7 @@ async def handle_call_tool(
 
 async def handle_chat(arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle general chat requests"""
-    from config import TEMPERATURE_BALANCED, DEFAULT_MODEL, THINKING_MODEL
+    from config import TEMPERATURE_BALANCED, DEFAULT_MODEL
     from prompts import CHAT_PROMPT
     from utils import read_files
 
@@ -164,24 +166,37 @@ async def handle_chat(arguments: Dict[str, Any]) -> List[TextContent]:
     user_content = prompt
     if context_files:
         file_content, _ = read_files(context_files)
-        user_content = f"{prompt}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ==="
-    
+        user_content = (
+            f"{prompt}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ==="
+        )
+
     # Combine system prompt with user content
     full_prompt = f"{CHAT_PROMPT}\n\n=== USER REQUEST ===\n{user_content}\n=== END REQUEST ===\n\nPlease provide a thoughtful, comprehensive response:"
 
     try:
         # Create model with thinking configuration
         from tools.base import BaseTool
-        
+
         # Create a temporary tool instance to use create_model method
         class TempTool(BaseTool):
-            def get_name(self): return "chat"
-            def get_description(self): return ""
-            def get_input_schema(self): return {}
-            def get_system_prompt(self): return ""
-            def get_request_model(self): return None
-            async def prepare_prompt(self, request): return ""
-        
+            def get_name(self):
+                return "chat"
+
+            def get_description(self):
+                return ""
+
+            def get_input_schema(self):
+                return {}
+
+            def get_system_prompt(self):
+                return ""
+
+            def get_request_model(self):
+                return None
+
+            async def prepare_prompt(self, request):
+                return ""
+
         temp_tool = TempTool()
         model = temp_tool.create_model(DEFAULT_MODEL, temperature, thinking_mode)
 
@@ -207,7 +222,7 @@ async def handle_list_models() -> List[TextContent]:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             return [TextContent(type="text", text="Error: GEMINI_API_KEY not set")]
-        
+
         client = genai.Client(api_key=api_key)
         models = []
 
@@ -218,13 +233,21 @@ async def handle_list_models() -> List[TextContent]:
                 models.append(
                     {
                         "name": getattr(model_info, "id", "Unknown"),
-                        "display_name": getattr(model_info, "display_name", getattr(model_info, "id", "Unknown")),
-                        "description": getattr(model_info, "description", "No description"),
-                        "is_default": getattr(model_info, "id", "").endswith(DEFAULT_MODEL),
+                        "display_name": getattr(
+                            model_info,
+                            "display_name",
+                            getattr(model_info, "id", "Unknown"),
+                        ),
+                        "description": getattr(
+                            model_info, "description", "No description"
+                        ),
+                        "is_default": getattr(model_info, "id", "").endswith(
+                            DEFAULT_MODEL
+                        ),
                     }
                 )
 
-        except Exception as e:
+        except Exception:
             # Fallback: return some known models
             models = [
                 {
@@ -244,9 +267,7 @@ async def handle_list_models() -> List[TextContent]:
         return [TextContent(type="text", text=json.dumps(models, indent=2))]
 
     except Exception as e:
-        return [
-            TextContent(type="text", text=f"Error listing models: {str(e)}")
-        ]
+        return [TextContent(type="text", text=f"Error listing models: {str(e)}")]
 
 
 async def handle_get_version() -> List[TextContent]:
@@ -259,8 +280,7 @@ async def handle_get_version() -> List[TextContent]:
         "max_context_tokens": f"{MAX_CONTEXT_TOKENS:,}",
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "server_started": datetime.now().isoformat(),
-        "available_tools": list(TOOLS.keys())
-        + ["chat", "list_models", "get_version"],
+        "available_tools": list(TOOLS.keys()) + ["chat", "list_models", "get_version"],
     }
 
     text = f"""Gemini MCP Server v{__version__}

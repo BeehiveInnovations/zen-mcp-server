@@ -146,8 +146,6 @@ Focus on finding the root cause and providing actionable solutions."""
 
         return full_prompt
 
-    def format_response(
-        self, response: str, request: DebugIssueRequest
-    ) -> str:
+    def format_response(self, response: str, request: DebugIssueRequest) -> str:
         """Format the debugging response"""
         return f"Debug Analysis\n{'=' * 50}\n\n{response}"

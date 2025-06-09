@@ -130,14 +130,10 @@ class ReviewCodeTool(BaseTool):
             )
 
         if request.focus_on:
-            review_focus.append(
-                f"Pay special attention to: {request.focus_on}"
-            )
+            review_focus.append(f"Pay special attention to: {request.focus_on}")
 
         if request.standards:
-            review_focus.append(
-                f"Enforce these standards: {request.standards}"
-            )
+            review_focus.append(f"Enforce these standards: {request.standards}")
 
         if request.severity_filter != "all":
             review_focus.append(
@@ -159,9 +155,7 @@ Please provide a comprehensive code review following the format specified in the
 
         return full_prompt
 
-    def format_response(
-        self, response: str, request: ReviewCodeRequest
-    ) -> str:
+    def format_response(self, response: str, request: ReviewCodeRequest) -> str:
         """Format the review response"""
         header = f"Code Review ({request.review_type.upper()})"
         if request.focus_on:

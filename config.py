@@ -9,7 +9,9 @@ __author__ = "Fahad Gilani"
 
 # Model configuration
 DEFAULT_MODEL = "gemini-2.5-pro-preview-06-05"
-THINKING_MODEL = "gemini-2.0-flash-thinking-exp"  # Enhanced reasoning model for think_deeper
+THINKING_MODEL = (
+    "gemini-2.0-flash-thinking-exp"  # Enhanced reasoning model for think_deeper
+)
 MAX_CONTEXT_TOKENS = 1_000_000  # 1M tokens for Gemini Pro
 
 # Temperature defaults for different tool types

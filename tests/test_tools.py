@@ -120,7 +120,9 @@ class TestDebugIssueTool:
         # Mock model
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text="Root cause: race condition")]))]
+            candidates=[
+                Mock(content=Mock(parts=[Mock(text="Root cause: race condition")]))
+            ]
         )
         mock_create_model.return_value = mock_model
 
@@ -157,9 +159,7 @@ class TestAnalyzeTool:
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
-    async def test_execute_with_analysis_type(
-        self, mock_model, tool, tmp_path
-    ):
+    async def test_execute_with_analysis_type(self, mock_model, tool, tmp_path):
         """Test execution with specific analysis type"""
         # Create test file
         test_file = tmp_path / "module.py"
@@ -168,9 +168,7 @@ class TestAnalyzeTool:
         # Mock response
         mock_response = Mock()
         mock_response.candidates = [Mock()]
-        mock_response.candidates[0].content.parts = [
-            Mock(text="Architecture analysis")
-        ]
+        mock_response.candidates[0].content.parts = [Mock(text="Architecture analysis")]
 
         mock_instance = Mock()
         mock_instance.generate_content.return_value = mock_response

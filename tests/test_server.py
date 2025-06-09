@@ -33,9 +33,7 @@ class TestServerTools:
 
         # Check descriptions are verbose
         for tool in tools:
-            assert (
-                len(tool.description) > 50
-            )  # All should have detailed descriptions
+            assert len(tool.description) > 50  # All should have detailed descriptions
 
     @pytest.mark.asyncio
     async def test_handle_call_tool_unknown(self):
@@ -49,8 +47,9 @@ class TestServerTools:
         """Test chat functionality"""
         # Set test environment
         import os
+
         os.environ["PYTEST_CURRENT_TEST"] = "test"
-        
+
         # Create a mock for the model
         with patch("tools.base.BaseTool.create_model") as mock_create:
             mock_model = Mock()
@@ -58,9 +57,9 @@ class TestServerTools:
                 candidates=[Mock(content=Mock(parts=[Mock(text="Chat response")]))]
             )
             mock_create.return_value = mock_model
-            
+
             result = await handle_call_tool("chat", {"prompt": "Hello Gemini"})
-            
+
             assert len(result) == 1
             assert result[0].text == "Chat response"
 
@@ -69,7 +68,7 @@ class TestServerTools:
         """Test listing models"""
         result = await handle_call_tool("list_models", {})
         assert len(result) == 1
-        
+
         # Check if we got models or an error
         text = result[0].text
         if "Error" in text:
