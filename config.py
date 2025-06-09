@@ -10,8 +10,8 @@ Configuration values can be overridden by environment variables where appropriat
 
 # Version and metadata
 # These values are used in server responses and for tracking releases
-__version__ = "2.8.0"  # Semantic versioning: MAJOR.MINOR.PATCH
-__updated__ = "2025-09-09"  # Last update date in ISO format
+__version__ = "2.9.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+__updated__ = "2025-01-09"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
 # Model configuration
