@@ -15,7 +15,7 @@ from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from config import (DEFAULT_MODEL, MAX_CONTEXT_TOKENS, MAX_OUTPUT_TOKENS, __author__, __updated__,
+from config import (DEFAULT_MODEL, MAX_CONTEXT_TOKENS, __author__, __updated__,
                     __version__)
 from tools import AnalyzeTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
 
@@ -167,7 +167,6 @@ async def handle_chat(arguments: Dict[str, Any]) -> List[TextContent]:
             model_name=DEFAULT_MODEL,
             generation_config={
                 "temperature": temperature,
-                "max_output_tokens": MAX_OUTPUT_TOKENS,
                 "candidate_count": 1,
             },
         )

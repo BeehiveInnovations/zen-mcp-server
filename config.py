@@ -10,7 +10,6 @@ __author__ = "Fahad Gilani"
 # Model configuration
 DEFAULT_MODEL = "gemini-2.5-pro-preview-06-05"
 MAX_CONTEXT_TOKENS = 1_000_000  # 1M tokens for Gemini Pro
-MAX_OUTPUT_TOKENS = 32_768  # Maximum output tokens for Gemini 2.5 Pro
 
 # Temperature defaults for different tool types
 TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging

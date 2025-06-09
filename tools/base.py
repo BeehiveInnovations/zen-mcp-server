@@ -9,17 +9,11 @@ import google.generativeai as genai
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
-from config import MAX_OUTPUT_TOKENS
-
-
 class ToolRequest(BaseModel):
     """Base request model for all tools"""
 
     model: Optional[str] = Field(
         None, description="Model to use (defaults to Gemini 2.5 Pro)"
-    )
-    max_tokens: Optional[int] = Field(
-        MAX_OUTPUT_TOKENS, description="Maximum number of tokens in response"
     )
     temperature: Optional[float] = Field(
         None, description="Temperature for response (tool-specific defaults)"
@@ -80,10 +74,9 @@ class BaseTool(ABC):
             temperature = getattr(request, "temperature", None)
             if temperature is None:
                 temperature = self.get_default_temperature()
-            max_tokens = getattr(request, "max_tokens", MAX_OUTPUT_TOKENS)
 
             # Create and configure model
-            model = self.create_model(model_name, temperature, max_tokens)
+            model = self.create_model(model_name, temperature)
 
             # Generate response
             response = model.generate_content(prompt)
@@ -118,14 +111,13 @@ class BaseTool(ABC):
         return response
 
     def create_model(
-        self, model_name: str, temperature: float, max_tokens: int
+        self, model_name: str, temperature: float
     ) -> genai.GenerativeModel:
         """Create a configured Gemini model"""
         return genai.GenerativeModel(
             model_name=model_name,
             generation_config={
                 "temperature": temperature,
-                "max_output_tokens": max_tokens,
                 "candidate_count": 1,
             },
         )

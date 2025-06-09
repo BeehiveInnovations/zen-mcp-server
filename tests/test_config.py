@@ -2,7 +2,7 @@
 Tests for configuration
 """
 
-from config import (DEFAULT_MODEL, MAX_CONTEXT_TOKENS, MAX_OUTPUT_TOKENS,
+from config import (DEFAULT_MODEL, MAX_CONTEXT_TOKENS,
                     TEMPERATURE_ANALYTICAL, TEMPERATURE_BALANCED,
                     TEMPERATURE_CREATIVE, TOOL_TRIGGERS, __author__,
                     __updated__, __version__)
@@ -27,7 +27,6 @@ class TestConfig:
         """Test model configuration"""
         assert DEFAULT_MODEL == "gemini-2.5-pro-preview-06-05"
         assert MAX_CONTEXT_TOKENS == 1_000_000
-        assert MAX_OUTPUT_TOKENS == 32_768
 
     def test_temperature_defaults(self):
         """Test temperature constants"""
