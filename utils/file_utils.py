@@ -26,26 +26,57 @@ from .token_utils import estimate_tokens, MAX_CONTEXT_TOKENS
 
 # Get project root from environment or use current directory
 # This defines the sandbox directory where file access is allowed
-# Security: All file operations are restricted to this directory and its children
-default_root = os.environ.get("MCP_PROJECT_ROOT", os.getcwd())
-
-# If current directory is "/" (can happen when launched from Claude Desktop),
-# use the user's home directory as a safe default
-if default_root == "/" or os.getcwd() == "/":
-    default_root = os.path.expanduser("~")
-
-PROJECT_ROOT = Path(default_root).resolve()
+#
+# Security model:
+# 1. If MCP_PROJECT_ROOT is explicitly set, use it as a sandbox
+# 2. If not set, allow access to user's home directory and below
+# 3. Never allow access to system directories outside home
+env_root = os.environ.get("MCP_PROJECT_ROOT")
+if env_root:
+    # If explicitly set, use it as sandbox
+    PROJECT_ROOT = Path(env_root).resolve()
+    SANDBOX_MODE = True
+else:
+    # If not set, default to home directory for safety
+    # This allows access to any file under the user's home directory
+    PROJECT_ROOT = Path.home()
+    SANDBOX_MODE = False
 
 # Critical Security Check: Prevent running with overly permissive root
-# Setting PROJECT_ROOT to "/" would allow access to the entire filesystem,
-# which is a severe security vulnerability
-if str(PROJECT_ROOT) == "/":
+# Setting PROJECT_ROOT to the filesystem root would allow access to all files,
+# which is a severe security vulnerability. Works cross-platform.
+if PROJECT_ROOT.parent == PROJECT_ROOT:  # This works for both "/" and "C:\"
     raise RuntimeError(
-        "Security Error: PROJECT_ROOT cannot be '/'. "
+        "Security Error: PROJECT_ROOT cannot be the filesystem root. "
         "This would give access to the entire filesystem. "
         "Please set MCP_PROJECT_ROOT environment variable to a specific directory."
     )
 
+
+# Directories to exclude from recursive file search
+# These typically contain generated code, dependencies, or build artifacts
+EXCLUDED_DIRS = {
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    ".git",
+    ".svn",
+    ".hg",
+    "build",
+    "dist",
+    "target",
+    ".idea",
+    ".vscode",
+    "__pypackages__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".tox",
+    "htmlcov",
+    ".coverage",
+}
 
 # Common code file extensions that are automatically included when processing directories
 # This set can be extended to support additional file types
@@ -187,10 +218,10 @@ def expand_paths(paths: List[str], extensions: Optional[Set[str]] = None) -> Lis
         elif path_obj.is_dir():
             # Walk directory recursively to find all files
             for root, dirs, files in os.walk(path_obj):
-                # Filter directories in-place to skip hidden and cache directories
-                # This prevents descending into .git, .venv, __pycache__, etc.
+                # Filter directories in-place to skip hidden and excluded directories
+                # This prevents descending into .git, .venv, __pycache__, node_modules, etc.
                 dirs[:] = [
-                    d for d in dirs if not d.startswith(".") and d != "__pycache__"
+                    d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS
                 ]
 
                 for file in files:
