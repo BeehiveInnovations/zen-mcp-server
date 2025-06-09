@@ -8,20 +8,27 @@ REM Change to script directory to ensure proper working directory
 cd /d "%SCRIPT_DIR%"
 
 REM Check if virtual environment exists
-if exist "%SCRIPT_DIR%venv\Scripts\activate.bat" (
-    REM Activate the virtual environment
-    call "%SCRIPT_DIR%venv\Scripts\activate.bat"
-    python "%SCRIPT_DIR%server.py"
-) else (
-    REM Try to use python directly if no venv
-    echo Warning: Virtual environment not found at %SCRIPT_DIR%venv >&2
-    echo Attempting to run with system Python... >&2
-    python "%SCRIPT_DIR%server.py"
-    if errorlevel 1 (
-        echo Error: Failed to run server. Please ensure Python is installed and dependencies are available. >&2
-        echo Run: python -m venv venv >&2
-        echo Then: venv\Scripts\activate >&2
-        echo Then: pip install -r requirements.txt >&2
+if not exist "%SCRIPT_DIR%venv\" (
+    echo Virtual environment not found. Running setup... >&2
+    
+    REM Check if setup.bat exists
+    if exist "%SCRIPT_DIR%setup.bat" (
+        REM Run setup script
+        call "%SCRIPT_DIR%setup.bat" >&2
+        
+        REM Check if setup was successful
+        if errorlevel 1 (
+            echo Setup failed. Please run setup.bat manually to see the error. >&2
+            exit /b 1
+        )
+    ) else (
+        echo Error: setup.bat not found. Please ensure you have the complete repository. >&2
         exit /b 1
     )
 )
+
+REM Activate virtual environment
+call "%SCRIPT_DIR%venv\Scripts\activate.bat"
+
+REM Run the server
+python "%SCRIPT_DIR%server.py"
