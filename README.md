@@ -741,21 +741,11 @@ Different tools use optimized temperature settings:
 
 **All file paths must be absolute paths.**
 
-### Setup
-1. **Use absolute paths** in all tool calls:
-   ```
-   ✅ "Use gemini to analyze /Users/you/project/src/main.py"
-   ❌ "Use gemini to analyze ./src/main.py"  (will be rejected)
-   ```
-
-2. **Set MCP_PROJECT_ROOT** to your project directory for security:
-   ```json
-   "env": {
-     "GEMINI_API_KEY": "your-key",
-     "MCP_PROJECT_ROOT": "/Users/you/project"
-   }
-   ```
-   The server only allows access to files within this directory.
+When using any Gemini tool, always provide absolute paths:
+```
+✅ "Use gemini to analyze /Users/you/project/src/main.py"
+❌ "Use gemini to analyze ./src/main.py"  (will be rejected)
+```
 
 ## Installation
 

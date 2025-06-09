@@ -4,6 +4,9 @@ REM Windows batch script to run Gemini MCP server
 REM Get the directory where this script is located
 set SCRIPT_DIR=%~dp0
 
+REM Change to script directory to ensure proper working directory
+cd /d "%SCRIPT_DIR%"
+
 REM Check if virtual environment exists
 if exist "%SCRIPT_DIR%venv\Scripts\activate.bat" (
     REM Activate the virtual environment

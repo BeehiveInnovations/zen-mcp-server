@@ -15,5 +15,8 @@ else
     PYTHON_EXEC="python3"
 fi
 
+# Change to script directory to ensure proper working directory
+cd "$SCRIPT_DIR"
+
 # Run the server
 exec "$PYTHON_EXEC" "$SCRIPT_DIR/server.py"

@@ -27,15 +27,23 @@ from .token_utils import estimate_tokens, MAX_CONTEXT_TOKENS
 # Get project root from environment or use current directory
 # This defines the sandbox directory where file access is allowed
 # Security: All file operations are restricted to this directory and its children
-PROJECT_ROOT = Path(os.environ.get("MCP_PROJECT_ROOT", os.getcwd())).resolve()
+default_root = os.environ.get("MCP_PROJECT_ROOT", os.getcwd())
+
+# If current directory is "/" (can happen when launched from Claude Desktop),
+# use the user's home directory as a safe default
+if default_root == "/" or os.getcwd() == "/":
+    default_root = os.path.expanduser("~")
+
+PROJECT_ROOT = Path(default_root).resolve()
 
 # Critical Security Check: Prevent running with overly permissive root
 # Setting PROJECT_ROOT to "/" would allow access to the entire filesystem,
 # which is a severe security vulnerability
 if str(PROJECT_ROOT) == "/":
     raise RuntimeError(
-        "Security Error: MCP_PROJECT_ROOT cannot be set to '/'. "
-        "This would give access to the entire filesystem."
+        "Security Error: PROJECT_ROOT cannot be '/'. "
+        "This would give access to the entire filesystem. "
+        "Please set MCP_PROJECT_ROOT environment variable to a specific directory."
     )
 
 
