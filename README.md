@@ -11,13 +11,13 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 ## Why This Server?
 
 Claude is brilliant, but sometimes you need:
-- **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#1-think_deeper---extended-reasoning-partner))
-- **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#5-analyze---smart-file-analysis))
-- **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#5-analyze---smart-file-analysis))
-- **Expert debugging** for tricky issues with full system context ([`debug_issue`](#4-debug_issue---expert-debugging-assistant))
-- **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#2-review_code---professional-code-review))
-- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_pending_changes`](#3-review_pending_changes---pre-commit-validation))
-- **A senior developer partner** to validate and extend ideas ([`chat`](#6-chat---general-development-chat--collaborative-thinking))
+- **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
+- **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#2-think_deeper---extended-reasoning-partner))
+- **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#3-review_code---professional-code-review))
+- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_pending_changes`](#4-review_pending_changes---pre-commit-validation))
+- **Expert debugging** for tricky issues with full system context ([`debug_issue`](#5-debug_issue---expert-debugging-assistant))
+- **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#6-analyze---smart-file-analysis))
+- **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
 - **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
 
 This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
@@ -126,16 +126,52 @@ Just ask Claude naturally:
 - **Server info?** → `get_version` (version and configuration details)
 
 **Tools Overview:**
-1. [`think_deeper`](#1-think_deeper---extended-reasoning-partner) - Extended reasoning and problem-solving
-2. [`review_code`](#2-review_code---professional-code-review) - Professional code review with severity levels
-3. [`review_pending_changes`](#3-review_pending_changes---pre-commit-validation) - Validate git changes before committing
-4. [`debug_issue`](#4-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
-5. [`analyze`](#5-analyze---smart-file-analysis) - General-purpose file and code analysis
-6. [`chat`](#6-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
+1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
+2. [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning and problem-solving
+3. [`review_code`](#3-review_code---professional-code-review) - Professional code review with severity levels
+4. [`review_pending_changes`](#4-review_pending_changes---pre-commit-validation) - Validate git changes before committing
+5. [`debug_issue`](#5-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
+6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`list_models`](#7-list_models---see-available-gemini-models) - List available Gemini models
 8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
 
-### 1. `think_deeper` - Extended Reasoning Partner
+### 1. `chat` - General Development Chat & Collaborative Thinking
+**Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
+
+#### Example Prompts:
+
+**Basic Usage:**
+```
+"Use gemini to explain how async/await works in Python"
+"Get gemini to compare Redis vs Memcached for session storage"
+"Share my authentication design with gemini and get their opinion"
+"Brainstorm with gemini about scaling strategies for our API"
+```
+
+**Collaborative Workflow:**
+```
+"Research the best message queue for our use case (high throughput, exactly-once delivery).
+Use gemini to compare RabbitMQ, Kafka, and AWS SQS. Based on gemini's analysis and your research,
+recommend the best option with implementation plan."
+
+"Design a caching strategy for our API. Get gemini's input on Redis vs Memcached vs in-memory caching.
+Combine both perspectives to create a comprehensive caching implementation guide."
+```
+
+**Key Features:**
+- Collaborative thinking partner for your analysis and planning
+- Get second opinions on your designs and approaches
+- Brainstorm solutions and explore alternatives together
+- Validate your checklists and implementation plans
+- General development questions and explanations
+- Technology comparisons and best practices
+- Architecture and design discussions
+- Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
+- **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
+
+**Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
+
+### 2. `think_deeper` - Extended Reasoning Partner
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
@@ -179,7 +215,7 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 
 **Triggers:** think deeper, ultrathink, extend my analysis, validate my approach
 
-### 2. `review_code` - Professional Code Review  
+### 3. `review_code` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
 
 #### Example Prompts:
@@ -208,7 +244,7 @@ make any necessary adjustments and show me the final secure implementation."
 
 **Triggers:** review code, check for issues, find bugs, security check
 
-### 3. `review_pending_changes` - Pre-Commit Validation
+### 4. `review_pending_changes` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
 #### Example Prompts:
@@ -249,7 +285,7 @@ implementations or missing test coverage. Update the code based on gemini's find
 
 **Triggers:** review pending changes, check my changes, validate changes, pre-commit review
 
-### 4. `debug_issue` - Expert Debugging Assistant
+### 5. `debug_issue` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
 #### Example Prompts:
@@ -281,7 +317,7 @@ suggest preventive measures."
 
 **Triggers:** debug, error, failing, root cause, trace, not working
 
-### 5. `analyze` - Smart File Analysis
+### 6. `analyze` - Smart File Analysis
 **General-purpose code understanding and exploration**
 
 #### Example Prompts:
@@ -309,42 +345,6 @@ Combine your findings with gemini's to create a comprehensive security report."
 - Can identify patterns, anti-patterns, and refactoring opportunities
 
 **Triggers:** analyze, examine, look at, understand, inspect
-
-### 6. `chat` - General Development Chat & Collaborative Thinking
-**Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
-
-#### Example Prompts:
-
-**Basic Usage:**
-```
-"Use gemini to explain how async/await works in Python"
-"Get gemini to compare Redis vs Memcached for session storage"
-"Share my authentication design with gemini and get their opinion"
-"Brainstorm with gemini about scaling strategies for our API"
-```
-
-**Collaborative Workflow:**
-```
-"Research the best message queue for our use case (high throughput, exactly-once delivery).
-Use gemini to compare RabbitMQ, Kafka, and AWS SQS. Based on gemini's analysis and your research,
-recommend the best option with implementation plan."
-
-"Design a caching strategy for our API. Get gemini's input on Redis vs Memcached vs in-memory caching.
-Combine both perspectives to create a comprehensive caching implementation guide."
-```
-
-**Key Features:**
-- Collaborative thinking partner for your analysis and planning
-- Get second opinions on your designs and approaches
-- Brainstorm solutions and explore alternatives together
-- Validate your checklists and implementation plans
-- General development questions and explanations
-- Technology comparisons and best practices
-- Architecture and design discussions
-- Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
-- **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
-
-**Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
 
 ### 7. `list_models` - See Available Gemini Models
 ```
