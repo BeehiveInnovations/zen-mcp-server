@@ -32,10 +32,10 @@ if [ "$PYTHON_VERSION_MAJOR" -lt 3 ] || ([ "$PYTHON_VERSION_MAJOR" -eq 3 ] && [ 
     echo "Please upgrade Python from https://python.org"
     echo ""
     echo "On macOS with Homebrew:"
-    echo "  brew install python@3.12"
+    echo "  brew install python@3.10"
     echo ""
     echo "On Ubuntu/Debian:"
-    echo "  sudo apt update && sudo apt install python3.12 python3.12-venv"
+    echo "  sudo apt update && sudo apt install python3.10 python3.10-venv"
     exit 1
 fi
 
