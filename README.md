@@ -143,7 +143,7 @@ Just ask Claude naturally:
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Server info?** → `get_version` (version and configuration details)
 
-**Pro Tip:** You can control the depth of Gemini's analysis with thinking modes to manage token costs. For quick tasks use "minimal" or "low" to save tokens, for complex problems use "high" or "max" when quality matters more than cost. [Learn more about thinking modes](#thinking-modes-managing-token-costs-quality)
+**Pro Tip:** You can control the depth of Gemini's analysis with thinking modes to manage token costs. For quick tasks use "minimal" or "low" to save tokens, for complex problems use "high" or "max" when quality matters more than cost. [Learn more about thinking modes](#thinking-modes---managing-token-costs--quality)
 
 ## Windows Setup Guide
 
