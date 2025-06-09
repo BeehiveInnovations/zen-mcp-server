@@ -2,6 +2,10 @@
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/0990ee89-9160-45d6-a407-ee925bcb43cb" width="600">
+  
+  **🤖 Claude + Gemini = Your Ultimate AI Development Team 🚀**
+  
+  *Combining Claude's coding brilliance with Gemini's analytical depth*
 </div>
 
 The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini 2.5 Pro for extended thinking, code analysis, and problem-solving. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
@@ -656,4 +660,9 @@ MIT License - see LICENSE file for details.
 
 ## Acknowledgments
 
-Built with [MCP](https://modelcontextprotocol.com) by Anthropic and powered by Google's Gemini API.
+Built with the power of **Claude + Gemini** collaboration 🤝
+- [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
+- [Claude Code](https://claude.ai/code) - Your AI coding assistant
+- [Gemini 2.5 Pro](https://ai.google.dev/) - Extended thinking & analysis engine
+
+*Where Claude's brilliance meets Gemini's depth for the ultimate development experience.*
