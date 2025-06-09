@@ -10,11 +10,12 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 
 Claude is brilliant, but sometimes you need:
 - **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#1-think_deeper---extended-reasoning-partner))
-- **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#4-analyze---smart-file-analysis))
-- **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#4-analyze---smart-file-analysis))
-- **Expert debugging** for tricky issues with full system context ([`debug_issue`](#3-debug_issue---expert-debugging-assistant))
+- **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#5-analyze---smart-file-analysis))
+- **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#5-analyze---smart-file-analysis))
+- **Expert debugging** for tricky issues with full system context ([`debug_issue`](#4-debug_issue---expert-debugging-assistant))
 - **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#2-review_code---professional-code-review))
-- **A senior developer partner** to validate and extend ideas ([`chat`](#5-chat---general-development-chat--collaborative-thinking))
+- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_pending_changes`](#3-review_pending_changes---pre-commit-validation))
+- **A senior developer partner** to validate and extend ideas ([`chat`](#6-chat---general-development-chat--collaborative-thinking))
 - **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
 
 This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
