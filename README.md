@@ -8,6 +8,34 @@
 
 The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini 2.5 Pro for extended thinking, code analysis, and problem-solving. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
 
+## Quick Navigation
+
+- **Getting Started**
+  - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes
+  - [Docker Setup](#docker-setup-recommended) - Recommended approach
+  - [Traditional Setup](#option-b-traditional-setup) - Python-based setup
+  - [Available Tools](#available-tools) - Overview of all tools
+
+- **Tools Reference**
+  - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
+  - [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning
+  - [`review_code`](#3-review_code---professional-code-review) - Code review
+  - [`review_changes`](#4-review_changes---pre-commit-validation) - Pre-commit validation
+  - [`debug_issue`](#5-debug_issue---expert-debugging-assistant) - Debugging help
+  - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
+
+- **Advanced Topics**
+  - [Thinking Modes](#thinking-modes---managing-token-costs--quality) - Control depth vs cost
+  - [Collaborative Workflows](#collaborative-workflows) - Multi-tool patterns
+  - [Tool Parameters](#tool-parameters) - Detailed parameter reference
+  - [Docker Architecture](#docker-architecture) - How Docker integration works
+
+- **Resources**
+  - [Windows Setup](#windows-setup-guide) - Windows-specific instructions
+  - [Troubleshooting](#troubleshooting) - Common issues and solutions
+  - [Contributing](#contributing) - How to contribute
+  - [Testing](#testing) - Running tests
+
 ## Why This Server?
 
 Claude is brilliant, but sometimes you need:
@@ -33,6 +61,14 @@ All tools accept both individual files and entire directories. The server:
 ## Quickstart (5 minutes)
 
 ### Prerequisites
+
+Choose one of the following options:
+
+**Option A: Docker (Recommended - No Python Required!)**
+- Docker Desktop installed ([Download here](https://www.docker.com/products/docker-desktop/))
+- Git
+
+**Option B: Traditional Setup**
 - **Python 3.10 or higher** (required by the `mcp` package)
 - Git
 
@@ -40,14 +76,42 @@ All tools accept both individual files and entire directories. The server:
 Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 
 ### 2. Clone and Set Up the Repository
-Clone this repository to a location on your computer and install dependencies:
 
 ```bash
-# Example: Clone to your home directory
-cd ~
+# Clone to your preferred location
 git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
 cd gemini-mcp-server
+```
 
+Now choose your setup method:
+
+#### Option A: Docker Setup (Recommended)
+
+```bash
+# 1. Generate the .env file with your current directory as workspace
+# macOS/Linux:
+./setup-docker-env.sh
+
+# Windows (Command Prompt):
+setup-docker-env.bat
+
+# Windows (PowerShell):
+.\setup-docker-env.ps1
+
+# 2. Edit .env and add your Gemini API key
+# The .env file will contain:
+# WORKSPACE_ROOT=/your/current/directory  (automatically set)
+# GEMINI_API_KEY=your-gemini-api-key-here  (you need to update this)
+
+# 3. Build the Docker image
+docker build -t gemini-mcp-server .
+```
+
+**That's it!** Docker handles all Python dependencies and environment setup for you.
+
+#### Option B: Traditional Setup
+
+```bash
 # Run the setup script to install dependencies
 # macOS/Linux:
 ./setup.sh
@@ -71,16 +135,89 @@ If you encounter any issues during setup, see the [Troubleshooting](#troubleshoo
 ### 3. Configure Claude Desktop
 Add the server to your `claude_desktop_config.json`:
 
-**Option A: Edit the config file directly**
+**Find your config file:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-**Option B: Use Claude Desktop UI (macOS)**
+**Or use Claude Desktop UI (macOS):**
 - Open Claude Desktop
 - Go to **Settings** → **Developer** → **Edit Config**
-- This will open the `claude_desktop_config.json` file in your default editor
 
-**Add this configuration** (replace with YOUR actual paths):
+Choose your configuration based on your setup method:
+
+#### Option A: Docker Configuration (Recommended)
+
+**How it works:** Claude Desktop launches Docker, which runs the MCP server in a container. The communication happens through stdin/stdout, just like running a regular command.
+
+**All Platforms (macOS/Linux/Windows):**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env-file", "/path/to/gemini-mcp-server/.env",
+        "-v", "/path/to/your/project:/workspace:ro",
+        "gemini-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+**Important for Docker setup:**
+- Replace `/path/to/gemini-mcp-server/.env` with the full path to your .env file
+- Replace `/path/to/your/project` with the directory containing code you want to analyze
+- The container runs temporarily when Claude needs it (no persistent Docker containers)
+- Communication happens via stdio - Docker's `-i` flag connects the container's stdin/stdout to Claude
+
+**Path Format Notes:**
+- **Windows users**: Use forward slashes `/` in Docker paths (e.g., `C:/Users/john/project`)
+- Docker on Windows automatically handles both forward slashes and backslashes
+- The setup scripts generate the correct format for your platform
+
+**Example for macOS/Linux:**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env-file", "/Users/john/gemini-mcp-server/.env",
+        "-v", "/Users/john/my-project:/workspace:ro",
+        "gemini-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+**Example for Windows:**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env-file", "C:/Users/john/gemini-mcp-server/.env",
+        "-v", "C:/Users/john/my-project:/workspace:ro",
+        "gemini-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+#### Option B: Traditional Configuration
 
 **macOS/Linux:**
 ```json
@@ -111,7 +248,6 @@ Add the server to your `claude_desktop_config.json`:
 ```
 
 **Windows (Using WSL):**
-If your development environment is in WSL, use `wsl.exe` as a bridge:
 ```json
 {
   "mcpServers": {
@@ -125,14 +261,6 @@ If your development environment is in WSL, use `wsl.exe` as a bridge:
   }
 }
 ```
-
-**Important**: 
-- Replace `YOUR_USERNAME` with your actual Windows username
-- Replace `YOUR_WSL_USERNAME` with your WSL username
-- Use the full absolute path where you cloned the repository
-- Windows native: Note the double backslashes `\\` in the path
-- WSL: Use Linux-style paths starting with `/`
-- See `examples/` folder for complete configuration examples
 
 ### 4. Restart Claude Desktop
 Completely quit and restart Claude Desktop for the changes to take effect.
@@ -167,6 +295,73 @@ Just ask Claude naturally:
 - **Server info?** → `get_version` (version and configuration details)
 
 **Pro Tip:** You can control the depth of Gemini's analysis with thinking modes to manage token costs. For quick tasks use "minimal" or "low" to save tokens, for complex problems use "high" or "max" when quality matters more than cost. [Learn more about thinking modes](#thinking-modes---managing-token-costs--quality)
+
+## Docker Setup (Recommended)
+
+The Docker setup provides a consistent, hassle-free experience across all platforms without worrying about Python versions or dependencies.
+
+### Why Docker?
+
+- **Zero Python Setup**: No need to install Python or manage virtual environments
+- **Consistent Environment**: Same behavior across Windows, macOS, and Linux
+- **Easy Updates**: Just pull the latest image or rebuild
+- **Isolated Dependencies**: No conflicts with your system Python packages
+
+### How It Works
+
+1. **Path Translation**: The server automatically translates file paths between your host system and the Docker container
+2. **Workspace Mounting**: Your project directory is mounted to `/workspace` inside the container
+3. **Environment Variables**: API keys and settings are managed via `.env` file
+4. **stdio Communication**: Docker preserves the stdin/stdout communication required by MCP
+
+### Docker Architecture
+
+```
+Your Machine                     Docker Container
+-----------                     ----------------
+Claude Desktop  --stdio-->  Docker CLI  --stdio-->  MCP Server
+  |                              |                      |
+  v                              v                      v
+/your/project  <--mount-->  /workspace  <--access-->  File Analysis
+```
+
+### Testing Docker Setup
+
+You can test your Docker setup before configuring Claude:
+
+```bash
+# Test that the image builds successfully
+docker build -t gemini-mcp-server .
+
+# Test that the server starts correctly
+docker run --rm -i --env-file .env -v "$(pwd):/workspace:ro" gemini-mcp-server:latest
+
+# You should see "INFO:__main__:Gemini API key found"
+# The server will then wait for MCP commands (no further output)
+# Press Ctrl+C to exit
+```
+
+### Quick Docker Commands
+
+```bash
+# Build the image
+docker build -t gemini-mcp-server .
+
+# Update to latest version
+git pull && docker build -t gemini-mcp-server .
+
+# Test the server manually (replace paths as needed)
+docker run --rm -i --env-file .env -v "$(pwd):/workspace:ro" gemini-mcp-server:latest
+```
+
+### Publishing to Docker Hub
+
+Once stable, we'll publish pre-built images to Docker Hub, eliminating the build step:
+
+```bash
+# Future: Just pull and run
+docker pull beehiveinnovations/gemini-mcp-server:latest
+```
 
 ## Windows Setup Guide
 
