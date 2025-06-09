@@ -118,7 +118,9 @@ class ReviewPendingChanges(BaseTool):
         all_diffs = []
         repo_summaries = []
         total_tokens = 0
-        max_tokens = MAX_CONTEXT_TOKENS - 50000  # Reserve tokens for prompt and response
+        max_tokens = (
+            MAX_CONTEXT_TOKENS - 50000
+        )  # Reserve tokens for prompt and response
 
         for repo_path in repositories:
             repo_name = os.path.basename(repo_path) or "root"
@@ -151,9 +153,7 @@ class ReviewPendingChanges(BaseTool):
                     ["diff", "--name-only", f"{request.compare_to}...HEAD"],
                 )
                 if success and files_output.strip():
-                    changed_files = [
-                        f for f in files_output.strip().split("\n") if f
-                    ]
+                    changed_files = [f for f in files_output.strip().split("\n") if f]
 
                     # Generate per-file diffs
                     for file_path in changed_files:
@@ -170,9 +170,11 @@ class ReviewPendingChanges(BaseTool):
                             # Format diff with file header
                             safe_file_name = self._sanitize_filename(file_path)
                             diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (compare to {request.compare_to}) ---\n"
-                            diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                            diff_footer = (
+                                f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                            )
                             formatted_diff = diff_header + diff + diff_footer
-                            
+
                             # Check token limit
                             diff_tokens = estimate_tokens(formatted_diff)
                             if total_tokens + diff_tokens <= max_tokens:
@@ -200,11 +202,14 @@ class ReviewPendingChanges(BaseTool):
                             if success and diff.strip():
                                 safe_file_name = self._sanitize_filename(file_path)
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (staged) ---\n"
-                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                diff_footer = (
+                                    f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                )
                                 formatted_diff = diff_header + diff + diff_footer
-                                
+
                                 # Check token limit
                                 from utils import estimate_tokens
+
                                 diff_tokens = estimate_tokens(formatted_diff)
                                 if total_tokens + diff_tokens <= max_tokens:
                                     all_diffs.append(formatted_diff)
@@ -227,11 +232,14 @@ class ReviewPendingChanges(BaseTool):
                             if success and diff.strip():
                                 safe_file_name = self._sanitize_filename(file_path)
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (unstaged) ---\n"
-                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                diff_footer = (
+                                    f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                )
                                 formatted_diff = diff_header + diff + diff_footer
-                                
+
                                 # Check token limit
                                 from utils import estimate_tokens
+
                                 diff_tokens = estimate_tokens(formatted_diff)
                                 if total_tokens + diff_tokens <= max_tokens:
                                     all_diffs.append(formatted_diff)
@@ -281,15 +289,11 @@ class ReviewPendingChanges(BaseTool):
                 review_scope.append("staged")
             if request.include_unstaged:
                 review_scope.append("unstaged")
-            prompt_parts.append(
-                f"- Reviewing: {' and '.join(review_scope)} changes"
-            )
+            prompt_parts.append(f"- Reviewing: {' and '.join(review_scope)} changes")
 
         # Add repository summary
         prompt_parts.append(f"\n## Repository Changes Summary\n")
-        prompt_parts.append(
-            f"Found {len(repo_summaries)} repositories with changes:\n"
-        )
+        prompt_parts.append(f"Found {len(repo_summaries)} repositories with changes:\n")
 
         for idx, summary in enumerate(repo_summaries, 1):
             prompt_parts.append(f"\n### Repository {idx}: {summary['path']}")

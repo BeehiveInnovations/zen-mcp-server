@@ -240,7 +240,6 @@ class TestReviewPendingChangesTool:
             (True, "diff --git a/file2.py..."),  # diff for file2.py
         ]
 
-
         request = ReviewPendingChangesRequest(
             path="/absolute/repo/path",
             focus_on="error handling",
