@@ -153,6 +153,7 @@ Just ask Claude naturally:
 ```
 
 **Key Features:**
+- **Uses Gemini's specialized thinking models** for enhanced reasoning capabilities
 - Provides a second opinion on Claude's analysis
 - Challenges assumptions and identifies edge cases Claude might miss
 - Offers alternative perspectives and approaches
@@ -294,6 +295,7 @@ All tools that work with files support **both individual files and entire direct
 - `question`: What to analyze (required)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
+- `thinking_mode`: minimal|low|medium|high|max (default: medium)
 
 ```
 "Use gemini to analyze the src/ directory for architectural patterns"
@@ -306,6 +308,7 @@ All tools that work with files support **both individual files and entire direct
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
 - `severity_filter`: critical|high|medium|all
+- `thinking_mode`: minimal|low|medium|high|max (default: medium)
 
 ```
 "Use gemini to review the entire api/ directory for security issues"
@@ -318,6 +321,7 @@ All tools that work with files support **both individual files and entire direct
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
 - `previous_attempts`: What you've tried
+- `thinking_mode`: minimal|low|medium|high|max (default: medium)
 
 ```
 "Use gemini to debug this error with context from the entire backend/ directory"
@@ -328,6 +332,7 @@ All tools that work with files support **both individual files and entire direct
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
+- `thinking_mode`: minimal|low|medium|high|max (default: max)
 
 ```
 "Use gemini to think deeper about my design with reference to the src/models/ directory"
@@ -374,14 +379,40 @@ Tools can reference files for additional context:
 "Get gemini to think deeper about my design, reference the current architecture.md"
 ```
 
+## Advanced Features
+
+### Enhanced Thinking Models
+
+All tools support a `thinking_mode` parameter that controls Gemini's thinking budget for deeper reasoning:
+
+```
+"Use gemini to review auth.py with thinking_mode=max"
+"Get gemini to analyze the architecture with thinking_mode=medium"
+```
+
+**Thinking Modes:**
+- `minimal`: Minimum thinking (128 tokens for Gemini 2.5 Pro)
+- `low`: Light reasoning (2,048 token thinking budget)
+- `medium`: Balanced reasoning (8,192 token thinking budget - default for all tools)
+- `high`: Deep reasoning (16,384 token thinking budget)
+- `max`: Maximum reasoning (32,768 token thinking budget - default for think_deeper)
+
+**When to use:**
+- `minimal`: For simple, straightforward tasks
+- `low`: For tasks requiring basic reasoning
+- `medium`: For most development tasks (default)
+- `high`: For complex problems requiring thorough analysis
+- `max`: For the most complex problems requiring exhaustive reasoning
+
+**Note:** Gemini 2.5 Pro requires a minimum of 128 thinking tokens, so thinking cannot be fully disabled
+
 ## Configuration
 
 The server includes several configurable properties that control its behavior:
 
 ### Model Configuration
-- **`DEFAULT_MODEL`**: `"gemini-2.5-pro-preview-06-05"` - The default Gemini model used
+- **`DEFAULT_MODEL`**: `"gemini-2.5-pro-preview-06-05"` - The latest Gemini 2.5 Pro model with native thinking support
 - **`MAX_CONTEXT_TOKENS`**: `1,000,000` - Maximum input context (1M tokens for Gemini 2.5 Pro)
-- **`MAX_OUTPUT_TOKENS`**: `32,768` - Maximum output tokens per response
 
 ### Temperature Defaults
 Different tools use optimized temperature settings:
@@ -389,14 +420,6 @@ Different tools use optimized temperature settings:
 - **`TEMPERATURE_BALANCED`**: `0.5` - Used for general chat (balanced creativity/accuracy)
 - **`TEMPERATURE_CREATIVE`**: `0.7` - Used for deep thinking and architecture (more creative)
 
-### Customizing Output Length
-Each tool accepts an optional `max_tokens` parameter to override the default:
-```
-"Use gemini to analyze main.py with max_tokens 16000"
-"Get gemini to think deeper about this design with max_tokens 50000"
-```
-
-Note: The maximum supported output is 32,768 tokens for Gemini 2.5 Pro.
 
 ## Installation
 
@@ -455,6 +478,40 @@ We welcome contributions! The modular architecture makes it easy to add new tool
 5. Register your tool in `TOOLS` dict in `server.py`
 
 See existing tools for examples.
+
+## Testing
+
+### Unit Tests (No API Key Required)
+The project includes comprehensive unit tests that use mocks and don't require a Gemini API key:
+
+```bash
+# Run all unit tests
+python -m pytest tests/ --ignore=tests/test_live_integration.py -v
+
+# Run with coverage
+python -m pytest tests/ --ignore=tests/test_live_integration.py --cov=. --cov-report=html
+```
+
+### Live Integration Tests (API Key Required)
+To test actual API integration:
+
+```bash
+# Set your API key
+export GEMINI_API_KEY=your-api-key-here
+
+# Run live integration tests
+python tests/test_live_integration.py
+```
+
+### GitHub Actions CI/CD
+The project includes GitHub Actions workflows that:
+
+- **✅ Run unit tests automatically** - No API key needed, uses mocks
+- **✅ Test on Python 3.10, 3.11, 3.12** - Ensures compatibility
+- **✅ Run linting and formatting checks** - Maintains code quality  
+- **🔒 Run live tests only if API key is available** - Optional live verification
+
+The CI pipeline works without any secrets and will pass all tests using mocked responses. Live integration tests only run if a `GEMINI_API_KEY` secret is configured in the repository.
 
 ## License
 

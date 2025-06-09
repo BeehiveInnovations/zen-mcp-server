@@ -27,19 +27,15 @@ class TestThinkDeeperTool:
         assert schema["required"] == ["current_analysis"]
 
     @pytest.mark.asyncio
-    @patch("google.generativeai.GenerativeModel")
-    async def test_execute_success(self, mock_model, tool):
+    @patch("tools.base.BaseTool.create_model")
+    async def test_execute_success(self, mock_create_model, tool):
         """Test successful execution"""
-        # Mock response
-        mock_response = Mock()
-        mock_response.candidates = [Mock()]
-        mock_response.candidates[0].content.parts = [
-            Mock(text="Extended analysis")
-        ]
-
-        mock_instance = Mock()
-        mock_instance.generate_content.return_value = mock_response
-        mock_model.return_value = mock_instance
+        # Mock model
+        mock_model = Mock()
+        mock_model.generate_content.return_value = Mock(
+            candidates=[Mock(content=Mock(parts=[Mock(text="Extended analysis")]))]
+        )
+        mock_create_model.return_value = mock_model
 
         result = await tool.execute(
             {
@@ -72,23 +68,19 @@ class TestReviewCodeTool:
         assert schema["required"] == ["files"]
 
     @pytest.mark.asyncio
-    @patch("google.generativeai.GenerativeModel")
-    async def test_execute_with_review_type(self, mock_model, tool, tmp_path):
+    @patch("tools.base.BaseTool.create_model")
+    async def test_execute_with_review_type(self, mock_create_model, tool, tmp_path):
         """Test execution with specific review type"""
         # Create test file
         test_file = tmp_path / "test.py"
         test_file.write_text("def insecure(): pass", encoding="utf-8")
 
-        # Mock response
-        mock_response = Mock()
-        mock_response.candidates = [Mock()]
-        mock_response.candidates[0].content.parts = [
-            Mock(text="Security issues found")
-        ]
-
-        mock_instance = Mock()
-        mock_instance.generate_content.return_value = mock_response
-        mock_model.return_value = mock_instance
+        # Mock model
+        mock_model = Mock()
+        mock_model.generate_content.return_value = Mock(
+            candidates=[Mock(content=Mock(parts=[Mock(text="Security issues found")]))]
+        )
+        mock_create_model.return_value = mock_model
 
         result = await tool.execute(
             {
@@ -122,19 +114,15 @@ class TestDebugIssueTool:
         assert schema["required"] == ["error_description"]
 
     @pytest.mark.asyncio
-    @patch("google.generativeai.GenerativeModel")
-    async def test_execute_with_context(self, mock_model, tool):
+    @patch("tools.base.BaseTool.create_model")
+    async def test_execute_with_context(self, mock_create_model, tool):
         """Test execution with error context"""
-        # Mock response
-        mock_response = Mock()
-        mock_response.candidates = [Mock()]
-        mock_response.candidates[0].content.parts = [
-            Mock(text="Root cause: race condition")
-        ]
-
-        mock_instance = Mock()
-        mock_instance.generate_content.return_value = mock_response
-        mock_model.return_value = mock_instance
+        # Mock model
+        mock_model = Mock()
+        mock_model.generate_content.return_value = Mock(
+            candidates=[Mock(content=Mock(parts=[Mock(text="Root cause: race condition")]))]
+        )
+        mock_create_model.return_value = mock_model
 
         result = await tool.execute(
             {
@@ -168,7 +156,7 @@ class TestAnalyzeTool:
         assert set(schema["required"]) == {"files", "question"}
 
     @pytest.mark.asyncio
-    @patch("google.generativeai.GenerativeModel")
+    @patch("tools.base.BaseTool.create_model")
     async def test_execute_with_analysis_type(
         self, mock_model, tool, tmp_path
     ):

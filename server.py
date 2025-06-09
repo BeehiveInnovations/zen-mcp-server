@@ -9,7 +9,8 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, List
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
@@ -43,8 +44,8 @@ def configure_gemini():
             "GEMINI_API_KEY environment variable is required. "
             "Please set it with your Gemini API key."
         )
-    genai.configure(api_key=api_key)
-    logger.info("Gemini API configured successfully")
+    # API key is used when creating clients in tools
+    logger.info("Gemini API key found")
 
 
 @server.list_tools()
@@ -91,6 +92,11 @@ async def handle_list_tools() -> List[Tool]:
                             "description": "Response creativity (0-1, default 0.5)",
                             "minimum": 0,
                             "maximum": 1,
+                        },
+                        "thinking_mode": {
+                            "type": "string",
+                            "enum": ["minimal", "low", "medium", "high", "max"],
+                            "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
                         },
                     },
                     "required": ["prompt"],
@@ -145,13 +151,14 @@ async def handle_call_tool(
 
 async def handle_chat(arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle general chat requests"""
-    from config import TEMPERATURE_BALANCED
+    from config import TEMPERATURE_BALANCED, DEFAULT_MODEL, THINKING_MODEL
     from prompts import CHAT_PROMPT
     from utils import read_files
 
     prompt = arguments.get("prompt", "")
     context_files = arguments.get("context_files", [])
     temperature = arguments.get("temperature", TEMPERATURE_BALANCED)
+    thinking_mode = arguments.get("thinking_mode", "medium")
 
     # Build the full prompt with system context
     user_content = prompt
@@ -163,13 +170,20 @@ async def handle_chat(arguments: Dict[str, Any]) -> List[TextContent]:
     full_prompt = f"{CHAT_PROMPT}\n\n=== USER REQUEST ===\n{user_content}\n=== END REQUEST ===\n\nPlease provide a thoughtful, comprehensive response:"
 
     try:
-        model = genai.GenerativeModel(
-            model_name=DEFAULT_MODEL,
-            generation_config={
-                "temperature": temperature,
-                "candidate_count": 1,
-            },
-        )
+        # Create model with thinking configuration
+        from tools.base import BaseTool
+        
+        # Create a temporary tool instance to use create_model method
+        class TempTool(BaseTool):
+            def get_name(self): return "chat"
+            def get_description(self): return ""
+            def get_input_schema(self): return {}
+            def get_system_prompt(self): return ""
+            def get_request_model(self): return None
+            async def prepare_prompt(self, request): return ""
+        
+        temp_tool = TempTool()
+        model = temp_tool.create_model(DEFAULT_MODEL, temperature, thinking_mode)
 
         response = model.generate_content(full_prompt)
 
@@ -189,26 +203,43 @@ async def handle_list_models() -> List[TextContent]:
     try:
         import json
 
+        # Get API key
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return [TextContent(type="text", text="Error: GEMINI_API_KEY not set")]
+        
+        client = genai.Client(api_key=api_key)
         models = []
 
-        for model_info in genai.list_models():
-            if (
-                hasattr(model_info, "supported_generation_methods")
-                and "generateContent"
-                in model_info.supported_generation_methods
-            ):
+        # List models using the new API
+        try:
+            model_list = client.models.list()
+            for model_info in model_list:
                 models.append(
                     {
-                        "name": model_info.name,
-                        "display_name": getattr(
-                            model_info, "display_name", "Unknown"
-                        ),
-                        "description": getattr(
-                            model_info, "description", "No description"
-                        ),
-                        "is_default": model_info.name.endswith(DEFAULT_MODEL),
+                        "name": getattr(model_info, "id", "Unknown"),
+                        "display_name": getattr(model_info, "display_name", getattr(model_info, "id", "Unknown")),
+                        "description": getattr(model_info, "description", "No description"),
+                        "is_default": getattr(model_info, "id", "").endswith(DEFAULT_MODEL),
                     }
                 )
+
+        except Exception as e:
+            # Fallback: return some known models
+            models = [
+                {
+                    "name": "gemini-2.5-pro-preview-06-05",
+                    "display_name": "Gemini 2.5 Pro",
+                    "description": "Latest Gemini 2.5 Pro model",
+                    "is_default": True,
+                },
+                {
+                    "name": "gemini-2.0-flash-thinking-exp",
+                    "display_name": "Gemini 2.0 Flash Thinking",
+                    "description": "Enhanced reasoning model",
+                    "is_default": False,
+                },
+            ]
 
         return [TextContent(type="text", text=json.dumps(models, indent=2))]
 

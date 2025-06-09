@@ -79,6 +79,11 @@ class AnalyzeTool(BaseTool):
                     "minimum": 0,
                     "maximum": 1,
                 },
+                "thinking_mode": {
+                    "type": "string",
+                    "enum": ["minimal", "low", "medium", "high", "max"],
+                    "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
+                },
             },
             "required": ["files", "question"],
         }

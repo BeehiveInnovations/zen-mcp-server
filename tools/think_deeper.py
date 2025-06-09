@@ -74,10 +74,11 @@ class ThinkDeeperTool(BaseTool):
                     "minimum": 0,
                     "maximum": 1,
                 },
-                "max_tokens": {
-                    "type": "integer",
-                    "description": "Maximum tokens in response",
-                    "default": 8192,
+                "thinking_mode": {
+                    "type": "string",
+                    "enum": ["minimal", "low", "medium", "high", "max"],
+                    "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
+                    "default": "max",
                 },
             },
             "required": ["current_analysis"],
@@ -88,6 +89,10 @@ class ThinkDeeperTool(BaseTool):
 
     def get_default_temperature(self) -> float:
         return TEMPERATURE_CREATIVE
+
+    def get_default_thinking_mode(self) -> str:
+        """ThinkDeeper uses maximum thinking by default"""
+        return "max"
 
     def get_request_model(self):
         return ThinkDeeperRequest

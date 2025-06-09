@@ -14,7 +14,7 @@ if readme_path.exists():
 
 setup(
     name="gemini-mcp-server",
-    version="2.5.0",
+    version="2.7.0",
     description="Model Context Protocol server for Google Gemini",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -23,7 +23,7 @@ setup(
     py_modules=["gemini_server"],
     install_requires=[
         "mcp>=1.0.0",
-        "google-generativeai>=0.8.0",
+        "google-genai>=1.19.0",
         "python-dotenv>=1.0.0",
     ],
     extras_require={

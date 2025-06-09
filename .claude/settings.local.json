@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__gemini__review_code",
+      "mcp__gemini__chat",
+      "mcp__gemini__analyze",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}
