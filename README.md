@@ -35,20 +35,34 @@ All tools accept both individual files and entire directories. The server:
 ### 1. Get a Gemini API Key
 Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 
-### 2. Clone the Repository
-Clone this repository to a location on your computer:
+### 2. Clone and Set Up the Repository
+Clone this repository to a location on your computer and install dependencies:
 
 ```bash
 # Example: Clone to your home directory
 cd ~
 git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
+cd gemini-mcp-server
 
-# The server is now at: ~/gemini-mcp-server
+# Run the setup script to install dependencies
+# macOS/Linux:
+./setup.sh
+
+# Windows:
+setup.bat
 ```
 
 **Note the full path** - you'll need it in the next step:
 - **macOS/Linux**: `/Users/YOUR_USERNAME/gemini-mcp-server`
 - **Windows**: `C:\Users\YOUR_USERNAME\gemini-mcp-server`
+
+**Important**: The setup script will:
+- Create a Python virtual environment
+- Install all required dependencies (mcp, google-genai, etc.)
+- Verify your Python installation
+- Provide next steps for configuration
+
+If you encounter any issues during setup, see the [Troubleshooting](#troubleshooting) section.
 
 ### 3. Configure Claude Desktop
 Add the server to your `claude_desktop_config.json`:
@@ -875,6 +889,26 @@ This error occurs when Claude Desktop (running on Windows) can't properly execut
 - Check Python availability: `python --version` (Windows) or `wsl python3 --version` (WSL)
 
 ### Common Issues
+
+**"ModuleNotFoundError: No module named 'mcp'"**
+- This means Python dependencies aren't installed
+- **Solution**: Run the setup script:
+  - macOS/Linux: `./setup.sh` 
+  - Windows: `setup.bat`
+- If you still see this error, manually activate the virtual environment and install:
+  ```bash
+  # macOS/Linux:
+  source venv/bin/activate
+  pip install -r requirements.txt
+  
+  # Windows:
+  venv\Scripts\activate.bat
+  pip install -r requirements.txt
+  ```
+
+**"Virtual environment not found" warning**
+- This is just a warning that can be ignored if dependencies are installed system-wide
+- To fix: Run the setup script to create the virtual environment
 
 **"GEMINI_API_KEY environment variable is required"**
 - Ensure you've added your API key to the Claude Desktop configuration
