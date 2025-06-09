@@ -270,35 +270,45 @@ class ReviewChanges(BaseTool):
         context_files_content = []
         context_files_summary = []
         context_tokens = 0
-        
+
         if request.files:
             remaining_tokens = max_tokens - total_tokens
-            
+
             # Read context files with remaining token budget
             file_content, file_summary = read_files(request.files)
-            
+
             # Check if context files fit in remaining budget
             if file_content:
                 context_tokens = estimate_tokens(file_content)
-                
+
                 if context_tokens <= remaining_tokens:
                     # Use the full content from read_files
                     context_files_content = [file_content]
                     # Parse summary to create individual file summaries
-                    summary_lines = file_summary.split('\n')
+                    summary_lines = file_summary.split("\n")
                     for line in summary_lines:
-                        if line.strip() and not line.startswith('Total files:'):
+                        if line.strip() and not line.startswith("Total files:"):
                             context_files_summary.append(f"✅ Included: {line.strip()}")
                 else:
-                    context_files_summary.append(f"⚠️ Context files too large (~{context_tokens:,} tokens, budget: ~{remaining_tokens:,} tokens)")
+                    context_files_summary.append(
+                        f"⚠️ Context files too large (~{context_tokens:,} tokens, budget: ~{remaining_tokens:,} tokens)"
+                    )
                     # Include as much as fits
                     if remaining_tokens > 1000:  # Only if we have reasonable space
-                        truncated_content = file_content[:int(len(file_content) * (remaining_tokens / context_tokens) * 0.9)]
-                        context_files_content.append(f"\n--- BEGIN CONTEXT FILES (TRUNCATED) ---\n{truncated_content}\n--- END CONTEXT FILES ---\n")
+                        truncated_content = file_content[
+                            : int(
+                                len(file_content)
+                                * (remaining_tokens / context_tokens)
+                                * 0.9
+                            )
+                        ]
+                        context_files_content.append(
+                            f"\n--- BEGIN CONTEXT FILES (TRUNCATED) ---\n{truncated_content}\n--- END CONTEXT FILES ---\n"
+                        )
                         context_tokens = remaining_tokens
                     else:
                         context_tokens = 0
-            
+
             total_tokens += context_tokens
 
         # Build the final prompt
@@ -373,7 +383,9 @@ class ReviewChanges(BaseTool):
         # Add context files content if provided
         if context_files_content:
             prompt_parts.append("\n## Additional Context Files")
-            prompt_parts.append("The following files are provided for additional context. They have NOT been modified.\n")
+            prompt_parts.append(
+                "The following files are provided for additional context. They have NOT been modified.\n"
+            )
             prompt_parts.extend(context_files_content)
 
         # Add review instructions
@@ -383,5 +395,13 @@ class ReviewChanges(BaseTool):
             "Pay special attention to alignment with the original request, completeness of implementation, "
             "potential bugs, security issues, and any edge cases not covered."
         )
+
+        # Add instruction for requesting files if needed
+        if not request.files:
+            prompt_parts.append(
+                "\nIf you need additional context files to properly review these changes "
+                "(such as configuration files, documentation, or related code), "
+                "you may request them using the standardized JSON response format."
+            )
 
         return "\n".join(prompt_parts)

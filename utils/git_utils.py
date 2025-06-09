@@ -173,7 +173,7 @@ def get_git_status(repo_path: str) -> Dict[str, any]:
                 "rev-list",
                 "--count",
                 "--left-right",
-                f'{status["branch"]}@{{upstream}}...HEAD',
+                f"{status['branch']}@{{upstream}}...HEAD",
             ],
         )
         if success:

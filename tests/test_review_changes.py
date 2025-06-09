@@ -46,6 +46,7 @@ class TestReviewChangesTool:
         assert request.review_type == "full"
         assert request.severity_filter == "all"
         assert request.max_depth == 5
+        assert request.files is None
 
     def test_sanitize_filename(self, tool):
         """Test filename sanitization"""
@@ -252,3 +253,107 @@ class TestReviewChangesTool:
         assert "Severity Filter: high" in result
         assert "Focus Areas: error handling" in result
         assert "Reviewing: staged and unstaged changes" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.review_changes.get_git_status")
+    @patch("tools.review_changes.run_git_command")
+    @patch("tools.review_changes.read_files")
+    async def test_files_parameter_with_context(
+        self,
+        mock_read_files,
+        mock_run_git,
+        mock_status,
+        mock_find_repos,
+        tool,
+    ):
+        """Test review with additional context files"""
+        mock_find_repos.return_value = ["/test/repo"]
+        mock_status.return_value = {
+            "branch": "main",
+            "ahead": 0,
+            "behind": 0,
+            "staged_files": ["file1.py"],
+            "unstaged_files": [],
+        }
+
+        # Mock git commands - need to match all calls in prepare_prompt
+        mock_run_git.side_effect = [
+            (True, "file1.py\n"),  # staged files list
+            (True, "diff --git a/file1.py..."),  # diff for file1.py
+            (True, ""),  # unstaged files list (empty)
+        ]
+
+        # Mock read_files
+        mock_read_files.return_value = (
+            "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ===",
+            "config.py",
+        )
+
+        request = ReviewChangesRequest(
+            path="/absolute/repo/path",
+            files=["/absolute/repo/path/config.py"],
+        )
+        result = await tool.prepare_prompt(request)
+
+        # Verify context files are included
+        assert "## Context Files Summary" in result
+        assert "✅ Included: config.py" in result
+        assert "## Additional Context Files" in result
+        assert "=== FILE: config.py ===" in result
+        assert "CONFIG_VALUE = 42" in result
+
+    @pytest.mark.asyncio
+    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.review_changes.get_git_status")
+    @patch("tools.review_changes.run_git_command")
+    async def test_files_request_instruction(
+        self,
+        mock_run_git,
+        mock_status,
+        mock_find_repos,
+        tool,
+    ):
+        """Test that file request instruction is added when no files provided"""
+        mock_find_repos.return_value = ["/test/repo"]
+        mock_status.return_value = {
+            "branch": "main",
+            "ahead": 0,
+            "behind": 0,
+            "staged_files": ["file1.py"],
+            "unstaged_files": [],
+        }
+
+        mock_run_git.side_effect = [
+            (True, "file1.py\n"),  # staged files
+            (True, "diff --git a/file1.py..."),  # diff for file1.py
+            (True, ""),  # unstaged files (empty)
+        ]
+
+        # Request without files
+        request = ReviewChangesRequest(path="/absolute/repo/path")
+        result = await tool.prepare_prompt(request)
+
+        # Should include instruction for requesting files
+        assert "If you need additional context files" in result
+        assert "standardized JSON response format" in result
+
+        # Request with files - should not include instruction
+        request_with_files = ReviewChangesRequest(
+            path="/absolute/repo/path", files=["/some/file.py"]
+        )
+
+        # Need to reset mocks for second call
+        mock_find_repos.return_value = ["/test/repo"]
+        mock_run_git.side_effect = [
+            (True, "file1.py\n"),  # staged files
+            (True, "diff --git a/file1.py..."),  # diff for file1.py
+            (True, ""),  # unstaged files (empty)
+        ]
+
+        # Mock read_files to return empty (file not found)
+        with patch("tools.review_changes.read_files") as mock_read:
+            mock_read.return_value = ("", "")
+            result_with_files = await tool.prepare_prompt(request_with_files)
+
+        assert "If you need additional context files" not in result_with_files

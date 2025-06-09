@@ -196,11 +196,11 @@ Author: {__author__}
 Configuration:
 - Gemini Model: {GEMINI_MODEL}
 - Max Context: {MAX_CONTEXT_TOKENS:,} tokens
-- Python: {version_info['python_version']}
-- Started: {version_info['server_started']}
+- Python: {version_info["python_version"]}
+- Started: {version_info["server_started"]}
 
 Available Tools:
-{chr(10).join(f"  - {tool}" for tool in version_info['available_tools'])}
+{chr(10).join(f"  - {tool}" for tool in version_info["available_tools"])}
 
 For updates, visit: https://github.com/BeehiveInnovations/gemini-mcp-server"""
 
