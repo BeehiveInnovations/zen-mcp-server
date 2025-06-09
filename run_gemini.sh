@@ -16,4 +16,4 @@ else
 fi
 
 # Run the server
-exec "$PYTHON_EXEC" "$SCRIPT_DIR/gemini_server.py"
+exec "$PYTHON_EXEC" "$SCRIPT_DIR/server.py"

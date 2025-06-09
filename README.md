@@ -73,7 +73,7 @@ Add the server to your `claude_desktop_config.json`:
 }
 ```
 
-**Windows:**
+**Windows (Native Python):**
 ```json
 {
   "mcpServers": {
@@ -87,10 +87,29 @@ Add the server to your `claude_desktop_config.json`:
 }
 ```
 
+**Windows (Using WSL):**
+If your development environment is in WSL, use `wsl.exe` as a bridge:
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "wsl.exe",
+      "args": ["/home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh"],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
+```
+
 **Important**: 
-- Replace `YOUR_USERNAME` with your actual username
+- Replace `YOUR_USERNAME` with your actual Windows username
+- Replace `YOUR_WSL_USERNAME` with your WSL username
 - Use the full absolute path where you cloned the repository
-- Windows users: Note the double backslashes `\\` in the path
+- Windows native: Note the double backslashes `\\` in the path
+- WSL: Use Linux-style paths starting with `/`
+- See `examples/` folder for complete configuration examples
 
 ### 4. Restart Claude Desktop
 Completely quit and restart Claude Desktop for the changes to take effect.
@@ -123,6 +142,52 @@ Just ask Claude naturally:
 - **Something's broken?** → `debug_issue` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Server info?** → `get_version` (version and configuration details)
+
+## Windows Setup Guide
+
+### Option 1: Native Windows (Recommended)
+
+For the smoothest experience on Windows, we recommend running the server natively:
+
+1. **Install Python on Windows**
+   - Download from [python.org](https://python.org) or install via Microsoft Store
+   - Ensure Python 3.10 or higher
+
+2. **Set up the project**
+   ```powershell
+   cd C:\Users\YOUR_USERNAME\gemini-mcp-server
+   python -m venv venv
+   .\venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Configure Claude Desktop** using the Windows native configuration shown above
+
+### Option 2: Using WSL (Advanced)
+
+If you prefer to use WSL (Windows Subsystem for Linux):
+
+1. **Prerequisites**
+   - WSL2 installed with a Linux distribution (e.g., Ubuntu)
+   - Python installed in your WSL environment
+   - Project cloned inside WSL (recommended: `~/gemini-mcp-server`)
+
+2. **Set up in WSL**
+   ```bash
+   # Inside WSL terminal
+   cd ~/gemini-mcp-server
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   chmod +x run_gemini.sh
+   ```
+
+3. **Configure Claude Desktop** using the WSL configuration shown above
+
+**Important WSL Notes:**
+- For best performance, clone the repository inside WSL (`~/`) rather than on Windows (`/mnt/c/`)
+- Ensure `run_gemini.sh` has Unix line endings (LF, not CRLF)
+- If you have multiple WSL distributions, specify which one: `wsl.exe -d Ubuntu-22.04`
 
 **Tools Overview:**
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
@@ -643,6 +708,42 @@ The project includes GitHub Actions workflows that:
 - **🔒 Run live tests only if API key is available** - Optional live verification
 
 The CI pipeline works without any secrets and will pass all tests using mocked responses. Live integration tests only run if a `GEMINI_API_KEY` secret is configured in the repository.
+
+## Troubleshooting
+
+### Windows/WSL Issues
+
+**Error: `spawn P:\path\to\run_gemini.bat ENOENT`**
+
+This error occurs when Claude Desktop (running on Windows) can't properly execute the server. Common causes:
+
+1. **Wrong execution environment**: You're trying to run WSL-based code from Windows
+   - **Solution**: Use the WSL bridge configuration with `wsl.exe` (see Windows Setup Guide above)
+
+2. **Path format mismatch**: Using Linux paths (`/mnt/c/...`) in Windows context
+   - **Solution**: Use Windows paths for native execution, Linux paths only after `wsl.exe`
+
+3. **Missing dependencies**: Python or required packages not installed in the execution environment
+   - **Solution**: Ensure Python and dependencies are installed where you're trying to run (Windows or WSL)
+
+**Testing your setup:**
+- Windows users: Run `test_wsl_setup.bat` to verify your WSL configuration
+- Check Python availability: `python --version` (Windows) or `wsl python3 --version` (WSL)
+
+### Common Issues
+
+**"GEMINI_API_KEY environment variable is required"**
+- Ensure you've added your API key to the Claude Desktop configuration
+- The key should be in the `env` section of your MCP server config
+
+**"Connection failed" in Claude Desktop**
+- Verify the command path is correct and uses proper escaping (`\\` for Windows paths)
+- Ensure the script has execute permissions (Linux/macOS: `chmod +x run_gemini.sh`)
+- Check Claude Desktop logs for detailed error messages
+
+**Performance issues with WSL**
+- Files on Windows drives (`/mnt/c/`) are slower to access from WSL
+- For best performance, clone the repository inside WSL (`~/gemini-mcp-server`)
 
 ## License
 

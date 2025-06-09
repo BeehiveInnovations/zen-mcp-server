@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "/Users/YOUR_USERNAME/gemini-mcp-server/run_gemini.sh",
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}

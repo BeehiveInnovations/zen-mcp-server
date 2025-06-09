@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "wsl.exe",
+      "args": ["/home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh"],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "C:\\Users\\YOUR_USERNAME\\gemini-mcp-server\\run_gemini.bat",
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
