@@ -55,7 +55,7 @@ This server makes Gemini your development sidekick, handling what Claude can't o
   <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
 </div>
 
-**Example Workflow:**
+**Prompt Used:**
 ```
 Study the code properly, think deeply about what this does and then see if there's any room for improvement in
 terms of performance optimizations, brainstorm with gemini on this to get feedback and then confirm any change by
