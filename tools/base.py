@@ -71,12 +71,48 @@ class BaseTool(ABC):
         """Return the Pydantic model for request validation"""
         pass
 
+    def validate_file_paths(self, request) -> Optional[str]:
+        """
+        Validate that all file paths in the request are absolute.
+        Returns error message if validation fails, None if all paths are valid.
+        """
+        # Check if request has 'files' attribute
+        if hasattr(request, "files") and request.files:
+            for file_path in request.files:
+                if not os.path.isabs(file_path):
+                    return (
+                        f"Error: All file paths must be absolute. "
+                        f"Received relative path: {file_path}\n"
+                        f"Please provide the full absolute path starting with '/'"
+                    )
+
+        # Check if request has 'path' attribute (for review_pending_changes)
+        if hasattr(request, "path") and request.path:
+            if not os.path.isabs(request.path):
+                return (
+                    f"Error: Path must be absolute. "
+                    f"Received relative path: {request.path}\n"
+                    f"Please provide the full absolute path starting with '/'"
+                )
+
+        return None
+
     async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """Execute the tool with given arguments"""
         try:
             # Validate request
             request_model = self.get_request_model()
             request = request_model(**arguments)
+
+            # Validate file paths
+            path_error = self.validate_file_paths(request)
+            if path_error:
+                error_output = ToolOutput(
+                    status="error",
+                    content=path_error,
+                    content_type="text",
+                )
+                return [TextContent(type="text", text=error_output.model_dump_json())]
 
             # Prepare the prompt
             prompt = await self.prepare_prompt(request)

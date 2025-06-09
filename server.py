@@ -22,7 +22,14 @@ from config import (
     __updated__,
     __version__,
 )
-from tools import AnalyzeTool, ChatTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
+from tools import (
+    AnalyzeTool,
+    ChatTool,
+    DebugIssueTool,
+    ReviewCodeTool,
+    ReviewPendingChanges,
+    ThinkDeeperTool,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +45,7 @@ TOOLS = {
     "debug_issue": DebugIssueTool(),
     "analyze": AnalyzeTool(),
     "chat": ChatTool(),
+    "review_pending_changes": ReviewPendingChanges(),
 }
 
 

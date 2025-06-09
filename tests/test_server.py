@@ -25,11 +25,12 @@ class TestServerTools:
         assert "debug_issue" in tool_names
         assert "analyze" in tool_names
         assert "chat" in tool_names
+        assert "review_pending_changes" in tool_names
         assert "list_models" in tool_names
         assert "get_version" in tool_names
 
-        # Should have exactly 7 tools
-        assert len(tools) == 7
+        # Should have exactly 8 tools
+        assert len(tools) == 8
 
         # Check descriptions are verbose
         for tool in tools:

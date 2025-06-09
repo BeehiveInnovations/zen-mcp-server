@@ -115,6 +115,7 @@ Just ask Claude naturally:
 **Quick Tool Selection Guide:**
 - **Need deeper thinking?** → `think_deeper` (extends Claude's analysis, finds edge cases)
 - **Code needs review?** → `review_code` (bugs, security, performance issues)
+- **Pre-commit validation?** → `review_pending_changes` (validate git changes before committing)
 - **Something's broken?** → `debug_issue` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
@@ -124,11 +125,12 @@ Just ask Claude naturally:
 **Tools Overview:**
 1. [`think_deeper`](#1-think_deeper---extended-reasoning-partner) - Extended reasoning and problem-solving
 2. [`review_code`](#2-review_code---professional-code-review) - Professional code review with severity levels
-3. [`debug_issue`](#3-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
-4. [`analyze`](#4-analyze---smart-file-analysis) - General-purpose file and code analysis
-5. [`chat`](#5-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
-6. [`list_models`](#6-list_models---see-available-gemini-models) - List available Gemini models
-7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
+3. [`review_pending_changes`](#3-review_pending_changes---pre-commit-validation) - Validate git changes before committing
+4. [`debug_issue`](#4-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
+5. [`analyze`](#5-analyze---smart-file-analysis) - General-purpose file and code analysis
+6. [`chat`](#6-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
+7. [`list_models`](#7-list_models---see-available-gemini-models) - List available Gemini models
+8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
 
 ### 1. `think_deeper` - Extended Reasoning Partner
 
@@ -203,7 +205,48 @@ make any necessary adjustments and show me the final secure implementation."
 
 **Triggers:** review code, check for issues, find bugs, security check
 
-### 3. `debug_issue` - Expert Debugging Assistant
+### 3. `review_pending_changes` - Pre-Commit Validation
+**Comprehensive review of staged/unstaged git changes across multiple repositories**
+
+#### Example Prompts:
+
+**Basic Usage:**
+```
+"Use gemini to review my pending changes before I commit"
+"Get gemini to validate all my git changes match the original requirements"
+"Review pending changes in the frontend/ directory"
+```
+
+**Collaborative Workflow:**
+```
+"I've implemented the user authentication feature. Use gemini to review all pending changes
+across the codebase to ensure they align with the security requirements. Fix any issues
+gemini identifies before committing."
+
+"Review all my changes for the API refactoring task. Get gemini to check for incomplete
+implementations or missing test coverage. Update the code based on gemini's findings."
+```
+
+**Key Features:**
+- **Recursive repository discovery** - finds all git repos including nested ones
+- **Validates changes against requirements** - ensures implementation matches intent
+- **Detects incomplete changes** - finds added functions never called, missing tests, etc.
+- **Multi-repo support** - reviews changes across multiple repositories in one go
+- **Configurable scope** - review staged, unstaged, or compare against branches
+- **Security focused** - catches exposed secrets, vulnerabilities in new code
+- **Smart truncation** - handles large diffs without exceeding context limits
+
+**Parameters:**
+- `path`: Starting directory to search for repos (default: current directory)
+- `original_request`: The requirements/ticket for context
+- `compare_to`: Compare against a branch/tag instead of local changes
+- `review_type`: full|security|performance|quick
+- `severity_filter`: Filter by issue severity
+- `max_depth`: How deep to search for nested repos
+
+**Triggers:** review pending changes, check my changes, validate changes, pre-commit review
+
+### 4. `debug_issue` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
 #### Example Prompts:
@@ -235,7 +278,7 @@ suggest preventive measures."
 
 **Triggers:** debug, error, failing, root cause, trace, not working
 
-### 4. `analyze` - Smart File Analysis
+### 5. `analyze` - Smart File Analysis
 **General-purpose code understanding and exploration**
 
 #### Example Prompts:
@@ -264,7 +307,7 @@ Combine your findings with gemini's to create a comprehensive security report."
 
 **Triggers:** analyze, examine, look at, understand, inspect
 
-### 5. `chat` - General Development Chat & Collaborative Thinking
+### 6. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
 
 #### Example Prompts:
@@ -296,16 +339,17 @@ Combine both perspectives to create a comprehensive caching implementation guide
 - Technology comparisons and best practices
 - Architecture and design discussions
 - Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
+- **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
 
 **Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
 
-### 6. `list_models` - See Available Gemini Models
+### 7. `list_models` - See Available Gemini Models
 ```
 "Use gemini to list available models"
 "Get gemini to show me what models I can use"
 ```
 
-### 7. `get_version` - Server Information
+### 8. `get_version` - Server Information
 ```
 "Use gemini for its version"
 "Get gemini to show server configuration"
@@ -492,6 +536,26 @@ Different tools use optimized temperature settings:
 - **`TEMPERATURE_BALANCED`**: `0.5` - Used for general chat (balanced creativity/accuracy)
 - **`TEMPERATURE_CREATIVE`**: `0.7` - Used for deep thinking and architecture (more creative)
 
+
+## File Path Requirements
+
+**All file paths must be absolute paths.**
+
+### Setup
+1. **Use absolute paths** in all tool calls:
+   ```
+   ✅ "Use gemini to analyze /Users/you/project/src/main.py"
+   ❌ "Use gemini to analyze ./src/main.py"  (will be rejected)
+   ```
+
+2. **Set MCP_PROJECT_ROOT** to your project directory for security:
+   ```json
+   "env": {
+     "GEMINI_API_KEY": "your-key",
+     "MCP_PROJECT_ROOT": "/Users/you/project"
+   }
+   ```
+   The server only allows access to files within this directory.
 
 ## Installation
 

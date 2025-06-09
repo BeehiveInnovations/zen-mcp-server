@@ -15,11 +15,39 @@ if str(parent_dir) not in sys.path:
 if "GEMINI_API_KEY" not in os.environ:
     os.environ["GEMINI_API_KEY"] = "dummy-key-for-tests"
 
+# Set MCP_PROJECT_ROOT to a temporary directory for tests
+# This provides a safe sandbox for file operations during testing
+import tempfile
+
+# Create a temporary directory that will be used as the project root for all tests
+test_root = tempfile.mkdtemp(prefix="gemini_mcp_test_")
+os.environ["MCP_PROJECT_ROOT"] = test_root
+
 # Configure asyncio for Windows compatibility
 if sys.platform == "win32":
     import asyncio
 
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
+# Pytest fixtures
+import pytest
+
+
+@pytest.fixture
+def project_path(tmp_path):
+    """
+    Provides a temporary directory within the PROJECT_ROOT sandbox for tests.
+    This ensures all file operations during tests are within the allowed directory.
+    """
+    # Get the test project root
+    test_root = Path(os.environ.get("MCP_PROJECT_ROOT", "/tmp"))
+
+    # Create a subdirectory for this specific test
+    test_dir = test_root / f"test_{tmp_path.name}"
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    return test_dir
 
 
 # Pytest configuration

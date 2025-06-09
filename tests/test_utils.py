@@ -8,9 +8,9 @@ from utils import check_token_limit, estimate_tokens, read_file_content, read_fi
 class TestFileUtils:
     """Test file reading utilities"""
 
-    def test_read_file_content_success(self, tmp_path):
+    def test_read_file_content_success(self, project_path):
         """Test successful file reading"""
-        test_file = tmp_path / "test.py"
+        test_file = project_path / "test.py"
         test_file.write_text("def hello():\n    return 'world'", encoding="utf-8")
 
         content, tokens = read_file_content(str(test_file))
@@ -20,25 +20,43 @@ class TestFileUtils:
         assert "return 'world'" in content
         assert tokens > 0  # Should have estimated tokens
 
-    def test_read_file_content_not_found(self):
+    def test_read_file_content_not_found(self, project_path):
         """Test reading non-existent file"""
-        content, tokens = read_file_content("/nonexistent/file.py")
+        # Use a non-existent file within the project path
+        nonexistent = project_path / "nonexistent" / "file.py"
+        content, tokens = read_file_content(str(nonexistent))
         assert "--- FILE NOT FOUND:" in content
         assert "Error: File does not exist" in content
         assert tokens > 0
 
-    def test_read_file_content_directory(self, tmp_path):
+    def test_read_file_content_outside_project_root(self):
+        """Test that paths outside project root are rejected"""
+        # Try to read a file outside the project root
+        content, tokens = read_file_content("/etc/passwd")
+        assert "--- ERROR ACCESSING FILE:" in content
+        assert "Path outside project root" in content
+        assert tokens > 0
+
+    def test_read_file_content_relative_path_rejected(self):
+        """Test that relative paths are rejected"""
+        # Try to use a relative path
+        content, tokens = read_file_content("./some/relative/path.py")
+        assert "--- ERROR ACCESSING FILE:" in content
+        assert "Relative paths are not supported" in content
+        assert tokens > 0
+
+    def test_read_file_content_directory(self, project_path):
         """Test reading a directory"""
-        content, tokens = read_file_content(str(tmp_path))
+        content, tokens = read_file_content(str(project_path))
         assert "--- NOT A FILE:" in content
         assert "Error: Path is not a file" in content
         assert tokens > 0
 
-    def test_read_files_multiple(self, tmp_path):
+    def test_read_files_multiple(self, project_path):
         """Test reading multiple files"""
-        file1 = tmp_path / "file1.py"
+        file1 = project_path / "file1.py"
         file1.write_text("print('file1')", encoding="utf-8")
-        file2 = tmp_path / "file2.py"
+        file2 = project_path / "file2.py"
         file2.write_text("print('file2')", encoding="utf-8")
 
         content, summary = read_files([str(file1), str(file2)])
@@ -62,23 +80,23 @@ class TestFileUtils:
 
         assert "Direct code:" in summary
 
-    def test_read_files_directory_support(self, tmp_path):
+    def test_read_files_directory_support(self, project_path):
         """Test reading all files from a directory"""
         # Create directory structure
-        (tmp_path / "file1.py").write_text("print('file1')", encoding="utf-8")
-        (tmp_path / "file2.js").write_text("console.log('file2')", encoding="utf-8")
-        (tmp_path / "readme.md").write_text("# README", encoding="utf-8")
+        (project_path / "file1.py").write_text("print('file1')", encoding="utf-8")
+        (project_path / "file2.js").write_text("console.log('file2')", encoding="utf-8")
+        (project_path / "readme.md").write_text("# README", encoding="utf-8")
 
         # Create subdirectory
-        subdir = tmp_path / "src"
+        subdir = project_path / "src"
         subdir.mkdir()
         (subdir / "module.py").write_text("class Module: pass", encoding="utf-8")
 
         # Create hidden file (should be skipped)
-        (tmp_path / ".hidden").write_text("secret", encoding="utf-8")
+        (project_path / ".hidden").write_text("secret", encoding="utf-8")
 
         # Read the directory
-        content, summary = read_files([str(tmp_path)])
+        content, summary = read_files([str(project_path)])
 
         # Check files are included
         assert "file1.py" in content
@@ -102,14 +120,14 @@ class TestFileUtils:
         assert "Processed 1 dir(s)" in summary
         assert "Read 4 file(s)" in summary
 
-    def test_read_files_mixed_paths(self, tmp_path):
+    def test_read_files_mixed_paths(self, project_path):
         """Test reading mix of files and directories"""
         # Create files
-        file1 = tmp_path / "direct.py"
+        file1 = project_path / "direct.py"
         file1.write_text("# Direct file", encoding="utf-8")
 
         # Create directory with files
-        subdir = tmp_path / "subdir"
+        subdir = project_path / "subdir"
         subdir.mkdir()
         (subdir / "sub1.py").write_text("# Sub file 1", encoding="utf-8")
         (subdir / "sub2.py").write_text("# Sub file 2", encoding="utf-8")
@@ -127,19 +145,19 @@ class TestFileUtils:
         assert "Processed 1 dir(s)" in summary
         assert "Read 3 file(s)" in summary
 
-    def test_read_files_token_limit(self, tmp_path):
+    def test_read_files_token_limit(self, project_path):
         """Test token limit handling"""
         # Create files with known token counts
         # ~250 tokens each (1000 chars)
         large_content = "x" * 1000
 
         for i in range(5):
-            (tmp_path / f"file{i}.txt").write_text(large_content, encoding="utf-8")
+            (project_path / f"file{i}.txt").write_text(large_content, encoding="utf-8")
 
         # Read with small token limit (should skip some files)
         # Reserve 50k tokens, limit to 51k total = 1k available
         # Each file ~250 tokens, so should read ~3-4 files
-        content, summary = read_files([str(tmp_path)], max_tokens=51_000)
+        content, summary = read_files([str(project_path)], max_tokens=51_000)
 
         assert "Skipped" in summary
         assert "token limit" in summary
@@ -149,10 +167,10 @@ class TestFileUtils:
         read_count = content.count("--- BEGIN FILE:")
         assert 2 <= read_count <= 4  # Should read some but not all
 
-    def test_read_files_large_file(self, tmp_path):
+    def test_read_files_large_file(self, project_path):
         """Test handling of large files"""
         # Create a file larger than max_size (1MB)
-        large_file = tmp_path / "large.txt"
+        large_file = project_path / "large.txt"
         large_file.write_text("x" * 2_000_000, encoding="utf-8")  # 2MB
 
         content, summary = read_files([str(large_file)])
@@ -161,15 +179,15 @@ class TestFileUtils:
         assert "2,000,000 bytes" in content
         assert "Read 1 file(s)" in summary  # File is counted but shows error message
 
-    def test_read_files_file_extensions(self, tmp_path):
+    def test_read_files_file_extensions(self, project_path):
         """Test file extension filtering"""
         # Create various file types
-        (tmp_path / "code.py").write_text("python", encoding="utf-8")
-        (tmp_path / "style.css").write_text("css", encoding="utf-8")
-        (tmp_path / "binary.exe").write_text("exe", encoding="utf-8")
-        (tmp_path / "image.jpg").write_text("jpg", encoding="utf-8")
+        (project_path / "code.py").write_text("python", encoding="utf-8")
+        (project_path / "style.css").write_text("css", encoding="utf-8")
+        (project_path / "binary.exe").write_text("exe", encoding="utf-8")
+        (project_path / "image.jpg").write_text("jpg", encoding="utf-8")
 
-        content, summary = read_files([str(tmp_path)])
+        content, summary = read_files([str(project_path)])
 
         # Code files should be included
         assert "code.py" in content

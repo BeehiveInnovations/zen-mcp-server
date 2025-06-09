@@ -5,8 +5,20 @@ File reading utilities with directory support and token management
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple, Set
+import sys
 
 from .token_utils import estimate_tokens, MAX_CONTEXT_TOKENS
+
+# Get project root from environment or use current directory
+# This defines the sandbox directory where file access is allowed
+PROJECT_ROOT = Path(os.environ.get("MCP_PROJECT_ROOT", os.getcwd())).resolve()
+
+# Security: Prevent running with overly permissive root
+if str(PROJECT_ROOT) == "/":
+    raise RuntimeError(
+        "Security Error: MCP_PROJECT_ROOT cannot be set to '/'. "
+        "This would give access to the entire filesystem."
+    )
 
 
 # Common code file extensions
@@ -60,6 +72,46 @@ CODE_EXTENSIONS = {
 }
 
 
+def resolve_and_validate_path(path_str: str) -> Path:
+    """
+    Validates that a path is absolute and resolves it.
+
+    Args:
+        path_str: Path string (must be absolute)
+
+    Returns:
+        Resolved Path object
+
+    Raises:
+        ValueError: If path is not absolute
+        PermissionError: If path is outside allowed directory
+    """
+    # Create a Path object from the user-provided path
+    user_path = Path(path_str)
+
+    # Require absolute paths
+    if not user_path.is_absolute():
+        raise ValueError(
+            f"Relative paths are not supported. Please provide an absolute path.\n"
+            f"Received: {path_str}"
+        )
+
+    # Resolve the absolute path
+    resolved_path = user_path.resolve()
+
+    # Security check: ensure the resolved path is within PROJECT_ROOT
+    try:
+        resolved_path.relative_to(PROJECT_ROOT)
+    except ValueError:
+        raise PermissionError(
+            f"Path outside project root: {path_str}\n"
+            f"Project root: {PROJECT_ROOT}\n"
+            f"Resolved path: {resolved_path}"
+        )
+
+    return resolved_path
+
+
 def expand_paths(paths: List[str], extensions: Optional[Set[str]] = None) -> List[str]:
     """
     Expand paths to individual files, handling both files and directories.
@@ -78,7 +130,11 @@ def expand_paths(paths: List[str], extensions: Optional[Set[str]] = None) -> Lis
     seen = set()
 
     for path in paths:
-        path_obj = Path(path)
+        try:
+            path_obj = resolve_and_validate_path(path)
+        except (ValueError, PermissionError):
+            # Skip invalid paths
+            continue
 
         if not path_obj.exists():
             continue
@@ -121,13 +177,17 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> Tuple[str, i
     Read a single file and format it for Gemini.
 
     Args:
-        file_path: Path to file
+        file_path: Path to file (must be absolute)
         max_size: Maximum file size to read
 
     Returns:
         (formatted_content, estimated_tokens)
     """
-    path = Path(file_path)
+    try:
+        path = resolve_and_validate_path(file_path)
+    except (ValueError, PermissionError) as e:
+        content = f"\n--- ERROR ACCESSING FILE: {file_path} ---\nError: {str(e)}\n--- END FILE ---\n"
+        return content, estimate_tokens(content)
 
     try:
         # Check if path exists and is a file

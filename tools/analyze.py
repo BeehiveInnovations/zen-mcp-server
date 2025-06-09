@@ -16,7 +16,9 @@ from .base import BaseTool, ToolRequest
 class AnalyzeRequest(ToolRequest):
     """Request model for analyze tool"""
 
-    files: List[str] = Field(..., description="Files or directories to analyze")
+    files: List[str] = Field(
+        ..., description="Files or directories to analyze (must be absolute paths)"
+    )
     question: str = Field(..., description="What to analyze or look for")
     analysis_type: Optional[str] = Field(
         None,
@@ -50,7 +52,7 @@ class AnalyzeTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Files or directories to analyze",
+                    "description": "Files or directories to analyze (must be absolute paths)",
                 },
                 "question": {
                     "type": "string",

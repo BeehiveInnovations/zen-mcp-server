@@ -16,7 +16,10 @@ from .base import BaseTool, ToolRequest
 class ReviewCodeRequest(ToolRequest):
     """Request model for review_code tool"""
 
-    files: List[str] = Field(..., description="Code files or directories to review")
+    files: List[str] = Field(
+        ...,
+        description="Code files or directories to review (must be absolute paths)",
+    )
     review_type: str = Field(
         "full", description="Type of review: full|security|performance|quick"
     )
@@ -55,7 +58,7 @@ class ReviewCodeTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Code files or directories to review",
+                    "description": "Code files or directories to review (must be absolute paths)",
                 },
                 "review_type": {
                     "type": "string",

@@ -20,8 +20,9 @@ class ChatRequest(ToolRequest):
         ...,
         description="Your question, topic, or current thinking to discuss with Gemini",
     )
-    context_files: Optional[List[str]] = Field(
-        default_factory=list, description="Optional files for context"
+    files: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Optional files for context (must be absolute paths)",
     )
 
 
@@ -49,10 +50,10 @@ class ChatTool(BaseTool):
                     "type": "string",
                     "description": "Your question, topic, or current thinking to discuss with Gemini",
                 },
-                "context_files": {
+                "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional files for context",
+                    "description": "Optional files for context (must be absolute paths)",
                 },
                 "temperature": {
                     "type": "number",
@@ -83,8 +84,8 @@ class ChatTool(BaseTool):
         user_content = request.prompt
 
         # Add context files if provided
-        if request.context_files:
-            file_content, _ = read_files(request.context_files)
+        if request.files:
+            file_content, _ = read_files(request.files)
             user_content = f"{request.prompt}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ==="
 
         # Check token limits

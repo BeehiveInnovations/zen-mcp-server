@@ -51,7 +51,7 @@ class TestThinkingModes:
         tool = AnalyzeTool()
         result = await tool.execute(
             {
-                "files": ["test.py"],
+                "files": ["/absolute/path/test.py"],
                 "question": "What is this?",
                 "thinking_mode": "minimal",
             }
@@ -80,7 +80,9 @@ class TestThinkingModes:
         mock_create_model.return_value = mock_model
 
         tool = ReviewCodeTool()
-        result = await tool.execute({"files": ["test.py"], "thinking_mode": "low"})
+        result = await tool.execute(
+            {"files": ["/absolute/path/test.py"], "thinking_mode": "low"}
+        )
 
         # Verify create_model was called with correct thinking_mode
         mock_create_model.assert_called_once()
@@ -129,7 +131,7 @@ class TestThinkingModes:
         tool = AnalyzeTool()
         await tool.execute(
             {
-                "files": ["complex.py"],
+                "files": ["/absolute/path/complex.py"],
                 "question": "Analyze architecture",
                 "thinking_mode": "high",
             }

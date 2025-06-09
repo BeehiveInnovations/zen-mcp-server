@@ -27,7 +27,8 @@ class ThinkDeeperRequest(ToolRequest):
         description="Specific aspects to focus on (architecture, performance, security, etc.)",
     )
     files: Optional[List[str]] = Field(
-        None, description="Optional file paths or directories for additional context"
+        None,
+        description="Optional file paths or directories for additional context (must be absolute paths)",
     )
 
 
@@ -66,7 +67,7 @@ class ThinkDeeperTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional file paths or directories for additional context",
+                    "description": "Optional file paths or directories for additional context (must be absolute paths)",
                 },
                 "temperature": {
                     "type": "number",

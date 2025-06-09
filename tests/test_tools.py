@@ -2,11 +2,12 @@
 Tests for individual tool implementations
 """
 
+import json
 from unittest.mock import Mock, patch
 
 import pytest
 
-from tools import AnalyzeTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
+from tools import AnalyzeTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool, ChatTool
 
 
 class TestThinkDeeperTool:
@@ -187,3 +188,110 @@ class TestAnalyzeTool:
         assert "ARCHITECTURE Analysis" in result[0].text
         assert "Analyzed 1 file(s)" in result[0].text
         assert "Architecture analysis" in result[0].text
+
+
+class TestAbsolutePathValidation:
+    """Test absolute path validation across all tools"""
+
+    @pytest.mark.asyncio
+    async def test_analyze_tool_relative_path_rejected(self):
+        """Test that analyze tool rejects relative paths"""
+        tool = AnalyzeTool()
+        result = await tool.execute(
+            {
+                "files": ["./relative/path.py", "/absolute/path.py"],
+                "question": "What does this do?",
+            }
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "error"
+        assert "must be absolute" in response["content"]
+        assert "./relative/path.py" in response["content"]
+
+    @pytest.mark.asyncio
+    async def test_review_code_tool_relative_path_rejected(self):
+        """Test that review_code tool rejects relative paths"""
+        tool = ReviewCodeTool()
+        result = await tool.execute(
+            {"files": ["../parent/file.py"], "review_type": "full"}
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "error"
+        assert "must be absolute" in response["content"]
+        assert "../parent/file.py" in response["content"]
+
+    @pytest.mark.asyncio
+    async def test_debug_issue_tool_relative_path_rejected(self):
+        """Test that debug_issue tool rejects relative paths"""
+        tool = DebugIssueTool()
+        result = await tool.execute(
+            {
+                "error_description": "Something broke",
+                "files": ["src/main.py"],  # relative path
+            }
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "error"
+        assert "must be absolute" in response["content"]
+        assert "src/main.py" in response["content"]
+
+    @pytest.mark.asyncio
+    async def test_think_deeper_tool_relative_path_rejected(self):
+        """Test that think_deeper tool rejects relative paths"""
+        tool = ThinkDeeperTool()
+        result = await tool.execute(
+            {"current_analysis": "My analysis", "files": ["./local/file.py"]}
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "error"
+        assert "must be absolute" in response["content"]
+        assert "./local/file.py" in response["content"]
+
+    @pytest.mark.asyncio
+    async def test_chat_tool_relative_path_rejected(self):
+        """Test that chat tool rejects relative paths"""
+        tool = ChatTool()
+        result = await tool.execute(
+            {
+                "prompt": "Explain this code",
+                "files": ["code.py"],  # relative path without ./
+            }
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "error"
+        assert "must be absolute" in response["content"]
+        assert "code.py" in response["content"]
+
+    @pytest.mark.asyncio
+    @patch("tools.AnalyzeTool.create_model")
+    async def test_analyze_tool_accepts_absolute_paths(self, mock_model):
+        """Test that analyze tool accepts absolute paths"""
+        tool = AnalyzeTool()
+
+        # Mock the model response
+        mock_response = Mock()
+        mock_response.candidates = [Mock()]
+        mock_response.candidates[0].content.parts = [Mock(text="Analysis complete")]
+
+        mock_instance = Mock()
+        mock_instance.generate_content.return_value = mock_response
+        mock_model.return_value = mock_instance
+
+        result = await tool.execute(
+            {"files": ["/absolute/path/file.py"], "question": "What does this do?"}
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "success"
+        assert "Analysis complete" in response["content"]
