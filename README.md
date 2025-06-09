@@ -116,12 +116,12 @@ Just ask Claude naturally:
 ## Available Tools
 
 **Quick Tool Selection Guide:**
+- **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
 - **Need deeper thinking?** → `think_deeper` (extends Claude's analysis, finds edge cases)
 - **Code needs review?** → `review_code` (bugs, security, performance issues)
 - **Pre-commit validation?** → `review_pending_changes` (validate git changes before committing)
 - **Something's broken?** → `debug_issue` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
-- **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
 - **Check models?** → `list_models` (see available Gemini models)
 - **Server info?** → `get_version` (version and configuration details)
 
