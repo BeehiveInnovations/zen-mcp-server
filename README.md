@@ -3,7 +3,7 @@
 <div align="center">
   <img src="https://github.com/user-attachments/assets/0990ee89-9160-45d6-a407-ee925bcb43cb" width="600">
   
-  **🤖 Claude + Gemini = Your Ultimate AI Development Team 🚀**
+  **🤖 Claude + Gemini = Your Ultimate AI Development Team**
   
   *Combining Claude's coding brilliance with Gemini's analytical depth*
 </div>
