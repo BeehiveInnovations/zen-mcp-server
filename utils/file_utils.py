@@ -5,7 +5,6 @@ File reading utilities with directory support and token management
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple, Set
-import sys
 
 from .token_utils import estimate_tokens, MAX_CONTEXT_TOKENS
 

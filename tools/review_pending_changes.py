@@ -2,10 +2,9 @@
 Tool for reviewing pending git changes across multiple repositories.
 """
 
-import json
 import os
 import re
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import Field
 
@@ -168,7 +167,6 @@ class ReviewPendingChanges(BaseTool):
                         )
                         if success and diff.strip():
                             # Format diff with file header
-                            safe_file_name = self._sanitize_filename(file_path)
                             diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (compare to {request.compare_to}) ---\n"
                             diff_footer = (
                                 f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
@@ -200,7 +198,6 @@ class ReviewPendingChanges(BaseTool):
                                 repo_path, ["diff", "--cached", "--", file_path]
                             )
                             if success and diff.strip():
-                                safe_file_name = self._sanitize_filename(file_path)
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (staged) ---\n"
                                 diff_footer = (
                                     f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
@@ -230,7 +227,6 @@ class ReviewPendingChanges(BaseTool):
                                 repo_path, ["diff", "--", file_path]
                             )
                             if success and diff.strip():
-                                safe_file_name = self._sanitize_filename(file_path)
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (unstaged) ---\n"
                                 diff_footer = (
                                     f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
@@ -274,7 +270,7 @@ class ReviewPendingChanges(BaseTool):
             )
 
         # Add review parameters
-        prompt_parts.append(f"## Review Parameters\n")
+        prompt_parts.append("## Review Parameters\n")
         prompt_parts.append(f"- Review Type: {request.review_type}")
         prompt_parts.append(f"- Severity Filter: {request.severity_filter}")
 
@@ -292,7 +288,7 @@ class ReviewPendingChanges(BaseTool):
             prompt_parts.append(f"- Reviewing: {' and '.join(review_scope)} changes")
 
         # Add repository summary
-        prompt_parts.append(f"\n## Repository Changes Summary\n")
+        prompt_parts.append("\n## Repository Changes Summary\n")
         prompt_parts.append(f"Found {len(repo_summaries)} repositories with changes:\n")
 
         for idx, summary in enumerate(repo_summaries, 1):

@@ -18,10 +18,10 @@ from pathlib import Path
 # Add parent directory to path to allow imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import json
+
 from tools.analyze import AnalyzeTool
 from tools.think_deeper import ThinkDeeperTool
-from tools.debug_issue import DebugIssueTool
-import json
 
 
 async def run_manual_live_tests():

@@ -2,9 +2,8 @@
 Git utilities for finding repositories and generating diffs.
 """
 
-import os
 import subprocess
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from pathlib import Path
 
 
