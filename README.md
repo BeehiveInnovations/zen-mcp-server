@@ -135,6 +135,14 @@ Just ask Claude naturally:
   <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
 </div>
 
+**Prompt:**
+```
+Study the code properly, think deeply about what this does and then see if there's any room for improvement in
+terms of performance optimizations, brainstorm with gemini on this to get feedback and then confirm any change by
+first adding a unit test with `measure` and measuring current code and then implementing the optimization and
+measuring again to ensure it improved, then share results. Check with gemini in between as you make tweaks.
+```
+
 **Get a second opinion to augment Claude's own extended thinking**
 
 #### Example Prompts:
@@ -147,9 +155,12 @@ Just ask Claude naturally:
 
 **Collaborative Workflow:**
 ```
-"Design an authentication system for our SaaS platform. Then use gemini to review your design for security vulnerabilities. After getting gemini's feedback, incorporate the suggestions and show me the final improved design."
+"Design an authentication system for our SaaS platform. Then use gemini to review your design
+ for security vulnerabilities. After getting gemini's feedback, incorporate the suggestions and
+show me the final improved design."
 
-"Create an event-driven architecture for our order processing system. Use gemini to think deeper about event ordering and failure scenarios. Then integrate gemini's insights and present the enhanced architecture."
+"Create an event-driven architecture for our order processing system. Use gemini to think deeper
+about event ordering and failure scenarios. Then integrate gemini's insights and present the enhanced architecture."
 ```
 
 **Key Features:**
@@ -175,9 +186,12 @@ Just ask Claude naturally:
 
 **Collaborative Workflow:**
 ```
-"Refactor the authentication module to use dependency injection. Then use gemini to review your refactoring for any security vulnerabilities. Based on gemini's feedback, make any necessary adjustments and show me the final secure implementation."
+"Refactor the authentication module to use dependency injection. Then use gemini to
+review your refactoring for any security vulnerabilities. Based on gemini's feedback,
+make any necessary adjustments and show me the final secure implementation."
 
-"Optimize the slow database queries in user_service.py. Get gemini to review your optimizations for potential regressions or edge cases. Incorporate gemini's suggestions and present the final optimized queries."
+"Optimize the slow database queries in user_service.py. Get gemini to review your optimizations
+ for potential regressions or edge cases. Incorporate gemini's suggestions and present the final optimized queries."
 ```
 
 **Key Features:**
@@ -201,9 +215,13 @@ Just ask Claude naturally:
 
 **Collaborative Workflow:**
 ```
-"I'm getting 'ConnectionPool limit exceeded' errors under load. Debug the issue and use gemini to analyze it deeper with context from db/pool.py. Based on gemini's root cause analysis, implement a fix and get gemini to validate the solution will scale."
+"I'm getting 'ConnectionPool limit exceeded' errors under load. Debug the issue and use
+gemini to analyze it deeper with context from db/pool.py. Based on gemini's root cause analysis,
+implement a fix and get gemini to validate the solution will scale."
 
-"Debug why tests fail randomly on CI. Once you identify potential causes, share with gemini along with test logs and CI configuration. Apply gemini's debugging strategy, then use gemini to suggest preventive measures."
+"Debug why tests fail randomly on CI. Once you identify potential causes, share with gemini along
+with test logs and CI configuration. Apply gemini's debugging strategy, then use gemini to
+suggest preventive measures."
 ```
 
 **Key Features:**
@@ -227,9 +245,12 @@ Just ask Claude naturally:
 
 **Collaborative Workflow:**
 ```
-"Analyze our project structure in src/ and identify architectural improvements. Share your analysis with gemini for a deeper review of design patterns and anti-patterns. Based on both analyses, create a refactoring roadmap."
+"Analyze our project structure in src/ and identify architectural improvements. Share your
+analysis with gemini for a deeper review of design patterns and anti-patterns. Based on both
+analyses, create a refactoring roadmap."
 
-"Perform a security analysis of our authentication system. Use gemini to analyze auth/, middleware/, and api/ for vulnerabilities. Combine your findings with gemini's to create a comprehensive security report."
+"Perform a security analysis of our authentication system. Use gemini to analyze auth/, middleware/, and api/ for vulnerabilities.
+Combine your findings with gemini's to create a comprehensive security report."
 ```
 
 **Key Features:**
@@ -255,9 +276,12 @@ Just ask Claude naturally:
 
 **Collaborative Workflow:**
 ```
-"Research the best message queue for our use case (high throughput, exactly-once delivery). Use gemini to compare RabbitMQ, Kafka, and AWS SQS. Based on gemini's analysis and your research, recommend the best option with implementation plan."
+"Research the best message queue for our use case (high throughput, exactly-once delivery).
+Use gemini to compare RabbitMQ, Kafka, and AWS SQS. Based on gemini's analysis and your research,
+recommend the best option with implementation plan."
 
-"Design a caching strategy for our API. Get gemini's input on Redis vs Memcached vs in-memory caching. Combine both perspectives to create a comprehensive caching implementation guide."
+"Design a caching strategy for our API. Get gemini's input on Redis vs Memcached vs in-memory caching.
+Combine both perspectives to create a comprehensive caching implementation guide."
 ```
 
 **Key Features:**
@@ -342,17 +366,20 @@ All tools that work with files support **both individual files and entire direct
 
 ### Design → Review → Implement
 ```
-"Design a real-time collaborative editor. Use gemini to think deeper about edge cases and scalability. Implement an improved version incorporating gemini's suggestions."
+"Design a real-time collaborative editor. Use gemini to think deeper about edge cases and scalability.
+Implement an improved version incorporating gemini's suggestions."
 ```
 
 ### Code → Review → Fix
 ```
-"Implement JWT authentication. Get gemini to do a security review. Fix any issues gemini identifies and show me the secure implementation."
+"Implement JWT authentication. Get gemini to do a security review. Fix any issues gemini identifies and
+show me the secure implementation."
 ```
 
 ### Debug → Analyze → Solution
 ```
-"Debug why our API crashes under load. Use gemini to analyze deeper with context from api/handlers/. Implement a fix based on gemini's root cause analysis."
+"Debug why our API crashes under load. Use gemini to analyze deeper with context from api/handlers/. Implement a
+fix based on gemini's root cause analysis."
 ```
 
 ## Pro Tips
