@@ -22,7 +22,7 @@ from config import (
     __updated__,
     __version__,
 )
-from tools import AnalyzeTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
+from tools import AnalyzeTool, ChatTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +37,7 @@ TOOLS = {
     "review_code": ReviewCodeTool(),
     "debug_issue": DebugIssueTool(),
     "analyze": AnalyzeTool(),
+    "chat": ChatTool(),
 }
 
 
@@ -70,43 +71,6 @@ async def handle_list_tools() -> List[Tool]:
     tools.extend(
         [
             Tool(
-                name="chat",
-                description=(
-                    "GENERAL CHAT & COLLABORATIVE THINKING - Use Gemini as your thinking partner! "
-                    "Perfect for: bouncing ideas during your own analysis, getting second opinions on your plans, "
-                    "collaborative brainstorming, validating your checklists and approaches, exploring alternatives. "
-                    "Also great for: explanations, comparisons, general development questions. "
-                    "Triggers: 'ask gemini', 'brainstorm with gemini', 'get gemini's opinion', 'discuss with gemini', "
-                    "'share my thinking with gemini', 'explain', 'what is', 'how do I'."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "prompt": {
-                            "type": "string",
-                            "description": "Your question, topic, or current thinking to discuss with Gemini",
-                        },
-                        "context_files": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Optional files for context",
-                        },
-                        "temperature": {
-                            "type": "number",
-                            "description": "Response creativity (0-1, default 0.5)",
-                            "minimum": 0,
-                            "maximum": 1,
-                        },
-                        "thinking_mode": {
-                            "type": "string",
-                            "enum": ["minimal", "low", "medium", "high", "max"],
-                            "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
-                        },
-                    },
-                    "required": ["prompt"],
-                },
-            ),
-            Tool(
                 name="list_models",
                 description=(
                     "LIST AVAILABLE MODELS - Show all Gemini models you can use. "
@@ -138,9 +102,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
         return await tool.execute(arguments)
 
     # Handle static tools
-    elif name == "chat":
-        return await handle_chat(arguments)
-
     elif name == "list_models":
         return await handle_list_models()
 
@@ -149,68 +110,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
-
-
-async def handle_chat(arguments: Dict[str, Any]) -> List[TextContent]:
-    """Handle general chat requests"""
-    from config import TEMPERATURE_BALANCED, DEFAULT_MODEL
-    from prompts import CHAT_PROMPT
-    from utils import read_files
-
-    prompt = arguments.get("prompt", "")
-    context_files = arguments.get("context_files", [])
-    temperature = arguments.get("temperature", TEMPERATURE_BALANCED)
-    thinking_mode = arguments.get("thinking_mode", "medium")
-
-    # Build the full prompt with system context
-    user_content = prompt
-    if context_files:
-        file_content, _ = read_files(context_files)
-        user_content = (
-            f"{prompt}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ==="
-        )
-
-    # Combine system prompt with user content
-    full_prompt = f"{CHAT_PROMPT}\n\n=== USER REQUEST ===\n{user_content}\n=== END REQUEST ===\n\nPlease provide a thoughtful, comprehensive response:"
-
-    try:
-        # Create model with thinking configuration
-        from tools.base import BaseTool
-
-        # Create a temporary tool instance to use create_model method
-        class TempTool(BaseTool):
-            def get_name(self):
-                return "chat"
-
-            def get_description(self):
-                return ""
-
-            def get_input_schema(self):
-                return {}
-
-            def get_system_prompt(self):
-                return ""
-
-            def get_request_model(self):
-                return None
-
-            async def prepare_prompt(self, request):
-                return ""
-
-        temp_tool = TempTool()
-        model = temp_tool.create_model(DEFAULT_MODEL, temperature, thinking_mode)
-
-        response = model.generate_content(full_prompt)
-
-        if response.candidates and response.candidates[0].content.parts:
-            text = response.candidates[0].content.parts[0].text
-        else:
-            text = "Response blocked or incomplete"
-
-        return [TextContent(type="text", text=text)]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error in chat: {str(e)}")]
 
 
 async def handle_list_models() -> List[TextContent]:

@@ -15,6 +15,7 @@ Claude is brilliant, but sometimes you need:
 - **Expert debugging** for tricky issues with full system context ([`debug_issue`](#3-debug_issue---expert-debugging-assistant))
 - **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#2-review_code---professional-code-review))
 - **A senior developer partner** to validate and extend ideas ([`chat`](#5-chat---general-development-chat--collaborative-thinking))
+- **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
 
 This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
 
@@ -225,10 +226,12 @@ suggest preventive measures."
 ```
 
 **Key Features:**
+- Generates multiple ranked hypotheses for systematic debugging
 - Accepts error context, stack traces, and logs
 - Can reference relevant files for investigation
 - Supports runtime info and previous attempts
-- Provides root cause analysis and solutions
+- Provides structured root cause analysis with validation steps
+- Can request additional context when needed for thorough analysis
 
 **Triggers:** debug, error, failing, root cause, trace, not working
 
@@ -406,7 +409,49 @@ Tools can reference files for additional context:
 "Get gemini to think deeper about my design, reference the current architecture.md"
 ```
 
+### Tool Selection Guidance
+To help choose the right tool for your needs:
+
+**Decision Flow:**
+1. **Have a specific error/exception?** → Use `debug_issue`
+2. **Want to find bugs/issues in code?** → Use `review_code`
+3. **Want to understand how code works?** → Use `analyze`
+4. **Have analysis that needs extension/validation?** → Use `think_deeper`
+5. **Want to brainstorm or discuss?** → Use `chat`
+
+**Key Distinctions:**
+- `analyze` vs `review_code`: analyze explains, review_code prescribes fixes
+- `chat` vs `think_deeper`: chat is open-ended, think_deeper extends specific analysis
+- `debug_issue` vs `review_code`: debug diagnoses runtime errors, review finds static issues
+
 ## Advanced Features
+
+### Dynamic Context Requests
+Tools can request additional context from Claude during execution. When Gemini needs more information to provide a thorough analysis, it will ask Claude for specific files or clarification, enabling true collaborative problem-solving.
+
+**Example:** If Gemini is debugging an error but needs to see a configuration file that wasn't initially provided, it can request: 
+```json
+{
+  "status": "requires_clarification",
+  "question": "I need to see the database configuration to understand this connection error",
+  "files_needed": ["config/database.yml", "src/db_connection.py"]
+}
+```
+
+Claude will then provide the requested files and Gemini can continue with a more complete analysis.
+
+### Standardized Response Format
+All tools now return structured JSON responses for consistent handling:
+```json
+{
+  "status": "success|error|requires_clarification",
+  "content": "The actual response content",
+  "content_type": "text|markdown|json",
+  "metadata": {"tool_name": "analyze", ...}
+}
+```
+
+This enables better integration, error handling, and support for the dynamic context request feature.
 
 ### Enhanced Thinking Models
 

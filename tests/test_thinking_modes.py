@@ -62,7 +62,12 @@ class TestThinkingModes:
         args = mock_create_model.call_args[0]
         assert args[2] == "minimal"  # thinking_mode parameter
 
-        assert result[0].text.startswith("Analysis:")
+        # Parse JSON response
+        import json
+
+        response_data = json.loads(result[0].text)
+        assert response_data["status"] == "success"
+        assert response_data["content"].startswith("Analysis:")
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")

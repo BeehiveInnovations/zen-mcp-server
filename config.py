@@ -3,7 +3,7 @@ Configuration and constants for Gemini MCP Server
 """
 
 # Version and metadata
-__version__ = "2.7.0"
+__version__ = "2.8.0"
 __updated__ = "2025-06-09"
 __author__ = "Fahad Gilani"
 

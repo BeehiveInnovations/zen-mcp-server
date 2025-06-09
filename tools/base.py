@@ -5,11 +5,14 @@ Base class for all Gemini MCP tools
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Literal
 import os
+import json
 
 from google import genai
 from google.genai import types
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
+
+from .models import ToolOutput, ClarificationRequest
 
 
 class ToolRequest(BaseModel):
@@ -95,25 +98,83 @@ class BaseTool(ABC):
             # Generate response
             response = model.generate_content(prompt)
 
-            # Handle response
+            # Handle response and create standardized output
             if response.candidates and response.candidates[0].content.parts:
-                text = response.candidates[0].content.parts[0].text
+                raw_text = response.candidates[0].content.parts[0].text
+
+                # Check if this is a clarification request
+                tool_output = self._parse_response(raw_text, request)
+
             else:
                 finish_reason = (
                     response.candidates[0].finish_reason
                     if response.candidates
                     else "Unknown"
                 )
-                text = f"Response blocked or incomplete. Finish reason: {finish_reason}"
+                tool_output = ToolOutput(
+                    status="error",
+                    content=f"Response blocked or incomplete. Finish reason: {finish_reason}",
+                    content_type="text",
+                )
 
-            # Format response
-            formatted_response = self.format_response(text, request)
-
-            return [TextContent(type="text", text=formatted_response)]
+            # Serialize the standardized output as JSON
+            return [TextContent(type="text", text=tool_output.model_dump_json())]
 
         except Exception as e:
-            error_msg = f"Error in {self.name}: {str(e)}"
-            return [TextContent(type="text", text=error_msg)]
+            error_output = ToolOutput(
+                status="error",
+                content=f"Error in {self.name}: {str(e)}",
+                content_type="text",
+            )
+            return [TextContent(type="text", text=error_output.model_dump_json())]
+
+    def _parse_response(self, raw_text: str, request) -> ToolOutput:
+        """Parse the raw response and determine if it's a clarification request"""
+        try:
+            # Try to parse as JSON to check for clarification requests
+            potential_json = json.loads(raw_text.strip())
+
+            if (
+                isinstance(potential_json, dict)
+                and potential_json.get("status") == "requires_clarification"
+            ):
+                # Validate the clarification request structure
+                clarification = ClarificationRequest(**potential_json)
+                return ToolOutput(
+                    status="requires_clarification",
+                    content=clarification.model_dump_json(),
+                    content_type="json",
+                    metadata={
+                        "original_request": (
+                            request.model_dump()
+                            if hasattr(request, "model_dump")
+                            else str(request)
+                        )
+                    },
+                )
+
+        except (json.JSONDecodeError, ValueError, TypeError):
+            # Not a JSON clarification request, treat as normal response
+            pass
+
+        # Normal text response - format using tool-specific formatting
+        formatted_content = self.format_response(raw_text, request)
+
+        # Determine content type based on the formatted content
+        content_type = (
+            "markdown"
+            if any(
+                marker in formatted_content for marker in ["##", "**", "`", "- ", "1. "]
+            )
+            else "text"
+        )
+
+        return ToolOutput(
+            status="success",
+            content=formatted_content,
+            content_type=content_type,
+            metadata={"tool_name": self.name},
+        )
 
     @abstractmethod
     async def prepare_prompt(self, request) -> str:

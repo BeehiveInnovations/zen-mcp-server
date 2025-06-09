@@ -61,7 +61,12 @@ class TestServerTools:
             result = await handle_call_tool("chat", {"prompt": "Hello Gemini"})
 
             assert len(result) == 1
-            assert result[0].text == "Chat response"
+            # Parse JSON response
+            import json
+
+            response_data = json.loads(result[0].text)
+            assert response_data["status"] == "success"
+            assert response_data["content"] == "Chat response"
 
     @pytest.mark.asyncio
     async def test_handle_list_models(self):
