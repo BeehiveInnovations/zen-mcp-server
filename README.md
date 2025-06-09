@@ -747,6 +747,20 @@ When using any Gemini tool, always provide absolute paths:
 ❌ "Use gemini to analyze ./src/main.py"  (will be rejected)
 ```
 
+### Security & File Access
+
+By default, the server allows access to files within your home directory. This is necessary for the server to work with any file you might want to analyze from Claude.
+
+**To restrict access to a specific project directory**, set the `MCP_PROJECT_ROOT` environment variable:
+```json
+"env": {
+  "GEMINI_API_KEY": "your-key",
+  "MCP_PROJECT_ROOT": "/Users/you/specific-project"
+}
+```
+
+This creates a sandbox limiting file access to only that directory and its subdirectories.
+
 ## Installation
 
 1. Clone the repository:
