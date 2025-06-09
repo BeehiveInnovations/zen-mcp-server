@@ -4,12 +4,13 @@ Tool for reviewing pending git changes across multiple repositories.
 
 import os
 import re
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
 from prompts.tool_prompts import REVIEW_CHANGES_PROMPT
+from utils.file_utils import read_files
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
@@ -62,6 +63,10 @@ class ReviewChangesRequest(ToolRequest):
     )
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
         None, description="Thinking depth mode for the assistant."
+    )
+    files: Optional[List[str]] = Field(
+        None,
+        description="Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
     )
 
 
@@ -261,6 +266,41 @@ class ReviewChanges(BaseTool):
         if not all_diffs:
             return "No pending changes found in any of the git repositories."
 
+        # Process context files if provided
+        context_files_content = []
+        context_files_summary = []
+        context_tokens = 0
+        
+        if request.files:
+            remaining_tokens = max_tokens - total_tokens
+            
+            # Read context files with remaining token budget
+            file_content, file_summary = read_files(request.files)
+            
+            # Check if context files fit in remaining budget
+            if file_content:
+                context_tokens = estimate_tokens(file_content)
+                
+                if context_tokens <= remaining_tokens:
+                    # Use the full content from read_files
+                    context_files_content = [file_content]
+                    # Parse summary to create individual file summaries
+                    summary_lines = file_summary.split('\n')
+                    for line in summary_lines:
+                        if line.strip() and not line.startswith('Total files:'):
+                            context_files_summary.append(f"✅ Included: {line.strip()}")
+                else:
+                    context_files_summary.append(f"⚠️ Context files too large (~{context_tokens:,} tokens, budget: ~{remaining_tokens:,} tokens)")
+                    # Include as much as fits
+                    if remaining_tokens > 1000:  # Only if we have reasonable space
+                        truncated_content = file_content[:int(len(file_content) * (remaining_tokens / context_tokens) * 0.9)]
+                        context_files_content.append(f"\n--- BEGIN CONTEXT FILES (TRUNCATED) ---\n{truncated_content}\n--- END CONTEXT FILES ---\n")
+                        context_tokens = remaining_tokens
+                    else:
+                        context_tokens = 0
+            
+            total_tokens += context_tokens
+
         # Build the final prompt
         prompt_parts = []
 
@@ -313,9 +353,15 @@ class ReviewChanges(BaseTool):
                             f"  ... and {summary['changed_files'] - len(summary['files'])} more files"
                         )
 
+        # Add context files summary if provided
+        if context_files_summary:
+            prompt_parts.append("\n## Context Files Summary\n")
+            for summary_item in context_files_summary:
+                prompt_parts.append(f"- {summary_item}")
+
         # Add token usage summary
         if total_tokens > 0:
-            prompt_parts.append(f"\nTotal diff tokens: ~{total_tokens:,}")
+            prompt_parts.append(f"\nTotal context tokens used: ~{total_tokens:,}")
 
         # Add the diff contents
         prompt_parts.append("\n## Git Diffs\n")
@@ -323,6 +369,12 @@ class ReviewChanges(BaseTool):
             prompt_parts.extend(all_diffs)
         else:
             prompt_parts.append("--- NO DIFFS FOUND ---")
+
+        # Add context files content if provided
+        if context_files_content:
+            prompt_parts.append("\n## Additional Context Files")
+            prompt_parts.append("The following files are provided for additional context. They have NOT been modified.\n")
+            prompt_parts.extend(context_files_content)
 
         # Add review instructions
         prompt_parts.append("\n## Review Instructions\n")
