@@ -144,34 +144,34 @@ CODE_EXTENSIONS = {
 def translate_docker_path(path_str: str) -> str:
     """
     Translate host paths to container paths when running in Docker.
-    
+
     When running in Docker with WORKSPACE_ROOT set, this function translates
     absolute paths from the host filesystem to their equivalent paths inside
     the container. This enables seamless operation where Claude sends host
     paths but the server runs in a container.
-    
+
     Args:
         path_str: Original path string from the client
-        
+
     Returns:
         Translated path string (unchanged if not in Docker mode)
     """
     if not WORKSPACE_ROOT or not CONTAINER_WORKSPACE.exists():
         # Not running in Docker mode, return path unchanged
         return path_str
-    
+
     try:
         # Resolve both paths to handle different path formats (forward/backslashes)
         workspace_root_path = Path(WORKSPACE_ROOT).resolve()
         host_path = Path(path_str).resolve()
-        
+
         # Get the relative path from workspace root
         relative_path = host_path.relative_to(workspace_root_path)
-        
+
         # Construct container path using forward slashes (Linux format in container)
         container_path = CONTAINER_WORKSPACE / relative_path
         return container_path.as_posix()
-        
+
     except ValueError:
         # Path is not within the workspace root, return unchanged
         return path_str
@@ -201,7 +201,7 @@ def resolve_and_validate_path(path_str: str) -> Path:
     """
     # Translate Docker paths if necessary
     path_str = translate_docker_path(path_str)
-    
+
     # Create a Path object from the user-provided path
     user_path = Path(path_str)
 
