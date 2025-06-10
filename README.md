@@ -853,7 +853,7 @@ To help choose the right tool for your needs:
 
 ## Thinking Modes - Managing Token Costs & Quality
 
-Control Gemini's reasoning depth to balance between response quality and token consumption. Each thinking mode uses a different amount of tokens, directly affecting API costs and response time.
+**Claude automatically manages thinking modes based on task complexity**, but you can also manually control Gemini's reasoning depth to balance between response quality and token consumption. Each thinking mode uses a different amount of tokens, directly affecting API costs and response time.
 
 ### Thinking Modes & Token Budgets
 
@@ -867,19 +867,21 @@ Control Gemini's reasoning depth to balance between response quality and token c
 
 ### How to Use Thinking Modes
 
-You can control thinking modes using natural language in your prompts. Remember: higher thinking modes = more tokens = higher cost but better quality:
+**Claude automatically selects appropriate thinking modes**, but you can override this by explicitly requesting a specific mode in your prompts. Remember: higher thinking modes = more tokens = higher cost but better quality:
 
 #### Natural Language Examples
 
 | Your Goal | Example Prompt |
 |-----------|----------------|
-| **Quick task** | "Use gemini to format this code with minimal thinking" |
-| **Standard analysis** | "Get gemini to review auth.py" (uses default `medium`) |
-| **Deep analysis** | "Use gemini to review this security module with high thinking mode" |
-| **Maximum depth** | "Get gemini to think deeper with max thinking about this architecture" |
+| **Auto-managed (recommended)** | "Use gemini to review auth.py" (Claude picks appropriate mode) |
+| **Override for simple tasks** | "Use gemini to format this code with minimal thinking" |
+| **Override for deep analysis** | "Use gemini to review this security module with high thinking mode" |
+| **Override for maximum depth** | "Get gemini to think deeper with max thinking about this architecture" |
 | **Compare approaches** | "First analyze this with low thinking, then again with high thinking" |
 
 #### Optimizing Token Usage & Costs
+
+**In most cases, let Claude automatically manage thinking modes** for optimal balance of cost and quality. Override manually when you have specific requirements:
 
 **Use lower modes (`minimal`, `low`) to save tokens when:**
 - Doing simple formatting or style checks
