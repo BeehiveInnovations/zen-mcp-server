@@ -237,5 +237,47 @@ def test_review_changes_docker_path_error():
             importlib.reload(utils.file_utils)
 
 
+def test_double_translation_prevention():
+    """Test that already-translated paths are not double-translated"""
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Set up directories
+        host_workspace = Path(tmpdir) / "host_workspace"
+        host_workspace.mkdir()
+        container_workspace = Path(tmpdir) / "container_workspace"  
+        container_workspace.mkdir()
+
+        original_env = os.environ.copy()
+        try:
+            os.environ["WORKSPACE_ROOT"] = str(host_workspace)
+
+            # Reload the module
+            importlib.reload(utils.file_utils)
+            utils.file_utils.CONTAINER_WORKSPACE = container_workspace
+
+            from utils.file_utils import translate_path_for_environment
+
+            # Test 1: Normal translation
+            host_path = str(host_workspace / "src" / "main.py")
+            translated_once = translate_path_for_environment(host_path)
+            expected = str(container_workspace / "src" / "main.py")
+            assert translated_once == expected
+
+            # Test 2: Double translation should return the same path
+            translated_twice = translate_path_for_environment(translated_once)
+            assert translated_twice == translated_once
+            assert translated_twice == expected
+
+            # Test 3: Container workspace root should not be double-translated
+            root_path = str(container_workspace)
+            translated_root = translate_path_for_environment(root_path)
+            assert translated_root == root_path
+
+        finally:
+            os.environ.clear()
+            os.environ.update(original_env)
+            importlib.reload(utils.file_utils)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

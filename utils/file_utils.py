@@ -195,6 +195,11 @@ def translate_path_for_environment(path_str: str) -> str:
         # Not in the configured Docker environment, no translation needed
         return path_str
 
+    # Check if the path is already a container path (starts with /workspace)
+    if path_str.startswith(str(CONTAINER_WORKSPACE) + "/") or path_str == str(CONTAINER_WORKSPACE):
+        # Path is already translated to container format, return as-is
+        return path_str
+
     try:
         # Use os.path.realpath for security - it resolves symlinks completely
         # This prevents symlink attacks that could escape the workspace
