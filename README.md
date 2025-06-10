@@ -887,8 +887,8 @@ To help choose the right tool for your needs:
 | `minimal` | 128 tokens | Simple, straightforward tasks | Lowest cost |
 | `low` | 2,048 tokens | Basic reasoning tasks | 16x more than minimal |
 | `medium` | 8,192 tokens | **Default** - Most development tasks | 64x more than minimal |
-| `high` | 16,384 tokens | Complex problems requiring thorough analysis | 128x more than minimal |
-| `max` | 32,768 tokens | Exhaustive reasoning (default for `thinkdeep`) | 256x more than minimal |
+| `high` | 16,384 tokens | Complex problems requiring thorough analysis (default for `thinkdeep`) | 128x more than minimal |
+| `max` | 32,768 tokens | Exhaustive reasoning | 256x more than minimal |
 
 ### How to Use Thinking Modes
 
