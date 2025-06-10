@@ -27,6 +27,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 - **Advanced Topics**
   - [Thinking Modes](#thinking-modes---managing-token-costs--quality) - Control depth vs cost
   - [Working with Large Prompts](#working-with-large-prompts) - Bypass MCP's 25K token limit
+  - [Web Search Integration](#web-search-integration) - Smart search recommendations
   - [Collaborative Workflows](#collaborative-workflows) - Multi-tool patterns
   - [Tool Parameters](#tool-parameters) - Detailed parameter reference
   - [Docker Architecture](#docker-architecture) - How Docker integration works
@@ -503,7 +504,7 @@ Combine both perspectives to create a comprehensive caching implementation guide
 - Architecture and design discussions
 - Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
 - **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
-- **Web search capability**: Can search for current documentation, examples, and community solutions when exploring new technologies
+- **Web search capability**: Analyzes when web searches would be helpful and recommends specific searches for Claude to perform, ensuring access to current documentation and best practices
 
 **Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
 
@@ -558,7 +559,7 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 - Validates architectural decisions and design patterns
 - Can reference specific files for context: `"Use gemini to think deeper about my API design with reference to api/routes.py"`
 - **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
-- **Web search capability**: When enabled with `use_websearch`, can research current documentation, similar issues, and best practices to inform deeper analysis
+- **Web search capability**: When enabled (default: true), identifies areas where current documentation or community solutions would strengthen the analysis and suggests specific searches for Claude
 
 **Triggers:** think deeper, ultrathink, extend my analysis, validate my approach
 
@@ -715,7 +716,7 @@ suggest preventive measures."
 - Supports runtime info and previous attempts
 - Provides structured root cause analysis with validation steps
 - Can request additional context when needed for thorough analysis
-- **Web search capability**: When enabled with `use_websearch`, can search for exact error messages, known issues, workarounds, and version-specific problems
+- **Web search capability**: When enabled (default: true), identifies when searching for error messages, known issues, or documentation would help solve the problem and recommends specific searches for Claude
 
 **Triggers:** debug, error, failing, root cause, trace, not working
 
@@ -1006,6 +1007,46 @@ Tools can request additional context from Claude during execution. When Gemini n
 ```
 
 Claude will then provide the requested files and Gemini can continue with a more complete analysis.
+
+### Web Search Integration
+
+**Smart web search recommendations for enhanced analysis**
+
+Web search is now enabled by default for all tools. Instead of performing searches directly, Gemini intelligently analyzes when additional information from the web would enhance its response and provides specific search recommendations for Claude to execute.
+
+**How it works:**
+1. Gemini analyzes the request and identifies areas where current documentation, API references, or community solutions would be valuable
+2. It provides its analysis based on its training data
+3. If web searches would strengthen the analysis, Gemini includes a "Recommended Web Searches for Claude" section
+4. Claude can then perform these searches and incorporate the findings
+
+**Example:**
+```
+User: "Use gemini to debug this FastAPI async error"
+
+Gemini's Response:
+[... debugging analysis ...]
+
+**Recommended Web Searches for Claude:**
+- "FastAPI async def vs def performance 2024" - to verify current best practices for async endpoints
+- "FastAPI BackgroundTasks memory leak" - to check for known issues with the version you're using
+- "FastAPI lifespan context manager pattern" - to explore proper resource management patterns
+
+Claude can then search for these specific topics and provide you with the most current information.
+```
+
+**Benefits:**
+- Always access to latest documentation and best practices
+- Gemini focuses on reasoning about what information would help
+- Claude maintains control over actual web searches
+- More collaborative approach between the two AI assistants
+- Reduces hallucination by encouraging verification of assumptions
+
+**Disabling web search:**
+If you prefer Gemini to work only with its training data, you can disable web search:
+```
+"Use gemini to review this code with use_websearch false"
+```
 
 ### Standardized Response Format
 All tools now return structured JSON responses for consistent handling:
