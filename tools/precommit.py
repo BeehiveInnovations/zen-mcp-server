@@ -98,7 +98,7 @@ class Precommit(BaseTool):
             schema["properties"]["use_websearch"] = {
                 "type": "boolean",
                 "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
-                "default": False,
+                "default": True,
             }
         return schema
 
@@ -380,7 +380,7 @@ class Precommit(BaseTool):
         # Add web search instruction if enabled
         websearch_instruction = self.get_websearch_instruction(
             request.use_websearch,
-            """Specifically search for:
+            """When validating changes, consider if searches for these would help:
 - Best practices for new features or patterns introduced
 - Security implications of the changes
 - Known issues with libraries or APIs being used

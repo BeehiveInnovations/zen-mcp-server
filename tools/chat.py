@@ -71,7 +71,7 @@ class ChatTool(BaseTool):
                 "use_websearch": {
                     "type": "boolean",
                     "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
-                    "default": False,
+                    "default": True,
                 },
             },
             "required": ["prompt"],
@@ -123,7 +123,7 @@ class ChatTool(BaseTool):
         # Add web search instruction if enabled
         websearch_instruction = self.get_websearch_instruction(
             request.use_websearch,
-            """Specifically search for:
+            """When discussing topics, consider if searches for these would help:
 - Documentation for any technologies or concepts mentioned
 - Current best practices and patterns
 - Recent developments or updates

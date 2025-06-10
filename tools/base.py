@@ -165,18 +165,30 @@ class BaseTool(ABC):
 
         base_instruction = """
 
-WEB SEARCH ENABLED: Feel free to perform appropriate web searches to enhance your analysis."""
+WEB SEARCH REASONING: As you analyze this request, consider whether web searches would enhance your response.
+If you identify areas where current documentation, API references, or community solutions would be valuable,
+please note in your response what specific searches Claude should perform and why they would be helpful."""
 
         if tool_specific:
-            return f"{base_instruction} {tool_specific}"
+            return f"{base_instruction}
+
+{tool_specific}
+
+In your response, if web searches would be beneficial, include a section like:
+**Recommended Web Searches for Claude:**
+- [Specific topic/framework/library] - to verify/understand/confirm [specific aspect]
+- [Another search topic] - to explore [specific concern or feature]"""
 
         # Default instruction for all tools
-        return f"""{base_instruction} Search for:
+        return f"""{base_instruction}
+
+Consider searches for:
 - Current documentation and best practices
-- Similar issues and community solutions
+- Similar issues and community solutions  
 - API references and usage examples
 - Recent developments and updates
-Consider relevant findings when formulating your response."""
+
+If any of these would strengthen your analysis, specify what Claude should search for and why."""
 
     @abstractmethod
     def get_request_model(self):

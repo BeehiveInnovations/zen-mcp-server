@@ -85,7 +85,7 @@ class ThinkDeepTool(BaseTool):
                 "use_websearch": {
                     "type": "boolean",
                     "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
-                    "default": False,
+                    "default": True,
                 },
             },
             "required": ["current_analysis"],
@@ -155,11 +155,11 @@ class ThinkDeepTool(BaseTool):
         # Add web search instruction if enabled
         websearch_instruction = self.get_websearch_instruction(
             request.use_websearch,
-            """Specifically search for:
-- Current documentation for technologies, frameworks, or APIs being discussed
-- Similar issues and their solutions from the community
-- Best practices and recent developments
-- Official sources to verify information""",
+            """When analyzing complex problems, consider if searches for these would help:
+- Current documentation for specific technologies, frameworks, or APIs mentioned
+- Known issues, workarounds, or community solutions for similar problems
+- Recent updates, deprecations, or best practices that might affect the approach
+- Official sources to verify assumptions or clarify technical details""",
         )
 
         # Combine system prompt with context

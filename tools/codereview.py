@@ -124,7 +124,7 @@ class CodeReviewTool(BaseTool):
                 "use_websearch": {
                     "type": "boolean",
                     "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
-                    "default": False,
+                    "default": True,
                 },
             },
             "required": ["files", "context"],
@@ -213,7 +213,7 @@ class CodeReviewTool(BaseTool):
         # Add web search instruction if enabled
         websearch_instruction = self.get_websearch_instruction(
             request.use_websearch,
-            """Specifically search for:
+            """When reviewing code, consider if searches for these would help:
 - Security vulnerabilities and CVEs for libraries/frameworks used
 - Best practices for the languages and frameworks in the code
 - Common anti-patterns and their solutions
