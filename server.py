@@ -227,9 +227,7 @@ async def main():
             InitializationOptions(
                 server_name="gemini",
                 server_version=__version__,
-                capabilities=ServerCapabilities(
-                    tools=ToolsCapability()  # Advertise tool support capability
-                ),
+                capabilities=ServerCapabilities(tools=ToolsCapability()),  # Advertise tool support capability
             ),
         )
 
