@@ -165,25 +165,29 @@ The setup script shows you the exact configuration. It looks like this:
 
 ## AI-to-AI Conversation Threading
 
-This server supports **two-way conversations** between Claude and Gemini, enabling natural multi-turn discussions:
+This server enables **true AI collaboration** between Claude and Gemini, where they can coordinate and question each other's approaches:
 
 **How it works:**
-- Gemini can ask follow-up questions that you can answer naturally
-- Each conversation maintains context across multiple exchanges  
-- All tools support conversation threading (chat, debug, thinkdeep, etc.)
+- **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
+- **Claude can respond** with additional information, files, or refined instructions
+- **Both AIs coordinate their approaches** - questioning assumptions, validating solutions, and building on each other's insights
+- Each conversation maintains full context across multiple exchanges
 - Conversations are automatically managed with Redis for persistence
 
-**Example:**
-1. You: "Use gemini to analyze this authentication code"
-2. Gemini: "I see potential security issues. Would you like me to examine the password hashing implementation?"
-3. You: "Yes, check the password security"
-4. Gemini: "Here's my analysis of the password handling..." (with full context)
+**Example of AI-to-AI coordination:**
+1. You: "Chat with gemini to debate SwiftUI vs UIKit - which is better for iOS development?"
+2. Claude: "I'll present SwiftUI's case: Modern declarative syntax, automatic state management, cross-platform compatibility, and Apple's clear future direction make SwiftUI the superior choice for new projects."
+3. Gemini: "I disagree. UIKit remains superior for production apps: mature ecosystem, granular control, extensive third-party support, proven performance in complex UIs, and better debugging tools. SwiftUI still has too many limitations."
+4. Claude: "While UIKit has maturity advantages, SwiftUI's rapid evolution, simplified development workflow, and Apple's investment make it the strategic choice. The learning curve pays off with faster development and maintainable code."
+5. **Final recommendation**: After this AI debate, Claude concludes: "Based on our discussion, SwiftUI is recommended for new projects despite Gemini's valid UIKit points."
 
-**Features:**
-- Up to 5 exchanges per conversation
-- 1-hour conversation expiry
-- Thread-safe with Redis persistence
-- Works across all Gemini tools seamlessly
+**Enhanced collaboration features:**
+- **Cross-questioning**: AIs can challenge each other's assumptions and approaches
+- **Coordinated problem-solving**: Each AI contributes their strengths to complex problems
+- **Context building**: Claude gathers information while Gemini provides deep analysis
+- **Approach validation**: AIs can verify and improve each other's solutions
+- Up to 5 exchanges per conversation with 1-hour expiry
+- Thread-safe with Redis persistence across all tools
 
 ### 5. Restart Claude Desktop
 Completely quit and restart Claude Desktop for the changes to take effect.
