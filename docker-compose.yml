@@ -1,6 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
+    container_name: gemini-mcp-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -21,6 +22,8 @@ services:
 
   gemini-mcp:
     build: .
+    image: gemini-mcp-server:latest
+    container_name: gemini-mcp-server
     restart: unless-stopped
     depends_on:
       redis:
@@ -33,6 +36,7 @@ services:
       - ${HOME:-/tmp}:/workspace:ro
     stdin_open: true
     tty: true
+    command: ["sh", "-c", "while true; do sleep 86400; done"]
 
 volumes:
   redis_data:

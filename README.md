@@ -122,7 +122,7 @@ nano .env
 **Or use Claude Code CLI (Recommended):**
 ```bash
 # Add the MCP server directly via Claude Code CLI
-claude mcp add gemini docker exec -i gemini-mcp-server-gemini-mcp-1
+claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py
 
 # List your MCP servers to verify
 claude mcp list
@@ -142,8 +142,10 @@ The setup script shows you the exact configuration. It looks like this:
       "command": "docker",
       "args": [
         "exec",
-        "-i", 
-        "gemini-mcp-server-gemini-mcp-1"
+        "-i",
+        "gemini-mcp-server",
+        "python",
+        "server.py"
       ]
     }
   }

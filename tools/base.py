@@ -389,6 +389,12 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 follow_up_instructions = get_follow_up_instructions(0)  # New conversation, turn 0
                 prompt = f"{prompt}\n\n{follow_up_instructions}"
                 logging.debug(f"Added follow-up instructions for new {self.name} conversation")
+                # Also log to file for debugging MCP issues
+                try:
+                    with open('/tmp/gemini_debug.log', 'a') as f:
+                        f.write(f"[{self.name}] Added follow-up instructions for new conversation\n")
+                except Exception:
+                    pass
             else:
                 import logging
                 logging.debug(f"Continuing {self.name} conversation with thread {continuation_id}")

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit on any error, undefined variables, and pipe failures
+set -euo pipefail
+
 # Modern Docker setup script for Gemini MCP Server with Redis
 # This script sets up the complete Docker environment including Redis for conversation threading
 
@@ -71,7 +74,35 @@ echo ""
 
 # Stop and remove existing containers
 echo "  - Stopping existing containers..."
-$COMPOSE_CMD down --remove-orphans >/dev/null 2>&1
+$COMPOSE_CMD down --remove-orphans >/dev/null 2>&1 || true
+
+# Clean up any old containers with different naming patterns
+OLD_CONTAINERS_FOUND=false
+
+# Check for old Gemini MCP container
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server-gemini-mcp-1$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-server-gemini-mcp-1"
+    docker stop gemini-mcp-server-gemini-mcp-1 >/dev/null 2>&1 || true
+    docker rm gemini-mcp-server-gemini-mcp-1 >/dev/null 2>&1 || true
+fi
+
+# Check for old Redis container
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server-redis-1$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-server-redis-1"
+    docker stop gemini-mcp-server-redis-1 >/dev/null 2>&1 || true
+    docker rm gemini-mcp-server-redis-1 >/dev/null 2>&1 || true
+fi
+
+# Check for old image
+if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^gemini-mcp-server-gemini-mcp:latest$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old image: gemini-mcp-server-gemini-mcp:latest"
+    docker rmi gemini-mcp-server-gemini-mcp:latest >/dev/null 2>&1 || true
+fi
+
+# Only show cleanup messages if something was actually cleaned up
 
 # Build and start services
 echo "  - Building Gemini MCP Server image..."
@@ -95,7 +126,7 @@ echo "  - Waiting for Redis to be ready..."
 sleep 3
 
 # Check service status
-if $COMPOSE_CMD ps --format table | grep -q "Up"; then
+if $COMPOSE_CMD ps --format table | grep -q "Up" 2>/dev/null || false; then
     echo "✅ All services are running!"
 else
     echo "⚠️  Some services may not be running. Check with: $COMPOSE_CMD ps"
@@ -107,7 +138,7 @@ $COMPOSE_CMD ps --format table
 
 echo ""
 echo "🔄 Next steps:"
-if grep -q "your-gemini-api-key-here" .env; then
+if grep -q "your-gemini-api-key-here" .env 2>/dev/null || false; then
     echo "1. Edit .env and replace 'your-gemini-api-key-here' with your actual Gemini API key"
     echo "2. Restart services: $COMPOSE_CMD restart"
     echo "3. Copy the configuration below to your Claude Desktop config:"
@@ -124,7 +155,9 @@ echo "      \"command\": \"docker\","
 echo "      \"args\": ["
 echo "        \"exec\","
 echo "        \"-i\","
-echo "        \"gemini-mcp-server-gemini-mcp-1\""
+echo "        \"gemini-mcp-server\","
+echo "        \"python\","
+echo "        \"server.py\""
 echo "      ]"
 echo "    }"
 echo "  }"
@@ -134,7 +167,7 @@ echo ""
 
 echo "📁 Config file locations:"
 echo "  macOS: ~/Library/Application Support/Claude/claude_desktop_config.json"
-echo "  Windows (WSL): /mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json"
+echo '  Windows (WSL): /mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json'
 echo ""
 
 echo "🔧 Useful commands:"
