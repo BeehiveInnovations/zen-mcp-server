@@ -82,6 +82,11 @@ class DebugIssueTool(BaseTool):
                     "enum": ["minimal", "low", "medium", "high", "max"],
                     "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
                 },
+                "use_websearch": {
+                    "type": "boolean",
+                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "default": False,
+                },
             },
             "required": ["error_description"],
         }
@@ -154,8 +159,19 @@ class DebugIssueTool(BaseTool):
         # Check token limits
         self._validate_token_limit(full_context, "Context")
 
+        # Add web search instruction if enabled
+        websearch_instruction = self.get_websearch_instruction(
+            request.use_websearch,
+            """Specifically search for:
+- The exact error message to find known solutions
+- Framework-specific error codes and their meanings
+- Similar issues in forums, GitHub issues, or Stack Overflow
+- Workarounds and patches for known bugs
+- Version-specific issues and compatibility problems""",
+        )
+
         # Combine everything
-        full_prompt = f"""{self.get_system_prompt()}
+        full_prompt = f"""{self.get_system_prompt()}{websearch_instruction}
 
 {full_context}
 

@@ -83,6 +83,11 @@ class ThinkDeeperTool(BaseTool):
                     "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
                     "default": "high",
                 },
+                "use_websearch": {
+                    "type": "boolean",
+                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "default": False,
+                },
             },
             "required": ["current_analysis"],
         }
@@ -148,8 +153,18 @@ class ThinkDeeperTool(BaseTool):
             areas = ", ".join(request.focus_areas)
             focus_instruction = f"\n\nFOCUS AREAS: Please pay special attention to {areas} aspects."
 
+        # Add web search instruction if enabled
+        websearch_instruction = self.get_websearch_instruction(
+            request.use_websearch,
+            """Specifically search for:
+- Current documentation for technologies, frameworks, or APIs being discussed
+- Similar issues and their solutions from the community
+- Best practices and recent developments
+- Official sources to verify information""",
+        )
+
         # Combine system prompt with context
-        full_prompt = f"""{self.get_system_prompt()}{focus_instruction}
+        full_prompt = f"""{self.get_system_prompt()}{focus_instruction}{websearch_instruction}
 
 {full_context}
 

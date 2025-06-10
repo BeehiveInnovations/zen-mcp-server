@@ -52,7 +52,7 @@ def find_git_repositories(start_path: str, max_depth: int = 5) -> list[str]:
         List of absolute paths to git repositories, sorted alphabetically
     """
     repositories = []
-    
+
     try:
         # Create Path object - no need to resolve yet since the path might be
         # a translated Docker path that doesn't exist on the host
@@ -61,12 +61,12 @@ def find_git_repositories(start_path: str, max_depth: int = 5) -> list[str]:
         # Basic validation - must be absolute
         if not start_path.is_absolute():
             return []
-            
+
         # Check if the path exists before trying to walk it
         if not start_path.exists():
             return []
-            
-    except Exception as e:
+
+    except Exception:
         # If there's any issue with the path, return empty list
         return []
 
@@ -122,7 +122,7 @@ def run_git_command(repo_path: str, command: list[str]) -> tuple[bool, str]:
     # Verify the repository path exists before trying to use it
     if not Path(repo_path).exists():
         return False, f"Repository path does not exist: {repo_path}"
-    
+
     try:
         # Execute git command with safety measures
         result = subprocess.run(

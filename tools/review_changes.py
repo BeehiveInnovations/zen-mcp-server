@@ -92,7 +92,15 @@ class ReviewChanges(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        return self.get_request_model().model_json_schema()
+        schema = self.get_request_model().model_json_schema()
+        # Ensure use_websearch is in the schema with proper description
+        if "properties" in schema and "use_websearch" not in schema["properties"]:
+            schema["properties"]["use_websearch"] = {
+                "type": "boolean",
+                "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                "default": False,
+            }
+        return schema
 
     def get_system_prompt(self) -> str:
         return REVIEW_CHANGES_PROMPT
@@ -369,6 +377,17 @@ class ReviewChanges(BaseTool):
             )
             prompt_parts.extend(context_files_content)
 
+        # Add web search instruction if enabled
+        websearch_instruction = self.get_websearch_instruction(
+            request.use_websearch,
+            """Specifically search for:
+- Best practices for new features or patterns introduced
+- Security implications of the changes
+- Known issues with libraries or APIs being used
+- Migration guides if updating dependencies
+- Performance considerations for the implemented approach""",
+        )
+
         # Add review instructions
         prompt_parts.append("\n## Review Instructions\n")
         prompt_parts.append(
@@ -385,7 +404,10 @@ class ReviewChanges(BaseTool):
                 "you may request them using the standardized JSON response format."
             )
 
-        return "\n".join(prompt_parts)
+        # Combine with system prompt and websearch instruction
+        full_prompt = f"{self.get_system_prompt()}{websearch_instruction}\n\n" + "\n".join(prompt_parts)
+
+        return full_prompt
 
     def format_response(self, response: str, request: ReviewChangesRequest) -> str:
         """Format the response with commit guidance"""

@@ -295,10 +295,29 @@ Completely quit and restart Claude Desktop for the changes to take effect.
 
 ### 5. Connect to Claude Code
 
-To use the server in Claude Code, run:
+#### If you have Claude Desktop installed:
 ```bash
 claude mcp add-from-claude-desktop -s user
 ```
+
+#### If you only have Claude Code (no desktop app):
+
+**For Traditional Setup (macOS/Linux):**
+```bash
+claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- /path/to/gemini-mcp-server/run_gemini.sh
+```
+
+**For Traditional Setup (Windows):**
+```bash
+claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- C:\path\to\gemini-mcp-server\run_gemini.bat
+```
+
+**For Docker Setup:**
+```bash
+claude mcp add gemini -s user -- docker run --rm -i --env-file /path/to/gemini-mcp-server/.env -v /home:/workspace:ro gemini-mcp-server:latest
+```
+
+Replace `/path/to/gemini-mcp-server` with the actual path where you cloned the repository.
 
 ### 6. Start Using It!
 
@@ -486,6 +505,7 @@ Combine both perspectives to create a comprehensive caching implementation guide
 - Architecture and design discussions
 - Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
 - **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
+- **Web search capability**: Can search for current documentation, examples, and community solutions when exploring new technologies
 
 **Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
 
@@ -501,6 +521,12 @@ Combine both perspectives to create a comprehensive caching implementation guide
 ```
 "Use gemini to think deeper about my authentication design"
 "Use gemini to extend my analysis of this distributed system architecture"
+```
+
+**With Web Search (for exploring new technologies):**
+```
+"Use gemini to think deeper about using HTMX vs React for this project - enable web search to explore current best practices"
+"Get gemini to think deeper about implementing WebAuthn authentication with web search enabled for latest standards"
 ```
 
 **Managing Token Costs:**
@@ -534,6 +560,7 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 - Validates architectural decisions and design patterns
 - Can reference specific files for context: `"Use gemini to think deeper about my API design with reference to api/routes.py"`
 - **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
+- **Web search capability**: When enabled with `use_websearch`, can research current documentation, similar issues, and best practices to inform deeper analysis
 
 **Triggers:** think deeper, ultrathink, extend my analysis, validate my approach
 
@@ -652,6 +679,12 @@ implementations or missing test coverage. Update the code based on gemini's find
 "Get gemini to debug why my API returns 500 errors with the full stack trace: [paste traceback]"
 ```
 
+**With Web Search (for unfamiliar errors):**
+```
+"Use gemini to debug this cryptic Kubernetes error with web search enabled to find similar issues"
+"Debug this React hydration error with gemini - enable web search to check for known solutions"
+```
+
 **Managing Token Costs:**
 ```
 # Save tokens for simple errors
@@ -684,6 +717,7 @@ suggest preventive measures."
 - Supports runtime info and previous attempts
 - Provides structured root cause analysis with validation steps
 - Can request additional context when needed for thorough analysis
+- **Web search capability**: When enabled with `use_websearch`, can search for exact error messages, known issues, workarounds, and version-specific problems
 
 **Triggers:** debug, error, failing, root cause, trace, not working
 
@@ -698,6 +732,12 @@ suggest preventive measures."
 ```
 "Use gemini to analyze main.py to understand how it works"
 "Get gemini to do an architecture analysis of the src/ directory"
+```
+
+**With Web Search (for unfamiliar code):**
+```
+"Use gemini to analyze this GraphQL schema with web search enabled to understand best practices"
+"Analyze this Rust code with gemini - enable web search to look up unfamiliar patterns and idioms"
 ```
 
 **Managing Token Costs:**
@@ -729,6 +769,7 @@ Combine your findings with gemini's to create a comprehensive security report."
 - Supports specialized analysis types: architecture, performance, security, quality
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
+- **Web search capability**: When enabled with `use_websearch`, can look up framework documentation, design patterns, and best practices relevant to the code being analyzed
 
 **Triggers:** analyze, examine, look at, understand, inspect
 
@@ -750,6 +791,7 @@ All tools that work with files support **both individual files and entire direct
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium)
+- `use_websearch`: Enable web search for documentation and best practices (default: false)
 
 ```
 "Use gemini to analyze the src/ directory for architectural patterns"
@@ -776,6 +818,7 @@ All tools that work with files support **both individual files and entire direct
 - `runtime_info`: Environment details
 - `previous_attempts`: What you've tried
 - `thinking_mode`: minimal|low|medium|high|max (default: medium)
+- `use_websearch`: Enable web search for error messages and solutions (default: false)
 
 ```
 "Use gemini to debug this error with context from the entire backend/ directory"
@@ -787,6 +830,7 @@ All tools that work with files support **both individual files and entire direct
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
 - `thinking_mode`: minimal|low|medium|high|max (default: max)
+- `use_websearch`: Enable web search for documentation and insights (default: false)
 
 ```
 "Use gemini to think deeper about my design with reference to the src/models/ directory"

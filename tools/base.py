@@ -46,6 +46,10 @@ class ToolRequest(BaseModel):
         None,
         description="Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
     )
+    use_websearch: Optional[bool] = Field(
+        False,
+        description="Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+    )
 
 
 class BaseTool(ABC):
@@ -144,6 +148,35 @@ class BaseTool(ABC):
             str: One of "minimal", "low", "medium", "high", "max"
         """
         return "medium"  # Default to medium thinking for better reasoning
+
+    def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
+        """
+        Generate web search instruction based on the use_websearch parameter.
+
+        Args:
+            use_websearch: Whether web search is enabled
+            tool_specific: Optional tool-specific search guidance
+
+        Returns:
+            str: Web search instruction to append to prompt, or empty string
+        """
+        if not use_websearch:
+            return ""
+
+        base_instruction = """
+
+WEB SEARCH ENABLED: Feel free to perform appropriate web searches to enhance your analysis."""
+
+        if tool_specific:
+            return f"{base_instruction} {tool_specific}"
+
+        # Default instruction for all tools
+        return f"""{base_instruction} Search for:
+- Current documentation and best practices
+- Similar issues and community solutions
+- API references and usage examples
+- Recent developments and updates
+Consider relevant findings when formulating your response."""
 
     @abstractmethod
     def get_request_model(self):

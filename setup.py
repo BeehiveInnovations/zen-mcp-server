@@ -14,7 +14,7 @@ if readme_path.exists():
 
 setup(
     name="gemini-mcp-server",
-    version="2.8.0",
+    version="2.11.1",
     description="Model Context Protocol server for Google Gemini",
     long_description=long_description,
     long_description_content_type="text/markdown",

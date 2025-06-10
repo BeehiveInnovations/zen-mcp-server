@@ -68,6 +68,11 @@ class ChatTool(BaseTool):
                     "enum": ["minimal", "low", "medium", "high", "max"],
                     "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
                 },
+                "use_websearch": {
+                    "type": "boolean",
+                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "default": False,
+                },
             },
             "required": ["prompt"],
         }
@@ -115,8 +120,18 @@ class ChatTool(BaseTool):
         # Check token limits
         self._validate_token_limit(user_content, "Content")
 
+        # Add web search instruction if enabled
+        websearch_instruction = self.get_websearch_instruction(
+            request.use_websearch,
+            """Specifically search for:
+- Documentation for any technologies or concepts mentioned
+- Current best practices and patterns
+- Recent developments or updates
+- Community discussions and solutions""",
+        )
+
         # Combine system prompt with user content
-        full_prompt = f"""{self.get_system_prompt()}
+        full_prompt = f"""{self.get_system_prompt()}{websearch_instruction}
 
 === USER REQUEST ===
 {user_content}

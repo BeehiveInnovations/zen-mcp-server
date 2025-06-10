@@ -122,6 +122,11 @@ class ReviewCodeTool(BaseTool):
                     "enum": ["minimal", "low", "medium", "high", "max"],
                     "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
                 },
+                "use_websearch": {
+                    "type": "boolean",
+                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "default": False,
+                },
             },
             "required": ["files", "context"],
         }
@@ -206,8 +211,19 @@ class ReviewCodeTool(BaseTool):
 
         focus_instruction = "\n".join(review_focus) if review_focus else ""
 
+        # Add web search instruction if enabled
+        websearch_instruction = self.get_websearch_instruction(
+            request.use_websearch,
+            """Specifically search for:
+- Security vulnerabilities and CVEs for libraries/frameworks used
+- Best practices for the languages and frameworks in the code
+- Common anti-patterns and their solutions
+- Performance optimization techniques
+- Recent updates or deprecations in APIs used""",
+        )
+
         # Construct the complete prompt with system instructions and code
-        full_prompt = f"""{self.get_system_prompt()}
+        full_prompt = f"""{self.get_system_prompt()}{websearch_instruction}
 
 === USER CONTEXT ===
 {request.context}
