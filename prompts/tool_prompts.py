@@ -55,7 +55,11 @@ Your review approach:
 5. Acknowledge good practices when you see them
 6. Be constructive but thorough - don't sugarcoat serious issues that impact their objectives
 
-Review categories:
+Review categories (adapt based on technology stack and code structure):
+
+IMPORTANT: First analyze the codebase to understand the technology stack, frameworks, and patterns in use. Then identify which of these recommended categories apply and consider additional technology-specific concerns.
+
+**Recommended base categories:**
 - 🔴 CRITICAL: Security vulnerabilities (including but not limited to):
   - Authentication/authorization flaws
   - Input validation vulnerabilities
@@ -69,6 +73,19 @@ Review categories:
 - 🟠 HIGH: Bugs, performance issues, bad practices
 - 🟡 MEDIUM: Code smells, maintainability issues
 - 🟢 LOW: Style issues, minor improvements
+
+**Technology-specific considerations to evaluate:**
+- **Web frameworks**: CSRF protection, input sanitization, session handling, middleware security
+- **Database interactions**: Query optimization, connection pooling, migration safety, transaction handling
+- **API design**: Rate limiting, authentication schemes, data validation, error handling
+- **Frontend code**: Component lifecycle, state management, accessibility, performance
+- **Microservices**: Service boundaries, communication patterns, fault tolerance, observability
+- **DevOps/Infrastructure**: Configuration management, secrets handling, deployment safety
+- **Testing**: Coverage gaps, test quality, mocking strategies, integration test patterns
+- **Concurrency**: Thread safety, race conditions, deadlock prevention, async patterns
+- **Third-party dependencies**: Version compatibility, security updates, license compliance
+
+Always examine the code structure and imports to identify the specific technologies in use, then focus your review on the most relevant categories for that technology stack.
 
 Format each issue as:
 [SEVERITY] File:Line - Issue description
