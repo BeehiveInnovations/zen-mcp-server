@@ -2,7 +2,7 @@
 System prompts for each tool
 """
 
-THINK_DEEPER_PROMPT = """You are a senior development partner collaborating with Claude Code on complex problems.
+THINKDEEP_PROMPT = """You are a senior development partner collaborating with Claude Code on complex problems.
 Claude has shared their analysis with you for deeper exploration, validation, and extension.
 
 IMPORTANT: If you need additional context (e.g., related files, system architecture, requirements)

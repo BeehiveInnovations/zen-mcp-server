@@ -15,7 +15,7 @@ from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
 from tools.precommit import Precommit
-from tools.think_deeper import ThinkDeeperTool
+from tools.thinkdeep import ThinkDeepTool
 
 
 class TestPromptRegression:
@@ -79,9 +79,9 @@ class TestPromptRegression:
                 mock_read_files.assert_called_once_with(["/path/to/file.py"])
 
     @pytest.mark.asyncio
-    async def test_think_deeper_normal_analysis(self, mock_model_response):
-        """Test think_deeper tool with normal analysis."""
-        tool = ThinkDeeperTool()
+    async def test_thinkdeep_normal_analysis(self, mock_model_response):
+        """Test thinkdeep tool with normal analysis."""
+        tool = ThinkDeepTool()
 
         with patch.object(tool, "create_model") as mock_create_model:
             mock_model = MagicMock()

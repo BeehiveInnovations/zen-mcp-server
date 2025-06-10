@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 
 from tools.analyze import AnalyzeTool
-from tools.think_deeper import ThinkDeeperTool
+from tools.thinkdeep import ThinkDeepTool
 
 
 async def run_manual_live_tests():
@@ -60,8 +60,8 @@ async def run_manual_live_tests():
                 print("❌ AnalyzeTool live test failed")
                 return False
 
-            # Test ThinkDeeperTool
-            think_tool = ThinkDeeperTool()
+            # Test ThinkDeepTool
+            think_tool = ThinkDeepTool()
             result = await think_tool.execute(
                 {
                     "current_analysis": "Testing live integration",
@@ -70,9 +70,9 @@ async def run_manual_live_tests():
             )
 
             if result and result[0].text and "Extended Analysis" in result[0].text:
-                print("✅ ThinkDeeperTool live test successful")
+                print("✅ ThinkDeepTool live test successful")
             else:
-                print("❌ ThinkDeeperTool live test failed")
+                print("❌ ThinkDeepTool live test failed")
                 return False
 
             # Test collaboration/clarification request

@@ -9,7 +9,7 @@ import pytest
 from tools.analyze import AnalyzeTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
-from tools.think_deeper import ThinkDeeperTool
+from tools.thinkdeep import ThinkDeepTool
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +25,7 @@ class TestThinkingModes:
     def test_default_thinking_modes(self):
         """Test that tools have correct default thinking modes"""
         tools = [
-            (ThinkDeeperTool(), "high"),
+            (ThinkDeepTool(), "high"),
             (AnalyzeTool(), "medium"),
             (CodeReviewTool(), "medium"),
             (DebugIssueTool(), "medium"),
@@ -145,14 +145,14 @@ class TestThinkingModes:
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
     async def test_thinking_mode_max(self, mock_create_model):
-        """Test max thinking mode (default for think_deeper)"""
+        """Test max thinking mode (default for thinkdeep)"""
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(
             candidates=[Mock(content=Mock(parts=[Mock(text="Max thinking response")]))]
         )
         mock_create_model.return_value = mock_model
 
-        tool = ThinkDeeperTool()
+        tool = ThinkDeepTool()
         result = await tool.execute(
             {
                 "current_analysis": "Initial analysis",

@@ -43,7 +43,7 @@ from tools import (
     CodeReviewTool,
     DebugIssueTool,
     Precommit,
-    ThinkDeeperTool,
+    ThinkDeepTool,
 )
 
 # Configure logging for server operations
@@ -59,7 +59,7 @@ server: Server = Server("gemini-server")
 # Each tool provides specialized functionality for different development tasks
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
-    "think_deeper": ThinkDeeperTool(),  # Extended reasoning for complex problems
+    "thinkdeep": ThinkDeepTool(),  # Extended reasoning for complex problems
     "codereview": CodeReviewTool(),  # Comprehensive code review and quality analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis

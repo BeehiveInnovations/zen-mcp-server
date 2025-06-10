@@ -7,19 +7,19 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools import AnalyzeTool, ChatTool, CodeReviewTool, DebugIssueTool, ThinkDeeperTool
+from tools import AnalyzeTool, ChatTool, CodeReviewTool, DebugIssueTool, ThinkDeepTool
 
 
-class TestThinkDeeperTool:
-    """Test the think_deeper tool"""
+class TestThinkDeepTool:
+    """Test the thinkdeep tool"""
 
     @pytest.fixture
     def tool(self):
-        return ThinkDeeperTool()
+        return ThinkDeepTool()
 
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
-        assert tool.get_name() == "think_deeper"
+        assert tool.get_name() == "thinkdeep"
         assert "EXTENDED THINKING" in tool.get_description()
         assert tool.get_default_temperature() == 0.7
 
@@ -249,9 +249,9 @@ class TestAbsolutePathValidation:
         assert "src/main.py" in response["content"]
 
     @pytest.mark.asyncio
-    async def test_think_deeper_tool_relative_path_rejected(self):
-        """Test that think_deeper tool rejects relative paths"""
-        tool = ThinkDeeperTool()
+    async def test_thinkdeep_tool_relative_path_rejected(self):
+        """Test that thinkdeep tool rejects relative paths"""
+        tool = ThinkDeepTool()
         result = await tool.execute({"current_analysis": "My analysis", "files": ["./local/file.py"]})
 
         assert len(result) == 1

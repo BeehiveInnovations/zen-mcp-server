@@ -7,10 +7,10 @@ from .chat import ChatTool
 from .codereview import CodeReviewTool
 from .debug import DebugIssueTool
 from .precommit import Precommit
-from .think_deeper import ThinkDeeperTool
+from .thinkdeep import ThinkDeepTool
 
 __all__ = [
-    "ThinkDeeperTool",
+    "ThinkDeepTool",
     "CodeReviewTool",
     "DebugIssueTool",
     "AnalyzeTool",

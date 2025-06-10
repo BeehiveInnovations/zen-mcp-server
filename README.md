@@ -323,7 +323,7 @@ Replace `/path/to/gemini-mcp-server` with the actual path where you cloned the r
 ### 6. Start Using It!
 
 Just ask Claude naturally:
-- "Use gemini to think deeper about this architecture design" → `think_deeper`
+- "Use gemini to think deeper about this architecture design" → `thinkdeep`
 - "Get gemini to review this code for security issues" → `review_code`
 - "Get gemini to debug why this test is failing" → `debug`
 - "Use gemini to analyze these files to understand the data flow" → `analyze`
@@ -335,9 +335,9 @@ Just ask Claude naturally:
 
 **Quick Tool Selection Guide:**
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
-- **Need deeper thinking?** → `think_deeper` (extends Claude's analysis, finds edge cases)
-- **Code needs review?** → `review_code` (bugs, security, performance issues)
-- **Pre-commit validation?** → `review_changes` (validate git changes before committing)
+- **Need deeper thinking?** → `thinkdeep` (extends Claude's analysis, finds edge cases)
+- **Code needs review?** → `codereview` (bugs, security, performance issues)
+- **Pre-commit validation?** → `precommit` (validate git changes before committing)
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Server info?** → `get_version` (version and configuration details)

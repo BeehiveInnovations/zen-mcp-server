@@ -1,5 +1,5 @@
 """
-Think Deeper tool - Extended reasoning and problem-solving
+ThinkDeep tool - Extended reasoning and problem-solving
 """
 
 from typing import Any, Optional
@@ -8,15 +8,15 @@ from mcp.types import TextContent
 from pydantic import Field
 
 from config import TEMPERATURE_CREATIVE
-from prompts import THINK_DEEPER_PROMPT
+from prompts import THINKDEEP_PROMPT
 from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
 
 
-class ThinkDeeperRequest(ToolRequest):
-    """Request model for think_deeper tool"""
+class ThinkDeepRequest(ToolRequest):
+    """Request model for thinkdeep tool"""
 
     current_analysis: str = Field(..., description="Claude's current thinking/analysis to extend")
     problem_context: Optional[str] = Field(None, description="Additional context about the problem or goal")
@@ -30,11 +30,11 @@ class ThinkDeeperRequest(ToolRequest):
     )
 
 
-class ThinkDeeperTool(BaseTool):
+class ThinkDeepTool(BaseTool):
     """Extended thinking and reasoning tool"""
 
     def get_name(self) -> str:
-        return "think_deeper"
+        return "thinkdeep"
 
     def get_description(self) -> str:
         return (
@@ -92,17 +92,17 @@ class ThinkDeeperTool(BaseTool):
         }
 
     def get_system_prompt(self) -> str:
-        return THINK_DEEPER_PROMPT
+        return THINKDEEP_PROMPT
 
     def get_default_temperature(self) -> float:
         return TEMPERATURE_CREATIVE
 
     def get_default_thinking_mode(self) -> str:
-        """ThinkDeeper uses high thinking by default"""
+        """ThinkDeep uses high thinking by default"""
         return "high"
 
     def get_request_model(self):
-        return ThinkDeeperRequest
+        return ThinkDeepRequest
 
     async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check current_analysis size before processing"""
@@ -118,7 +118,7 @@ class ThinkDeeperTool(BaseTool):
         # Continue with normal execution
         return await super().execute(arguments)
 
-    async def prepare_prompt(self, request: ThinkDeeperRequest) -> str:
+    async def prepare_prompt(self, request: ThinkDeepRequest) -> str:
         """Prepare the full prompt for extended thinking"""
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
@@ -176,7 +176,7 @@ Please provide deep analysis that extends Claude's thinking with:
 
         return full_prompt
 
-    def format_response(self, response: str, request: ThinkDeeperRequest) -> str:
+    def format_response(self, response: str, request: ThinkDeepRequest) -> str:
         """Format the response with clear attribution and critical thinking prompt"""
         return f"""## Extended Analysis by Gemini
 

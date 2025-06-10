@@ -21,7 +21,7 @@ from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
 from tools.precommit import Precommit
-from tools.think_deeper import ThinkDeeperTool
+from tools.thinkdeep import ThinkDeepTool
 
 
 class TestLargePromptHandling:
@@ -131,9 +131,9 @@ class TestLargePromptHandling:
         shutil.rmtree(temp_dir)
 
     @pytest.mark.asyncio
-    async def test_think_deeper_large_analysis(self, large_prompt):
-        """Test that think_deeper tool detects large current_analysis."""
-        tool = ThinkDeeperTool()
+    async def test_thinkdeep_large_analysis(self, large_prompt):
+        """Test that thinkdeep tool detects large current_analysis."""
+        tool = ThinkDeepTool()
         result = await tool.execute({"current_analysis": large_prompt})
 
         assert len(result) == 1

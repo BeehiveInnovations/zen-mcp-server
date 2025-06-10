@@ -19,7 +19,7 @@ class TestServerTools:
         tool_names = [tool.name for tool in tools]
 
         # Check all core tools are present
-        assert "think_deeper" in tool_names
+        assert "thinkdeep" in tool_names
         assert "codereview" in tool_names
         assert "debug" in tool_names
         assert "analyze" in tool_names
@@ -77,4 +77,4 @@ class TestServerTools:
         response = result[0].text
         assert "Gemini MCP Server v" in response  # Version agnostic check
         assert "Available Tools:" in response
-        assert "think_deeper" in response
+        assert "thinkdeep" in response
