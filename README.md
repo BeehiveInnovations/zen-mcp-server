@@ -505,9 +505,6 @@ Combine both perspectives to create a comprehensive caching implementation guide
 - Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
 - **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
 - **Web search capability**: Analyzes when web searches would be helpful and recommends specific searches for Claude to perform, ensuring access to current documentation and best practices
-
-**Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
-
 ### 2. `thinkdeep` - Extended Reasoning Partner
 
 **Get a second opinion to augment Claude's own extended thinking**
@@ -560,9 +557,6 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 - Can reference specific files for context: `"Use gemini to think deeper about my API design with reference to api/routes.py"`
 - **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
 - **Web search capability**: When enabled (default: true), identifies areas where current documentation or community solutions would strengthen the analysis and suggests specific searches for Claude
-
-**Triggers:** think deeper, ultrathink, extend my analysis, validate my approach
-
 ### 3. `codereview` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
 
@@ -605,9 +599,6 @@ make any necessary adjustments and show me the final secure implementation."
 - Supports specialized reviews: security, performance, quick
 - Can enforce coding standards: `"Use gemini to review src/ against PEP8 standards"`
 - Filters by severity: `"Get gemini to review auth/ - only report critical vulnerabilities"`
-
-**Triggers:** review code, check for issues, find bugs, security check
-
 ### 4. `precommit` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
@@ -662,9 +653,6 @@ implementations or missing test coverage. Update the code based on gemini's find
 - `review_type`: full|security|performance|quick
 - `severity_filter`: Filter by issue severity
 - `max_depth`: How deep to search for nested repos
-
-**Triggers:** review pending changes, check my changes, validate changes, pre-commit review
-
 ### 5. `debug` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
@@ -717,9 +705,6 @@ suggest preventive measures."
 - Provides structured root cause analysis with validation steps
 - Can request additional context when needed for thorough analysis
 - **Web search capability**: When enabled (default: true), identifies when searching for error messages, known issues, or documentation would help solve the problem and recommends specific searches for Claude
-
-**Triggers:** debug, error, failing, root cause, trace, not working
-
 ### 6. `analyze` - Smart File Analysis
 **General-purpose code understanding and exploration**
 
@@ -769,9 +754,6 @@ Combine your findings with gemini's to create a comprehensive security report."
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
 - **Web search capability**: When enabled with `use_websearch`, can look up framework documentation, design patterns, and best practices relevant to the code being analyzed
-
-**Triggers:** analyze, examine, look at, understand, inspect
-
 ### 7. `get_version` - Server Information
 ```
 "Use gemini for its version"
