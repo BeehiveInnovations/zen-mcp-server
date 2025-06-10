@@ -61,7 +61,7 @@ server: Server = Server("gemini-server")
 TOOLS = {
     "think_deeper": ThinkDeeperTool(),  # Extended reasoning for complex problems
     "review_code": ReviewCodeTool(),  # Comprehensive code review and quality analysis
-    "debug_issue": DebugIssueTool(),  # Root cause analysis and debugging assistance
+    "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "review_changes": ReviewChanges(),  # Pre-commit review of git changes

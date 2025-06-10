@@ -16,7 +16,7 @@ from .models import ToolOutput
 
 
 class DebugIssueRequest(ToolRequest):
-    """Request model for debug_issue tool"""
+    """Request model for debug tool"""
 
     error_description: str = Field(..., description="Error message, symptoms, or issue description")
     error_context: Optional[str] = Field(None, description="Stack trace, logs, or additional error context")
@@ -32,7 +32,7 @@ class DebugIssueTool(BaseTool):
     """Advanced debugging and root cause analysis tool"""
 
     def get_name(self) -> str:
-        return "debug_issue"
+        return "debug"
 
     def get_description(self) -> str:
         return (

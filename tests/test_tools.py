@@ -103,7 +103,7 @@ class TestReviewCodeTool:
 
 
 class TestDebugIssueTool:
-    """Test the debug_issue tool"""
+    """Test the debug tool"""
 
     @pytest.fixture
     def tool(self):
@@ -111,7 +111,7 @@ class TestDebugIssueTool:
 
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
-        assert tool.get_name() == "debug_issue"
+        assert tool.get_name() == "debug"
         assert "DEBUG & ROOT CAUSE ANALYSIS" in tool.get_description()
         assert tool.get_default_temperature() == 0.2
 
@@ -232,8 +232,8 @@ class TestAbsolutePathValidation:
         assert "../parent/file.py" in response["content"]
 
     @pytest.mark.asyncio
-    async def test_debug_issue_tool_relative_path_rejected(self):
-        """Test that debug_issue tool rejects relative paths"""
+    async def test_debug_tool_relative_path_rejected(self):
+        """Test that debug tool rejects relative paths"""
         tool = DebugIssueTool()
         result = await tool.execute(
             {

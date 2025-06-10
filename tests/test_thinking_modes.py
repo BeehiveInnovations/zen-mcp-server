@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from tools.analyze import AnalyzeTool
-from tools.debug_issue import DebugIssueTool
+from tools.debug import DebugIssueTool
 from tools.review_code import ReviewCodeTool
 from tools.think_deeper import ThinkDeeperTool
 

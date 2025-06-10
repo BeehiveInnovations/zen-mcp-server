@@ -21,7 +21,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
   - [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning
   - [`review_code`](#3-review_code---professional-code-review) - Code review
   - [`review_changes`](#4-review_changes---pre-commit-validation) - Pre-commit validation
-  - [`debug_issue`](#5-debug_issue---expert-debugging-assistant) - Debugging help
+  - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
 
 - **Advanced Topics**
@@ -44,7 +44,7 @@ Claude is brilliant, but sometimes you need:
 - **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#2-think_deeper---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#3-review_code---professional-code-review))
 - **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_changes`](#4-review_changes---pre-commit-validation))
-- **Expert debugging** for tricky issues with full system context ([`debug_issue`](#5-debug_issue---expert-debugging-assistant))
+- **Expert debugging** for tricky issues with full system context ([`debug`](#5-debug---expert-debugging-assistant))
 - **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#6-analyze---smart-file-analysis))
 - **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
 - **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
@@ -325,7 +325,7 @@ Replace `/path/to/gemini-mcp-server` with the actual path where you cloned the r
 Just ask Claude naturally:
 - "Use gemini to think deeper about this architecture design" → `think_deeper`
 - "Get gemini to review this code for security issues" → `review_code`
-- "Get gemini to debug why this test is failing" → `debug_issue`
+- "Get gemini to debug why this test is failing" → `debug`
 - "Use gemini to analyze these files to understand the data flow" → `analyze`
 - "Brainstorm with gemini about scaling strategies" → `chat`
 - "Share my implementation plan with gemini for feedback" → `chat`
@@ -338,7 +338,7 @@ Just ask Claude naturally:
 - **Need deeper thinking?** → `think_deeper` (extends Claude's analysis, finds edge cases)
 - **Code needs review?** → `review_code` (bugs, security, performance issues)
 - **Pre-commit validation?** → `review_changes` (validate git changes before committing)
-- **Something's broken?** → `debug_issue` (root cause analysis, error tracing)
+- **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Server info?** → `get_version` (version and configuration details)
 
@@ -451,7 +451,7 @@ If you prefer to use WSL (Windows Subsystem for Linux):
 2. [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning and problem-solving
 3. [`review_code`](#3-review_code---professional-code-review) - Professional code review with severity levels
 4. [`review_changes`](#4-review_changes---pre-commit-validation) - Validate git changes before committing
-5. [`debug_issue`](#5-debug_issue---expert-debugging-assistant) - Root cause analysis and debugging
+5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
 
@@ -664,7 +664,7 @@ implementations or missing test coverage. Update the code based on gemini's find
 
 **Triggers:** review pending changes, check my changes, validate changes, pre-commit review
 
-### 5. `debug_issue` - Expert Debugging Assistant
+### 5. `debug` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for tricky bugs (investment in finding root cause) or `low` for simple errors (save tokens).
@@ -809,7 +809,7 @@ All tools that work with files support **both individual files and entire direct
 "Get gemini to review src/ with focus on performance, only show critical issues"
 ```
 
-**`debug_issue`** - Debug with file context
+**`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
@@ -864,7 +864,7 @@ The server recognizes natural phrases. Just talk normally:
 ### Automatic Tool Selection
 Claude will automatically pick the right tool based on your request:
 - "review" → `review_code`
-- "debug" → `debug_issue`
+- "debug" → `debug`
 - "analyze" → `analyze`
 - "think deeper" → `think_deeper`
 
@@ -882,7 +882,7 @@ Tools can reference files for additional context:
 To help choose the right tool for your needs:
 
 **Decision Flow:**
-1. **Have a specific error/exception?** → Use `debug_issue`
+1. **Have a specific error/exception?** → Use `debug`
 2. **Want to find bugs/issues in code?** → Use `review_code`
 3. **Want to understand how code works?** → Use `analyze`
 4. **Have analysis that needs extension/validation?** → Use `think_deeper`
@@ -891,7 +891,7 @@ To help choose the right tool for your needs:
 **Key Distinctions:**
 - `analyze` vs `review_code`: analyze explains, review_code prescribes fixes
 - `chat` vs `think_deeper`: chat is open-ended, think_deeper extends specific analysis
-- `debug_issue` vs `review_code`: debug diagnoses runtime errors, review finds static issues
+- `debug` vs `review_code`: debug diagnoses runtime errors, review finds static issues
 
 ## Thinking Modes - Managing Token Costs & Quality
 
@@ -1096,7 +1096,7 @@ The server uses carefully crafted system prompts to give each tool specialized e
 Each tool has a unique system prompt that defines its role and approach:
 - **`think_deeper`**: Acts as a senior development partner, challenging assumptions and finding edge cases
 - **`review_code`**: Expert code reviewer with security/performance focus, uses severity levels
-- **`debug_issue`**: Systematic debugger providing root cause analysis and prevention strategies
+- **`debug`**: Systematic debugger providing root cause analysis and prevention strategies
 - **`analyze`**: Code analyst focusing on architecture, patterns, and actionable insights
 
 ### Customization

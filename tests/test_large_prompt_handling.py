@@ -18,7 +18,7 @@ from mcp.types import TextContent
 from config import MCP_PROMPT_SIZE_LIMIT
 from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
-from tools.debug_issue import DebugIssueTool
+from tools.debug import DebugIssueTool
 from tools.review_changes import ReviewChanges
 from tools.review_code import ReviewCodeTool
 from tools.think_deeper import ThinkDeeperTool
@@ -167,8 +167,8 @@ class TestLargePromptHandling:
         assert output["status"] == "requires_file_prompt"
 
     @pytest.mark.asyncio
-    async def test_debug_issue_large_error_description(self, large_prompt):
-        """Test that debug_issue tool detects large error_description."""
+    async def test_debug_large_error_description(self, large_prompt):
+        """Test that debug tool detects large error_description."""
         tool = DebugIssueTool()
         result = await tool.execute({"error_description": large_prompt})
 
@@ -177,8 +177,8 @@ class TestLargePromptHandling:
         assert output["status"] == "requires_file_prompt"
 
     @pytest.mark.asyncio
-    async def test_debug_issue_large_error_context(self, large_prompt, normal_prompt):
-        """Test that debug_issue tool detects large error_context."""
+    async def test_debug_large_error_context(self, large_prompt, normal_prompt):
+        """Test that debug tool detects large error_context."""
         tool = DebugIssueTool()
         result = await tool.execute({"error_description": normal_prompt, "error_context": large_prompt})
 

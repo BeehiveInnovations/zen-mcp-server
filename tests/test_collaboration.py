@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from tools.analyze import AnalyzeTool
-from tools.debug_issue import DebugIssueTool
+from tools.debug import DebugIssueTool
 from tools.models import ClarificationRequest, ToolOutput
 
 
@@ -122,7 +122,7 @@ class TestDynamicContextRequests:
                 "question": "I need to see the database configuration to diagnose the connection error",
                 "files_needed": ["config/database.yml", "src/db.py"],
                 "suggested_next_action": {
-                    "tool": "debug_issue",
+                    "tool": "debug",
                     "args": {
                         "error_description": "Connection timeout to database",
                         "files": [
@@ -155,7 +155,7 @@ class TestDynamicContextRequests:
 
         clarification = json.loads(response_data["content"])
         assert "suggested_next_action" in clarification
-        assert clarification["suggested_next_action"]["tool"] == "debug_issue"
+        assert clarification["suggested_next_action"]["tool"] == "debug"
 
     def test_tool_output_model_serialization(self):
         """Test ToolOutput model serialization"""

@@ -12,7 +12,7 @@ import pytest
 
 from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
-from tools.debug_issue import DebugIssueTool
+from tools.debug import DebugIssueTool
 from tools.review_changes import ReviewChanges
 from tools.review_code import ReviewCodeTool
 from tools.think_deeper import ThinkDeeperTool
@@ -167,8 +167,8 @@ class TestPromptRegression:
                     assert output["status"] == "success"
 
     @pytest.mark.asyncio
-    async def test_debug_issue_normal_error(self, mock_model_response):
-        """Test debug_issue tool with normal error description."""
+    async def test_debug_normal_error(self, mock_model_response):
+        """Test debug tool with normal error description."""
         tool = DebugIssueTool()
 
         with patch.object(tool, "create_model") as mock_create_model:
