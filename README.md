@@ -18,7 +18,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
-  - [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning
+  - [`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) - Extended reasoning
   - [`codereview`](#3-codereview---professional-code-review) - Code review
   - [`precommit`](#4-precommit---pre-commit-validation) - Pre-commit validation
   - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
@@ -41,7 +41,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 
 Claude is brilliant, but sometimes you need:
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
-- **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#2-think_deeper---extended-reasoning-partner))
+- **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
 - **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`precommit`](#4-precommit---pre-commit-validation))
 - **Expert debugging** for tricky issues with full system context ([`debug`](#5-debug---expert-debugging-assistant))
@@ -324,7 +324,7 @@ Replace `/path/to/gemini-mcp-server` with the actual path where you cloned the r
 
 Just ask Claude naturally:
 - "Use gemini to think deeper about this architecture design" → `thinkdeep`
-- "Get gemini to review this code for security issues" → `review_code`
+- "Get gemini to review this code for security issues" → `codereview`
 - "Get gemini to debug why this test is failing" → `debug`
 - "Use gemini to analyze these files to understand the data flow" → `analyze`
 - "Brainstorm with gemini about scaling strategies" → `chat`
@@ -448,9 +448,9 @@ If you prefer to use WSL (Windows Subsystem for Linux):
 
 **Tools Overview:**
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
-2. [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning and problem-solving
-3. [`review_code`](#3-review_code---professional-code-review) - Professional code review with severity levels
-4. [`review_changes`](#4-review_changes---pre-commit-validation) - Validate git changes before committing
+2. [`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) - Extended reasoning and problem-solving
+3. [`codereview`](#3-codereview---professional-code-review) - Professional code review with severity levels
+4. [`precommit`](#4-precommit---pre-commit-validation) - Validate git changes before committing
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
@@ -507,7 +507,7 @@ Combine both perspectives to create a comprehensive caching implementation guide
 
 **Triggers:** ask, explain, compare, suggest, what about, brainstorm, discuss, share my thinking, get opinion
 
-### 2. `think_deeper` - Extended Reasoning Partner
+### 2. `thinkdeep` - Extended Reasoning Partner
 
 **Get a second opinion to augment Claude's own extended thinking**
 
@@ -796,7 +796,7 @@ All tools that work with files support **both individual files and entire direct
 "Get gemini to analyze main.py and tests/ to understand test coverage"
 ```
 
-**`review_code`** - Review code files or directories
+**`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
@@ -822,7 +822,7 @@ All tools that work with files support **both individual files and entire direct
 "Use gemini to debug this error with context from the entire backend/ directory"
 ```
 
-**`think_deeper`** - Extended analysis with file context
+**`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
@@ -858,15 +858,15 @@ fix based on gemini's root cause analysis."
 
 ### Natural Language Triggers
 The server recognizes natural phrases. Just talk normally:
-- ❌ "Use the think_deeper tool with current_analysis parameter..."
+- ❌ "Use the thinkdeep tool with current_analysis parameter..."
 - ✅ "Use gemini to think deeper about this approach"
 
 ### Automatic Tool Selection
 Claude will automatically pick the right tool based on your request:
-- "review" → `review_code`
+- "review" → `codereview`
 - "debug" → `debug`
 - "analyze" → `analyze`
-- "think deeper" → `think_deeper`
+- "think deeper" → `thinkdeep`
 
 ### Clean Terminal Output
 All file operations use paths, not content, so your terminal stays readable even with large files.
@@ -883,15 +883,15 @@ To help choose the right tool for your needs:
 
 **Decision Flow:**
 1. **Have a specific error/exception?** → Use `debug`
-2. **Want to find bugs/issues in code?** → Use `review_code`
+2. **Want to find bugs/issues in code?** → Use `codereview`
 3. **Want to understand how code works?** → Use `analyze`
-4. **Have analysis that needs extension/validation?** → Use `think_deeper`
+4. **Have analysis that needs extension/validation?** → Use `thinkdeep`
 5. **Want to brainstorm or discuss?** → Use `chat`
 
 **Key Distinctions:**
-- `analyze` vs `review_code`: analyze explains, review_code prescribes fixes
-- `chat` vs `think_deeper`: chat is open-ended, think_deeper extends specific analysis
-- `debug` vs `review_code`: debug diagnoses runtime errors, review finds static issues
+- `analyze` vs `codereview`: analyze explains, codereview prescribes fixes
+- `chat` vs `thinkdeep`: chat is open-ended, thinkdeep extends specific analysis
+- `debug` vs `codereview`: debug diagnoses runtime errors, review finds static issues
 
 ## Thinking Modes - Managing Token Costs & Quality
 
@@ -905,7 +905,7 @@ To help choose the right tool for your needs:
 | `low` | 2,048 tokens | Basic reasoning tasks | 16x more than minimal |
 | `medium` | 8,192 tokens | **Default** - Most development tasks | 64x more than minimal |
 | `high` | 16,384 tokens | Complex problems requiring thorough analysis | 128x more than minimal |
-| `max` | 32,768 tokens | Exhaustive reasoning (default for `think_deeper`) | 256x more than minimal |
+| `max` | 32,768 tokens | Exhaustive reasoning (default for `thinkdeep`) | 256x more than minimal |
 
 ### How to Use Thinking Modes
 
@@ -1094,8 +1094,8 @@ The server uses carefully crafted system prompts to give each tool specialized e
 
 ### Specialized Expertise
 Each tool has a unique system prompt that defines its role and approach:
-- **`think_deeper`**: Acts as a senior development partner, challenging assumptions and finding edge cases
-- **`review_code`**: Expert code reviewer with security/performance focus, uses severity levels
+- **`thinkdeep`**: Acts as a senior development partner, challenging assumptions and finding edge cases
+- **`codereview`**: Expert code reviewer with security/performance focus, uses severity levels
 - **`debug`**: Systematic debugger providing root cause analysis and prevention strategies
 - **`analyze`**: Code analyst focusing on architecture, patterns, and actionable insights
 

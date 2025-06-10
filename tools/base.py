@@ -170,7 +170,7 @@ If you identify areas where current documentation, API references, or community 
 please note in your response what specific searches Claude should perform and why they would be helpful."""
 
         if tool_specific:
-            return f"{base_instruction}
+            return f"""{base_instruction}
 
 {tool_specific}
 
@@ -184,7 +184,7 @@ In your response, if web searches would be beneficial, include a section like:
 
 Consider searches for:
 - Current documentation and best practices
-- Similar issues and community solutions  
+- Similar issues and community solutions
 - API references and usage examples
 - Recent developments and updates
 
