@@ -52,11 +52,22 @@ def find_git_repositories(start_path: str, max_depth: int = 5) -> list[str]:
         List of absolute paths to git repositories, sorted alphabetically
     """
     repositories = []
-    # Use strict=False to handle paths that might not exist (e.g., in Docker container)
-    start_path = Path(start_path).resolve(strict=False)
+    
+    try:
+        # Create Path object - no need to resolve yet since the path might be
+        # a translated Docker path that doesn't exist on the host
+        start_path = Path(start_path)
 
-    # If the path doesn't exist, return empty list
-    if not start_path.exists():
+        # Basic validation - must be absolute
+        if not start_path.is_absolute():
+            return []
+            
+        # Check if the path exists before trying to walk it
+        if not start_path.exists():
+            return []
+            
+    except Exception as e:
+        # If there's any issue with the path, return empty list
         return []
 
     def _find_repos(current_path: Path, current_depth: int):
@@ -108,6 +119,10 @@ def run_git_command(repo_path: str, command: list[str]) -> tuple[bool, str]:
         - success: True if command returned 0, False otherwise
         - output/error: stdout if successful, stderr or error message if failed
     """
+    # Verify the repository path exists before trying to use it
+    if not Path(repo_path).exists():
+        return False, f"Repository path does not exist: {repo_path}"
+    
     try:
         # Execute git command with safety measures
         result = subprocess.run(
@@ -125,6 +140,9 @@ def run_git_command(repo_path: str, command: list[str]) -> tuple[bool, str]:
 
     except subprocess.TimeoutExpired:
         return False, "Command timed out after 30 seconds"
+    except FileNotFoundError as e:
+        # This can happen if git is not installed or repo_path issues
+        return False, f"Git command failed - path not found: {str(e)}"
     except Exception as e:
         return False, f"Git command failed: {str(e)}"
 

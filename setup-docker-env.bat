@@ -32,14 +32,56 @@ if exist .env (
     echo Created .env file
     echo.
 )
+
+REM Check if Docker is installed and running
+where docker >nul 2>nul
+if %errorlevel% neq 0 (
+    echo Warning: Docker is not installed. Please install Docker first.
+    echo Visit: https://docs.docker.com/get-docker/
+) else (
+    REM Check if Docker daemon is running
+    docker info >nul 2>nul
+    if %errorlevel% neq 0 (
+        echo Warning: Docker daemon is not running. Please start Docker.
+    ) else (
+        REM Clean up and build Docker image
+        echo.
+        echo Building Docker image...
+        
+        REM Stop running containers
+        echo   - Checking for running containers...
+        for /f "tokens=*" %%i in ('docker ps -q --filter ancestor^=gemini-mcp-server 2^>nul') do (
+            docker stop %%i >nul 2>&1
+        )
+        
+        REM Remove containers
+        echo   - Removing old containers...
+        for /f "tokens=*" %%i in ('docker ps -aq --filter ancestor^=gemini-mcp-server 2^>nul') do (
+            docker rm %%i >nul 2>&1
+        )
+        
+        REM Remove existing image
+        echo   - Removing old image...
+        docker rmi gemini-mcp-server:latest >nul 2>&1
+        
+        REM Build fresh image
+        echo   - Building fresh image with --no-cache...
+        docker build -t gemini-mcp-server:latest . --no-cache >nul 2>&1
+        if %errorlevel% equ 0 (
+            echo Docker image built successfully!
+        ) else (
+            echo Failed to build Docker image. Run 'docker build -t gemini-mcp-server:latest .' manually to see errors.
+        )
+        echo.
+    )
+)
+
 echo Next steps:
 if "%API_KEY_VALUE%"=="your-gemini-api-key-here" (
     echo 1. Edit .env and replace 'your-gemini-api-key-here' with your actual Gemini API key
-    echo 2. Run 'docker build -t gemini-mcp-server .' to build the Docker image
-    echo 3. Copy this configuration to your Claude Desktop config:
-) else (
-    echo 1. Run 'docker build -t gemini-mcp-server .' to build the Docker image
     echo 2. Copy this configuration to your Claude Desktop config:
+) else (
+    echo 1. Copy this configuration to your Claude Desktop config:
 )
 echo.
 echo ===== COPY BELOW THIS LINE =====

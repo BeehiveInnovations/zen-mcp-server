@@ -32,14 +32,56 @@ EOF
     echo "✅ Created .env file"
     echo ""
 fi
+# Check if Docker is installed and running
+if ! command -v docker &> /dev/null; then
+    echo "⚠️  Docker is not installed. Please install Docker first."
+    echo "   Visit: https://docs.docker.com/get-docker/"
+else
+    # Check if Docker daemon is running
+    if ! docker info &> /dev/null; then
+        echo "⚠️  Docker daemon is not running. Please start Docker."
+    else
+        # Clean up and build Docker image
+        echo ""
+        echo "🐳 Building Docker image..."
+        
+        # Stop running containers
+        RUNNING_CONTAINERS=$(docker ps -q --filter ancestor=gemini-mcp-server 2>/dev/null)
+        if [ ! -z "$RUNNING_CONTAINERS" ]; then
+            echo "  - Stopping running containers..."
+            docker stop $RUNNING_CONTAINERS >/dev/null 2>&1
+        fi
+        
+        # Remove containers
+        ALL_CONTAINERS=$(docker ps -aq --filter ancestor=gemini-mcp-server 2>/dev/null)
+        if [ ! -z "$ALL_CONTAINERS" ]; then
+            echo "  - Removing old containers..."
+            docker rm $ALL_CONTAINERS >/dev/null 2>&1
+        fi
+        
+        # Remove existing image
+        if docker images | grep -q "gemini-mcp-server"; then
+            echo "  - Removing old image..."
+            docker rmi gemini-mcp-server:latest >/dev/null 2>&1
+        fi
+        
+        # Build fresh image
+        echo "  - Building fresh image with --no-cache..."
+        if docker build -t gemini-mcp-server:latest . --no-cache >/dev/null 2>&1; then
+            echo "✅ Docker image built successfully!"
+        else
+            echo "❌ Failed to build Docker image. Run 'docker build -t gemini-mcp-server:latest .' manually to see errors."
+        fi
+        echo ""
+    fi
+fi
+
 echo "Next steps:"
 if [ "$API_KEY_VALUE" = "your-gemini-api-key-here" ]; then
     echo "1. Edit .env and replace 'your-gemini-api-key-here' with your actual Gemini API key"
-    echo "2. Run 'docker build -t gemini-mcp-server .' to build the Docker image"
-    echo "3. Copy this configuration to your Claude Desktop config:"
-else
-    echo "1. Run 'docker build -t gemini-mcp-server .' to build the Docker image"
     echo "2. Copy this configuration to your Claude Desktop config:"
+else
+    echo "1. Copy this configuration to your Claude Desktop config:"
 fi
 echo ""
 echo "===== COPY BELOW THIS LINE ====="
