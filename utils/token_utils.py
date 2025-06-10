@@ -9,8 +9,6 @@ approximate. For production systems requiring precise token counts,
 consider using the actual tokenizer for the specific model.
 """
 
-from typing import Tuple
-
 from config import MAX_CONTEXT_TOKENS
 
 
@@ -34,7 +32,7 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def check_token_limit(text: str) -> Tuple[bool, int]:
+def check_token_limit(text: str) -> tuple[bool, int]:
     """
     Check if text exceeds the maximum token limit for Gemini models.
 

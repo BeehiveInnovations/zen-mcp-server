@@ -42,9 +42,7 @@ class TestThinkingModes:
         """Test minimal thinking mode"""
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(
-            candidates=[
-                Mock(content=Mock(parts=[Mock(text="Minimal thinking response")]))
-            ]
+            candidates=[Mock(content=Mock(parts=[Mock(text="Minimal thinking response")]))]
         )
         mock_create_model.return_value = mock_model
 
@@ -81,7 +79,11 @@ class TestThinkingModes:
 
         tool = ReviewCodeTool()
         result = await tool.execute(
-            {"files": ["/absolute/path/test.py"], "thinking_mode": "low"}
+            {
+                "files": ["/absolute/path/test.py"],
+                "thinking_mode": "low",
+                "context": "Test code review for validation purposes",
+            }
         )
 
         # Verify create_model was called with correct thinking_mode
@@ -97,9 +99,7 @@ class TestThinkingModes:
         """Test medium thinking mode (default for most tools)"""
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(
-            candidates=[
-                Mock(content=Mock(parts=[Mock(text="Medium thinking response")]))
-            ]
+            candidates=[Mock(content=Mock(parts=[Mock(text="Medium thinking response")]))]
         )
         mock_create_model.return_value = mock_model
 
@@ -201,7 +201,7 @@ class TestThinkingModes:
         }
 
         # Check each mode in create_model
-        for mode, expected_budget in expected_budgets.items():
+        for _mode, _expected_budget in expected_budgets.items():
             # The budget mapping is inside create_model
             # We can't easily test it without calling the method
             # But we've verified the values are correct in the code

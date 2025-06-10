@@ -7,8 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools import (AnalyzeTool, ChatTool, DebugIssueTool, ReviewCodeTool,
-                   ThinkDeeperTool)
+from tools import AnalyzeTool, ChatTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
 
 
 class TestThinkDeeperTool:
@@ -70,7 +69,8 @@ class TestReviewCodeTool:
 
         schema = tool.get_input_schema()
         assert "files" in schema["properties"]
-        assert schema["required"] == ["files"]
+        assert "context" in schema["properties"]
+        assert schema["required"] == ["files", "context"]
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
@@ -92,6 +92,7 @@ class TestReviewCodeTool:
                 "files": [str(test_file)],
                 "review_type": "security",
                 "focus_on": "authentication",
+                "context": "Test code review for validation purposes",
             }
         )
 
@@ -125,9 +126,7 @@ class TestDebugIssueTool:
         # Mock model
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(
-            candidates=[
-                Mock(content=Mock(parts=[Mock(text="Root cause: race condition")]))
-            ]
+            candidates=[Mock(content=Mock(parts=[Mock(text="Root cause: race condition")]))]
         )
         mock_create_model.return_value = mock_model
 
@@ -219,7 +218,11 @@ class TestAbsolutePathValidation:
         """Test that review_code tool rejects relative paths"""
         tool = ReviewCodeTool()
         result = await tool.execute(
-            {"files": ["../parent/file.py"], "review_type": "full"}
+            {
+                "files": ["../parent/file.py"],
+                "review_type": "full",
+                "context": "Test code review for validation purposes",
+            }
         )
 
         assert len(result) == 1
@@ -249,9 +252,7 @@ class TestAbsolutePathValidation:
     async def test_think_deeper_tool_relative_path_rejected(self):
         """Test that think_deeper tool rejects relative paths"""
         tool = ThinkDeeperTool()
-        result = await tool.execute(
-            {"current_analysis": "My analysis", "files": ["./local/file.py"]}
-        )
+        result = await tool.execute({"current_analysis": "My analysis", "files": ["./local/file.py"]})
 
         assert len(result) == 1
         response = json.loads(result[0].text)
@@ -291,9 +292,7 @@ class TestAbsolutePathValidation:
         mock_instance.generate_content.return_value = mock_response
         mock_model.return_value = mock_instance
 
-        result = await tool.execute(
-            {"files": ["/absolute/path/file.py"], "question": "What does this do?"}
-        )
+        result = await tool.execute({"files": ["/absolute/path/file.py"], "question": "What does this do?"})
 
         assert len(result) == 1
         response = json.loads(result[0].text)

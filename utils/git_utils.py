@@ -19,7 +19,6 @@ Security Considerations:
 
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 # Directories to ignore when searching for git repositories
 # These are typically build artifacts, dependencies, or cache directories
@@ -37,7 +36,7 @@ IGNORED_DIRS = {
 }
 
 
-def find_git_repositories(start_path: str, max_depth: int = 5) -> List[str]:
+def find_git_repositories(start_path: str, max_depth: int = 5) -> list[str]:
     """
     Recursively find all git repositories starting from the given path.
 
@@ -53,7 +52,12 @@ def find_git_repositories(start_path: str, max_depth: int = 5) -> List[str]:
         List of absolute paths to git repositories, sorted alphabetically
     """
     repositories = []
-    start_path = Path(start_path).resolve()
+    # Use strict=False to handle paths that might not exist (e.g., in Docker container)
+    start_path = Path(start_path).resolve(strict=False)
+
+    # If the path doesn't exist, return empty list
+    if not start_path.exists():
+        return []
 
     def _find_repos(current_path: Path, current_depth: int):
         # Stop recursion if we've reached maximum depth
@@ -86,7 +90,7 @@ def find_git_repositories(start_path: str, max_depth: int = 5) -> List[str]:
     return sorted(repositories)
 
 
-def run_git_command(repo_path: str, command: List[str]) -> Tuple[bool, str]:
+def run_git_command(repo_path: str, command: list[str]) -> tuple[bool, str]:
     """
     Run a git command in the specified repository.
 
@@ -125,7 +129,7 @@ def run_git_command(repo_path: str, command: List[str]) -> Tuple[bool, str]:
         return False, f"Git command failed: {str(e)}"
 
 
-def get_git_status(repo_path: str) -> Dict[str, any]:
+def get_git_status(repo_path: str) -> dict[str, any]:
     """
     Get comprehensive git status information for a repository.
 

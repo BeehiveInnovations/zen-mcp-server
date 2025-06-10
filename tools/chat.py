@@ -2,7 +2,7 @@
 Chat tool - General development chat and collaborative thinking
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
@@ -22,7 +22,7 @@ class ChatRequest(ToolRequest):
         ...,
         description="Your question, topic, or current thinking to discuss with Gemini",
     )
-    files: Optional[List[str]] = Field(
+    files: Optional[list[str]] = Field(
         default_factory=list,
         description="Optional files for context (must be absolute paths)",
     )
@@ -44,7 +44,7 @@ class ChatTool(BaseTool):
             "'share my thinking with gemini', 'explain', 'what is', 'how do I'."
         )
 
-    def get_input_schema(self) -> Dict[str, Any]:
+    def get_input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -81,7 +81,7 @@ class ChatTool(BaseTool):
     def get_request_model(self):
         return ChatRequest
 
-    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check prompt size before processing"""
         # First validate request
         request_model = self.get_request_model()
@@ -90,11 +90,7 @@ class ChatTool(BaseTool):
         # Check prompt size
         size_check = self.check_prompt_size(request.prompt)
         if size_check:
-            return [
-                TextContent(
-                    type="text", text=ToolOutput(**size_check).model_dump_json()
-                )
-            ]
+            return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
         # Continue with normal execution
         return await super().execute(arguments)
@@ -113,7 +109,7 @@ class ChatTool(BaseTool):
 
         # Add context files if provided
         if request.files:
-            file_content, _ = read_files(request.files)
+            file_content = read_files(request.files)
             user_content = f"{user_content}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ===="
 
         # Check token limits
@@ -131,5 +127,5 @@ Please provide a thoughtful, comprehensive response:"""
         return full_prompt
 
     def format_response(self, response: str, request: ChatRequest) -> str:
-        """Format the chat response (no special formatting needed)"""
-        return response
+        """Format the chat response with actionable guidance"""
+        return f"{response}\n\n---\n\n**Claude's Turn:** Evaluate this perspective alongside your analysis to form a comprehensive solution."

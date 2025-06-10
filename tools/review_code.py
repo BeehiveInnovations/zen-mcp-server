@@ -14,7 +14,7 @@ Key Features:
 - Structured output with specific remediation steps
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
@@ -36,19 +36,17 @@ class ReviewCodeRequest(ToolRequest):
     review focus and standards.
     """
 
-    files: List[str] = Field(
+    files: list[str] = Field(
         ...,
         description="Code files or directories to review (must be absolute paths)",
     )
-    review_type: str = Field(
-        "full", description="Type of review: full|security|performance|quick"
+    context: str = Field(
+        ...,
+        description="User's summary of what the code does, expected behavior, constraints, and review objectives",
     )
-    focus_on: Optional[str] = Field(
-        None, description="Specific aspects to focus on during review"
-    )
-    standards: Optional[str] = Field(
-        None, description="Coding standards or guidelines to enforce"
-    )
+    review_type: str = Field("full", description="Type of review: full|security|performance|quick")
+    focus_on: Optional[str] = Field(None, description="Specific aspects to focus on during review")
+    standards: Optional[str] = Field(None, description="Coding standards or guidelines to enforce")
     severity_filter: str = Field(
         "all",
         description="Minimum severity to report: critical|high|medium|all",
@@ -74,10 +72,13 @@ class ReviewCodeTool(BaseTool):
             "Use this for thorough code review with actionable feedback. "
             "Triggers: 'review this code', 'check for issues', 'find bugs', 'security audit'. "
             "I'll identify issues by severity (Critical→High→Medium→Low) with specific fixes. "
-            "Supports focused reviews: security, performance, or quick checks."
+            "Supports focused reviews: security, performance, or quick checks. "
+            "Choose thinking_mode based on review scope: 'low' for small code snippets, "
+            "'medium' for standard files/modules (default), 'high' for complex systems/architectures, "
+            "'max' for critical security audits or large codebases requiring deepest analysis."
         )
 
-    def get_input_schema(self) -> Dict[str, Any]:
+    def get_input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -85,6 +86,10 @@ class ReviewCodeTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Code files or directories to review (must be absolute paths)",
+                },
+                "context": {
+                    "type": "string",
+                    "description": "User's summary of what the code does, expected behavior, constraints, and review objectives",
                 },
                 "review_type": {
                     "type": "string",
@@ -118,7 +123,7 @@ class ReviewCodeTool(BaseTool):
                     "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
                 },
             },
-            "required": ["files"],
+            "required": ["files", "context"],
         }
 
     def get_system_prompt(self) -> str:
@@ -130,7 +135,7 @@ class ReviewCodeTool(BaseTool):
     def get_request_model(self):
         return ReviewCodeRequest
 
-    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check focus_on size before processing"""
         # First validate request
         request_model = self.get_request_model()
@@ -140,11 +145,7 @@ class ReviewCodeTool(BaseTool):
         if request.focus_on:
             size_check = self.check_prompt_size(request.focus_on)
             if size_check:
-                return [
-                    TextContent(
-                        type="text", text=ToolOutput(**size_check).model_dump_json()
-                    )
-                ]
+                return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
         # Continue with normal execution
         return await super().execute(arguments)
@@ -177,7 +178,7 @@ class ReviewCodeTool(BaseTool):
             request.files = updated_files
 
         # Read all requested files, expanding directories as needed
-        file_content, summary = read_files(request.files)
+        file_content = read_files(request.files)
 
         # Validate that the code fits within model context limits
         self._validate_token_limit(file_content, "Code")
@@ -185,17 +186,11 @@ class ReviewCodeTool(BaseTool):
         # Build customized review instructions based on review type
         review_focus = []
         if request.review_type == "security":
-            review_focus.append(
-                "Focus on security vulnerabilities and authentication issues"
-            )
+            review_focus.append("Focus on security vulnerabilities and authentication issues")
         elif request.review_type == "performance":
-            review_focus.append(
-                "Focus on performance bottlenecks and optimization opportunities"
-            )
+            review_focus.append("Focus on performance bottlenecks and optimization opportunities")
         elif request.review_type == "quick":
-            review_focus.append(
-                "Provide a quick review focusing on critical issues only"
-            )
+            review_focus.append("Provide a quick review focusing on critical issues only")
 
         # Add any additional focus areas specified by the user
         if request.focus_on:
@@ -207,14 +202,16 @@ class ReviewCodeTool(BaseTool):
 
         # Apply severity filtering to reduce noise if requested
         if request.severity_filter != "all":
-            review_focus.append(
-                f"Only report issues of {request.severity_filter} severity or higher"
-            )
+            review_focus.append(f"Only report issues of {request.severity_filter} severity or higher")
 
         focus_instruction = "\n".join(review_focus) if review_focus else ""
 
         # Construct the complete prompt with system instructions and code
         full_prompt = f"""{self.get_system_prompt()}
+
+=== USER CONTEXT ===
+{request.context}
+=== END CONTEXT ===
 
 {focus_instruction}
 
@@ -222,7 +219,7 @@ class ReviewCodeTool(BaseTool):
 {file_content}
 === END CODE ===
 
-Please provide a comprehensive code review following the format specified in the system prompt."""
+Please provide a code review aligned with the user's context and expectations, following the format specified in the system prompt."""
 
         return full_prompt
 
@@ -243,4 +240,4 @@ Please provide a comprehensive code review following the format specified in the
         header = f"Code Review ({request.review_type.upper()})"
         if request.focus_on:
             header += f" - Focus: {request.focus_on}"
-        return f"{header}\n{'=' * 50}\n\n{response}"
+        return f"{header}\n{'=' * 50}\n\n{response}\n\n---\n\n**Follow-up Actions:** Address critical issues first, then high priority ones. Consider running tests after fixes and re-reviewing if substantial changes were made."

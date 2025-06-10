@@ -73,9 +73,7 @@ class TestLargePromptHandling:
             mock_response = MagicMock()
             mock_response.candidates = [
                 MagicMock(
-                    content=MagicMock(
-                        parts=[MagicMock(text="This is a test response")]
-                    ),
+                    content=MagicMock(parts=[MagicMock(text="This is a test response")]),
                     finish_reason="STOP",
                 )
             ]
@@ -109,7 +107,10 @@ class TestLargePromptHandling:
 
             # Mock read_file_content to avoid security checks
             with patch("tools.base.read_file_content") as mock_read_file:
-                mock_read_file.return_value = large_prompt
+                mock_read_file.return_value = (
+                    large_prompt,
+                    1000,
+                )  # Return tuple like real function
 
                 # Execute with empty prompt and prompt.txt file
                 result = await tool.execute({"prompt": "", "files": [temp_prompt_file]})
@@ -144,7 +145,11 @@ class TestLargePromptHandling:
         """Test that review_code tool detects large focus_on field."""
         tool = ReviewCodeTool()
         result = await tool.execute(
-            {"files": ["/some/file.py"], "focus_on": large_prompt}
+            {
+                "files": ["/some/file.py"],
+                "focus_on": large_prompt,
+                "context": "Test code review for validation purposes",
+            }
         )
 
         assert len(result) == 1
@@ -155,9 +160,7 @@ class TestLargePromptHandling:
     async def test_review_changes_large_original_request(self, large_prompt):
         """Test that review_changes tool detects large original_request."""
         tool = ReviewChanges()
-        result = await tool.execute(
-            {"path": "/some/path", "original_request": large_prompt}
-        )
+        result = await tool.execute({"path": "/some/path", "original_request": large_prompt})
 
         assert len(result) == 1
         output = json.loads(result[0].text)
@@ -177,9 +180,7 @@ class TestLargePromptHandling:
     async def test_debug_issue_large_error_context(self, large_prompt, normal_prompt):
         """Test that debug_issue tool detects large error_context."""
         tool = DebugIssueTool()
-        result = await tool.execute(
-            {"error_description": normal_prompt, "error_context": large_prompt}
-        )
+        result = await tool.execute({"error_description": normal_prompt, "error_context": large_prompt})
 
         assert len(result) == 1
         output = json.loads(result[0].text)
@@ -189,9 +190,7 @@ class TestLargePromptHandling:
     async def test_analyze_large_question(self, large_prompt):
         """Test that analyze tool detects large question."""
         tool = AnalyzeTool()
-        result = await tool.execute(
-            {"files": ["/some/file.py"], "question": large_prompt}
-        )
+        result = await tool.execute({"files": ["/some/file.py"], "question": large_prompt})
 
         assert len(result) == 1
         output = json.loads(result[0].text)
@@ -217,11 +216,9 @@ class TestLargePromptHandling:
 
             # Mock read_files to avoid file system access
             with patch("tools.chat.read_files") as mock_read_files:
-                mock_read_files.return_value = ("File content", "Summary")
+                mock_read_files.return_value = "File content"
 
-                await tool.execute(
-                    {"prompt": "", "files": [temp_prompt_file, other_file]}
-                )
+                await tool.execute({"prompt": "", "files": [temp_prompt_file, other_file]})
 
                 # Verify prompt.txt was removed from files list
                 mock_read_files.assert_called_once()

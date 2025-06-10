@@ -16,7 +16,7 @@ Key responsibilities:
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from google import genai
 from google.genai import types
@@ -24,7 +24,7 @@ from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
 from config import MCP_PROMPT_SIZE_LIMIT
-from utils.file_utils import read_file_content
+from utils.file_utils import read_file_content, translate_path_for_environment
 
 from .models import ClarificationRequest, ToolOutput
 
@@ -38,12 +38,8 @@ class ToolRequest(BaseModel):
     these common fields.
     """
 
-    model: Optional[str] = Field(
-        None, description="Model to use (defaults to Gemini 2.5 Pro)"
-    )
-    temperature: Optional[float] = Field(
-        None, description="Temperature for response (tool-specific defaults)"
-    )
+    model: Optional[str] = Field(None, description="Model to use (defaults to Gemini 2.5 Pro)")
+    temperature: Optional[float] = Field(None, description="Temperature for response (tool-specific defaults)")
     # Thinking mode controls how much computational budget the model uses for reasoning
     # Higher values allow for more complex reasoning but increase latency and cost
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
@@ -100,7 +96,7 @@ class BaseTool(ABC):
         pass
 
     @abstractmethod
-    def get_input_schema(self) -> Dict[str, Any]:
+    def get_input_schema(self) -> dict[str, Any]:
         """
         Return the JSON Schema that defines this tool's parameters.
 
@@ -197,7 +193,7 @@ class BaseTool(ABC):
 
         return None
 
-    def check_prompt_size(self, text: str) -> Optional[Dict[str, Any]]:
+    def check_prompt_size(self, text: str) -> Optional[dict[str, Any]]:
         """
         Check if a text field is too large for MCP's token limits.
 
@@ -231,9 +227,7 @@ class BaseTool(ABC):
             }
         return None
 
-    def handle_prompt_file(
-        self, files: Optional[List[str]]
-    ) -> tuple[Optional[str], Optional[List[str]]]:
+    def handle_prompt_file(self, files: Optional[list[str]]) -> tuple[Optional[str], Optional[list[str]]]:
         """
         Check for and handle prompt.txt in the files list.
 
@@ -245,7 +239,7 @@ class BaseTool(ABC):
         mechanism to bypass token constraints while preserving response capacity.
 
         Args:
-            files: List of file paths
+            files: List of file paths (will be translated for current environment)
 
         Returns:
             tuple: (prompt_content, updated_files_list)
@@ -257,21 +251,47 @@ class BaseTool(ABC):
         updated_files = []
 
         for file_path in files:
+            # Translate path for current environment (Docker/direct)
+            translated_path = translate_path_for_environment(file_path)
+
             # Check if the filename is exactly "prompt.txt"
             # This ensures we don't match files like "myprompt.txt" or "prompt.txt.bak"
-            if os.path.basename(file_path) == "prompt.txt":
+            if os.path.basename(translated_path) == "prompt.txt":
                 try:
-                    prompt_content = read_file_content(file_path)
+                    # Read prompt.txt content and extract just the text
+                    content, _ = read_file_content(translated_path)
+                    # Extract the content between the file markers
+                    if "--- BEGIN FILE:" in content and "--- END FILE:" in content:
+                        lines = content.split("\n")
+                        in_content = False
+                        content_lines = []
+                        for line in lines:
+                            if line.startswith("--- BEGIN FILE:"):
+                                in_content = True
+                                continue
+                            elif line.startswith("--- END FILE:"):
+                                break
+                            elif in_content:
+                                content_lines.append(line)
+                        prompt_content = "\n".join(content_lines)
+                    else:
+                        # Fallback: if it's already raw content (from tests or direct input)
+                        # and doesn't have error markers, use it directly
+                        if not content.startswith("\n--- ERROR"):
+                            prompt_content = content
+                        else:
+                            prompt_content = None
                 except Exception:
                     # If we can't read the file, we'll just skip it
                     # The error will be handled elsewhere
                     pass
             else:
+                # Keep the original path in the files list (will be translated later by read_files)
                 updated_files.append(file_path)
 
         return prompt_content, updated_files if updated_files else None
 
-    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """
         Execute the tool with the provided arguments.
 
@@ -338,11 +358,7 @@ class BaseTool(ABC):
             else:
                 # Handle cases where the model couldn't generate a response
                 # This might happen due to safety filters or other constraints
-                finish_reason = (
-                    response.candidates[0].finish_reason
-                    if response.candidates
-                    else "Unknown"
-                )
+                finish_reason = response.candidates[0].finish_reason if response.candidates else "Unknown"
                 tool_output = ToolOutput(
                     status="error",
                     content=f"Response blocked or incomplete. Finish reason: {finish_reason}",
@@ -380,10 +396,7 @@ class BaseTool(ABC):
             # Try to parse as JSON to check for clarification requests
             potential_json = json.loads(raw_text.strip())
 
-            if (
-                isinstance(potential_json, dict)
-                and potential_json.get("status") == "requires_clarification"
-            ):
+            if isinstance(potential_json, dict) and potential_json.get("status") == "requires_clarification":
                 # Validate the clarification request structure
                 clarification = ClarificationRequest(**potential_json)
                 return ToolOutput(
@@ -391,11 +404,7 @@ class BaseTool(ABC):
                     content=clarification.model_dump_json(),
                     content_type="json",
                     metadata={
-                        "original_request": (
-                            request.model_dump()
-                            if hasattr(request, "model_dump")
-                            else str(request)
-                        )
+                        "original_request": (request.model_dump() if hasattr(request, "model_dump") else str(request))
                     },
                 )
 
@@ -408,11 +417,7 @@ class BaseTool(ABC):
 
         # Determine content type based on the formatted content
         content_type = (
-            "markdown"
-            if any(
-                marker in formatted_content for marker in ["##", "**", "`", "- ", "1. "]
-            )
-            else "text"
+            "markdown" if any(marker in formatted_content for marker in ["##", "**", "`", "- ", "1. "]) else "text"
         )
 
         return ToolOutput(
@@ -479,9 +484,7 @@ class BaseTool(ABC):
                 f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
             )
 
-    def create_model(
-        self, model_name: str, temperature: float, thinking_mode: str = "medium"
-    ):
+    def create_model(self, model_name: str, temperature: float, thinking_mode: str = "medium"):
         """
         Create a configured Gemini model instance.
 
@@ -522,9 +525,7 @@ class BaseTool(ABC):
                 # Create a wrapper class to provide a consistent interface
                 # This abstracts the differences between API versions
                 class ModelWrapper:
-                    def __init__(
-                        self, client, model_name, temperature, thinking_budget
-                    ):
+                    def __init__(self, client, model_name, temperature, thinking_budget):
                         self.client = client
                         self.model_name = model_name
                         self.temperature = temperature
@@ -537,9 +538,7 @@ class BaseTool(ABC):
                             config=types.GenerateContentConfig(
                                 temperature=self.temperature,
                                 candidate_count=1,
-                                thinking_config=types.ThinkingConfig(
-                                    thinking_budget=self.thinking_budget
-                                ),
+                                thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget),
                             ),
                         )
 
@@ -617,11 +616,7 @@ class BaseTool(ABC):
                                     "content": type(
                                         "obj",
                                         (object,),
-                                        {
-                                            "parts": [
-                                                type("obj", (object,), {"text": text})
-                                            ]
-                                        },
+                                        {"parts": [type("obj", (object,), {"text": text})]},
                                     )(),
                                     "finish_reason": "STOP",
                                 },

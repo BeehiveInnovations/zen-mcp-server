@@ -2,7 +2,7 @@
 Analyze tool - General-purpose code and file analysis
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
@@ -18,17 +18,13 @@ from .models import ToolOutput
 class AnalyzeRequest(ToolRequest):
     """Request model for analyze tool"""
 
-    files: List[str] = Field(
-        ..., description="Files or directories to analyze (must be absolute paths)"
-    )
+    files: list[str] = Field(..., description="Files or directories to analyze (must be absolute paths)")
     question: str = Field(..., description="What to analyze or look for")
     analysis_type: Optional[str] = Field(
         None,
         description="Type of analysis: architecture|performance|security|quality|general",
     )
-    output_format: Optional[str] = Field(
-        "detailed", description="Output format: summary|detailed|actionable"
-    )
+    output_format: Optional[str] = Field("detailed", description="Output format: summary|detailed|actionable")
 
 
 class AnalyzeTool(BaseTool):
@@ -47,7 +43,7 @@ class AnalyzeTool(BaseTool):
             "Always uses file paths for clean terminal output."
         )
 
-    def get_input_schema(self) -> Dict[str, Any]:
+    def get_input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -101,7 +97,7 @@ class AnalyzeTool(BaseTool):
     def get_request_model(self):
         return AnalyzeRequest
 
-    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check question size before processing"""
         # First validate request
         request_model = self.get_request_model()
@@ -110,11 +106,7 @@ class AnalyzeTool(BaseTool):
         # Check question size
         size_check = self.check_prompt_size(request.question)
         if size_check:
-            return [
-                TextContent(
-                    type="text", text=ToolOutput(**size_check).model_dump_json()
-                )
-            ]
+            return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
         # Continue with normal execution
         return await super().execute(arguments)
@@ -133,7 +125,7 @@ class AnalyzeTool(BaseTool):
             request.files = updated_files
 
         # Read all files
-        file_content, summary = read_files(request.files)
+        file_content = read_files(request.files)
 
         # Check token limits
         self._validate_token_limit(file_content, "Files")
@@ -154,9 +146,7 @@ class AnalyzeTool(BaseTool):
         if request.output_format == "summary":
             analysis_focus.append("Provide a concise summary of key findings")
         elif request.output_format == "actionable":
-            analysis_focus.append(
-                "Focus on actionable insights and specific recommendations"
-            )
+            analysis_focus.append("Focus on actionable insights and specific recommendations")
 
         focus_instruction = "\n".join(analysis_focus) if analysis_focus else ""
 
@@ -185,4 +175,4 @@ Please analyze these files to answer the user's question."""
 
         summary_text = f"Analyzed {len(request.files)} file(s)"
 
-        return f"{header}\n{summary_text}\n{'=' * 50}\n\n{response}"
+        return f"{header}\n{summary_text}\n{'=' * 50}\n\n{response}\n\n---\n\n**Next Steps:** Consider if this analysis reveals areas needing deeper investigation, additional context, or specific implementation details."

@@ -107,19 +107,14 @@ async def run_manual_live_tests():
                             "package-lock.json",
                             "yarn.lock",
                         ]
-                        if any(
-                            f in str(clarification["files_needed"])
-                            for f in expected_files
-                        ):
+                        if any(f in str(clarification["files_needed"]) for f in expected_files):
                             print("   ✅ Correctly identified missing package files!")
                         else:
                             print("   ⚠️  Unexpected files requested")
                 else:
                     # This is a failure - we specifically designed this to need clarification
                     print("❌ Expected clarification request but got direct response")
-                    print(
-                        "   This suggests the dynamic context feature may not be working"
-                    )
+                    print("   This suggests the dynamic context feature may not be working")
                     print("   Response:", response_data.get("content", "")[:200])
                     return False
             else:

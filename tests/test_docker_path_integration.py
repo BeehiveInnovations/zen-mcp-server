@@ -35,7 +35,6 @@ def test_docker_path_translation_integration():
         original_env = os.environ.copy()
         try:
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
-            os.environ["MCP_PROJECT_ROOT"] = str(container_workspace)
 
             # Reload the module to pick up new environment variables
             importlib.reload(utils.file_utils)
@@ -44,11 +43,11 @@ def test_docker_path_translation_integration():
             utils.file_utils.CONTAINER_WORKSPACE = container_workspace
 
             # Test the translation
-            from utils.file_utils import _get_secure_container_path
+            from utils.file_utils import translate_path_for_environment
 
             # This should translate the host path to container path
             host_path = str(test_file)
-            result = _get_secure_container_path(host_path)
+            result = translate_path_for_environment(host_path)
 
             # Verify the translation worked
             expected = str(container_workspace / "src" / "test.py")
@@ -105,16 +104,15 @@ def test_no_docker_environment():
     try:
         # Clear Docker-related environment variables
         os.environ.pop("WORKSPACE_ROOT", None)
-        os.environ.pop("MCP_PROJECT_ROOT", None)
 
         # Reload the module
         importlib.reload(utils.file_utils)
 
-        from utils.file_utils import _get_secure_container_path
+        from utils.file_utils import translate_path_for_environment
 
         # Path should remain unchanged
         test_path = "/some/random/path.py"
-        assert _get_secure_container_path(test_path) == test_path
+        assert translate_path_for_environment(test_path) == test_path
 
     finally:
         os.environ.clear()
@@ -152,7 +150,6 @@ def test_review_changes_docker_path_translation():
         try:
             # Simulate Docker environment
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
-            os.environ["MCP_PROJECT_ROOT"] = str(container_workspace)
 
             # Reload the module
             importlib.reload(utils.file_utils)
@@ -166,9 +163,7 @@ def test_review_changes_docker_path_translation():
 
             # Test path translation in prepare_prompt
             request = tool.get_request_model()(
-                path=str(
-                    host_workspace / "project"
-                ),  # Host path that needs translation
+                path=str(host_workspace / "project"),  # Host path that needs translation
                 review_type="quick",
                 severity_filter="all",
             )
@@ -182,9 +177,7 @@ def test_review_changes_docker_path_translation():
             # If we get here without exception, the path was successfully translated
             assert isinstance(result, str)
             # The result should contain git diff information or indicate no changes
-            assert (
-                "No git repositories found" not in result or "changes" in result.lower()
-            )
+            assert "No git repositories found" not in result or "changes" in result.lower()
 
         finally:
             os.environ.clear()
@@ -210,7 +203,6 @@ def test_review_changes_docker_path_error():
         try:
             # Simulate Docker environment
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
-            os.environ["MCP_PROJECT_ROOT"] = str(container_workspace)
 
             # Reload the module
             importlib.reload(utils.file_utils)
@@ -236,9 +228,7 @@ def test_review_changes_docker_path_error():
                 asyncio.run(tool.prepare_prompt(request))
 
             # Check the error message
-            assert "not accessible from within the Docker container" in str(
-                exc_info.value
-            )
+            assert "not accessible from within the Docker container" in str(exc_info.value)
             assert "mounted workspace" in str(exc_info.value)
 
         finally:

@@ -3,17 +3,15 @@ Tool for reviewing pending git changes across multiple repositories.
 """
 
 import os
-import re
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
 from prompts.tool_prompts import REVIEW_CHANGES_PROMPT
-from utils.file_utils import _get_secure_container_path, read_files
-from utils.git_utils import (find_git_repositories, get_git_status,
-                             run_git_command)
+from utils.file_utils import read_files, translate_path_for_environment
+from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
 from .base import BaseTool, ToolRequest
@@ -67,7 +65,7 @@ class ReviewChangesRequest(ToolRequest):
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
         None, description="Thinking depth mode for the assistant."
     )
-    files: Optional[List[str]] = Field(
+    files: Optional[list[str]] = Field(
         None,
         description="Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
     )
@@ -87,10 +85,13 @@ class ReviewChanges(BaseTool):
             "provides deep analysis of staged/unstaged changes. Essential for code quality and preventing bugs. "
             "Triggers: 'before commit', 'review changes', 'check my changes', 'validate changes', 'pre-commit review', "
             "'about to commit', 'ready to commit'. Claude should proactively suggest using this tool whenever "
-            "the user mentions committing or when changes are complete."
+            "the user mentions committing or when changes are complete. "
+            "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
+            "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
+            "'max' for critical releases or when reviewing extensive changes across multiple systems."
         )
 
-    def get_input_schema(self) -> Dict[str, Any]:
+    def get_input_schema(self) -> dict[str, Any]:
         return self.get_request_model().model_json_schema()
 
     def get_system_prompt(self) -> str:
@@ -105,16 +106,7 @@ class ReviewChanges(BaseTool):
 
         return TEMPERATURE_ANALYTICAL
 
-    def _sanitize_filename(self, name: str) -> str:
-        """Sanitize a string to be a valid filename."""
-        # Replace path separators and other problematic characters
-        name = name.replace("/", "_").replace("\\", "_").replace(" ", "_")
-        # Remove any remaining non-alphanumeric characters except dots, dashes, underscores
-        name = re.sub(r"[^a-zA-Z0-9._-]", "", name)
-        # Limit length to avoid filesystem issues
-        return name[:100]
-
-    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check original_request size before processing"""
         # First validate request
         request_model = self.get_request_model()
@@ -124,11 +116,7 @@ class ReviewChanges(BaseTool):
         if request.original_request:
             size_check = self.check_prompt_size(request.original_request)
             if size_check:
-                return [
-                    TextContent(
-                        type="text", text=ToolOutput(**size_check).model_dump_json()
-                    )
-                ]
+                return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
         # Continue with normal execution
         return await super().execute(arguments)
@@ -147,7 +135,7 @@ class ReviewChanges(BaseTool):
             request.files = updated_files
 
         # Translate the path if running in Docker
-        translated_path = _get_secure_container_path(request.path)
+        translated_path = translate_path_for_environment(request.path)
 
         # Check if the path translation resulted in an error path
         if translated_path.startswith("/inaccessible/"):
@@ -167,13 +155,10 @@ class ReviewChanges(BaseTool):
         all_diffs = []
         repo_summaries = []
         total_tokens = 0
-        max_tokens = (
-            MAX_CONTEXT_TOKENS - 50000
-        )  # Reserve tokens for prompt and response
+        max_tokens = MAX_CONTEXT_TOKENS - 50000  # Reserve tokens for prompt and response
 
         for repo_path in repositories:
             repo_name = os.path.basename(repo_path) or "root"
-            repo_name = self._sanitize_filename(repo_name)
 
             # Get status information
             status = get_git_status(repo_path)
@@ -217,10 +202,10 @@ class ReviewChanges(BaseTool):
                         )
                         if success and diff.strip():
                             # Format diff with file header
-                            diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (compare to {request.compare_to}) ---\n"
-                            diff_footer = (
-                                f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                            diff_header = (
+                                f"\n--- BEGIN DIFF: {repo_name} / {file_path} (compare to {request.compare_to}) ---\n"
                             )
+                            diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
                             formatted_diff = diff_header + diff + diff_footer
 
                             # Check token limit
@@ -234,58 +219,38 @@ class ReviewChanges(BaseTool):
                 unstaged_files = []
 
                 if request.include_staged:
-                    success, files_output = run_git_command(
-                        repo_path, ["diff", "--name-only", "--cached"]
-                    )
+                    success, files_output = run_git_command(repo_path, ["diff", "--name-only", "--cached"])
                     if success and files_output.strip():
-                        staged_files = [
-                            f for f in files_output.strip().split("\n") if f
-                        ]
+                        staged_files = [f for f in files_output.strip().split("\n") if f]
 
                         # Generate per-file diffs for staged changes
                         for file_path in staged_files:
-                            success, diff = run_git_command(
-                                repo_path, ["diff", "--cached", "--", file_path]
-                            )
+                            success, diff = run_git_command(repo_path, ["diff", "--cached", "--", file_path])
                             if success and diff.strip():
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (staged) ---\n"
-                                diff_footer = (
-                                    f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
-                                )
+                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
                                 formatted_diff = diff_header + diff + diff_footer
 
                                 # Check token limit
-                                from utils import estimate_tokens
-
                                 diff_tokens = estimate_tokens(formatted_diff)
                                 if total_tokens + diff_tokens <= max_tokens:
                                     all_diffs.append(formatted_diff)
                                     total_tokens += diff_tokens
 
                 if request.include_unstaged:
-                    success, files_output = run_git_command(
-                        repo_path, ["diff", "--name-only"]
-                    )
+                    success, files_output = run_git_command(repo_path, ["diff", "--name-only"])
                     if success and files_output.strip():
-                        unstaged_files = [
-                            f for f in files_output.strip().split("\n") if f
-                        ]
+                        unstaged_files = [f for f in files_output.strip().split("\n") if f]
 
                         # Generate per-file diffs for unstaged changes
                         for file_path in unstaged_files:
-                            success, diff = run_git_command(
-                                repo_path, ["diff", "--", file_path]
-                            )
+                            success, diff = run_git_command(repo_path, ["diff", "--", file_path])
                             if success and diff.strip():
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (unstaged) ---\n"
-                                diff_footer = (
-                                    f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
-                                )
+                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
                                 formatted_diff = diff_header + diff + diff_footer
 
                                 # Check token limit
-                                from utils import estimate_tokens
-
                                 diff_tokens = estimate_tokens(formatted_diff)
                                 if total_tokens + diff_tokens <= max_tokens:
                                     all_diffs.append(formatted_diff)
@@ -310,7 +275,7 @@ class ReviewChanges(BaseTool):
         if not all_diffs:
             return "No pending changes found in any of the git repositories."
 
-        # Process context files if provided
+        # Process context files if provided using standardized file reading
         context_files_content = []
         context_files_summary = []
         context_tokens = 0
@@ -318,40 +283,17 @@ class ReviewChanges(BaseTool):
         if request.files:
             remaining_tokens = max_tokens - total_tokens
 
-            # Read context files with remaining token budget
-            file_content, file_summary = read_files(request.files)
+            # Use standardized file reading with token budget
+            file_content = read_files(
+                request.files, max_tokens=remaining_tokens, reserve_tokens=1000  # Small reserve for formatting
+            )
 
-            # Check if context files fit in remaining budget
             if file_content:
                 context_tokens = estimate_tokens(file_content)
-
-                if context_tokens <= remaining_tokens:
-                    # Use the full content from read_files
-                    context_files_content = [file_content]
-                    # Parse summary to create individual file summaries
-                    summary_lines = file_summary.split("\n")
-                    for line in summary_lines:
-                        if line.strip() and not line.startswith("Total files:"):
-                            context_files_summary.append(f"✅ Included: {line.strip()}")
-                else:
-                    context_files_summary.append(
-                        f"⚠️ Context files too large (~{context_tokens:,} tokens, budget: ~{remaining_tokens:,} tokens)"
-                    )
-                    # Include as much as fits
-                    if remaining_tokens > 1000:  # Only if we have reasonable space
-                        truncated_content = file_content[
-                            : int(
-                                len(file_content)
-                                * (remaining_tokens / context_tokens)
-                                * 0.9
-                            )
-                        ]
-                        context_files_content.append(
-                            f"\n--- BEGIN CONTEXT FILES (TRUNCATED) ---\n{truncated_content}\n--- END CONTEXT FILES ---\n"
-                        )
-                        context_tokens = remaining_tokens
-                    else:
-                        context_tokens = 0
+                context_files_content = [file_content]
+                context_files_summary.append(f"✅ Included: {len(request.files)} context files")
+            else:
+                context_files_summary.append("⚠️ No context files could be read or files too large")
 
             total_tokens += context_tokens
 
@@ -360,9 +302,7 @@ class ReviewChanges(BaseTool):
 
         # Add original request context if provided
         if request.original_request:
-            prompt_parts.append(
-                f"## Original Request/Ticket\n\n{request.original_request}\n"
-            )
+            prompt_parts.append(f"## Original Request/Ticket\n\n{request.original_request}\n")
 
         # Add review parameters
         prompt_parts.append("## Review Parameters\n")
@@ -393,9 +333,7 @@ class ReviewChanges(BaseTool):
             else:
                 prompt_parts.append(f"- Branch: {summary['branch']}")
                 if summary["ahead"] or summary["behind"]:
-                    prompt_parts.append(
-                        f"- Ahead: {summary['ahead']}, Behind: {summary['behind']}"
-                    )
+                    prompt_parts.append(f"- Ahead: {summary['ahead']}, Behind: {summary['behind']}")
                 prompt_parts.append(f"- Changed Files: {summary['changed_files']}")
 
                 if summary["files"]:
@@ -403,9 +341,7 @@ class ReviewChanges(BaseTool):
                     for file in summary["files"]:
                         prompt_parts.append(f"  - {file}")
                     if summary["changed_files"] > len(summary["files"]):
-                        prompt_parts.append(
-                            f"  ... and {summary['changed_files'] - len(summary['files'])} more files"
-                        )
+                        prompt_parts.append(f"  ... and {summary['changed_files'] - len(summary['files'])} more files")
 
         # Add context files summary if provided
         if context_files_summary:
@@ -449,3 +385,7 @@ class ReviewChanges(BaseTool):
             )
 
         return "\n".join(prompt_parts)
+
+    def format_response(self, response: str, request: ReviewChangesRequest) -> str:
+        """Format the response with commit guidance"""
+        return f"{response}\n\n---\n\n**Commit Status:** If no critical issues found, changes are ready for commit. Otherwise, address issues first and re-run review. Check with user before proceeding with any commit."

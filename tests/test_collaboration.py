@@ -58,24 +58,19 @@ class TestDynamicContextRequests:
 
         # Parse the clarification request
         clarification = json.loads(response_data["content"])
-        assert (
-            clarification["question"]
-            == "I need to see the package.json file to understand dependencies"
-        )
+        assert clarification["question"] == "I need to see the package.json file to understand dependencies"
         assert clarification["files_needed"] == ["package.json", "package-lock.json"]
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
-    async def test_normal_response_not_parsed_as_clarification(
-        self, mock_create_model, debug_tool
-    ):
+    async def test_normal_response_not_parsed_as_clarification(self, mock_create_model, debug_tool):
         """Test that normal responses are not mistaken for clarification requests"""
         normal_response = """
         ## Summary
         The error is caused by a missing import statement.
-        
+
         ## Hypotheses (Ranked by Likelihood)
-        
+
         ### 1. Missing Import (Confidence: High)
         **Root Cause:** The module 'utils' is not imported
         """
@@ -86,9 +81,7 @@ class TestDynamicContextRequests:
         )
         mock_create_model.return_value = mock_model
 
-        result = await debug_tool.execute(
-            {"error_description": "NameError: name 'utils' is not defined"}
-        )
+        result = await debug_tool.execute({"error_description": "NameError: name 'utils' is not defined"})
 
         assert len(result) == 1
 
@@ -100,13 +93,9 @@ class TestDynamicContextRequests:
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
-    async def test_malformed_clarification_request_treated_as_normal(
-        self, mock_create_model, analyze_tool
-    ):
+    async def test_malformed_clarification_request_treated_as_normal(self, mock_create_model, analyze_tool):
         """Test that malformed JSON clarification requests are treated as normal responses"""
-        malformed_json = (
-            '{"status": "requires_clarification", "question": "Missing closing brace"'
-        )
+        malformed_json = '{"status": "requires_clarification", "question": "Missing closing brace"'
 
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(
@@ -114,9 +103,7 @@ class TestDynamicContextRequests:
         )
         mock_create_model.return_value = mock_model
 
-        result = await analyze_tool.execute(
-            {"files": ["/absolute/path/test.py"], "question": "What does this do?"}
-        )
+        result = await analyze_tool.execute({"files": ["/absolute/path/test.py"], "question": "What does this do?"})
 
         assert len(result) == 1
 
@@ -127,9 +114,7 @@ class TestDynamicContextRequests:
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
-    async def test_clarification_with_suggested_action(
-        self, mock_create_model, debug_tool
-    ):
+    async def test_clarification_with_suggested_action(self, mock_create_model, debug_tool):
         """Test clarification request with suggested next action"""
         clarification_json = json.dumps(
             {
@@ -207,9 +192,7 @@ class TestDynamicContextRequests:
         """Test error response format"""
         mock_create_model.side_effect = Exception("API connection failed")
 
-        result = await analyze_tool.execute(
-            {"files": ["/absolute/path/test.py"], "question": "Analyze this"}
-        )
+        result = await analyze_tool.execute({"files": ["/absolute/path/test.py"], "question": "Analyze this"})
 
         assert len(result) == 1
 
@@ -257,9 +240,7 @@ class TestCollaborationWorkflow:
         ), "Should request clarification when asked about dependencies without package files"
 
         clarification = json.loads(response["content"])
-        assert "package.json" in str(
-            clarification["files_needed"]
-        ), "Should specifically request package.json"
+        assert "package.json" in str(clarification["files_needed"]), "Should specifically request package.json"
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.create_model")
@@ -297,9 +278,9 @@ class TestCollaborationWorkflow:
         final_response = """
         ## Summary
         The database connection timeout is caused by incorrect host configuration.
-        
+
         ## Hypotheses (Ranked by Likelihood)
-        
+
         ### 1. Incorrect Database Host (Confidence: High)
         **Root Cause:** The config.py file shows the database host is set to 'localhost' but the database is running on a different server.
         """

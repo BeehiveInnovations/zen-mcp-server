@@ -65,7 +65,8 @@ class TestServerTools:
 
             response_data = json.loads(result[0].text)
             assert response_data["status"] == "success"
-            assert response_data["content"] == "Chat response"
+            assert "Chat response" in response_data["content"]
+            assert "Claude's Turn" in response_data["content"]
 
     @pytest.mark.asyncio
     async def test_handle_get_version(self):

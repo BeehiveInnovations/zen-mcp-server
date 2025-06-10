@@ -45,29 +45,10 @@ class TestReviewChangesTool:
         assert request.max_depth == 5
         assert request.files is None
 
-    def test_sanitize_filename(self, tool):
-        """Test filename sanitization"""
-        # Test path separators
-        assert tool._sanitize_filename("src/main.py") == "src_main.py"
-        assert tool._sanitize_filename("src\\main.py") == "src_main.py"
-
-        # Test spaces
-        assert tool._sanitize_filename("my file.py") == "my_file.py"
-
-        # Test special characters
-        assert tool._sanitize_filename("file@#$.py") == "file.py"
-
-        # Test length limit
-        long_name = "a" * 150
-        sanitized = tool._sanitize_filename(long_name)
-        assert len(sanitized) == 100
-
     @pytest.mark.asyncio
     async def test_relative_path_rejected(self, tool):
         """Test that relative paths are rejected"""
-        result = await tool.execute(
-            {"path": "./relative/path", "original_request": "Test"}
-        )
+        result = await tool.execute({"path": "./relative/path", "original_request": "Test"})
         assert len(result) == 1
         response = json.loads(result[0].text)
         assert response["status"] == "error"
@@ -90,9 +71,7 @@ class TestReviewChangesTool:
     @patch("tools.review_changes.find_git_repositories")
     @patch("tools.review_changes.get_git_status")
     @patch("tools.review_changes.run_git_command")
-    async def test_no_changes_found(
-        self, mock_run_git, mock_status, mock_find_repos, tool
-    ):
+    async def test_no_changes_found(self, mock_run_git, mock_status, mock_find_repos, tool):
         """Test when repositories have no changes"""
         mock_find_repos.return_value = ["/test/repo"]
         mock_status.return_value = {
@@ -167,9 +146,7 @@ class TestReviewChangesTool:
     @patch("tools.review_changes.find_git_repositories")
     @patch("tools.review_changes.get_git_status")
     @patch("tools.review_changes.run_git_command")
-    async def test_compare_to_invalid_ref(
-        self, mock_run_git, mock_status, mock_find_repos, tool
-    ):
+    async def test_compare_to_invalid_ref(self, mock_run_git, mock_status, mock_find_repos, tool):
         """Test comparing to an invalid git ref"""
         mock_find_repos.return_value = ["/test/repo"]
         mock_status.return_value = {"branch": "main"}
@@ -179,9 +156,7 @@ class TestReviewChangesTool:
             (False, "fatal: not a valid ref"),  # rev-parse fails
         ]
 
-        request = ReviewChangesRequest(
-            path="/absolute/repo/path", compare_to="invalid-branch"
-        )
+        request = ReviewChangesRequest(path="/absolute/repo/path", compare_to="invalid-branch")
         result = await tool.prepare_prompt(request)
 
         # When all repos have errors and no changes, we get this message
@@ -193,9 +168,7 @@ class TestReviewChangesTool:
         """Test execute method integration"""
         # Mock the execute to return a standardized response
         mock_execute.return_value = [
-            Mock(
-                text='{"status": "success", "content": "Review complete", "content_type": "text"}'
-            )
+            Mock(text='{"status": "success", "content": "Review complete", "content_type": "text"}')
         ]
 
         result = await tool.execute({"path": ".", "review_type": "full"})
@@ -282,10 +255,7 @@ class TestReviewChangesTool:
         ]
 
         # Mock read_files
-        mock_read_files.return_value = (
-            "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ===",
-            "config.py",
-        )
+        mock_read_files.return_value = "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ==="
 
         request = ReviewChangesRequest(
             path="/absolute/repo/path",
@@ -295,7 +265,7 @@ class TestReviewChangesTool:
 
         # Verify context files are included
         assert "## Context Files Summary" in result
-        assert "✅ Included: config.py" in result
+        assert "✅ Included: 1 context files" in result
         assert "## Additional Context Files" in result
         assert "=== FILE: config.py ===" in result
         assert "CONFIG_VALUE = 42" in result
@@ -336,9 +306,7 @@ class TestReviewChangesTool:
         assert "standardized JSON response format" in result
 
         # Request with files - should not include instruction
-        request_with_files = ReviewChangesRequest(
-            path="/absolute/repo/path", files=["/some/file.py"]
-        )
+        request_with_files = ReviewChangesRequest(path="/absolute/repo/path", files=["/some/file.py"])
 
         # Need to reset mocks for second call
         mock_find_repos.return_value = ["/test/repo"]
@@ -350,7 +318,7 @@ class TestReviewChangesTool:
 
         # Mock read_files to return empty (file not found)
         with patch("tools.review_changes.read_files") as mock_read:
-            mock_read.return_value = ("", "")
+            mock_read.return_value = ""
             result_with_files = await tool.prepare_prompt(request_with_files)
 
         assert "If you need additional context files" not in result_with_files

@@ -44,9 +44,7 @@ class TestPromptRegression:
 
         with patch.object(tool, "create_model") as mock_create_model:
             mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response(
-                "This is a helpful response about Python."
-            )
+            mock_model.generate_content.return_value = mock_model_response("This is a helpful response about Python.")
             mock_create_model.return_value = mock_model
 
             result = await tool.execute({"prompt": "Explain Python decorators"})
@@ -71,11 +69,9 @@ class TestPromptRegression:
 
             # Mock file reading
             with patch("tools.chat.read_files") as mock_read_files:
-                mock_read_files.return_value = ("File content here", "Summary")
+                mock_read_files.return_value = "File content here"
 
-                result = await tool.execute(
-                    {"prompt": "Analyze this code", "files": ["/path/to/file.py"]}
-                )
+                result = await tool.execute({"prompt": "Analyze this code", "files": ["/path/to/file.py"]})
 
                 assert len(result) == 1
                 output = json.loads(result[0].text)
@@ -122,13 +118,14 @@ class TestPromptRegression:
 
             # Mock file reading
             with patch("tools.review_code.read_files") as mock_read_files:
-                mock_read_files.return_value = ("def main(): pass", "1 file")
+                mock_read_files.return_value = "def main(): pass"
 
                 result = await tool.execute(
                     {
                         "files": ["/path/to/code.py"],
                         "review_type": "security",
                         "focus_on": "Look for SQL injection vulnerabilities",
+                        "context": "Test code review for validation purposes",
                     }
                 )
 
@@ -209,7 +206,7 @@ class TestPromptRegression:
 
             # Mock file reading
             with patch("tools.analyze.read_files") as mock_read_files:
-                mock_read_files.return_value = ("class UserController: ...", "3 files")
+                mock_read_files.return_value = "class UserController: ..."
 
                 result = await tool.execute(
                     {
@@ -251,9 +248,7 @@ class TestPromptRegression:
             mock_model.generate_content.return_value = mock_model_response()
             mock_create_model.return_value = mock_model
 
-            result = await tool.execute(
-                {"prompt": "Test", "thinking_mode": "high", "temperature": 0.8}
-            )
+            result = await tool.execute({"prompt": "Test", "thinking_mode": "high", "temperature": 0.8})
 
             assert len(result) == 1
             output = json.loads(result[0].text)
@@ -293,7 +288,7 @@ class TestPromptRegression:
             mock_create_model.return_value = mock_model
 
             with patch("tools.analyze.read_files") as mock_read_files:
-                mock_read_files.return_value = ("Content", "Summary")
+                mock_read_files.return_value = "Content"
 
                 result = await tool.execute(
                     {

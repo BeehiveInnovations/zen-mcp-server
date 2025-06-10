@@ -2,8 +2,7 @@
 Tests for utility functions
 """
 
-from utils import (check_token_limit, estimate_tokens, read_file_content,
-                   read_files)
+from utils import check_token_limit, estimate_tokens, read_file_content, read_files
 
 
 class TestFileUtils:
@@ -60,7 +59,7 @@ class TestFileUtils:
         file2 = project_path / "file2.py"
         file2.write_text("print('file2')", encoding="utf-8")
 
-        content, summary = read_files([str(file1), str(file2)])
+        content = read_files([str(file1), str(file2)])
 
         assert "--- BEGIN FILE:" in content
         assert "file1.py" in content
@@ -68,18 +67,20 @@ class TestFileUtils:
         assert "print('file1')" in content
         assert "print('file2')" in content
 
-        assert "Read 2 file(s)" in summary
+        # Check that both files are included
+        assert "file1.py" in content and "file2.py" in content
 
     def test_read_files_with_code(self):
         """Test reading with direct code"""
         code = "def test():\n    pass"
-        content, summary = read_files([], code)
+        content = read_files([], code)
 
         assert "--- BEGIN DIRECT CODE ---" in content
         assert "--- END DIRECT CODE ---" in content
         assert code in content
 
-        assert "Direct code:" in summary
+        # Check that direct code is included
+        assert code in content
 
     def test_read_files_directory_support(self, project_path):
         """Test reading all files from a directory"""
@@ -97,7 +98,7 @@ class TestFileUtils:
         (project_path / ".hidden").write_text("secret", encoding="utf-8")
 
         # Read the directory
-        content, summary = read_files([str(project_path)])
+        content = read_files([str(project_path)])
 
         # Check files are included
         assert "file1.py" in content
@@ -117,9 +118,8 @@ class TestFileUtils:
         assert ".hidden" not in content
         assert "secret" not in content
 
-        # Check summary
-        assert "Processed 1 dir(s)" in summary
-        assert "Read 4 file(s)" in summary
+        # Check that all files are included
+        assert all(filename in content for filename in ["file1.py", "file2.js", "readme.md", "module.py"])
 
     def test_read_files_mixed_paths(self, project_path):
         """Test reading mix of files and directories"""
@@ -134,7 +134,7 @@ class TestFileUtils:
         (subdir / "sub2.py").write_text("# Sub file 2", encoding="utf-8")
 
         # Read mix of direct file and directory
-        content, summary = read_files([str(file1), str(subdir)])
+        content = read_files([str(file1), str(subdir)])
 
         assert "direct.py" in content
         assert "sub1.py" in content
@@ -143,8 +143,8 @@ class TestFileUtils:
         assert "# Sub file 1" in content
         assert "# Sub file 2" in content
 
-        assert "Processed 1 dir(s)" in summary
-        assert "Read 3 file(s)" in summary
+        # Check that all files are included
+        assert all(filename in content for filename in ["direct.py", "sub1.py", "sub2.py"])
 
     def test_read_files_token_limit(self, project_path):
         """Test token limit handling"""
@@ -158,10 +158,9 @@ class TestFileUtils:
         # Read with small token limit (should skip some files)
         # Reserve 50k tokens, limit to 51k total = 1k available
         # Each file ~250 tokens, so should read ~3-4 files
-        content, summary = read_files([str(project_path)], max_tokens=51_000)
+        content = read_files([str(project_path)], max_tokens=51_000)
 
-        assert "Skipped" in summary
-        assert "token limit" in summary
+        # Check that token limit handling is present
         assert "--- SKIPPED FILES (TOKEN LIMIT) ---" in content
 
         # Count how many files were read
@@ -174,11 +173,12 @@ class TestFileUtils:
         large_file = project_path / "large.txt"
         large_file.write_text("x" * 2_000_000, encoding="utf-8")  # 2MB
 
-        content, summary = read_files([str(large_file)])
+        content = read_files([str(large_file)])
 
         assert "--- FILE TOO LARGE:" in content
         assert "2,000,000 bytes" in content
-        assert "Read 1 file(s)" in summary  # File is counted but shows error message
+        # File too large message should be present
+        assert "--- FILE TOO LARGE:" in content
 
     def test_read_files_file_extensions(self, project_path):
         """Test file extension filtering"""
@@ -188,7 +188,7 @@ class TestFileUtils:
         (project_path / "binary.exe").write_text("exe", encoding="utf-8")
         (project_path / "image.jpg").write_text("jpg", encoding="utf-8")
 
-        content, summary = read_files([str(project_path)])
+        content = read_files([str(project_path)])
 
         # Code files should be included
         assert "code.py" in content

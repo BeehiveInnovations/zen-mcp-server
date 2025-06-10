@@ -23,17 +23,28 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from config import (GEMINI_MODEL, MAX_CONTEXT_TOKENS, __author__, __updated__,
-                    __version__)
-from tools import (AnalyzeTool, ChatTool, DebugIssueTool, ReviewChanges,
-                   ReviewCodeTool, ThinkDeeperTool)
+from config import (
+    GEMINI_MODEL,
+    MAX_CONTEXT_TOKENS,
+    __author__,
+    __updated__,
+    __version__,
+)
+from tools import (
+    AnalyzeTool,
+    ChatTool,
+    DebugIssueTool,
+    ReviewChanges,
+    ReviewCodeTool,
+    ThinkDeeperTool,
+)
 
 # Configure logging for server operations
 # Set to INFO level to capture important operational messages without being too verbose
@@ -70,17 +81,14 @@ def configure_gemini():
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError(
-            "GEMINI_API_KEY environment variable is required. "
-            "Please set it with your Gemini API key."
-        )
+        raise ValueError("GEMINI_API_KEY environment variable is required. " "Please set it with your Gemini API key.")
     # Note: We don't store the API key globally for security reasons
     # Each tool creates its own Gemini client with the API key when needed
     logger.info("Gemini API key found")
 
 
 @server.list_tools()
-async def handle_list_tools() -> List[Tool]:
+async def handle_list_tools() -> list[Tool]:
     """
     List all available tools with their descriptions and input schemas.
 
@@ -124,7 +132,7 @@ async def handle_list_tools() -> List[Tool]:
 
 
 @server.call_tool()
-async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """
     Handle incoming tool execution requests from MCP clients.
 
@@ -154,7 +162,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
 
-async def handle_get_version() -> List[TextContent]:
+async def handle_get_version() -> list[TextContent]:
     """
     Get comprehensive version and configuration information about the server.
 
