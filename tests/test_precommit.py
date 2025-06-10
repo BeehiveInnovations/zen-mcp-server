@@ -1,5 +1,5 @@
 """
-Tests for the review_changes tool
+Tests for the precommit tool
 """
 
 import json
@@ -7,22 +7,22 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools.review_changes import ReviewChanges, ReviewChangesRequest
+from tools.precommit import Precommit, PrecommitRequest
 
 
-class TestReviewChangesTool:
-    """Test the review_changes tool"""
+class TestPrecommitTool:
+    """Test the precommit tool"""
 
     @pytest.fixture
     def tool(self):
         """Create tool instance"""
-        return ReviewChanges()
+        return Precommit()
 
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
-        assert tool.get_name() == "review_changes"
-        assert "REVIEW PENDING GIT CHANGES" in tool.get_description()
-        assert "pre-commit review" in tool.get_description()
+        assert tool.get_name() == "precommit"
+        assert "PRECOMMIT VALIDATION" in tool.get_description()
+        assert "pre-commit" in tool.get_description()
 
         # Check schema
         schema = tool.get_input_schema()
@@ -34,7 +34,7 @@ class TestReviewChangesTool:
 
     def test_request_model_defaults(self):
         """Test request model default values"""
-        request = ReviewChangesRequest(path="/some/absolute/path")
+        request = PrecommitRequest(path="/some/absolute/path")
         assert request.path == "/some/absolute/path"
         assert request.original_request is None
         assert request.compare_to is None
@@ -56,21 +56,21 @@ class TestReviewChangesTool:
         assert "./relative/path" in response["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
+    @patch("tools.precommit.find_git_repositories")
     async def test_no_repositories_found(self, mock_find_repos, tool):
         """Test when no git repositories are found"""
         mock_find_repos.return_value = []
 
-        request = ReviewChangesRequest(path="/absolute/path/no-git")
+        request = PrecommitRequest(path="/absolute/path/no-git")
         result = await tool.prepare_prompt(request)
 
         assert result == "No git repositories found in the specified path."
         mock_find_repos.assert_called_once_with("/absolute/path/no-git", 5)
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
-    @patch("tools.review_changes.get_git_status")
-    @patch("tools.review_changes.run_git_command")
+    @patch("tools.precommit.find_git_repositories")
+    @patch("tools.precommit.get_git_status")
+    @patch("tools.precommit.run_git_command")
     async def test_no_changes_found(self, mock_run_git, mock_status, mock_find_repos, tool):
         """Test when repositories have no changes"""
         mock_find_repos.return_value = ["/test/repo"]
@@ -89,15 +89,15 @@ class TestReviewChangesTool:
             (True, ""),  # unstaged files (empty)
         ]
 
-        request = ReviewChangesRequest(path="/absolute/repo/path")
+        request = PrecommitRequest(path="/absolute/repo/path")
         result = await tool.prepare_prompt(request)
 
         assert result == "No pending changes found in any of the git repositories."
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
-    @patch("tools.review_changes.get_git_status")
-    @patch("tools.review_changes.run_git_command")
+    @patch("tools.precommit.find_git_repositories")
+    @patch("tools.precommit.get_git_status")
+    @patch("tools.precommit.run_git_command")
     async def test_staged_changes_review(
         self,
         mock_run_git,
@@ -126,7 +126,7 @@ class TestReviewChangesTool:
             (True, ""),  # unstaged files (empty)
         ]
 
-        request = ReviewChangesRequest(
+        request = PrecommitRequest(
             path="/absolute/repo/path",
             original_request="Add hello message",
             review_type="security",
@@ -143,9 +143,9 @@ class TestReviewChangesTool:
         assert "## Git Diffs" in result
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
-    @patch("tools.review_changes.get_git_status")
-    @patch("tools.review_changes.run_git_command")
+    @patch("tools.precommit.find_git_repositories")
+    @patch("tools.precommit.get_git_status")
+    @patch("tools.precommit.run_git_command")
     async def test_compare_to_invalid_ref(self, mock_run_git, mock_status, mock_find_repos, tool):
         """Test comparing to an invalid git ref"""
         mock_find_repos.return_value = ["/test/repo"]
@@ -156,14 +156,14 @@ class TestReviewChangesTool:
             (False, "fatal: not a valid ref"),  # rev-parse fails
         ]
 
-        request = ReviewChangesRequest(path="/absolute/repo/path", compare_to="invalid-branch")
+        request = PrecommitRequest(path="/absolute/repo/path", compare_to="invalid-branch")
         result = await tool.prepare_prompt(request)
 
         # When all repos have errors and no changes, we get this message
         assert "No pending changes found in any of the git repositories." in result
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.ReviewChanges.execute")
+    @patch("tools.precommit.Precommit.execute")
     async def test_execute_integration(self, mock_execute, tool):
         """Test execute method integration"""
         # Mock the execute to return a standardized response
@@ -183,9 +183,9 @@ class TestReviewChangesTool:
         assert tool.get_default_temperature() == TEMPERATURE_ANALYTICAL
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
-    @patch("tools.review_changes.get_git_status")
-    @patch("tools.review_changes.run_git_command")
+    @patch("tools.precommit.find_git_repositories")
+    @patch("tools.precommit.get_git_status")
+    @patch("tools.precommit.run_git_command")
     async def test_mixed_staged_unstaged_changes(
         self,
         mock_run_git,
@@ -211,7 +211,7 @@ class TestReviewChangesTool:
             (True, "diff --git a/file2.py..."),  # diff for file2.py
         ]
 
-        request = ReviewChangesRequest(
+        request = PrecommitRequest(
             path="/absolute/repo/path",
             focus_on="error handling",
             severity_filter="high",
@@ -225,10 +225,10 @@ class TestReviewChangesTool:
         assert "Reviewing: staged and unstaged changes" in result
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
-    @patch("tools.review_changes.get_git_status")
-    @patch("tools.review_changes.run_git_command")
-    @patch("tools.review_changes.read_files")
+    @patch("tools.precommit.find_git_repositories")
+    @patch("tools.precommit.get_git_status")
+    @patch("tools.precommit.run_git_command")
+    @patch("tools.precommit.read_files")
     async def test_files_parameter_with_context(
         self,
         mock_read_files,
@@ -257,7 +257,7 @@ class TestReviewChangesTool:
         # Mock read_files
         mock_read_files.return_value = "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ==="
 
-        request = ReviewChangesRequest(
+        request = PrecommitRequest(
             path="/absolute/repo/path",
             files=["/absolute/repo/path/config.py"],
         )
@@ -271,9 +271,9 @@ class TestReviewChangesTool:
         assert "CONFIG_VALUE = 42" in result
 
     @pytest.mark.asyncio
-    @patch("tools.review_changes.find_git_repositories")
-    @patch("tools.review_changes.get_git_status")
-    @patch("tools.review_changes.run_git_command")
+    @patch("tools.precommit.find_git_repositories")
+    @patch("tools.precommit.get_git_status")
+    @patch("tools.precommit.run_git_command")
     async def test_files_request_instruction(
         self,
         mock_run_git,
@@ -298,7 +298,7 @@ class TestReviewChangesTool:
         ]
 
         # Request without files
-        request = ReviewChangesRequest(path="/absolute/repo/path")
+        request = PrecommitRequest(path="/absolute/repo/path")
         result = await tool.prepare_prompt(request)
 
         # Should include instruction for requesting files
@@ -306,7 +306,7 @@ class TestReviewChangesTool:
         assert "standardized JSON response format" in result
 
         # Request with files - should not include instruction
-        request_with_files = ReviewChangesRequest(path="/absolute/repo/path", files=["/some/file.py"])
+        request_with_files = PrecommitRequest(path="/absolute/repo/path", files=["/some/file.py"])
 
         # Need to reset mocks for second call
         mock_find_repos.return_value = ["/test/repo"]
@@ -317,7 +317,7 @@ class TestReviewChangesTool:
         ]
 
         # Mock read_files to return empty (file not found)
-        with patch("tools.review_changes.read_files") as mock_read:
+        with patch("tools.precommit.read_files") as mock_read:
             mock_read.return_value = ""
             result_with_files = await tool.prepare_prompt(request_with_files)
 

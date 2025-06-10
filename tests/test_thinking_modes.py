@@ -7,8 +7,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from tools.analyze import AnalyzeTool
+from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
-from tools.review_code import ReviewCodeTool
 from tools.think_deeper import ThinkDeeperTool
 
 
@@ -27,7 +27,7 @@ class TestThinkingModes:
         tools = [
             (ThinkDeeperTool(), "high"),
             (AnalyzeTool(), "medium"),
-            (ReviewCodeTool(), "medium"),
+            (CodeReviewTool(), "medium"),
             (DebugIssueTool(), "medium"),
         ]
 
@@ -77,7 +77,7 @@ class TestThinkingModes:
         )
         mock_create_model.return_value = mock_model
 
-        tool = ReviewCodeTool()
+        tool = CodeReviewTool()
         result = await tool.execute(
             {
                 "files": ["/absolute/path/test.py"],

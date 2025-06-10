@@ -20,11 +20,11 @@ class TestServerTools:
 
         # Check all core tools are present
         assert "think_deeper" in tool_names
-        assert "review_code" in tool_names
+        assert "codereview" in tool_names
         assert "debug" in tool_names
         assert "analyze" in tool_names
         assert "chat" in tool_names
-        assert "review_changes" in tool_names
+        assert "precommit" in tool_names
         assert "get_version" in tool_names
 
         # Should have exactly 7 tools

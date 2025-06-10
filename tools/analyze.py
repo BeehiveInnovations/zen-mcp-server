@@ -37,8 +37,7 @@ class AnalyzeTool(BaseTool):
         return (
             "ANALYZE FILES & CODE - General-purpose analysis for understanding code. "
             "Supports both individual files and entire directories. "
-            "Use this for examining files, understanding architecture, or investigating specific aspects. "
-            "Triggers: 'analyze these files', 'examine this code', 'understand this'. "
+            "Use this when you need to analyze files, examine code, or understand specific aspects of a codebase. "
             "Perfect for: codebase exploration, dependency analysis, pattern detection. "
             "Always uses file paths for clean terminal output."
         )

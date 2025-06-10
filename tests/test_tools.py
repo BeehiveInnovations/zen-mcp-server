@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools import AnalyzeTool, ChatTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool
+from tools import AnalyzeTool, ChatTool, CodeReviewTool, DebugIssueTool, ThinkDeeperTool
 
 
 class TestThinkDeeperTool:
@@ -54,16 +54,16 @@ class TestThinkDeeperTool:
         assert "Extended analysis" in output["content"]
 
 
-class TestReviewCodeTool:
-    """Test the review_code tool"""
+class TestCodeReviewTool:
+    """Test the codereview tool"""
 
     @pytest.fixture
     def tool(self):
-        return ReviewCodeTool()
+        return CodeReviewTool()
 
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
-        assert tool.get_name() == "review_code"
+        assert tool.get_name() == "codereview"
         assert "PROFESSIONAL CODE REVIEW" in tool.get_description()
         assert tool.get_default_temperature() == 0.2
 
@@ -214,9 +214,9 @@ class TestAbsolutePathValidation:
         assert "./relative/path.py" in response["content"]
 
     @pytest.mark.asyncio
-    async def test_review_code_tool_relative_path_rejected(self):
-        """Test that review_code tool rejects relative paths"""
-        tool = ReviewCodeTool()
+    async def test_codereview_tool_relative_path_rejected(self):
+        """Test that codereview tool rejects relative paths"""
+        tool = CodeReviewTool()
         result = await tool.execute(
             {
                 "files": ["../parent/file.py"],

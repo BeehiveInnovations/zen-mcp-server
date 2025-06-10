@@ -40,8 +40,8 @@ class ChatTool(BaseTool):
             "Perfect for: bouncing ideas during your own analysis, getting second opinions on your plans, "
             "collaborative brainstorming, validating your checklists and approaches, exploring alternatives. "
             "Also great for: explanations, comparisons, general development questions. "
-            "Triggers: 'ask gemini', 'brainstorm with gemini', 'get gemini's opinion', 'discuss with gemini', "
-            "'share my thinking with gemini', 'explain', 'what is', 'how do I'."
+            "Use this when you want to ask Gemini questions, brainstorm ideas, get opinions, discuss topics, "
+            "share your thinking, or need explanations about concepts and approaches."
         )
 
     def get_input_schema(self) -> dict[str, Any]:

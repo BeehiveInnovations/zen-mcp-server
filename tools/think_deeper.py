@@ -39,9 +39,8 @@ class ThinkDeeperTool(BaseTool):
     def get_description(self) -> str:
         return (
             "EXTENDED THINKING & REASONING - Your deep thinking partner for complex problems. "
-            "Use this when you need to extend your analysis, explore alternatives, or validate approaches. "
+            "Use this when you need to think deeper about a problem, extend your analysis, explore alternatives, or validate approaches. "
             "Perfect for: architecture decisions, complex bugs, performance challenges, security analysis. "
-            "Triggers: 'think deeper', 'ultrathink', 'extend my analysis', 'explore alternatives'. "
             "I'll challenge assumptions, find edge cases, and provide alternative solutions. "
             "IMPORTANT: Choose the appropriate thinking_mode based on task complexity - "
             "'low' for quick analysis, 'medium' for standard problems, 'high' for complex issues (default), "

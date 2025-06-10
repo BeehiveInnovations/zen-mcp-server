@@ -19,8 +19,8 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
   - [`think_deeper`](#2-think_deeper---extended-reasoning-partner) - Extended reasoning
-  - [`review_code`](#3-review_code---professional-code-review) - Code review
-  - [`review_changes`](#4-review_changes---pre-commit-validation) - Pre-commit validation
+  - [`codereview`](#3-codereview---professional-code-review) - Code review
+  - [`precommit`](#4-precommit---pre-commit-validation) - Pre-commit validation
   - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
 
@@ -42,8 +42,8 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 Claude is brilliant, but sometimes you need:
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
 - **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`think_deeper`](#2-think_deeper---extended-reasoning-partner))
-- **Professional code reviews** with actionable feedback across entire repositories ([`review_code`](#3-review_code---professional-code-review))
-- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`review_changes`](#4-review_changes---pre-commit-validation))
+- **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
+- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`precommit`](#4-precommit---pre-commit-validation))
 - **Expert debugging** for tricky issues with full system context ([`debug`](#5-debug---expert-debugging-assistant))
 - **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#6-analyze---smart-file-analysis))
 - **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
@@ -562,7 +562,7 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 
 **Triggers:** think deeper, ultrathink, extend my analysis, validate my approach
 
-### 3. `review_code` - Professional Code Review  
+### 3. `codereview` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for security-critical code (worth the extra tokens) or `low` for quick style checks (saves ~6k tokens).
@@ -607,7 +607,7 @@ make any necessary adjustments and show me the final secure implementation."
 
 **Triggers:** review code, check for issues, find bugs, security check
 
-### 4. `review_changes` - Pre-Commit Validation
+### 4. `precommit` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` or `max` for critical releases when thorough validation justifies the token cost.

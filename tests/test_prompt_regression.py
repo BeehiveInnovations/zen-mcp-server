@@ -12,9 +12,9 @@ import pytest
 
 from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
+from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
-from tools.review_changes import ReviewChanges
-from tools.review_code import ReviewCodeTool
+from tools.precommit import Precommit
 from tools.think_deeper import ThinkDeeperTool
 
 
@@ -105,9 +105,9 @@ class TestPromptRegression:
             assert "deeper analysis" in output["content"]
 
     @pytest.mark.asyncio
-    async def test_review_code_normal_review(self, mock_model_response):
-        """Test review_code tool with normal inputs."""
-        tool = ReviewCodeTool()
+    async def test_codereview_normal_review(self, mock_model_response):
+        """Test codereview tool with normal inputs."""
+        tool = CodeReviewTool()
 
         with patch.object(tool, "create_model") as mock_create_model:
             mock_model = MagicMock()
@@ -117,7 +117,7 @@ class TestPromptRegression:
             mock_create_model.return_value = mock_model
 
             # Mock file reading
-            with patch("tools.review_code.read_files") as mock_read_files:
+            with patch("tools.codereview.read_files") as mock_read_files:
                 mock_read_files.return_value = "def main(): pass"
 
                 result = await tool.execute(
@@ -137,7 +137,7 @@ class TestPromptRegression:
     @pytest.mark.asyncio
     async def test_review_changes_normal_request(self, mock_model_response):
         """Test review_changes tool with normal original_request."""
-        tool = ReviewChanges()
+        tool = Precommit()
 
         with patch.object(tool, "create_model") as mock_create_model:
             mock_model = MagicMock()
@@ -147,8 +147,8 @@ class TestPromptRegression:
             mock_create_model.return_value = mock_model
 
             # Mock git operations
-            with patch("tools.review_changes.find_git_repositories") as mock_find_repos:
-                with patch("tools.review_changes.get_git_status") as mock_git_status:
+            with patch("tools.precommit.find_git_repositories") as mock_find_repos:
+                with patch("tools.precommit.get_git_status") as mock_git_status:
                     mock_find_repos.return_value = ["/path/to/repo"]
                     mock_git_status.return_value = {
                         "modified": ["file.py"],

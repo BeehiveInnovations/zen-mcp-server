@@ -156,10 +156,10 @@ def test_review_changes_docker_path_translation():
             utils.file_utils.CONTAINER_WORKSPACE = container_workspace
 
             # Import after reloading to get updated environment
-            from tools.review_changes import ReviewChanges
+            from tools.precommit import Precommit
 
             # Create tool instance
-            tool = ReviewChanges()
+            tool = Precommit()
 
             # Test path translation in prepare_prompt
             request = tool.get_request_model()(
@@ -209,10 +209,10 @@ def test_review_changes_docker_path_error():
             utils.file_utils.CONTAINER_WORKSPACE = container_workspace
 
             # Import after reloading to get updated environment
-            from tools.review_changes import ReviewChanges
+            from tools.precommit import Precommit
 
             # Create tool instance
-            tool = ReviewChanges()
+            tool = Precommit()
 
             # Test path translation with an inaccessible path
             request = tool.get_request_model()(

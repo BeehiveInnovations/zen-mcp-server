@@ -40,9 +40,9 @@ from config import (
 from tools import (
     AnalyzeTool,
     ChatTool,
+    CodeReviewTool,
     DebugIssueTool,
-    ReviewChanges,
-    ReviewCodeTool,
+    Precommit,
     ThinkDeeperTool,
 )
 
@@ -60,11 +60,11 @@ server: Server = Server("gemini-server")
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
     "think_deeper": ThinkDeeperTool(),  # Extended reasoning for complex problems
-    "review_code": ReviewCodeTool(),  # Comprehensive code review and quality analysis
+    "codereview": CodeReviewTool(),  # Comprehensive code review and quality analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
-    "review_changes": ReviewChanges(),  # Pre-commit review of git changes
+    "precommit": Precommit(),  # Pre-commit validation of git changes
 }
 
 

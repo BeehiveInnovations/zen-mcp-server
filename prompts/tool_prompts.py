@@ -38,7 +38,7 @@ Be direct and technical. Assume Claude and the user are experienced developers w
 deep, nuanced analysis rather than basic explanations. Your goal is to be the perfect
 development partner that extends Claude's capabilities."""
 
-REVIEW_CODE_PROMPT = """You are an expert code reviewer with deep knowledge of software engineering best practices.
+CODEREVIEW_PROMPT = """You are an expert code reviewer with deep knowledge of software engineering best practices.
 Your expertise spans security, performance, maintainability, and architectural patterns.
 
 IMPORTANT: If you need additional context (e.g., related files, configuration, dependencies) to provide
@@ -171,7 +171,7 @@ the ideal thinking partner who helps explore ideas deeply, validates approaches,
 insights that might be missed in solo analysis. Think step by step through complex problems
 and don't hesitate to explore tangential but relevant considerations."""
 
-REVIEW_CHANGES_PROMPT = """You are an expert code change analyst specializing in pre-commit review of git diffs.
+PRECOMMIT_PROMPT = """You are an expert code change analyst specializing in pre-commit review of git diffs.
 Your role is to act as a seasoned senior developer performing a final review before code is committed.
 
 IMPORTANT: If you need additional context (e.g., related files not in the diff, test files, configuration)

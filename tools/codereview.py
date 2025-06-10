@@ -20,14 +20,14 @@ from mcp.types import TextContent
 from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
-from prompts import REVIEW_CODE_PROMPT
+from prompts import CODEREVIEW_PROMPT
 from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
 
 
-class ReviewCodeRequest(ToolRequest):
+class CodeReviewRequest(ToolRequest):
     """
     Request model for the code review tool.
 
@@ -53,7 +53,7 @@ class ReviewCodeRequest(ToolRequest):
     )
 
 
-class ReviewCodeTool(BaseTool):
+class CodeReviewTool(BaseTool):
     """
     Professional code review tool implementation.
 
@@ -63,14 +63,13 @@ class ReviewCodeTool(BaseTool):
     """
 
     def get_name(self) -> str:
-        return "review_code"
+        return "codereview"
 
     def get_description(self) -> str:
         return (
             "PROFESSIONAL CODE REVIEW - Comprehensive analysis for bugs, security, and quality. "
             "Supports both individual files and entire directories/projects. "
-            "Use this for thorough code review with actionable feedback. "
-            "Triggers: 'review this code', 'check for issues', 'find bugs', 'security audit'. "
+            "Use this when you need to review code, check for issues, find bugs, or perform security audits. "
             "I'll identify issues by severity (Critical→High→Medium→Low) with specific fixes. "
             "Supports focused reviews: security, performance, or quick checks. "
             "Choose thinking_mode based on review scope: 'low' for small code snippets, "
@@ -132,13 +131,13 @@ class ReviewCodeTool(BaseTool):
         }
 
     def get_system_prompt(self) -> str:
-        return REVIEW_CODE_PROMPT
+        return CODEREVIEW_PROMPT
 
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
     def get_request_model(self):
-        return ReviewCodeRequest
+        return CodeReviewRequest
 
     async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check focus_on size before processing"""
@@ -155,7 +154,7 @@ class ReviewCodeTool(BaseTool):
         # Continue with normal execution
         return await super().execute(arguments)
 
-    async def prepare_prompt(self, request: ReviewCodeRequest) -> str:
+    async def prepare_prompt(self, request: CodeReviewRequest) -> str:
         """
         Prepare the code review prompt with customized instructions.
 
@@ -239,7 +238,7 @@ Please provide a code review aligned with the user's context and expectations, f
 
         return full_prompt
 
-    def format_response(self, response: str, request: ReviewCodeRequest) -> str:
+    def format_response(self, response: str, request: CodeReviewRequest) -> str:
         """
         Format the review response with appropriate headers.
 

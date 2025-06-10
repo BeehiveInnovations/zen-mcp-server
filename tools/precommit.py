@@ -1,5 +1,5 @@
 """
-Tool for reviewing pending git changes across multiple repositories.
+Tool for pre-commit validation of git changes across multiple repositories.
 """
 
 import os
@@ -9,7 +9,7 @@ from mcp.types import TextContent
 from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
-from prompts.tool_prompts import REVIEW_CHANGES_PROMPT
+from prompts.tool_prompts import PRECOMMIT_PROMPT
 from utils.file_utils import read_files, translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
@@ -18,8 +18,8 @@ from .base import BaseTool, ToolRequest
 from .models import ToolOutput
 
 
-class ReviewChangesRequest(ToolRequest):
-    """Request model for review_changes tool"""
+class PrecommitRequest(ToolRequest):
+    """Request model for precommit tool"""
 
     path: str = Field(
         ...,
@@ -71,21 +71,21 @@ class ReviewChangesRequest(ToolRequest):
     )
 
 
-class ReviewChanges(BaseTool):
-    """Tool for reviewing git changes across multiple repositories."""
+class Precommit(BaseTool):
+    """Tool for pre-commit validation of git changes across multiple repositories."""
 
     def get_name(self) -> str:
-        return "review_changes"
+        return "precommit"
 
     def get_description(self) -> str:
         return (
-            "REVIEW PENDING GIT CHANGES BEFORE COMMITTING - ALWAYS use this tool before creating any git commit! "
+            "PRECOMMIT VALIDATION FOR GIT CHANGES - ALWAYS use this tool before creating any git commit! "
             "Comprehensive pre-commit validation that catches bugs, security issues, incomplete implementations, "
             "and ensures changes match the original requirements. Searches all git repositories recursively and "
             "provides deep analysis of staged/unstaged changes. Essential for code quality and preventing bugs. "
-            "Triggers: 'before commit', 'review changes', 'check my changes', 'validate changes', 'pre-commit review', "
-            "'about to commit', 'ready to commit'. Claude should proactively suggest using this tool whenever "
-            "the user mentions committing or when changes are complete. "
+            "Use this before committing, when reviewing changes, checking your changes, validating changes, "
+            "or when you're about to commit or ready to commit. Claude should proactively suggest using this tool "
+            "whenever the user mentions committing or when changes are complete. "
             "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
             "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
             "'max' for critical releases or when reviewing extensive changes across multiple systems."
@@ -103,10 +103,10 @@ class ReviewChanges(BaseTool):
         return schema
 
     def get_system_prompt(self) -> str:
-        return REVIEW_CHANGES_PROMPT
+        return PRECOMMIT_PROMPT
 
     def get_request_model(self):
-        return ReviewChangesRequest
+        return PrecommitRequest
 
     def get_default_temperature(self) -> float:
         """Use analytical temperature for code review."""
@@ -129,7 +129,7 @@ class ReviewChanges(BaseTool):
         # Continue with normal execution
         return await super().execute(arguments)
 
-    async def prepare_prompt(self, request: ReviewChangesRequest) -> str:
+    async def prepare_prompt(self, request: PrecommitRequest) -> str:
         """Prepare the prompt with git diff information."""
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
@@ -409,6 +409,6 @@ class ReviewChanges(BaseTool):
 
         return full_prompt
 
-    def format_response(self, response: str, request: ReviewChangesRequest) -> str:
+    def format_response(self, response: str, request: PrecommitRequest) -> str:
         """Format the response with commit guidance"""
         return f"{response}\n\n---\n\n**Commit Status:** If no critical issues found, changes are ready for commit. Otherwise, address issues first and re-run review. Check with user before proceeding with any commit."

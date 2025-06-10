@@ -18,9 +18,9 @@ from mcp.types import TextContent
 from config import MCP_PROMPT_SIZE_LIMIT
 from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
+from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
-from tools.review_changes import ReviewChanges
-from tools.review_code import ReviewCodeTool
+from tools.precommit import Precommit
 from tools.think_deeper import ThinkDeeperTool
 
 
@@ -141,9 +141,9 @@ class TestLargePromptHandling:
         assert output["status"] == "requires_file_prompt"
 
     @pytest.mark.asyncio
-    async def test_review_code_large_focus(self, large_prompt):
-        """Test that review_code tool detects large focus_on field."""
-        tool = ReviewCodeTool()
+    async def test_codereview_large_focus(self, large_prompt):
+        """Test that codereview tool detects large focus_on field."""
+        tool = CodeReviewTool()
         result = await tool.execute(
             {
                 "files": ["/some/file.py"],
@@ -159,7 +159,7 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_review_changes_large_original_request(self, large_prompt):
         """Test that review_changes tool detects large original_request."""
-        tool = ReviewChanges()
+        tool = Precommit()
         result = await tool.execute({"path": "/some/path", "original_request": large_prompt})
 
         assert len(result) == 1

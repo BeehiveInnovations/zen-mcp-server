@@ -37,8 +37,8 @@ class DebugIssueTool(BaseTool):
     def get_description(self) -> str:
         return (
             "DEBUG & ROOT CAUSE ANALYSIS - Expert debugging for complex issues with 1M token capacity. "
-            "Use this when you need help tracking down bugs or understanding errors. "
-            "Triggers: 'debug this', 'why is this failing', 'root cause', 'trace error', 'diagnose issue'. "
+            "Use this when you need to debug code, find out why something is failing, identify root causes, "
+            "trace errors, or diagnose issues. "
             "IMPORTANT: Share diagnostic files liberally! Gemini can handle up to 1M tokens, so include: "
             "large log files, full stack traces, memory dumps, diagnostic outputs, multiple related files, "
             "entire modules, test results, configuration files - anything that might help debug the issue. "
