@@ -170,8 +170,10 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 **How it works:**
 - **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
 - **Claude can respond** with additional information, files, or refined instructions
+- **Claude can work independently** between exchanges - implementing solutions, gathering data, or performing analysis
+- **Claude can return to Gemini** with progress updates and new context for further collaboration
 - **Both AIs coordinate their approaches** - questioning assumptions, validating solutions, and building on each other's insights
-- Each conversation maintains full context across multiple exchanges
+- Each conversation maintains full context while only sending incremental updates
 - Conversations are automatically managed with Redis for persistence
 
 **Example of AI-to-AI coordination:**
@@ -181,11 +183,20 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 4. Claude: "While UIKit has maturity advantages, SwiftUI's rapid evolution, simplified development workflow, and Apple's investment make it the strategic choice. The learning curve pays off with faster development and maintainable code."
 5. **Final recommendation**: After this AI debate, Claude concludes: "Based on our discussion, SwiftUI is recommended for new projects despite Gemini's valid UIKit points."
 
+**Asynchronous workflow example:**
+- Claude can work independently between exchanges (analyzing code, implementing fixes, gathering data)
+- Return to Gemini with progress updates and additional context  
+- Each exchange shares only incremental information while maintaining full conversation history
+- Automatically bypasses MCP's 25K token limits through incremental updates
+
 **Enhanced collaboration features:**
 - **Cross-questioning**: AIs can challenge each other's assumptions and approaches
 - **Coordinated problem-solving**: Each AI contributes their strengths to complex problems
 - **Context building**: Claude gathers information while Gemini provides deep analysis
 - **Approach validation**: AIs can verify and improve each other's solutions
+- **Asynchronous workflow**: Conversations don't need to be sequential - Claude can work on tasks between exchanges, then return to Gemini with additional context and progress updates
+- **Incremental updates**: Share only new information in each exchange while maintaining full conversation history
+- **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
 - Up to 5 exchanges per conversation with 1-hour expiry
 - Thread-safe with Redis persistence across all tools
 
