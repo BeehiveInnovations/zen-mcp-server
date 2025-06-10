@@ -2,7 +2,8 @@
 Tests for utility functions
 """
 
-from utils import check_token_limit, estimate_tokens, read_file_content, read_files
+from utils import (check_token_limit, estimate_tokens, read_file_content,
+                   read_files)
 
 
 class TestFileUtils:

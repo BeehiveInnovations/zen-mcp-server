@@ -2,16 +2,9 @@
 Tests for configuration
 """
 
-from config import (
-    GEMINI_MODEL,
-    MAX_CONTEXT_TOKENS,
-    TEMPERATURE_ANALYTICAL,
-    TEMPERATURE_BALANCED,
-    TEMPERATURE_CREATIVE,
-    __author__,
-    __updated__,
-    __version__,
-)
+from config import (GEMINI_MODEL, MAX_CONTEXT_TOKENS, TEMPERATURE_ANALYTICAL,
+                    TEMPERATURE_BALANCED, TEMPERATURE_CREATIVE, __author__,
+                    __updated__, __version__)
 
 
 class TestConfig:

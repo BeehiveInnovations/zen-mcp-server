@@ -4,13 +4,15 @@ Chat tool - General development chat and collaborative thinking
 
 from typing import Any, Dict, List, Optional
 
+from mcp.types import TextContent
 from pydantic import Field
 
-from config import MAX_CONTEXT_TOKENS, TEMPERATURE_BALANCED
+from config import TEMPERATURE_BALANCED
 from prompts import CHAT_PROMPT
-from utils import check_token_limit, read_files
+from utils import read_files
 
 from .base import BaseTool, ToolRequest
+from .models import ToolOutput
 
 
 class ChatRequest(ToolRequest):
@@ -79,22 +81,43 @@ class ChatTool(BaseTool):
     def get_request_model(self):
         return ChatRequest
 
+    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Override execute to check prompt size before processing"""
+        # First validate request
+        request_model = self.get_request_model()
+        request = request_model(**arguments)
+
+        # Check prompt size
+        size_check = self.check_prompt_size(request.prompt)
+        if size_check:
+            return [
+                TextContent(
+                    type="text", text=ToolOutput(**size_check).model_dump_json()
+                )
+            ]
+
+        # Continue with normal execution
+        return await super().execute(arguments)
+
     async def prepare_prompt(self, request: ChatRequest) -> str:
         """Prepare the chat prompt with optional context files"""
-        user_content = request.prompt
+        # Check for prompt.txt in files
+        prompt_content, updated_files = self.handle_prompt_file(request.files)
+
+        # Use prompt.txt content if available, otherwise use the prompt field
+        user_content = prompt_content if prompt_content else request.prompt
+
+        # Update request files list
+        if updated_files is not None:
+            request.files = updated_files
 
         # Add context files if provided
         if request.files:
             file_content, _ = read_files(request.files)
-            user_content = f"{request.prompt}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ==="
+            user_content = f"{user_content}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ===="
 
         # Check token limits
-        within_limit, estimated_tokens = check_token_limit(user_content)
-        if not within_limit:
-            raise ValueError(
-                f"Content too large (~{estimated_tokens:,} tokens). "
-                f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
-            )
+        self._validate_token_limit(user_content, "Content")
 
         # Combine system prompt with user content
         full_prompt = f"""{self.get_system_prompt()}

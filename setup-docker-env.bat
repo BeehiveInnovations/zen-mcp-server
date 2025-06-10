@@ -40,6 +40,16 @@ echo ===== COPY BELOW THIS LINE =====
 echo {
 echo   "mcpServers": {
 echo     "gemini": {
+echo       "command": "%CURRENT_DIR%\gemini-mcp-docker.bat"
+echo     }
+echo   }
+echo }
+echo ===== COPY ABOVE THIS LINE =====
+echo.
+echo Alternative: If you prefer the direct Docker command ^(static workspace^):
+echo {
+echo   "mcpServers": {
+echo     "gemini": {
 echo       "command": "docker",
 echo       "args": [
 echo         "run",
@@ -52,10 +62,9 @@ echo       ]
 echo     }
 echo   }
 echo }
-echo ===== COPY ABOVE THIS LINE =====
 echo.
 echo Config file location:
 echo   Windows: %%APPDATA%%\Claude\claude_desktop_config.json
 echo.
-echo Note: The configuration above mounts the current directory ^(%CURRENT_DIR%^)
-echo as the workspace. You can change this path to any project directory you want to analyze.
+echo Note: The first configuration uses a wrapper script that allows you to run Claude
+echo from any directory. The second configuration mounts a fixed directory ^(%CURRENT_DIR%^).

@@ -9,10 +9,10 @@ Note: These tests are excluded from regular pytest runs to avoid API rate limits
 They confirm that the google-genai library integration works correctly with live data.
 """
 
+import asyncio
 import os
 import sys
 import tempfile
-import asyncio
 from pathlib import Path
 
 # Add parent directory to path to allow imports

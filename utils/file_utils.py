@@ -18,11 +18,14 @@ Security Model:
 - Symbolic links are resolved to ensure they stay within bounds
 """
 
+import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple, Set
+from typing import List, Optional, Set, Tuple
 
-from .token_utils import estimate_tokens, MAX_CONTEXT_TOKENS
+from .token_utils import MAX_CONTEXT_TOKENS, estimate_tokens
+
+logger = logging.getLogger(__name__)
 
 # Get workspace root for Docker path translation
 # When running in Docker with a mounted workspace, WORKSPACE_ROOT contains
@@ -141,53 +144,71 @@ CODE_EXTENSIONS = {
 }
 
 
-def translate_docker_path(path_str: str) -> str:
+def _get_secure_container_path(path_str: str) -> str:
     """
-    Translate host paths to container paths when running in Docker.
+    Securely translate host paths to container paths when running in Docker.
 
-    When running in Docker with WORKSPACE_ROOT set, this function translates
-    absolute paths from the host filesystem to their equivalent paths inside
-    the container. This enables seamless operation where Claude sends host
-    paths but the server runs in a container.
+    This function implements critical security measures:
+    1. Uses os.path.realpath() to resolve symlinks before validation
+    2. Validates that paths are within the mounted workspace
+    3. Provides detailed logging for debugging
 
     Args:
-        path_str: Original path string from the client
+        path_str: Original path string from the client (potentially a host path)
 
     Returns:
-        Translated path string (unchanged if not in Docker mode)
+        Translated container path, or original path if not in Docker environment
     """
     if not WORKSPACE_ROOT or not CONTAINER_WORKSPACE.exists():
-        # Not running in Docker mode, return path unchanged
+        # Not in the configured Docker environment, no translation needed
         return path_str
 
     try:
-        # Resolve both paths to handle different path formats (forward/backslashes)
-        workspace_root_path = Path(WORKSPACE_ROOT).resolve()
-        host_path = Path(path_str).resolve()
+        # Use os.path.realpath for security - it resolves symlinks completely
+        # This prevents symlink attacks that could escape the workspace
+        real_workspace_root = Path(os.path.realpath(WORKSPACE_ROOT))
+        real_host_path = Path(os.path.realpath(path_str))
 
-        # Get the relative path from workspace root
-        relative_path = host_path.relative_to(workspace_root_path)
+        # Security check: ensure the path is within the mounted workspace
+        # This prevents path traversal attacks (e.g., ../../../etc/passwd)
+        relative_path = real_host_path.relative_to(real_workspace_root)
 
-        # Construct container path using forward slashes (Linux format in container)
+        # Construct the container path
         container_path = CONTAINER_WORKSPACE / relative_path
-        return container_path.as_posix()
+
+        # Log the translation for debugging (but not sensitive paths)
+        if str(container_path) != path_str:
+            logger.info(
+                f"Translated host path to container: {path_str} -> {container_path}"
+            )
+
+        return str(container_path)
 
     except ValueError:
-        # Path is not within the workspace root, return unchanged
-        return path_str
-    except Exception:
-        # Any other error (invalid path, etc.), return unchanged
-        return path_str
+        # Path is not within the host's WORKSPACE_ROOT
+        # In Docker, we cannot access files outside the mounted volume
+        logger.warning(
+            f"Path '{path_str}' is outside the mounted workspace '{WORKSPACE_ROOT}'. "
+            f"Docker containers can only access files within the mounted directory."
+        )
+        # Return a clear error path that will fail gracefully
+        return f"/inaccessible/outside/mounted/volume{path_str}"
+    except Exception as e:
+        # Log unexpected errors but don't expose internal details to clients
+        logger.warning(f"Path translation failed for '{path_str}': {type(e).__name__}")
+        # Return a clear error path that will fail gracefully
+        return f"/inaccessible/translation/error{path_str}"
 
 
 def resolve_and_validate_path(path_str: str) -> Path:
     """
-    Validates that a path is absolute and resolves it.
+    Resolves, translates, and validates a path against security policies.
 
     This is the primary security function that ensures all file access
-    is properly sandboxed. It enforces two critical security policies:
-    1. All paths must be absolute (no ambiguity)
-    2. All paths must resolve to within PROJECT_ROOT (sandboxing)
+    is properly sandboxed. It enforces three critical policies:
+    1. Translate host paths to container paths if applicable (Docker environment)
+    2. All paths must be absolute (no ambiguity)
+    3. All paths must resolve to within PROJECT_ROOT (sandboxing)
 
     Args:
         path_str: Path string (must be absolute)
@@ -196,16 +217,17 @@ def resolve_and_validate_path(path_str: str) -> Path:
         Resolved Path object that is guaranteed to be within PROJECT_ROOT
 
     Raises:
-        ValueError: If path is not absolute
+        ValueError: If path is not absolute or otherwise invalid
         PermissionError: If path is outside allowed directory
     """
-    # Translate Docker paths if necessary
-    path_str = translate_docker_path(path_str)
+    # Step 1: Translate Docker paths first (if applicable)
+    # This must happen before any other validation
+    translated_path_str = _get_secure_container_path(path_str)
 
-    # Create a Path object from the user-provided path
-    user_path = Path(path_str)
+    # Step 2: Create a Path object from the (potentially translated) path
+    user_path = Path(translated_path_str)
 
-    # Security Policy 1: Require absolute paths to prevent ambiguity
+    # Step 3: Security Policy - Require absolute paths
     # Relative paths could be interpreted differently depending on working directory
     if not user_path.is_absolute():
         raise ValueError(
@@ -213,14 +235,20 @@ def resolve_and_validate_path(path_str: str) -> Path:
             f"Received: {path_str}"
         )
 
-    # Resolve the absolute path (follows symlinks, removes .. and .)
+    # Step 4: Resolve the absolute path (follows symlinks, removes .. and .)
+    # This is critical for security as it reveals the true destination of symlinks
     resolved_path = user_path.resolve()
 
-    # Security Policy 2: Ensure the resolved path is within PROJECT_ROOT
+    # Step 5: Security Policy - Ensure the resolved path is within PROJECT_ROOT
     # This prevents directory traversal attacks (e.g., /project/../../../etc/passwd)
     try:
         resolved_path.relative_to(PROJECT_ROOT)
     except ValueError:
+        # Provide detailed error for debugging while avoiding information disclosure
+        logger.warning(
+            f"Access denied - path outside project root. "
+            f"Requested: {path_str}, Resolved: {resolved_path}, Root: {PROJECT_ROOT}"
+        )
         raise PermissionError(
             f"Path outside project root: {path_str}\n"
             f"Project root: {PROJECT_ROOT}\n"
@@ -319,7 +347,17 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> Tuple[str, i
         path = resolve_and_validate_path(file_path)
     except (ValueError, PermissionError) as e:
         # Return error in a format that provides context to the AI
-        content = f"\n--- ERROR ACCESSING FILE: {file_path} ---\nError: {str(e)}\n--- END FILE ---\n"
+        error_msg = str(e)
+        # Add Docker-specific help if we're in Docker and path is inaccessible
+        if WORKSPACE_ROOT and CONTAINER_WORKSPACE.exists():
+            # We're in Docker
+            error_msg = (
+                f"File is outside the Docker mounted directory. "
+                f"When running in Docker, only files within the mounted workspace are accessible. "
+                f"Current mounted directory: {WORKSPACE_ROOT}. "
+                f"To access files in a different directory, please run Claude from that directory."
+            )
+        content = f"\n--- ERROR ACCESSING FILE: {file_path} ---\nError: {error_msg}\n--- END FILE ---\n"
         return content, estimate_tokens(content)
 
     try:

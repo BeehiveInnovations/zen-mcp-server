@@ -2,14 +2,17 @@
 Data models for tool responses and interactions
 """
 
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field
-from typing import Literal, Optional, Dict, Any, List
 
 
 class ToolOutput(BaseModel):
     """Standardized output format for all tools"""
 
-    status: Literal["success", "error", "requires_clarification"] = "success"
+    status: Literal[
+        "success", "error", "requires_clarification", "requires_file_prompt"
+    ] = "success"
     content: str = Field(..., description="The main content/response from the tool")
     content_type: Literal["text", "markdown", "json"] = "text"
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)

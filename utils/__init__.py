@@ -2,7 +2,8 @@
 Utility functions for Gemini MCP Server
 """
 
-from .file_utils import read_file_content, read_files, expand_paths, CODE_EXTENSIONS
+from .file_utils import (CODE_EXTENSIONS, expand_paths, read_file_content,
+                         read_files)
 from .token_utils import check_token_limit, estimate_tokens
 
 __all__ = [

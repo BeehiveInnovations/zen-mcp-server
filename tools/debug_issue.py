@@ -4,13 +4,15 @@ Debug Issue tool - Root cause analysis and debugging assistance
 
 from typing import Any, Dict, List, Optional
 
+from mcp.types import TextContent
 from pydantic import Field
 
-from config import MAX_CONTEXT_TOKENS, TEMPERATURE_ANALYTICAL
+from config import TEMPERATURE_ANALYTICAL
 from prompts import DEBUG_ISSUE_PROMPT
-from utils import check_token_limit, read_files
+from utils import read_files
 
 from .base import BaseTool, ToolRequest
+from .models import ToolOutput
 
 
 class DebugIssueRequest(ToolRequest):
@@ -98,8 +100,51 @@ class DebugIssueTool(BaseTool):
     def get_request_model(self):
         return DebugIssueRequest
 
+    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Override execute to check error_description and error_context size before processing"""
+        # First validate request
+        request_model = self.get_request_model()
+        request = request_model(**arguments)
+
+        # Check error_description size
+        size_check = self.check_prompt_size(request.error_description)
+        if size_check:
+            return [
+                TextContent(
+                    type="text", text=ToolOutput(**size_check).model_dump_json()
+                )
+            ]
+
+        # Check error_context size if provided
+        if request.error_context:
+            size_check = self.check_prompt_size(request.error_context)
+            if size_check:
+                return [
+                    TextContent(
+                        type="text", text=ToolOutput(**size_check).model_dump_json()
+                    )
+                ]
+
+        # Continue with normal execution
+        return await super().execute(arguments)
+
     async def prepare_prompt(self, request: DebugIssueRequest) -> str:
         """Prepare the debugging prompt"""
+        # Check for prompt.txt in files
+        prompt_content, updated_files = self.handle_prompt_file(request.files)
+
+        # If prompt.txt was found, use it as error_description or error_context
+        # Priority: if error_description is empty, use it there, otherwise use as error_context
+        if prompt_content:
+            if not request.error_description or request.error_description == "":
+                request.error_description = prompt_content
+            else:
+                request.error_context = prompt_content
+
+        # Update request files list
+        if updated_files is not None:
+            request.files = updated_files
+
         # Build context sections
         context_parts = [
             f"=== ISSUE DESCRIPTION ===\n{request.error_description}\n=== END DESCRIPTION ==="
@@ -130,12 +175,7 @@ class DebugIssueTool(BaseTool):
         full_context = "\n".join(context_parts)
 
         # Check token limits
-        within_limit, estimated_tokens = check_token_limit(full_context)
-        if not within_limit:
-            raise ValueError(
-                f"Context too large (~{estimated_tokens:,} tokens). "
-                f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
-            )
+        self._validate_token_limit(full_context, "Context")
 
         # Combine everything
         full_prompt = f"""{self.get_system_prompt()}

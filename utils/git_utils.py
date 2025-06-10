@@ -18,9 +18,8 @@ Security Considerations:
 """
 
 import subprocess
-from typing import Dict, List, Tuple
 from pathlib import Path
-
+from typing import Dict, List, Tuple
 
 # Directories to ignore when searching for git repositories
 # These are typically build artifacts, dependencies, or cache directories

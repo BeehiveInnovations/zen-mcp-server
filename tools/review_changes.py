@@ -6,15 +6,18 @@ import os
 import re
 from typing import Any, Dict, List, Literal, Optional
 
+from mcp.types import TextContent
 from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
 from prompts.tool_prompts import REVIEW_CHANGES_PROMPT
-from utils.file_utils import read_files
-from utils.git_utils import find_git_repositories, get_git_status, run_git_command
+from utils.file_utils import _get_secure_container_path, read_files
+from utils.git_utils import (find_git_repositories, get_git_status,
+                             run_git_command)
 from utils.token_utils import estimate_tokens
 
 from .base import BaseTool, ToolRequest
+from .models import ToolOutput
 
 
 class ReviewChangesRequest(ToolRequest):
@@ -111,10 +114,51 @@ class ReviewChanges(BaseTool):
         # Limit length to avoid filesystem issues
         return name[:100]
 
+    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Override execute to check original_request size before processing"""
+        # First validate request
+        request_model = self.get_request_model()
+        request = request_model(**arguments)
+
+        # Check original_request size if provided
+        if request.original_request:
+            size_check = self.check_prompt_size(request.original_request)
+            if size_check:
+                return [
+                    TextContent(
+                        type="text", text=ToolOutput(**size_check).model_dump_json()
+                    )
+                ]
+
+        # Continue with normal execution
+        return await super().execute(arguments)
+
     async def prepare_prompt(self, request: ReviewChangesRequest) -> str:
         """Prepare the prompt with git diff information."""
+        # Check for prompt.txt in files
+        prompt_content, updated_files = self.handle_prompt_file(request.files)
+
+        # If prompt.txt was found, use it as original_request
+        if prompt_content:
+            request.original_request = prompt_content
+
+        # Update request files list
+        if updated_files is not None:
+            request.files = updated_files
+
+        # Translate the path if running in Docker
+        translated_path = _get_secure_container_path(request.path)
+
+        # Check if the path translation resulted in an error path
+        if translated_path.startswith("/inaccessible/"):
+            raise ValueError(
+                f"The path '{request.path}' is not accessible from within the Docker container. "
+                f"The Docker container can only access files within the mounted workspace. "
+                f"Please ensure the path is within the mounted directory or adjust your Docker volume mounts."
+            )
+
         # Find all git repositories
-        repositories = find_git_repositories(request.path, request.max_depth)
+        repositories = find_git_repositories(translated_path, request.max_depth)
 
         if not repositories:
             return "No git repositories found in the specified path."

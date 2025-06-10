@@ -30,21 +30,10 @@ from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from config import (
-    GEMINI_MODEL,
-    MAX_CONTEXT_TOKENS,
-    __author__,
-    __updated__,
-    __version__,
-)
-from tools import (
-    AnalyzeTool,
-    ChatTool,
-    DebugIssueTool,
-    ReviewChanges,
-    ReviewCodeTool,
-    ThinkDeeperTool,
-)
+from config import (GEMINI_MODEL, MAX_CONTEXT_TOKENS, __author__, __updated__,
+                    __version__)
+from tools import (AnalyzeTool, ChatTool, DebugIssueTool, ReviewChanges,
+                   ReviewCodeTool, ThinkDeeperTool)
 
 # Configure logging for server operations
 # Set to INFO level to capture important operational messages without being too verbose

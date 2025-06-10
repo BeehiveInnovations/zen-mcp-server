@@ -41,6 +41,18 @@ Write-Host @"
 {
   "mcpServers": {
     "gemini": {
+      "command": "$CurrentDir\gemini-mcp-docker.ps1"
+    }
+  }
+}
+"@
+Write-Host "===== COPY ABOVE THIS LINE =====" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Alternative: If you prefer the direct Docker command (static workspace):"
+Write-Host @"
+{
+  "mcpServers": {
+    "gemini": {
       "command": "docker",
       "args": [
         "run",
@@ -54,11 +66,10 @@ Write-Host @"
   }
 }
 "@
-Write-Host "===== COPY ABOVE THIS LINE =====" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Config file location:"
 Write-Host "  Windows: %APPDATA%\Claude\claude_desktop_config.json"
 Write-Host ""
-Write-Host "Note: The configuration above mounts the current directory ($CurrentDir)"
-Write-Host "as the workspace. You can change this path to any project directory you want to analyze."
+Write-Host "Note: The first configuration uses a wrapper script that allows you to run Claude"
+Write-Host "from any directory. The second configuration mounts a fixed directory ($CurrentDir)."
 Write-Host "Docker on Windows accepts both forward slashes and backslashes in paths."

@@ -16,13 +16,15 @@ Key Features:
 
 from typing import Any, Dict, List, Optional
 
+from mcp.types import TextContent
 from pydantic import Field
 
-from config import MAX_CONTEXT_TOKENS, TEMPERATURE_ANALYTICAL
+from config import TEMPERATURE_ANALYTICAL
 from prompts import REVIEW_CODE_PROMPT
-from utils import check_token_limit, read_files
+from utils import read_files
 
 from .base import BaseTool, ToolRequest
+from .models import ToolOutput
 
 
 class ReviewCodeRequest(ToolRequest):
@@ -128,6 +130,25 @@ class ReviewCodeTool(BaseTool):
     def get_request_model(self):
         return ReviewCodeRequest
 
+    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Override execute to check focus_on size before processing"""
+        # First validate request
+        request_model = self.get_request_model()
+        request = request_model(**arguments)
+
+        # Check focus_on size if provided
+        if request.focus_on:
+            size_check = self.check_prompt_size(request.focus_on)
+            if size_check:
+                return [
+                    TextContent(
+                        type="text", text=ToolOutput(**size_check).model_dump_json()
+                    )
+                ]
+
+        # Continue with normal execution
+        return await super().execute(arguments)
+
     async def prepare_prompt(self, request: ReviewCodeRequest) -> str:
         """
         Prepare the code review prompt with customized instructions.
@@ -144,16 +165,22 @@ class ReviewCodeTool(BaseTool):
         Raises:
             ValueError: If the code exceeds token limits
         """
+        # Check for prompt.txt in files
+        prompt_content, updated_files = self.handle_prompt_file(request.files)
+
+        # If prompt.txt was found, use it as focus_on
+        if prompt_content:
+            request.focus_on = prompt_content
+
+        # Update request files list
+        if updated_files is not None:
+            request.files = updated_files
+
         # Read all requested files, expanding directories as needed
         file_content, summary = read_files(request.files)
 
         # Validate that the code fits within model context limits
-        within_limit, estimated_tokens = check_token_limit(file_content)
-        if not within_limit:
-            raise ValueError(
-                f"Code too large (~{estimated_tokens:,} tokens). "
-                f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
-            )
+        self._validate_token_limit(file_content, "Code")
 
         # Build customized review instructions based on review type
         review_focus = []

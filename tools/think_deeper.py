@@ -4,13 +4,15 @@ Think Deeper tool - Extended reasoning and problem-solving
 
 from typing import Any, Dict, List, Optional
 
+from mcp.types import TextContent
 from pydantic import Field
 
-from config import MAX_CONTEXT_TOKENS, TEMPERATURE_CREATIVE
+from config import TEMPERATURE_CREATIVE
 from prompts import THINK_DEEPER_PROMPT
-from utils import check_token_limit, read_files
+from utils import read_files
 
 from .base import BaseTool, ToolRequest
+from .models import ToolOutput
 
 
 class ThinkDeeperRequest(ToolRequest):
@@ -44,7 +46,11 @@ class ThinkDeeperTool(BaseTool):
             "Use this when you need to extend your analysis, explore alternatives, or validate approaches. "
             "Perfect for: architecture decisions, complex bugs, performance challenges, security analysis. "
             "Triggers: 'think deeper', 'ultrathink', 'extend my analysis', 'explore alternatives'. "
-            "I'll challenge assumptions, find edge cases, and provide alternative solutions."
+            "I'll challenge assumptions, find edge cases, and provide alternative solutions. "
+            "IMPORTANT: Choose the appropriate thinking_mode based on task complexity - "
+            "'low' for quick analysis, 'medium' for standard problems, 'high' for complex issues (default), "
+            "'max' for extremely complex challenges requiring deepest analysis. "
+            "When in doubt, err on the side of a higher mode for truly deep thought and evaluation."
         )
 
     def get_input_schema(self) -> Dict[str, Any]:
@@ -79,7 +85,7 @@ class ThinkDeeperTool(BaseTool):
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
                     "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
-                    "default": "max",
+                    "default": "high",
                 },
             },
             "required": ["current_analysis"],
@@ -92,17 +98,47 @@ class ThinkDeeperTool(BaseTool):
         return TEMPERATURE_CREATIVE
 
     def get_default_thinking_mode(self) -> str:
-        """ThinkDeeper uses maximum thinking by default"""
-        return "max"
+        """ThinkDeeper uses high thinking by default"""
+        return "high"
 
     def get_request_model(self):
         return ThinkDeeperRequest
 
+    async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Override execute to check current_analysis size before processing"""
+        # First validate request
+        request_model = self.get_request_model()
+        request = request_model(**arguments)
+
+        # Check current_analysis size
+        size_check = self.check_prompt_size(request.current_analysis)
+        if size_check:
+            return [
+                TextContent(
+                    type="text", text=ToolOutput(**size_check).model_dump_json()
+                )
+            ]
+
+        # Continue with normal execution
+        return await super().execute(arguments)
+
     async def prepare_prompt(self, request: ThinkDeeperRequest) -> str:
         """Prepare the full prompt for extended thinking"""
+        # Check for prompt.txt in files
+        prompt_content, updated_files = self.handle_prompt_file(request.files)
+
+        # Use prompt.txt content if available, otherwise use the current_analysis field
+        current_analysis = (
+            prompt_content if prompt_content else request.current_analysis
+        )
+
+        # Update request files list
+        if updated_files is not None:
+            request.files = updated_files
+
         # Build context parts
         context_parts = [
-            f"=== CLAUDE'S CURRENT ANALYSIS ===\n{request.current_analysis}\n=== END ANALYSIS ==="
+            f"=== CLAUDE'S CURRENT ANALYSIS ===\n{current_analysis}\n=== END ANALYSIS ==="
         ]
 
         if request.problem_context:
@@ -120,12 +156,7 @@ class ThinkDeeperTool(BaseTool):
         full_context = "\n".join(context_parts)
 
         # Check token limits
-        within_limit, estimated_tokens = check_token_limit(full_context)
-        if not within_limit:
-            raise ValueError(
-                f"Context too large (~{estimated_tokens:,} tokens). "
-                f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
-            )
+        self._validate_token_limit(full_context, "Context")
 
         # Add focus areas instruction if specified
         focus_instruction = ""
@@ -150,5 +181,33 @@ Please provide deep analysis that extends Claude's thinking with:
         return full_prompt
 
     def format_response(self, response: str, request: ThinkDeeperRequest) -> str:
-        """Format the response with clear attribution"""
-        return f"Extended Analysis by Gemini:\n\n{response}"
+        """Format the response with clear attribution and critical thinking prompt"""
+        return f"""## Extended Analysis by Gemini
+
+{response}
+
+---
+
+## Critical Evaluation Required
+
+Claude, now that you've received Gemini's extended analysis, please:
+
+1. **Critically evaluate each suggestion** - Which points are truly valuable? Which might have limitations or trade-offs?
+
+2. **Consider technical constraints** - How do these suggestions fit with:
+   - Existing codebase patterns and conventions
+   - Performance and scalability requirements
+   - Security implications and best practices
+   - Architecture and design principles
+
+3. **Identify potential risks** - What could go wrong with each approach? Are there hidden complexities or edge cases?
+
+4. **Synthesize your final recommendation** - Based on:
+   - Your original analysis
+   - Gemini's suggestions and critiques
+   - Technical feasibility and correctness
+   - A balanced assessment of trade-offs
+
+5. **Formulate your conclusion** - What is the best technical solution considering all perspectives?
+
+Remember: Gemini's analysis is meant to challenge and extend your thinking, not replace it. Use these insights to arrive at a more robust, well-considered solution."""

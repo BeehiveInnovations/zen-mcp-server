@@ -1,4 +1,7 @@
 {
+  "comment": "Traditional macOS/Linux configuration (non-Docker)",
+  "comment2": "Replace YOUR_USERNAME with your actual username",
+  "comment3": "This gives access to all files under your home directory",
   "mcpServers": {
     "gemini": {
       "command": "/Users/YOUR_USERNAME/gemini-mcp-server/run_gemini.sh",

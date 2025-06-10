@@ -1,4 +1,7 @@
 {
+  "comment": "Windows configuration using WSL (Windows Subsystem for Linux)",
+  "comment2": "Replace YOUR_WSL_USERNAME with your WSL username",
+  "comment3": "Make sure the server is installed in your WSL environment",
   "mcpServers": {
     "gemini": {
       "command": "wsl.exe",

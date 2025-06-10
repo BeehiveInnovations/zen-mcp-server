@@ -25,7 +25,7 @@ class TestThinkingModes:
     def test_default_thinking_modes(self):
         """Test that tools have correct default thinking modes"""
         tools = [
-            (ThinkDeeperTool(), "max"),
+            (ThinkDeeperTool(), "high"),
             (AnalyzeTool(), "medium"),
             (ReviewCodeTool(), "medium"),
             (DebugIssueTool(), "medium"),
@@ -156,14 +156,14 @@ class TestThinkingModes:
         result = await tool.execute(
             {
                 "current_analysis": "Initial analysis",
-                # Not specifying thinking_mode, should use default (max)
+                # Not specifying thinking_mode, should use default (high)
             }
         )
 
         # Verify create_model was called with default thinking_mode
         mock_create_model.assert_called_once()
         args = mock_create_model.call_args[0]
-        assert args[2] == "max"
+        assert args[2] == "high"
 
         assert "Extended Analysis by Gemini" in result[0].text
 

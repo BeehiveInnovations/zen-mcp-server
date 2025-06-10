@@ -7,7 +7,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools import AnalyzeTool, DebugIssueTool, ReviewCodeTool, ThinkDeeperTool, ChatTool
+from tools import (AnalyzeTool, ChatTool, DebugIssueTool, ReviewCodeTool,
+                   ThinkDeeperTool)
 
 
 class TestThinkDeeperTool:
@@ -47,8 +48,11 @@ class TestThinkDeeperTool:
         )
 
         assert len(result) == 1
-        assert "Extended Analysis by Gemini:" in result[0].text
-        assert "Extended analysis" in result[0].text
+        # Parse the JSON response
+        output = json.loads(result[0].text)
+        assert output["status"] == "success"
+        assert "Extended Analysis by Gemini" in output["content"]
+        assert "Extended analysis" in output["content"]
 
 
 class TestReviewCodeTool:

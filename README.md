@@ -26,6 +26,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 
 - **Advanced Topics**
   - [Thinking Modes](#thinking-modes---managing-token-costs--quality) - Control depth vs cost
+  - [Working with Large Prompts](#working-with-large-prompts) - Bypass MCP's 25K token limit
   - [Collaborative Workflows](#collaborative-workflows) - Multi-tool patterns
   - [Tool Parameters](#tool-parameters) - Detailed parameter reference
   - [Docker Architecture](#docker-architecture) - How Docker integration works
@@ -48,6 +49,7 @@ Claude is brilliant, but sometimes you need:
 - **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
 - **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
 - **Smart file handling** - Automatically expands directories, filters irrelevant files, and manages token limits when analyzing `"main.py, src/, tests/"`
+- **Bypass MCP's token limits** - Work around MCP's 25K combined token limit by automatically handling large prompts as files, preserving the full capacity for responses
 
 This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
 
@@ -104,7 +106,16 @@ setup-docker-env.bat
 
 # Windows (PowerShell):
 .\setup-docker-env.ps1
+```
 
+**Important:** The setup script will:
+- Create a `.env` file for your API key
+- **Display the exact Claude Desktop configuration to copy** - save this output!
+- Show you where to paste the configuration
+
+**Docker File Access:** Docker containers can only access files within mounted directories. The generated configuration mounts your home directory by default. To access files elsewhere, modify the `-v` parameter in the configuration.
+
+```bash
 # 2. Edit .env and add your Gemini API key
 # The .env file will contain:
 # WORKSPACE_ROOT=/your/current/directory  (automatically set)
@@ -112,6 +123,8 @@ setup-docker-env.bat
 
 # 3. Build the Docker image
 docker build -t gemini-mcp-server .
+
+# 4. Copy the configuration from step 1 into Claude Desktop
 ```
 
 **That's it!** Docker handles all Python dependencies and environment setup for you.
@@ -177,7 +190,9 @@ Choose your configuration based on your setup method:
 
 **Important for Docker setup:**
 - Replace `/path/to/gemini-mcp-server/.env` with the full path to your .env file
-- Replace `/path/to/your/project` with the directory containing code you want to analyze
+- Docker containers can ONLY access files within the mounted directory (`-v` parameter)
+- The examples below mount your home directory for broad file access
+- To access files elsewhere, change the mount path (e.g., `-v /specific/project:/workspace:ro`)
 - The container runs temporarily when Claude needs it (no persistent Docker containers)
 - Communication happens via stdio - Docker's `-i` flag connects the container's stdin/stdout to Claude
 
@@ -196,8 +211,10 @@ Choose your configuration based on your setup method:
         "run",
         "--rm",
         "-i",
-        "--env-file", "/Users/john/gemini-mcp-server/.env",
-        "-v", "/Users/john/my-project:/workspace:ro",
+        "--env-file", "/path/to/gemini-mcp-server/.env",
+        "-e", "WORKSPACE_ROOT=/Users/YOUR_USERNAME",
+        "-e", "MCP_PROJECT_ROOT=/workspace",
+        "-v", "/Users/YOUR_USERNAME:/workspace:ro",
         "gemini-mcp-server:latest"
       ]
     }
@@ -215,14 +232,18 @@ Choose your configuration based on your setup method:
         "run",
         "--rm",
         "-i",
-        "--env-file", "C:/Users/john/gemini-mcp-server/.env",
-        "-v", "C:/Users/john/my-project:/workspace:ro",
+        "--env-file", "C:/path/to/gemini-mcp-server/.env",
+        "-e", "WORKSPACE_ROOT=C:/Users/YOUR_USERNAME",
+        "-e", "MCP_PROJECT_ROOT=/workspace",
+        "-v", "C:/Users/YOUR_USERNAME:/workspace:ro",
         "gemini-mcp-server:latest"
       ]
     }
   }
 }
 ```
+
+> **Note**: Run `setup-docker-env.sh` (macOS/Linux) or `setup-docker-env.ps1` (Windows) to generate this configuration automatically with your paths.
 
 #### Option B: Traditional Configuration
 
@@ -472,7 +493,7 @@ Combine both perspectives to create a comprehensive caching implementation guide
 
 **Get a second opinion to augment Claude's own extended thinking**
 
-**Thinking Mode:** Default is `max` (32,768 tokens) for deepest analysis. Reduce to save tokens if you need faster/cheaper responses.
+**Thinking Mode:** Default is `high` (16,384 tokens) for deep analysis. Claude will automatically choose the best mode based on complexity - use `low` for quick validations, `medium` for standard problems, `high` for complex issues (default), or `max` for extremely complex challenges requiring deepest analysis.
 
 #### Example Prompts:
 
@@ -484,15 +505,15 @@ Combine both perspectives to create a comprehensive caching implementation guide
 
 **Managing Token Costs:**
 ```
-# Save significant tokens when deep analysis isn't critical
-"Use gemini to think deeper with medium thinking about this refactoring approach" (saves ~24k tokens)
-"Get gemini to think deeper using high thinking mode about this design" (saves ~16k tokens)
+# Claude will intelligently select the right mode, but you can override:
+"Use gemini to think deeper with medium thinking about this refactoring approach" (saves ~8k tokens vs default)
+"Get gemini to think deeper using low thinking to validate my basic approach" (saves ~14k tokens vs default)
 
-# Use default max only for critical analysis
-"Use gemini to think deeper about this security architecture" (uses default max - 32k tokens)
+# Use default high for most complex problems
+"Use gemini to think deeper about this security architecture" (uses default high - 16k tokens)
 
-# For simple validations
-"Use gemini with low thinking to validate my basic approach" (saves ~30k tokens!)
+# For extremely complex challenges requiring maximum depth
+"Use gemini with max thinking to solve this distributed consensus problem" (adds ~16k tokens vs default)
 ```
 
 **Collaborative Workflow:**
@@ -512,6 +533,7 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 - Offers alternative perspectives and approaches
 - Validates architectural decisions and design patterns
 - Can reference specific files for context: `"Use gemini to think deeper about my API design with reference to api/routes.py"`
+- **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
 
 **Triggers:** think deeper, ultrathink, extend my analysis, validate my approach
 
@@ -894,6 +916,38 @@ You can control thinking modes using natural language in your prompts. Remember:
 ```
 
 ## Advanced Features
+
+### Working with Large Prompts
+
+The MCP protocol has a combined request+response limit of approximately 25K tokens. This server intelligently works around this limitation by automatically handling large prompts as files:
+
+**How it works:**
+1. When you send a prompt larger than the configured limit (default: 50K characters ~10-12K tokens), the server detects this
+2. It responds with a special status asking Claude to save the prompt to a file named `prompt.txt`
+3. Claude saves the prompt and resends the request with the file path instead
+4. The server reads the file content directly into Gemini's 1M token context
+5. The full MCP token capacity is preserved for the response
+
+**Example scenario:**
+```
+# You have a massive code review request with detailed context
+User: "Use gemini to review this code: [50,000+ character detailed analysis]"
+
+# Server detects the large prompt and responds:
+Gemini MCP: "The prompt is too large for MCP's token limits (>50,000 characters). 
+Please save the prompt text to a temporary file named 'prompt.txt' and resend 
+the request with an empty prompt string and the absolute file path included 
+in the files parameter, along with any other files you wish to share as context."
+
+# Claude automatically handles this:
+- Saves your prompt to /tmp/prompt.txt
+- Resends: "Use gemini to review this code" with files=["/tmp/prompt.txt", "/path/to/code.py"]
+
+# Server processes the large prompt through Gemini's 1M context
+# Returns comprehensive analysis within MCP's response limits
+```
+
+This feature ensures you can send arbitrarily large prompts to Gemini without hitting MCP's protocol limitations, while maximizing the available space for detailed responses.
 
 ### Dynamic Context Requests
 Tools can request additional context from Claude during execution. When Gemini needs more information to provide a thorough analysis, it will ask Claude for specific files or clarification, enabling true collaborative problem-solving.

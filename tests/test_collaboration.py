@@ -9,7 +9,7 @@ import pytest
 
 from tools.analyze import AnalyzeTool
 from tools.debug_issue import DebugIssueTool
-from tools.models import ToolOutput, ClarificationRequest
+from tools.models import ClarificationRequest, ToolOutput
 
 
 class TestDynamicContextRequests:

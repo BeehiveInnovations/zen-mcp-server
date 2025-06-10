@@ -7,10 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tools.review_changes import (
-    ReviewChanges,
-    ReviewChangesRequest,
-)
+from tools.review_changes import ReviewChanges, ReviewChangesRequest
 
 
 class TestReviewChangesTool:

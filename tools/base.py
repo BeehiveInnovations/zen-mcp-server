@@ -13,17 +13,20 @@ Key responsibilities:
 - Support for clarification requests when more information is needed
 """
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Literal
-import os
 import json
+import os
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Literal, Optional
 
 from google import genai
 from google.genai import types
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
-from .models import ToolOutput, ClarificationRequest
+from config import MCP_PROMPT_SIZE_LIMIT
+from utils.file_utils import read_file_content
+
+from .models import ClarificationRequest, ToolOutput
 
 
 class ToolRequest(BaseModel):
@@ -193,6 +196,80 @@ class BaseTool(ABC):
                 )
 
         return None
+
+    def check_prompt_size(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Check if a text field is too large for MCP's token limits.
+
+        The MCP protocol has a combined request+response limit of ~25K tokens.
+        To ensure adequate space for responses, we limit prompt input to a
+        configurable character limit (default 50K chars ~= 10-12K tokens).
+        Larger prompts are handled by having Claude save them to a file,
+        bypassing MCP's token constraints while preserving response capacity.
+
+        Args:
+            text: The text to check
+
+        Returns:
+            Optional[Dict[str, Any]]: Response asking for file handling if too large, None otherwise
+        """
+        if text and len(text) > MCP_PROMPT_SIZE_LIMIT:
+            return {
+                "status": "requires_file_prompt",
+                "content": (
+                    f"The prompt is too large for MCP's token limits (>{MCP_PROMPT_SIZE_LIMIT:,} characters). "
+                    "Please save the prompt text to a temporary file named 'prompt.txt' and "
+                    "resend the request with an empty prompt string and the absolute file path included "
+                    "in the files parameter, along with any other files you wish to share as context."
+                ),
+                "content_type": "text",
+                "metadata": {
+                    "prompt_size": len(text),
+                    "limit": MCP_PROMPT_SIZE_LIMIT,
+                    "instructions": "Save prompt to 'prompt.txt' and include absolute path in files parameter",
+                },
+            }
+        return None
+
+    def handle_prompt_file(
+        self, files: Optional[List[str]]
+    ) -> tuple[Optional[str], Optional[List[str]]]:
+        """
+        Check for and handle prompt.txt in the files list.
+
+        If prompt.txt is found, reads its content and removes it from the files list.
+        This file is treated specially as the main prompt, not as an embedded file.
+
+        This mechanism allows us to work around MCP's ~25K token limit by having
+        Claude save large prompts to a file, effectively using the file transfer
+        mechanism to bypass token constraints while preserving response capacity.
+
+        Args:
+            files: List of file paths
+
+        Returns:
+            tuple: (prompt_content, updated_files_list)
+        """
+        if not files:
+            return None, files
+
+        prompt_content = None
+        updated_files = []
+
+        for file_path in files:
+            # Check if the filename is exactly "prompt.txt"
+            # This ensures we don't match files like "myprompt.txt" or "prompt.txt.bak"
+            if os.path.basename(file_path) == "prompt.txt":
+                try:
+                    prompt_content = read_file_content(file_path)
+                except Exception:
+                    # If we can't read the file, we'll just skip it
+                    # The error will be handled elsewhere
+                    pass
+            else:
+                updated_files.append(file_path)
+
+        return prompt_content, updated_files if updated_files else None
 
     async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
@@ -377,6 +454,30 @@ class BaseTool(ABC):
             str: Formatted response
         """
         return response
+
+    def _validate_token_limit(self, text: str, context_type: str = "Context") -> None:
+        """
+        Validate token limit and raise ValueError if exceeded.
+
+        This centralizes the token limit check that was previously duplicated
+        in all prepare_prompt methods across tools.
+
+        Args:
+            text: The text to check
+            context_type: Description of what's being checked (for error message)
+
+        Raises:
+            ValueError: If text exceeds MAX_CONTEXT_TOKENS
+        """
+        from config import MAX_CONTEXT_TOKENS
+        from utils import check_token_limit
+
+        within_limit, estimated_tokens = check_token_limit(text)
+        if not within_limit:
+            raise ValueError(
+                f"{context_type} too large (~{estimated_tokens:,} tokens). "
+                f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
+            )
 
     def create_model(
         self, model_name: str, temperature: float, thinking_mode: str = "medium"

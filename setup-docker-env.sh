@@ -17,9 +17,8 @@ else
 # Gemini MCP Server Docker Environment Configuration
 # Generated on $(date)
 
-# The absolute path to your project root on the host machine
-# This should be the directory containing your code that you want to analyze
-WORKSPACE_ROOT=$CURRENT_DIR
+# WORKSPACE_ROOT is not needed for the wrapper script approach
+# It will be set dynamically when you run the container
 
 # Your Gemini API key (get one from https://makersuite.google.com/app/apikey)
 # IMPORTANT: Replace this with your actual API key
@@ -46,7 +45,9 @@ echo "        \"run\","
 echo "        \"--rm\","
 echo "        \"-i\","
 echo "        \"--env-file\", \"$CURRENT_DIR/.env\","
-echo "        \"-v\", \"$CURRENT_DIR:/workspace:ro\","
+echo "        \"-e\", \"WORKSPACE_ROOT=$HOME\","
+echo "        \"-e\", \"MCP_PROJECT_ROOT=/workspace\","
+echo "        \"-v\", \"$HOME:/workspace:ro\","
 echo "        \"gemini-mcp-server:latest\""
 echo "      ]"
 echo "    }"
@@ -58,5 +59,7 @@ echo "Config file location:"
 echo "  macOS: ~/Library/Application Support/Claude/claude_desktop_config.json"
 echo "  Windows: %APPDATA%\\Claude\\claude_desktop_config.json"
 echo ""
-echo "Note: The configuration above mounts the current directory ($CURRENT_DIR)"
-echo "as the workspace. You can change this path to any project directory you want to analyze."
+echo "Note: This configuration mounts your home directory ($HOME)."
+echo "Docker can ONLY access files within the mounted directory."
+echo "To mount a different directory, change the -v parameter."
+echo "Example: -v \"/path/to/project:/workspace:ro\""

@@ -1,0 +1,20 @@
+{
+  "comment": "Docker configuration that mounts your home directory",
+  "comment2": "Update paths: /path/to/gemini-mcp-server/.env and /Users/your-username",
+  "comment3": "The container can only access files within the mounted directory",
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env-file", "/path/to/gemini-mcp-server/.env",
+        "-e", "WORKSPACE_ROOT=/Users/your-username",
+        "-e", "MCP_PROJECT_ROOT=/workspace",
+        "-v", "/Users/your-username:/workspace:ro",
+        "gemini-mcp-server:latest"
+      ]
+    }
+  }
+}

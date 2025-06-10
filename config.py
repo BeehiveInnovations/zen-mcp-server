@@ -10,8 +10,8 @@ Configuration values can be overridden by environment variables where appropriat
 
 # Version and metadata
 # These values are used in server responses and for tracking releases
-__version__ = "2.9.0"  # Semantic versioning: MAJOR.MINOR.PATCH
-__updated__ = "2025-06-09"  # Last update date in ISO format
+__version__ = "2.10.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+__updated__ = "2025-06-10"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
 # Model configuration
@@ -41,3 +41,11 @@ TEMPERATURE_BALANCED = 0.5  # For general chat
 # TEMPERATURE_CREATIVE: Higher temperature for exploratory tasks
 # Used when brainstorming, exploring alternatives, or architectural discussions
 TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
+
+# MCP Protocol Limits
+# MCP_PROMPT_SIZE_LIMIT: Maximum character size for prompts sent directly through MCP
+# The MCP protocol has a combined request+response limit of ~25K tokens.
+# To ensure we have enough space for responses, we limit direct prompt input
+# to 50K characters (roughly ~10-12K tokens). Larger prompts must be sent
+# as files to bypass MCP's token constraints.
+MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters

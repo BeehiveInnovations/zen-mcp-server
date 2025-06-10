@@ -1,4 +1,7 @@
 {
+  "comment": "Example Claude Desktop configuration for Gemini MCP Server",
+  "comment2": "For Docker setup, use examples/claude_config_docker_home.json",
+  "comment3": "For platform-specific examples, see the examples/ directory",
   "mcpServers": {
     "gemini": {
       "command": "/path/to/gemini-mcp-server/run_gemini.sh",
