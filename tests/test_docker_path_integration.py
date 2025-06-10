@@ -239,12 +239,12 @@ def test_review_changes_docker_path_error():
 
 def test_double_translation_prevention():
     """Test that already-translated paths are not double-translated"""
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         # Set up directories
         host_workspace = Path(tmpdir) / "host_workspace"
         host_workspace.mkdir()
-        container_workspace = Path(tmpdir) / "container_workspace"  
+        container_workspace = Path(tmpdir) / "container_workspace"
         container_workspace.mkdir()
 
         original_env = os.environ.copy()
