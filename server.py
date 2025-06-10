@@ -28,7 +28,7 @@ from typing import Any
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import ServerCapabilities, TextContent, Tool, ToolsCapability
 
 from config import (
     GEMINI_MODEL,
@@ -227,7 +227,9 @@ async def main():
             InitializationOptions(
                 server_name="gemini",
                 server_version=__version__,
-                capabilities={"tools": {}},  # Advertise tool support capability
+                capabilities=ServerCapabilities(
+                    tools=ToolsCapability()  # Advertise tool support capability
+                ),
             ),
         )
 
