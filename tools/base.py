@@ -525,8 +525,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
         within_limit, estimated_tokens = check_token_limit(text)
         if not within_limit:
             raise ValueError(
-                f"{context_type} too large (~{estimated_tokens:,} tokens). "
-                f"Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
+                f"{context_type} too large (~{estimated_tokens:,} tokens). Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
             )
 
     def create_model(self, model_name: str, temperature: float, thinking_mode: str = "medium"):

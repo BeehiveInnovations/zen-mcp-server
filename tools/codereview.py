@@ -256,7 +256,7 @@ Please provide a code review aligned with the user's context and expectations, f
         if request.focus_on:
             header += f" - Focus: {request.focus_on}"
         return f"""{header}
-{'=' * 50}
+{"=" * 50}
 
 {response}
 

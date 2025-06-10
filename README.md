@@ -33,7 +33,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
   - [Docker Architecture](#docker-architecture) - How Docker integration works
 
 - **Resources**
-  - [Windows Setup](#windows-setup-guide) - Windows-specific instructions
+  - [Windows Setup](#windows-setup-guide) - WSL setup instructions for Windows
   - [Troubleshooting](#troubleshooting) - Common issues and solutions
   - [Contributing](#contributing) - How to contribute
   - [Testing](#testing) - Running tests
@@ -72,15 +72,17 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ### Prerequisites
 
-Choose one of the following options:
-
-**Option A: Docker (Recommended - No Python Required!)**
+**Recommended: Docker Setup (Works on all platforms)**
 - Docker Desktop installed ([Download here](https://www.docker.com/products/docker-desktop/))
 - Git
+- **Windows users**: WSL2 is required for Claude Code CLI
+- **Benefits**: No Python setup, consistent environment, easy updates, works everywhere
 
-**Option B: Traditional Setup**
+**Alternative: Traditional Python Setup**
 - **Python 3.10 or higher** (required by the `mcp` package)
 - Git
+- **Windows users**: Must use WSL2 with Python installed inside WSL
+- **Note**: More setup complexity, potential environment issues
 
 ### 1. Get a Gemini API Key
 Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
@@ -93,17 +95,14 @@ git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
 cd gemini-mcp-server
 ```
 
-Now choose your setup method:
+**We strongly recommend Docker for the most reliable experience across all platforms.**
 
-#### Option A: Docker Setup (Recommended)
+#### Docker Setup (Recommended for all platforms)
 
 ```bash
 # 1. Generate the .env file with your current directory as workspace
 # macOS/Linux:
 ./setup-docker-env.sh
-
-# Windows (Command Prompt):
-setup-docker-env.bat
 
 # Windows (PowerShell):
 .\setup-docker-env.ps1
@@ -131,20 +130,19 @@ setup-docker-env.bat
 
 **That's it!** The setup script handles everything - building the Docker image, setting up the environment, and configuring your API key.
 
-#### Option B: Traditional Setup
+#### Traditional Python Setup (Alternative)
 
 ```bash
 # Run the setup script to install dependencies
 # macOS/Linux:
 ./setup.sh
 
-# Windows:
-setup.bat
+# Note: Claude Code requires WSL on Windows. See WSL setup instructions below.
 ```
 
 **Note the full path** - you'll need it in the next step:
 - **macOS/Linux**: `/Users/YOUR_USERNAME/gemini-mcp-server`
-- **Windows**: `C:\Users\YOUR_USERNAME\gemini-mcp-server`
+- **Windows (WSL)**: `/home/YOUR_WSL_USERNAME/gemini-mcp-server`
 
 **Important**: The setup script will:
 - Create a Python virtual environment
@@ -159,7 +157,7 @@ Add the server to your `claude_desktop_config.json`:
 
 **Find your config file:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json` (configure for WSL usage) (configure for WSL usage)
 
 **Or use Claude Desktop UI (macOS):**
 - Open Claude Desktop
@@ -167,11 +165,11 @@ Add the server to your `claude_desktop_config.json`:
 
 Choose your configuration based on your setup method:
 
-#### Option A: Docker Configuration (Recommended)
+#### Docker Configuration (Recommended for all platforms)
 
 **How it works:** Claude Desktop launches Docker, which runs the MCP server in a container. The communication happens through stdin/stdout, just like running a regular command.
 
-**All Platforms (macOS/Linux/Windows):**
+**All Platforms (macOS/Linux/Windows WSL):**
 ```json
 {
   "mcpServers": {
@@ -224,30 +222,21 @@ Choose your configuration based on your setup method:
 }
 ```
 
-**Example for Windows:**
+**Example for Windows (WSL with Docker):**
 ```json
 {
   "mcpServers": {
     "gemini": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--env-file", "C:/path/to/gemini-mcp-server/.env",
-        "-e", "WORKSPACE_ROOT=C:/Users/YOUR_USERNAME",
-        "-e", "MCP_PROJECT_ROOT=/workspace",
-        "-v", "C:/Users/YOUR_USERNAME:/workspace:ro",
-        "gemini-mcp-server:latest"
-      ]
+      "command": "wsl.exe",
+      "args": ["-e", "docker", "run", "--rm", "-i", "--env-file", "/home/YOUR_WSL_USERNAME/gemini-mcp-server/.env", "-v", "/home/YOUR_WSL_USERNAME:/workspace:ro", "gemini-mcp-server:latest"]
     }
   }
 }
 ```
 
-> **Note**: Run `setup-docker-env.sh` (macOS/Linux) or `setup-docker-env.ps1` (Windows) to generate this configuration automatically with your paths.
+> **Note**: Run `setup-docker-env.sh` (macOS/Linux/WSL) or `setup-docker-env.ps1` (Windows PowerShell) to generate this configuration automatically with your paths.
 
-#### Option B: Traditional Configuration
+#### Traditional Python Configuration (Alternative)
 
 **macOS/Linux:**
 ```json
@@ -263,19 +252,6 @@ Choose your configuration based on your setup method:
 }
 ```
 
-**Windows (Native Python):**
-```json
-{
-  "mcpServers": {
-    "gemini": {
-      "command": "C:\\Users\\YOUR_USERNAME\\gemini-mcp-server\\run_gemini.bat",
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
-    }
-  }
-}
-```
 
 **Windows (Using WSL):**
 ```json
@@ -309,9 +285,9 @@ claude mcp add-from-claude-desktop -s user
 claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- /path/to/gemini-mcp-server/run_gemini.sh
 ```
 
-**For Traditional Setup (Windows):**
+**For Traditional Setup (Windows WSL):**
 ```bash
-claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- C:\path\to\gemini-mcp-server\run_gemini.bat
+claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- /home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh
 ```
 
 **For Docker Setup:**
@@ -349,12 +325,14 @@ Just ask Claude naturally:
 
 The Docker setup provides a consistent, hassle-free experience across all platforms without worrying about Python versions or dependencies.
 
-### Why Docker?
+### Why Docker is Recommended
 
 - **Zero Python Setup**: No need to install Python or manage virtual environments
-- **Consistent Environment**: Same behavior across Windows, macOS, and Linux
+- **Consistent Environment**: Same behavior across macOS, Linux, and Windows WSL
 - **Easy Updates**: Just run the setup script again to rebuild with latest changes
 - **Isolated Dependencies**: No conflicts with your system Python packages
+- **Platform Reliability**: Eliminates Python version conflicts and dependency issues
+- **Windows Compatibility**: Works seamlessly with Claude Code's WSL requirement
 
 ### Quick Setup Guide
 
@@ -403,27 +381,11 @@ docker run --rm -i --env-file .env -v "$(pwd):/workspace:ro" gemini-mcp-server:l
 
 ## Windows Setup Guide
 
-### Option 1: Native Windows (Recommended)
+**Important**: Claude Code CLI does not support native Windows. You must use WSL (Windows Subsystem for Linux).
 
-For the smoothest experience on Windows, we recommend running the server natively:
+### WSL Setup (Required for Windows)
 
-1. **Install Python on Windows**
-   - Download from [python.org](https://python.org) or install via Microsoft Store
-   - Ensure Python 3.10 or higher
-
-2. **Set up the project**
-   ```powershell
-   cd C:\Users\YOUR_USERNAME\gemini-mcp-server
-   python -m venv venv
-   .\venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **Configure Claude Desktop** using the Windows native configuration shown above
-
-### Option 2: Using WSL (Advanced)
-
-If you prefer to use WSL (Windows Subsystem for Linux):
+To use Claude Code on Windows, you must use WSL:
 
 1. **Prerequisites**
    - WSL2 installed with a Linux distribution (e.g., Ubuntu)
@@ -1178,22 +1140,21 @@ The CI pipeline works without any secrets and will pass all tests using mocked r
 
 ### Windows/WSL Issues
 
-**Error: `spawn P:\path\to\run_gemini.bat ENOENT`**
+**Important**: Claude Code CLI only supports WSL on Windows, not native Windows.
 
-This error occurs when Claude Desktop (running on Windows) can't properly execute the server. Common causes:
+**Error: `spawn ENOENT` or execution issues**
 
-1. **Wrong execution environment**: You're trying to run WSL-based code from Windows
-   - **Solution**: Use the WSL bridge configuration with `wsl.exe` (see Windows Setup Guide above)
+This error occurs when Claude Desktop can't properly execute the server. Since Claude Code requires WSL:
 
-2. **Path format mismatch**: Using Linux paths (`/mnt/c/...`) in Windows context
-   - **Solution**: Use Windows paths for native execution, Linux paths only after `wsl.exe`
-
-3. **Missing dependencies**: Python or required packages not installed in the execution environment
-   - **Solution**: Ensure Python and dependencies are installed where you're trying to run (Windows or WSL)
+1. **Ensure WSL is properly installed**: WSL2 with a Linux distribution (Ubuntu recommended)
+2. **Use WSL configuration**: Always use `wsl.exe` in your Claude Desktop configuration
+3. **Install dependencies in WSL**: Python and all packages must be installed inside WSL, not Windows
+4. **Use WSL paths**: File paths should be WSL paths (`/home/username/...`) not Windows paths (`C:\...`)
 
 **Testing your setup:**
-- Windows users: Run `test_wsl_setup.bat` to verify your WSL configuration
-- Check Python availability: `python --version` (Windows) or `wsl python3 --version` (WSL)
+- Verify WSL is working: `wsl.exe --list --verbose`
+- Check Python in WSL: `wsl.exe python3 --version`
+- Test server in WSL: `wsl.exe /home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh`
 
 ### Common Issues
 

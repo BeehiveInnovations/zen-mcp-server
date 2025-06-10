@@ -294,7 +294,9 @@ class Precommit(BaseTool):
 
             # Use standardized file reading with token budget
             file_content = read_files(
-                translated_files, max_tokens=remaining_tokens, reserve_tokens=1000  # Small reserve for formatting
+                translated_files,
+                max_tokens=remaining_tokens,
+                reserve_tokens=1000,  # Small reserve for formatting
             )
 
             if file_content:

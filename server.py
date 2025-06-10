@@ -81,7 +81,7 @@ def configure_gemini():
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is required. " "Please set it with your Gemini API key.")
+        raise ValueError("GEMINI_API_KEY environment variable is required. Please set it with your Gemini API key.")
     # Note: We don't store the API key globally for security reasons
     # Each tool creates its own Gemini client with the API key when needed
     logger.info("Gemini API key found")

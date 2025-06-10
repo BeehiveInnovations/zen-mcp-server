@@ -267,9 +267,7 @@ def resolve_and_validate_path(path_str: str) -> Path:
     # Step 3: Security Policy - Require absolute paths
     # Relative paths could be interpreted differently depending on working directory
     if not user_path.is_absolute():
-        raise ValueError(
-            f"Relative paths are not supported. Please provide an absolute path.\n" f"Received: {path_str}"
-        )
+        raise ValueError(f"Relative paths are not supported. Please provide an absolute path.\nReceived: {path_str}")
 
     # Step 4: Resolve the absolute path (follows symlinks, removes .. and .)
     # This is critical for security as it reveals the true destination of symlinks
@@ -286,9 +284,7 @@ def resolve_and_validate_path(path_str: str) -> Path:
             f"Requested: {path_str}, Resolved: {resolved_path}, Root: {PROJECT_ROOT}"
         )
         raise PermissionError(
-            f"Path outside project root: {path_str}\n"
-            f"Project root: {PROJECT_ROOT}\n"
-            f"Resolved path: {resolved_path}"
+            f"Path outside project root: {path_str}\nProject root: {PROJECT_ROOT}\nResolved path: {resolved_path}"
         )
 
     return resolved_path
