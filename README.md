@@ -1,4 +1,4 @@
-# Gemini MCP Server for Claude Code
+# Claude Code + Gemini: Working Together as One
 
   https://github.com/user-attachments/assets/a67099df-9387-4720-9b41-c986243ac11b
 
