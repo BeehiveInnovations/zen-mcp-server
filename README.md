@@ -163,6 +163,20 @@ The setup script shows you the exact configuration. It looks like this:
 
 **That's it!** The Docker setup handles all dependencies, Redis configuration, and service management automatically.
 
+### 5. Restart Claude Desktop
+Completely quit and restart Claude Desktop for the changes to take effect.
+
+### 6. Start Using It!
+
+Just ask Claude naturally:
+- "Use gemini to think deeper about this architecture design" → `thinkdeep`
+- "Get gemini to review this code for security issues" → `codereview`
+- "Get gemini to debug why this test is failing" → `debug`
+- "Use gemini to analyze these files to understand the data flow" → `analyze`
+- "Brainstorm with gemini about scaling strategies" → `chat`
+- "Share my implementation plan with gemini for feedback" → `chat`
+- "Get gemini's opinion on my authentication design" → `chat`
+
 ## AI-to-AI Conversation Threading
 
 This server enables **true AI collaboration** between Claude and Gemini, where they can coordinate and question each other's approaches:
@@ -199,20 +213,6 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 - **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
 - Up to 5 exchanges per conversation with 1-hour expiry
 - Thread-safe with Redis persistence across all tools
-
-### 5. Restart Claude Desktop
-Completely quit and restart Claude Desktop for the changes to take effect.
-
-### 6. Start Using It!
-
-Just ask Claude naturally:
-- "Use gemini to think deeper about this architecture design" → `thinkdeep`
-- "Get gemini to review this code for security issues" → `codereview`
-- "Get gemini to debug why this test is failing" → `debug`
-- "Use gemini to analyze these files to understand the data flow" → `analyze`
-- "Brainstorm with gemini about scaling strategies" → `chat`
-- "Share my implementation plan with gemini for feedback" → `chat`
-- "Get gemini's opinion on my authentication design" → `chat`
 
 ## Available Tools
 
