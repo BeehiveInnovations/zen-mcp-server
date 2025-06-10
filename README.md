@@ -109,25 +109,26 @@ setup-docker-env.bat
 ```
 
 **Important:** The setup script will:
-- Create a `.env` file for your API key
+- Create a `.env` file with your API key (automatically uses `$GEMINI_API_KEY` if already in your environment)
+- **Automatically build the Docker image for you** - no manual build needed!
+- Clean up any existing containers/images before building fresh
 - **Display the exact Claude Desktop configuration to copy** - save this output!
 - Show you where to paste the configuration
+
+**To update the app:** Simply run the setup script again - it will rebuild everything automatically.
 
 **Docker File Access:** Docker containers can only access files within mounted directories. The generated configuration mounts your home directory by default. To access files elsewhere, modify the `-v` parameter in the configuration.
 
 ```bash
-# 2. Edit .env and add your Gemini API key
+# 2. Edit .env to add your Gemini API key (if not already set in environment)
 # The .env file will contain:
 # WORKSPACE_ROOT=/your/current/directory  (automatically set)
-# GEMINI_API_KEY=your-gemini-api-key-here  (you need to update this)
+# GEMINI_API_KEY=your-gemini-api-key-here  (automatically set if $GEMINI_API_KEY exists)
 
-# 3. Build the Docker image
-docker build -t gemini-mcp-server .
-
-# 4. Copy the configuration from step 1 into Claude Desktop
+# 3. Copy the configuration from step 1 into Claude Desktop
 ```
 
-**That's it!** Docker handles all Python dependencies and environment setup for you.
+**That's it!** The setup script handles everything - building the Docker image, setting up the environment, and configuring your API key.
 
 #### Option B: Traditional Setup
 
@@ -351,7 +352,7 @@ The Docker setup provides a consistent, hassle-free experience across all platfo
 
 - **Zero Python Setup**: No need to install Python or manage virtual environments
 - **Consistent Environment**: Same behavior across Windows, macOS, and Linux
-- **Easy Updates**: Just pull the latest image or rebuild
+- **Easy Updates**: Just run the setup script again to rebuild with latest changes
 - **Isolated Dependencies**: No conflicts with your system Python packages
 
 ### Quick Setup Guide
@@ -370,21 +371,18 @@ The setup scripts do all the heavy lifting for you:
    setup-docker-env.bat
    ```
 
-2. **The script will:**
-   - Create a `.env` file with your current directory as the workspace
-   - Display the exact Claude Desktop configuration to copy
-   - Show you where to paste it
+2. **The script automatically:**
+   - Creates a `.env` file with your workspace and API key (if `$GEMINI_API_KEY` is set)
+   - **Builds the Docker image for you** - no manual `docker build` needed!
+   - Cleans up any old containers/images before building
+   - Displays the exact Claude Desktop configuration to copy
+   - Shows you where to paste it
 
-3. **Edit `.env` and add your Gemini API key**
+3. **Edit `.env` to add your Gemini API key** (only if not already in your environment)
 
-4. **Build the Docker image:**
-   ```bash
-   docker build -t gemini-mcp-server .
-   ```
+4. **Copy the configuration into Claude Desktop**
 
-5. **Copy the configuration from step 1 into Claude Desktop**
-
-That's it! The setup script generates everything you need.
+That's it! No manual Docker commands needed. **To update:** Just run the setup script again.
 
 ### How It Works
 
