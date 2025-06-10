@@ -1,10 +1,12 @@
-# Gemini MCP Server for Claude Code
+# Claude Code + Gemini: Working Together as One
 
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/0990ee89-9160-45d6-a407-ee925bcb43cb" width="600">
-  
-  **🤖 Claude + Gemini = Your Ultimate AI Development Team**
+  https://github.com/user-attachments/assets/a67099df-9387-4720-9b41-c986243ac11b
+
+<div align="center">  
+  <b>🤖 Claude + Gemini = Your Ultimate AI Development Team</b>
 </div>
+
+<br/>
 
 The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini 2.5 Pro for extended thinking, code analysis, and problem-solving. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
 
