@@ -383,20 +383,22 @@ If any of these would strengthen your analysis, specify what Claude should searc
             continuation_id = getattr(request, "continuation_id", None)
             if not continuation_id:
                 # Import here to avoid circular imports
-                from server import get_follow_up_instructions
                 import logging
+
+                from server import get_follow_up_instructions
 
                 follow_up_instructions = get_follow_up_instructions(0)  # New conversation, turn 0
                 prompt = f"{prompt}\n\n{follow_up_instructions}"
                 logging.debug(f"Added follow-up instructions for new {self.name} conversation")
                 # Also log to file for debugging MCP issues
                 try:
-                    with open('/tmp/gemini_debug.log', 'a') as f:
+                    with open("/tmp/gemini_debug.log", "a") as f:
                         f.write(f"[{self.name}] Added follow-up instructions for new conversation\n")
                 except Exception:
                     pass
             else:
                 import logging
+
                 logging.debug(f"Continuing {self.name} conversation with thread {continuation_id}")
 
             # Extract model configuration from request or use defaults
@@ -463,10 +465,13 @@ If any of these would strengthen your analysis, specify what Claude should searc
         """
         # Check for follow-up questions in JSON blocks at the end of the response
         follow_up_question = self._extract_follow_up_question(raw_text)
-        
+
         import logging
+
         if follow_up_question:
-            logging.debug(f"Found follow-up question in {self.name} response: {follow_up_question.get('follow_up_question', 'N/A')}")
+            logging.debug(
+                f"Found follow-up question in {self.name} response: {follow_up_question.get('follow_up_question', 'N/A')}"
+            )
         else:
             logging.debug(f"No follow-up question found in {self.name} response")
 
@@ -499,10 +504,13 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         # Check if we should offer Claude a continuation opportunity
         continuation_offer = self._check_continuation_opportunity(request)
-        
+
         import logging
+
         if continuation_offer:
-            logging.debug(f"Creating continuation offer for {self.name} with {continuation_offer['remaining_turns']} turns remaining")
+            logging.debug(
+                f"Creating continuation offer for {self.name} with {continuation_offer['remaining_turns']} turns remaining"
+            )
             return self._create_continuation_offer_response(formatted_content, continuation_offer, request)
         else:
             logging.debug(f"No continuation offer created for {self.name}")
@@ -610,6 +618,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             except Exception as e:
                 # Threading failed, return normal response
                 import logging
+
                 logging.warning(f"Follow-up threading failed in {self.name}: {str(e)}")
                 return ToolOutput(
                     status="success",
@@ -735,6 +744,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
         except Exception as e:
             # If threading fails, return normal response but log the error
             import logging
+
             logging.warning(f"Conversation threading failed in {self.name}: {str(e)}")
             return ToolOutput(
                 status="success",

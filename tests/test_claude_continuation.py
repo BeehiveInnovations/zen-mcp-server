@@ -342,7 +342,7 @@ class TestContinuationIntegration:
         content = "Analysis result"
         continuation_data = {"remaining_turns": 4, "tool_name": "test_continuation"}
 
-        response = self.tool._create_continuation_offer_response(content, continuation_data, request)
+        self.tool._create_continuation_offer_response(content, continuation_data, request)
 
         # Verify thread creation was called (should be called twice: create_thread + add_turn)
         assert mock_client.setex.call_count == 2

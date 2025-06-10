@@ -48,10 +48,7 @@ from tools import (
 
 # Configure logging for server operations
 # Set to DEBUG level to capture detailed operational messages for troubleshooting
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Create the MCP server instance with a unique name identifier
@@ -215,7 +212,7 @@ add this JSON block at the very end of your response:
 
 💡 Good follow-up opportunities:
 - "Would you like me to examine the error handling in more detail?"
-- "Should I analyze the performance implications of this approach?" 
+- "Should I analyze the performance implications of this approach?"
 - "Would it be helpful to review the security aspects of this implementation?"
 - "Should I dive deeper into the architecture patterns used here?"
 
