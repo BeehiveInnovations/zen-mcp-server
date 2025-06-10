@@ -27,7 +27,7 @@ class PrecommitRequest(ToolRequest):
     )
     original_request: Optional[str] = Field(
         None,
-        description="The original user request or ticket description for the changes. Provides critical context for the review.",
+        description="The original user request description for the changes. Provides critical context for the review.",
     )
     compare_to: Optional[str] = Field(
         None,
@@ -311,7 +311,7 @@ class Precommit(BaseTool):
 
         # Add original request context if provided
         if request.original_request:
-            prompt_parts.append(f"## Original Request/Ticket\n\n{request.original_request}\n")
+            prompt_parts.append(f"## Original Request\n\n{request.original_request}\n")
 
         # Add review parameters
         prompt_parts.append("## Review Parameters\n")

@@ -134,7 +134,7 @@ class TestPrecommitTool:
         result = await tool.prepare_prompt(request)
 
         # Verify result structure
-        assert "## Original Request/Ticket" in result
+        assert "## Original Request" in result
         assert "Add hello message" in result
         assert "## Review Parameters" in result
         assert "Review Type: security" in result

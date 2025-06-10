@@ -648,7 +648,7 @@ implementations or missing test coverage. Update the code based on gemini's find
 
 **Parameters:**
 - `path`: Starting directory to search for repos (default: current directory)
-- `original_request`: The requirements/ticket for context
+- `original_request`: The requirements for context
 - `compare_to`: Compare against a branch/tag instead of local changes
 - `review_type`: full|security|performance|quick
 - `severity_filter`: Filter by issue severity
