@@ -10,7 +10,7 @@ from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
 from prompts.tool_prompts import REVIEW_CHANGES_PROMPT
-from utils.file_utils import read_files, translate_path_for_environment
+from utils.file_utils import read_files, translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
@@ -134,8 +134,9 @@ class ReviewChanges(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # Translate the path if running in Docker
+        # Translate the path and files if running in Docker
         translated_path = translate_path_for_environment(request.path)
+        translated_files = translate_file_paths(request.files)
 
         # Check if the path translation resulted in an error path
         if translated_path.startswith("/inaccessible/"):
@@ -280,18 +281,18 @@ class ReviewChanges(BaseTool):
         context_files_summary = []
         context_tokens = 0
 
-        if request.files:
+        if translated_files:
             remaining_tokens = max_tokens - total_tokens
 
             # Use standardized file reading with token budget
             file_content = read_files(
-                request.files, max_tokens=remaining_tokens, reserve_tokens=1000  # Small reserve for formatting
+                translated_files, max_tokens=remaining_tokens, reserve_tokens=1000  # Small reserve for formatting
             )
 
             if file_content:
                 context_tokens = estimate_tokens(file_content)
                 context_files_content = [file_content]
-                context_files_summary.append(f"✅ Included: {len(request.files)} context files")
+                context_files_summary.append(f"✅ Included: {len(translated_files)} context files")
             else:
                 context_files_summary.append("⚠️ No context files could be read or files too large")
 
@@ -377,7 +378,7 @@ class ReviewChanges(BaseTool):
         )
 
         # Add instruction for requesting files if needed
-        if not request.files:
+        if not translated_files:
             prompt_parts.append(
                 "\nIf you need additional context files to properly review these changes "
                 "(such as configuration files, documentation, or related code), "
