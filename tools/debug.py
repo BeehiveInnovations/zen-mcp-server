@@ -186,4 +186,9 @@ Focus on finding the root cause and providing actionable solutions."""
 
     def format_response(self, response: str, request: DebugIssueRequest) -> str:
         """Format the debugging response"""
-        return f"Debug Analysis\n{'=' * 50}\n\n{response}\n\n---\n\n**Next Steps:** Evaluate Gemini's recommendations, synthesize the best fix considering potential regressions, test thoroughly, and ensure the solution doesn't introduce new issues."
+        return (
+            f"Debug Analysis\n{'=' * 50}\n\n{response}\n\n---\n\n"
+            "**Next Steps:** Evaluate Gemini's recommendations, synthesize the best fix considering potential "
+            "regressions, and if the root cause has been clearly identified, proceed with implementing the "
+            "potential fixes."
+        )

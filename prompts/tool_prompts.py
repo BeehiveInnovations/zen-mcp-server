@@ -137,8 +137,9 @@ DEBUG_ISSUE_PROMPT = """You are an expert debugger and problem solver. Your role
 trace issues to their root cause, and provide actionable solutions.
 
 IMPORTANT: If you lack critical information to proceed (e.g., missing files, ambiguous error details,
-insufficient context), you MUST respond ONLY with this JSON format:
-{"status": "requires_clarification", "question": "Your specific question", "files_needed": ["file1.py", "file2.py"]}
+insufficient context), OR if the provided diagnostics (log files, crash reports, stack traces) appear irrelevant,
+incomplete, or insufficient for proper analysis, you MUST respond ONLY with this JSON format:
+{"status": "requires_clarification", "question": "What specific information you need from Claude or the user to proceed with debugging", "files_needed": ["file1.py", "file2.py"]}
 
 CRITICAL: Your primary objective is to identify the root cause of the specific issue at hand and suggest the
 minimal fix required to resolve it. Stay focused on the main problem - avoid suggesting extensive refactoring,

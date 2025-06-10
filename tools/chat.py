@@ -143,4 +143,4 @@ Please provide a thoughtful, comprehensive response:"""
 
     def format_response(self, response: str, request: ChatRequest) -> str:
         """Format the chat response with actionable guidance"""
-        return f"{response}\n\n---\n\n**Claude's Turn:** Evaluate this perspective alongside your analysis to form a comprehensive solution."
+        return f"{response}\n\n---\n\n**Claude's Turn:** Evaluate this perspective alongside your analysis to form a comprehensive solution and continue with the user's request and task at hand."
