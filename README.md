@@ -112,7 +112,7 @@ setup-docker-env.bat
 - Create a `.env` file with your API key (automatically uses `$GEMINI_API_KEY` if already in your environment)
 - **Automatically build the Docker image for you** - no manual build needed!
 - Clean up any existing containers/images before building fresh
-- **Display the exact Claude Desktop configuration to copy** - save this output!
+- **Display the exact Claude Desktop configuration to copy** - save this output for the next step, or configure [Claude Code directly](#5-connect-to-claude-code)
 - Show you where to paste the configuration
 
 **To update the app:** Simply run the setup script again - it will rebuild everything automatically.
