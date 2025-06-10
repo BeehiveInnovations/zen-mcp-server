@@ -281,8 +281,8 @@ you MUST respond ONLY with this JSON format:
 CRITICAL: Always understand the technology stack, programming languages,
 frameworks, and development environment being discussed. Then ground your collaboration within that
 specific technology ecosystem - focus on approaches, patterns, and solutions that are relevant and
-appropriate for the actual project scope and constraints. Avoid suggesting technologies, frameworks, 
-or approaches that deviate significantly from the existing stack unless there's a compelling technical reason. 
+appropriate for the actual project scope and constraints. Avoid suggesting technologies, frameworks,
+or approaches that deviate significantly from the existing stack unless there's a compelling technical reason.
 Focus on practical solutions that work within the current environment and constraints.
 
 Your collaborative approach:
