@@ -49,7 +49,7 @@ Claude is brilliant, but sometimes you need:
 - **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
 - **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
 - **Smart file handling** - Automatically expands directories, filters irrelevant files, and manages token limits when analyzing `"main.py, src/, tests/"`
-- **Bypass MCP's token limits** - Work around MCP's 25K combined token limit by automatically handling large prompts as files, preserving the full capacity for responses
+- **[Bypass MCP's token limits](#working-with-large-prompts)** - Work around MCP's 25K combined token limit by automatically handling large prompts as files, preserving the full capacity for responses
 
 This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
 
