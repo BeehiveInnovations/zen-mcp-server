@@ -1,6 +1,7 @@
 mcp>=1.0.0
 google-genai>=1.19.0
 pydantic>=2.0.0
+redis>=5.0.0
 
 # Development dependencies
 pytest>=7.4.0

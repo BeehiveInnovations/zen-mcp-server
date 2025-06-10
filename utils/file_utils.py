@@ -341,6 +341,20 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
         if not path_obj.exists():
             continue
 
+        # Safety check: Prevent reading entire home directory or workspace root
+        # This could expose too many files and cause performance issues
+        if path_obj.is_dir():
+            resolved_project_root = PROJECT_ROOT.resolve()
+            resolved_path = path_obj.resolve()
+
+            # Check if this is the entire project root/home directory
+            if resolved_path == resolved_project_root:
+                logger.warning(
+                    f"Ignoring request to read entire project root directory: {path}. "
+                    f"Please specify individual files or subdirectories instead."
+                )
+                continue
+
         if path_obj.is_file():
             # Add file directly
             if str(path_obj) not in seen:

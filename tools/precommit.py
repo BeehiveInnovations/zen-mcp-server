@@ -100,6 +100,12 @@ class Precommit(BaseTool):
                 "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
                 "default": True,
             }
+        # Add continuation_id parameter
+        if "properties" in schema and "continuation_id" not in schema["properties"]:
+            schema["properties"]["continuation_id"] = {
+                "type": "string",
+                "description": "Thread continuation ID for multi-turn conversations. Only provide this if continuing a previous conversation thread.",
+            }
         return schema
 
     def get_system_prompt(self) -> str:

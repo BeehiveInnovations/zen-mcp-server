@@ -87,6 +87,10 @@ class ThinkDeepTool(BaseTool):
                     "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
                     "default": True,
                 },
+                "continuation_id": {
+                    "type": "string",
+                    "description": "Thread continuation ID for multi-turn conversations. Only provide this if continuing a previous conversation thread.",
+                },
             },
             "required": ["current_analysis"],
         }

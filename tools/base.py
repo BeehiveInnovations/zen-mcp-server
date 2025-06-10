@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field
 from config import MCP_PROMPT_SIZE_LIMIT
 from utils.file_utils import read_file_content, translate_path_for_environment
 
-from .models import ClarificationRequest, ToolOutput
+from .models import ClarificationRequest, ContinuationOffer, FollowUpRequest, ToolOutput
 
 
 class ToolRequest(BaseModel):
@@ -49,6 +49,10 @@ class ToolRequest(BaseModel):
     use_websearch: Optional[bool] = Field(
         False,
         description="Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+    )
+    continuation_id: Optional[str] = Field(
+        None,
+        description="Thread continuation ID for multi-turn conversations. Only provide this if continuing a previous conversation thread.",
     )
 
 
@@ -375,6 +379,20 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # This is delegated to the tool implementation for customization
             prompt = await self.prepare_prompt(request)
 
+            # Add follow-up instructions for new conversations (not threaded)
+            continuation_id = getattr(request, "continuation_id", None)
+            if not continuation_id:
+                # Import here to avoid circular imports
+                from server import get_follow_up_instructions
+                import logging
+
+                follow_up_instructions = get_follow_up_instructions(0)  # New conversation, turn 0
+                prompt = f"{prompt}\n\n{follow_up_instructions}"
+                logging.debug(f"Added follow-up instructions for new {self.name} conversation")
+            else:
+                import logging
+                logging.debug(f"Continuing {self.name} conversation with thread {continuation_id}")
+
             # Extract model configuration from request or use defaults
             from config import GEMINI_MODEL
 
@@ -425,10 +443,10 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
     def _parse_response(self, raw_text: str, request) -> ToolOutput:
         """
-        Parse the raw response and determine if it's a clarification request.
+        Parse the raw response and determine if it's a clarification request or follow-up.
 
-        Some tools may return JSON indicating they need more information.
-        This method detects such responses and formats them appropriately.
+        Some tools may return JSON indicating they need more information or want to
+        continue the conversation. This method detects such responses and formats them.
 
         Args:
             raw_text: The raw text response from the model
@@ -437,6 +455,15 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Returns:
             ToolOutput: Standardized output object
         """
+        # Check for follow-up questions in JSON blocks at the end of the response
+        follow_up_question = self._extract_follow_up_question(raw_text)
+        
+        import logging
+        if follow_up_question:
+            logging.debug(f"Found follow-up question in {self.name} response: {follow_up_question.get('follow_up_question', 'N/A')}")
+        else:
+            logging.debug(f"No follow-up question found in {self.name} response")
+
         try:
             # Try to parse as JSON to check for clarification requests
             potential_json = json.loads(raw_text.strip())
@@ -460,6 +487,20 @@ If any of these would strengthen your analysis, specify what Claude should searc
         # Normal text response - format using tool-specific formatting
         formatted_content = self.format_response(raw_text, request)
 
+        # If we found a follow-up question, prepare the threading response
+        if follow_up_question:
+            return self._create_follow_up_response(formatted_content, follow_up_question, request)
+
+        # Check if we should offer Claude a continuation opportunity
+        continuation_offer = self._check_continuation_opportunity(request)
+        
+        import logging
+        if continuation_offer:
+            logging.debug(f"Creating continuation offer for {self.name} with {continuation_offer['remaining_turns']} turns remaining")
+            return self._create_continuation_offer_response(formatted_content, continuation_offer, request)
+        else:
+            logging.debug(f"No continuation offer created for {self.name}")
+
         # Determine content type based on the formatted content
         content_type = (
             "markdown" if any(marker in formatted_content for marker in ["##", "**", "`", "- ", "1. "]) else "text"
@@ -471,6 +512,230 @@ If any of these would strengthen your analysis, specify what Claude should searc
             content_type=content_type,
             metadata={"tool_name": self.name},
         )
+
+    def _extract_follow_up_question(self, text: str) -> Optional[dict]:
+        """
+        Extract follow-up question from JSON blocks in the response.
+
+        Looks for JSON blocks containing follow_up_question at the end of responses.
+
+        Args:
+            text: The response text to parse
+
+        Returns:
+            Dict with follow-up data if found, None otherwise
+        """
+        import re
+
+        # Look for JSON blocks that contain follow_up_question
+        # Pattern handles optional leading whitespace and indentation
+        json_pattern = r'```json\s*\n\s*(\{.*?"follow_up_question".*?\})\s*\n\s*```'
+        matches = re.findall(json_pattern, text, re.DOTALL)
+
+        if not matches:
+            return None
+
+        # Take the last match (most recent follow-up)
+        try:
+            # Clean up the JSON string - remove excess whitespace and normalize
+            json_str = re.sub(r"\n\s+", "\n", matches[-1]).strip()
+            follow_up_data = json.loads(json_str)
+            if "follow_up_question" in follow_up_data:
+                return follow_up_data
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        return None
+
+    def _create_follow_up_response(self, content: str, follow_up_data: dict, request) -> ToolOutput:
+        """
+        Create a response with follow-up question for conversation threading.
+
+        Args:
+            content: The main response content
+            follow_up_data: Dict containing follow_up_question and optional suggested_params
+            request: Original request for context
+
+        Returns:
+            ToolOutput configured for conversation continuation
+        """
+        from utils.conversation_memory import add_turn, create_thread
+
+        # Create or get thread ID
+        continuation_id = getattr(request, "continuation_id", None)
+
+        if continuation_id:
+            # This is a continuation - add this turn to existing thread
+            request_files = getattr(request, "files", []) or []
+            success = add_turn(
+                continuation_id,
+                "assistant",
+                content,
+                follow_up_question=follow_up_data.get("follow_up_question"),
+                files=request_files,
+                tool_name=self.name,
+            )
+            if not success:
+                # Thread not found or at limit, return normal response
+                return ToolOutput(
+                    status="success",
+                    content=content,
+                    content_type="markdown",
+                    metadata={"tool_name": self.name},
+                )
+            thread_id = continuation_id
+        else:
+            # Create new thread
+            try:
+                thread_id = create_thread(
+                    tool_name=self.name, initial_request=request.model_dump() if hasattr(request, "model_dump") else {}
+                )
+
+                # Add the assistant's response with follow-up
+                request_files = getattr(request, "files", []) or []
+                add_turn(
+                    thread_id,
+                    "assistant",
+                    content,
+                    follow_up_question=follow_up_data.get("follow_up_question"),
+                    files=request_files,
+                    tool_name=self.name,
+                )
+            except Exception as e:
+                # Threading failed, return normal response
+                import logging
+                logging.warning(f"Follow-up threading failed in {self.name}: {str(e)}")
+                return ToolOutput(
+                    status="success",
+                    content=content,
+                    content_type="markdown",
+                    metadata={"tool_name": self.name, "follow_up_error": str(e)},
+                )
+
+        # Create follow-up request
+        follow_up_request = FollowUpRequest(
+            continuation_id=thread_id,
+            question_to_user=follow_up_data["follow_up_question"],
+            suggested_tool_params=follow_up_data.get("suggested_params"),
+            ui_hint=follow_up_data.get("ui_hint"),
+        )
+
+        # Strip the JSON block from the content since it's now in the follow_up_request
+        clean_content = self._remove_follow_up_json(content)
+
+        return ToolOutput(
+            status="requires_continuation",
+            content=clean_content,
+            content_type="markdown",
+            follow_up_request=follow_up_request,
+            metadata={"tool_name": self.name, "thread_id": thread_id},
+        )
+
+    def _remove_follow_up_json(self, text: str) -> str:
+        """Remove follow-up JSON blocks from the response text"""
+        import re
+
+        # Remove JSON blocks containing follow_up_question
+        pattern = r'```json\s*\n\s*\{.*?"follow_up_question".*?\}\s*\n\s*```'
+        return re.sub(pattern, "", text, flags=re.DOTALL).strip()
+
+    def _check_continuation_opportunity(self, request) -> Optional[dict]:
+        """
+        Check if we should offer Claude a continuation opportunity.
+
+        This is called when Gemini doesn't ask a follow-up question, but we want
+        to give Claude the chance to continue the conversation if needed.
+
+        Args:
+            request: The original request
+
+        Returns:
+            Dict with continuation data if opportunity should be offered, None otherwise
+        """
+        # Only offer continuation for new conversations (not already threaded)
+        continuation_id = getattr(request, "continuation_id", None)
+        if continuation_id:
+            # This is already a threaded conversation, don't offer continuation
+            # (either Gemini will ask follow-up or conversation naturally ends)
+            return None
+
+        # Only offer if we haven't reached conversation limits
+        try:
+            from utils.conversation_memory import MAX_CONVERSATION_TURNS
+
+            # For new conversations, we have MAX_CONVERSATION_TURNS - 1 remaining
+            # (since this response will be turn 1)
+            remaining_turns = MAX_CONVERSATION_TURNS - 1
+
+            if remaining_turns <= 0:
+                return None
+
+            # Offer continuation opportunity
+            return {"remaining_turns": remaining_turns, "tool_name": self.name}
+        except Exception:
+            # If anything fails, don't offer continuation
+            return None
+
+    def _create_continuation_offer_response(self, content: str, continuation_data: dict, request) -> ToolOutput:
+        """
+        Create a response offering Claude the opportunity to continue conversation.
+
+        Args:
+            content: The main response content
+            continuation_data: Dict containing remaining_turns and tool_name
+            request: Original request for context
+
+        Returns:
+            ToolOutput configured with continuation offer
+        """
+        from utils.conversation_memory import create_thread
+
+        try:
+            # Create new thread for potential continuation
+            thread_id = create_thread(
+                tool_name=self.name, initial_request=request.model_dump() if hasattr(request, "model_dump") else {}
+            )
+
+            # Add this response as the first turn (assistant turn)
+            from utils.conversation_memory import add_turn
+
+            request_files = getattr(request, "files", []) or []
+            add_turn(thread_id, "assistant", content, files=request_files, tool_name=self.name)
+
+            # Create continuation offer
+            remaining_turns = continuation_data["remaining_turns"]
+            continuation_offer = ContinuationOffer(
+                continuation_id=thread_id,
+                message_to_user=(
+                    f"If you'd like to continue this analysis or need further details, "
+                    f"you can use the continuation_id '{thread_id}' in your next {self.name} tool call. "
+                    f"You have {remaining_turns} more exchange(s) available in this conversation thread."
+                ),
+                suggested_tool_params={
+                    "continuation_id": thread_id,
+                    "prompt": "[Your follow-up question or request for additional analysis]",
+                },
+                remaining_turns=remaining_turns,
+            )
+
+            return ToolOutput(
+                status="continuation_available",
+                content=content,
+                content_type="markdown",
+                continuation_offer=continuation_offer,
+                metadata={"tool_name": self.name, "thread_id": thread_id, "remaining_turns": remaining_turns},
+            )
+
+        except Exception as e:
+            # If threading fails, return normal response but log the error
+            import logging
+            logging.warning(f"Conversation threading failed in {self.name}: {str(e)}")
+            return ToolOutput(
+                status="success",
+                content=content,
+                content_type="markdown",
+                metadata={"tool_name": self.name, "threading_error": str(e)},
+            )
 
     @abstractmethod
     async def prepare_prompt(self, request) -> str:

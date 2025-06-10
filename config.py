@@ -8,6 +8,8 @@ constants used throughout the application.
 Configuration values can be overridden by environment variables where appropriate.
 """
 
+import os
+
 # Version and metadata
 # These values are used in server responses and for tracking releases
 __version__ = "2.11.1"  # Semantic versioning: MAJOR.MINOR.PATCH
@@ -49,3 +51,8 @@ TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
 # to 50K characters (roughly ~10-12K tokens). Larger prompts must be sent
 # as files to bypass MCP's token constraints.
 MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters
+
+# Threading configuration
+# Simple Redis-based conversation threading for stateless MCP environment
+# Set REDIS_URL environment variable to connect to your Redis instance
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

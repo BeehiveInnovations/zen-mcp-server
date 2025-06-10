@@ -11,10 +11,9 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 ## Quick Navigation
 
 - **Getting Started**
-  - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes
-  - [Docker Setup](#docker-setup-recommended) - Recommended approach
-  - [Traditional Setup](#option-b-traditional-setup) - Python-based setup
+  - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes with Docker
   - [Available Tools](#available-tools) - Overview of all tools
+  - [AI-to-AI Conversations](#ai-to-ai-conversation-threading) - Multi-turn conversations
 
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
@@ -72,230 +71,118 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ### Prerequisites
 
-**Recommended: Docker Setup (Works on all platforms)**
 - Docker Desktop installed ([Download here](https://www.docker.com/products/docker-desktop/))
 - Git
 - **Windows users**: WSL2 is required for Claude Code CLI
-- **Benefits**: No Python setup, consistent environment, easy updates, works everywhere
-
-**Alternative: Traditional Python Setup**
-- **Python 3.10 or higher** (required by the `mcp` package)
-- Git
-- **Windows users**: Must use WSL2 with Python installed inside WSL
-- **Note**: More setup complexity, potential environment issues
 
 ### 1. Get a Gemini API Key
 Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 
-### 2. Clone and Set Up the Repository
+### 2. Clone and Set Up
 
 ```bash
 # Clone to your preferred location
 git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
 cd gemini-mcp-server
+
+# One-command setup (includes Redis for AI conversations)
+./setup-docker.sh
 ```
 
-**We strongly recommend Docker for the most reliable experience across all platforms.**
+**What this does:**
+- **Builds Docker images** with all dependencies (including Redis for conversation threading)
+- **Creates .env file** (automatically uses `$GEMINI_API_KEY` if set in environment)
+- **Starts Redis service** for AI-to-AI conversation memory
+- **Starts MCP server** ready to connect
+- **Shows exact Claude Desktop configuration** to copy
+- **Multi-turn AI conversations** - Gemini can ask follow-up questions that persist across requests
 
-#### Docker Setup (Recommended for all platforms)
+### 3. Add Your API Key
 
 ```bash
-# 1. Generate the .env file with your current directory as workspace
-# macOS/Linux:
-./setup-docker-env.sh
+# Edit .env to add your Gemini API key (if not already set in environment)
+nano .env
 
-# Windows (PowerShell):
-.\setup-docker-env.ps1
+# The file will contain:
+# GEMINI_API_KEY=your-gemini-api-key-here
+# REDIS_URL=redis://redis:6379/0  (automatically configured)
+# WORKSPACE_ROOT=/workspace  (automatically configured)
 ```
 
-**Important:** The setup script will:
-- Create a `.env` file with your API key (automatically uses `$GEMINI_API_KEY` if already in your environment)
-- **Automatically build the Docker image for you** - no manual build needed!
-- Clean up any existing containers/images before building fresh
-- **Display the exact Claude Desktop configuration to copy** - save this output for the next step, or configure [Claude Code directly](#5-connect-to-claude-code)
-- Show you where to paste the configuration
-
-**To update the app:** Simply run the setup script again - it will rebuild everything automatically.
-
-**Docker File Access:** Docker containers can only access files within mounted directories. The generated configuration mounts your home directory by default. To access files elsewhere, modify the `-v` parameter in the configuration.
-
-```bash
-# 2. Edit .env to add your Gemini API key (if not already set in environment)
-# The .env file will contain:
-# WORKSPACE_ROOT=/your/current/directory  (automatically set)
-# GEMINI_API_KEY=your-gemini-api-key-here  (automatically set if $GEMINI_API_KEY exists)
-
-# 3. Copy the configuration from step 1 into Claude Desktop
-```
-
-**That's it!** The setup script handles everything - building the Docker image, setting up the environment, and configuring your API key.
-
-#### Traditional Python Setup (Alternative)
-
-```bash
-# Run the setup script to install dependencies
-# macOS/Linux:
-./setup.sh
-
-# Note: Claude Code requires WSL on Windows. See WSL setup instructions below.
-```
-
-**Note the full path** - you'll need it in the next step:
-- **macOS/Linux**: `/Users/YOUR_USERNAME/gemini-mcp-server`
-- **Windows (WSL)**: `/home/YOUR_WSL_USERNAME/gemini-mcp-server`
-
-**Important**: The setup script will:
-- Create a Python virtual environment
-- Install all required dependencies (mcp, google-genai, etc.)
-- Verify your Python installation
-- Provide next steps for configuration
-
-If you encounter any issues during setup, see the [Troubleshooting](#troubleshooting) section.
-
-### 3. Configure Claude Desktop
-Add the server to your `claude_desktop_config.json`:
+### 4. Configure Claude Desktop
 
 **Find your config file:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json` (configure for WSL usage) (configure for WSL usage)
+- **Windows (WSL required)**: Access from WSL using `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
 
 **Or use Claude Desktop UI (macOS):**
 - Open Claude Desktop
 - Go to **Settings** → **Developer** → **Edit Config**
 
-Choose your configuration based on your setup method:
+**Or use Claude Code CLI (Recommended):**
+```bash
+# Add the MCP server directly via Claude Code CLI
+claude mcp add gemini docker exec -i gemini-mcp-server-gemini-mcp-1
 
-#### Docker Configuration (Recommended for all platforms)
+# List your MCP servers to verify
+claude mcp list
 
-**How it works:** Claude Desktop launches Docker, which runs the MCP server in a container. The communication happens through stdin/stdout, just like running a regular command.
+# Remove if needed
+claude mcp remove gemini
+```
 
-**All Platforms (macOS/Linux/Windows WSL):**
+#### Docker Configuration (Copy from setup script output)
+
+The setup script shows you the exact configuration. It looks like this:
+
 ```json
 {
   "mcpServers": {
     "gemini": {
       "command": "docker",
       "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--env-file", "/path/to/gemini-mcp-server/.env",
-        "-v", "/path/to/your/project:/workspace:ro",
-        "gemini-mcp-server:latest"
+        "exec",
+        "-i", 
+        "gemini-mcp-server-gemini-mcp-1"
       ]
     }
   }
 }
 ```
 
-**Important for Docker setup:**
-- Replace `/path/to/gemini-mcp-server/.env` with the full path to your .env file
-- Docker containers can ONLY access files within the mounted directory (`-v` parameter)
-- The examples below mount your home directory for broad file access
-- To access files elsewhere, change the mount path (e.g., `-v /specific/project:/workspace:ro`)
-- The container runs temporarily when Claude needs it (no persistent Docker containers)
-- Communication happens via stdio - Docker's `-i` flag connects the container's stdin/stdout to Claude
+**How it works:**
+- **Docker Compose services** run continuously in the background
+- **Redis** automatically handles conversation memory between requests  
+- **AI-to-AI conversations** persist across multiple exchanges
+- **File access** through mounted workspace directory
+- **Fast communication** via `docker exec` to running container
 
-**Path Format Notes:**
-- **Windows users**: Use forward slashes `/` in Docker paths (e.g., `C:/Users/john/project`)
-- Docker on Windows automatically handles both forward slashes and backslashes
-- The setup scripts generate the correct format for your platform
+**That's it!** The Docker setup handles all dependencies, Redis configuration, and service management automatically.
 
-**Example for macOS/Linux:**
-```json
-{
-  "mcpServers": {
-    "gemini": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "--env-file", "/path/to/gemini-mcp-server/.env",
-        "-e", "WORKSPACE_ROOT=/Users/YOUR_USERNAME",
-        "-e", "MCP_PROJECT_ROOT=/workspace",
-        "-v", "/Users/YOUR_USERNAME:/workspace:ro",
-        "gemini-mcp-server:latest"
-      ]
-    }
-  }
-}
-```
+## AI-to-AI Conversation Threading
 
-**Example for Windows (WSL with Docker):**
-```json
-{
-  "mcpServers": {
-    "gemini": {
-      "command": "wsl.exe",
-      "args": ["-e", "docker", "run", "--rm", "-i", "--env-file", "/home/YOUR_WSL_USERNAME/gemini-mcp-server/.env", "-v", "/home/YOUR_WSL_USERNAME:/workspace:ro", "gemini-mcp-server:latest"]
-    }
-  }
-}
-```
+This server supports **two-way conversations** between Claude and Gemini, enabling natural multi-turn discussions:
 
-> **Note**: Run `setup-docker-env.sh` (macOS/Linux/WSL) or `setup-docker-env.ps1` (Windows PowerShell) to generate this configuration automatically with your paths.
+**How it works:**
+- Gemini can ask follow-up questions that you can answer naturally
+- Each conversation maintains context across multiple exchanges  
+- All tools support conversation threading (chat, debug, thinkdeep, etc.)
+- Conversations are automatically managed with Redis for persistence
 
-#### Traditional Python Configuration (Alternative)
+**Example:**
+1. You: "Use gemini to analyze this authentication code"
+2. Gemini: "I see potential security issues. Would you like me to examine the password hashing implementation?"
+3. You: "Yes, check the password security"
+4. Gemini: "Here's my analysis of the password handling..." (with full context)
 
-**macOS/Linux:**
-```json
-{
-  "mcpServers": {
-    "gemini": {
-      "command": "/Users/YOUR_USERNAME/gemini-mcp-server/run_gemini.sh",
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
-    }
-  }
-}
-```
+**Features:**
+- Up to 5 exchanges per conversation
+- 1-hour conversation expiry
+- Thread-safe with Redis persistence
+- Works across all Gemini tools seamlessly
 
-
-**Windows (Using WSL):**
-```json
-{
-  "mcpServers": {
-    "gemini": {
-      "command": "wsl.exe",
-      "args": ["/home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh"],
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
-    }
-  }
-}
-```
-
-### 4. Restart Claude Desktop
+### 5. Restart Claude Desktop
 Completely quit and restart Claude Desktop for the changes to take effect.
-
-### 5. Connect to Claude Code
-
-#### If you have Claude Desktop installed:
-```bash
-claude mcp add-from-claude-desktop -s user
-```
-
-#### If you only have Claude Code (no desktop app):
-
-**For Traditional Setup (macOS/Linux):**
-```bash
-claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- /path/to/gemini-mcp-server/run_gemini.sh
-```
-
-**For Traditional Setup (Windows WSL):**
-```bash
-claude mcp add gemini -s user -e GEMINI_API_KEY=your-gemini-api-key-here -- /home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh
-```
-
-**For Docker Setup:**
-```bash
-claude mcp add gemini -s user -- docker run --rm -i --env-file /path/to/gemini-mcp-server/.env -v /home:/workspace:ro gemini-mcp-server:latest
-```
-
-Replace `/path/to/gemini-mcp-server` with the actual path where you cloned the repository.
 
 ### 6. Start Using It!
 
@@ -320,94 +207,6 @@ Just ask Claude naturally:
 - **Server info?** → `get_version` (version and configuration details)
 
 **Pro Tip:** You can control the depth of Gemini's analysis with thinking modes to manage token costs. For quick tasks use "minimal" or "low" to save tokens, for complex problems use "high" or "max" when quality matters more than cost. [Learn more about thinking modes](#thinking-modes---managing-token-costs--quality)
-
-## Docker Setup (Recommended)
-
-The Docker setup provides a consistent, hassle-free experience across all platforms without worrying about Python versions or dependencies.
-
-### Why Docker is Recommended
-
-- **Zero Python Setup**: No need to install Python or manage virtual environments
-- **Consistent Environment**: Same behavior across macOS, Linux, and Windows WSL
-- **Easy Updates**: Just run the setup script again to rebuild with latest changes
-- **Isolated Dependencies**: No conflicts with your system Python packages
-- **Platform Reliability**: Eliminates Python version conflicts and dependency issues
-- **Windows Compatibility**: Works seamlessly with Claude Code's WSL requirement
-
-### Quick Setup Guide
-
-The setup scripts do all the heavy lifting for you:
-
-1. **Run the setup script for your platform:**
-   ```bash
-   # macOS/Linux:
-   ./setup-docker-env.sh
-   
-   # Windows (PowerShell):
-   .\setup-docker-env.ps1
-   
-   # Windows (Command Prompt):
-   setup-docker-env.bat
-   ```
-
-2. **The script automatically:**
-   - Creates a `.env` file with your workspace and API key (if `$GEMINI_API_KEY` is set)
-   - **Builds the Docker image for you** - no manual `docker build` needed!
-   - Cleans up any old containers/images before building
-   - Displays the exact Claude Desktop configuration to copy
-   - Shows you where to paste it
-
-3. **Edit `.env` to add your Gemini API key** (only if not already in your environment)
-
-4. **Copy the configuration into Claude Desktop**
-
-That's it! No manual Docker commands needed. **To update:** Just run the setup script again.
-
-### How It Works
-
-- **Path Translation**: The server automatically translates file paths between your host and the container
-- **Workspace Mounting**: Your project directory is mounted to `/workspace` inside the container
-- **stdio Communication**: Docker's `-i` flag preserves the MCP communication channel
-
-### Testing Your Setup
-
-```bash
-# Test that the server starts correctly
-docker run --rm -i --env-file .env -v "$(pwd):/workspace:ro" gemini-mcp-server:latest
-
-# You should see "INFO:__main__:Gemini API key found"
-# Press Ctrl+C to exit
-```
-
-## Windows Setup Guide
-
-**Important**: Claude Code CLI does not support native Windows. You must use WSL (Windows Subsystem for Linux).
-
-### WSL Setup (Required for Windows)
-
-To use Claude Code on Windows, you must use WSL:
-
-1. **Prerequisites**
-   - WSL2 installed with a Linux distribution (e.g., Ubuntu)
-   - Python installed in your WSL environment
-   - Project cloned inside WSL (recommended: `~/gemini-mcp-server`)
-
-2. **Set up in WSL**
-   ```bash
-   # Inside WSL terminal
-   cd ~/gemini-mcp-server
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   chmod +x run_gemini.sh
-   ```
-
-3. **Configure Claude Desktop** using the WSL configuration shown above
-
-**Important WSL Notes:**
-- For best performance, clone the repository inside WSL (`~/`) rather than on Windows (`/mnt/c/`)
-- Ensure `run_gemini.sh` has Unix line endings (LF, not CRLF)
-- If you have multiple WSL distributions, specify which one: `wsl.exe -d Ubuntu-22.04`
 
 **Tools Overview:**
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
@@ -1044,29 +843,6 @@ By default, the server allows access to files within your home directory. This i
 
 This creates a sandbox limiting file access to only that directory and its subdirectories.
 
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
-   cd gemini-mcp-server
-   ```
-
-2. Create virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Set your Gemini API key:
-   ```bash
-   export GEMINI_API_KEY="your-api-key-here"
-   ```
 
 ## How System Prompts Work
 
@@ -1138,63 +914,51 @@ The CI pipeline works without any secrets and will pass all tests using mocked r
 
 ## Troubleshooting
 
-### Windows/WSL Issues
-
-**Important**: Claude Code CLI only supports WSL on Windows, not native Windows.
-
-**Error: `spawn ENOENT` or execution issues**
-
-This error occurs when Claude Desktop can't properly execute the server. Since Claude Code requires WSL:
-
-1. **Ensure WSL is properly installed**: WSL2 with a Linux distribution (Ubuntu recommended)
-2. **Use WSL configuration**: Always use `wsl.exe` in your Claude Desktop configuration
-3. **Install dependencies in WSL**: Python and all packages must be installed inside WSL, not Windows
-4. **Use WSL paths**: File paths should be WSL paths (`/home/username/...`) not Windows paths (`C:\...`)
-
-**Testing your setup:**
-- Verify WSL is working: `wsl.exe --list --verbose`
-- Check Python in WSL: `wsl.exe python3 --version`
-- Test server in WSL: `wsl.exe /home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh`
-
-### Common Issues
-
-**"ModuleNotFoundError: No module named 'mcp'" or "No matching distribution found for mcp"**
-- This means either:
-  1. Python dependencies aren't installed - run the setup script
-  2. Your Python version is too old - the `mcp` package requires Python 3.10+
-- **Solution**: 
-  - First check your Python version: `python3 --version` or `python --version`
-  - If below 3.10, upgrade Python from https://python.org
-  - Then run the setup script:
-    - macOS/Linux: `./setup.sh` 
-    - Windows: `setup.bat`
-- If you still see this error, manually activate the virtual environment and install:
-  ```bash
-  # macOS/Linux:
-  source venv/bin/activate
-  pip install -r requirements.txt
-  
-  # Windows:
-  venv\Scripts\activate.bat
-  pip install -r requirements.txt
-  ```
-
-**"Virtual environment not found" warning**
-- This is just a warning that can be ignored if dependencies are installed system-wide
-- To fix: Run the setup script to create the virtual environment
-
-**"GEMINI_API_KEY environment variable is required"**
-- Ensure you've added your API key to the Claude Desktop configuration
-- The key should be in the `env` section of your MCP server config
+### Docker Issues
 
 **"Connection failed" in Claude Desktop**
-- Verify the command path is correct and uses proper escaping (`\\` for Windows paths)
-- Ensure the script has execute permissions (Linux/macOS: `chmod +x run_gemini.sh`)
-- Check Claude Desktop logs for detailed error messages
+- Ensure Docker services are running: `docker compose ps`
+- Check if the container name is correct: `docker ps` to see actual container names
+- Verify your .env file has the correct GEMINI_API_KEY
 
-**Performance issues with WSL**
-- Files on Windows drives (`/mnt/c/`) are slower to access from WSL
-- For best performance, clone the repository inside WSL (`~/gemini-mcp-server`)
+**"GEMINI_API_KEY environment variable is required"**
+- Edit your .env file and add your API key
+- Restart services: `docker compose restart`
+
+**Container fails to start**
+- Check logs: `docker compose logs gemini-mcp`
+- Ensure Docker has enough resources (memory/disk space)
+- Try rebuilding: `docker compose build --no-cache`
+
+**"spawn ENOENT" or execution issues**
+- Verify the container is running: `docker compose ps`
+- Check that Docker Desktop is running
+- On Windows: Ensure WSL2 is properly configured for Docker
+
+**Testing your Docker setup:**
+```bash
+# Check if services are running
+docker compose ps
+
+# Test manual connection
+docker exec -i gemini-mcp-server-gemini-mcp-1 echo "Connection test"
+
+# View logs
+docker compose logs -f
+```
+
+**Conversation threading not working?**
+If you're not seeing follow-up questions from Gemini:
+```bash
+# Check if Redis is running
+docker compose logs redis
+
+# Test conversation memory system
+docker exec -i gemini-mcp-server-gemini-mcp-1 python debug_conversation.py
+
+# Check for threading errors in logs
+docker compose logs gemini-mcp | grep "threading failed"
+```
 
 ## License
 

@@ -47,8 +47,11 @@ from tools import (
 )
 
 # Configure logging for server operations
-# Set to INFO level to capture important operational messages without being too verbose
-logging.basicConfig(level=logging.INFO)
+# Set to DEBUG level to capture detailed operational messages for troubleshooting
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Create the MCP server instance with a unique name identifier
@@ -140,6 +143,10 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     appropriate handlers. It supports both AI-powered tools (from TOOLS registry)
     and utility tools (implemented as static functions).
 
+    Thread Context Reconstruction:
+    If the request contains a continuation_id, this function reconstructs
+    the conversation history and injects it into the tool's context.
+
     Args:
         name: The name of the tool to execute
         arguments: Dictionary of arguments to pass to the tool
@@ -147,6 +154,10 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     Returns:
         List of TextContent objects containing the tool's response
     """
+
+    # Handle thread context reconstruction if continuation_id is present
+    if "continuation_id" in arguments and arguments["continuation_id"]:
+        arguments = await reconstruct_thread_context(arguments)
 
     # Route to AI-powered tools that require Gemini API calls
     if name in TOOLS:
@@ -160,6 +171,122 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     # Handle unknown tool requests gracefully
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
+
+
+def get_follow_up_instructions(current_turn_count: int, max_turns: int = None) -> str:
+    """
+    Generate dynamic follow-up instructions based on conversation turn count.
+
+    Args:
+        current_turn_count: Current number of turns in the conversation
+        max_turns: Maximum allowed turns before conversation ends (defaults to MAX_CONVERSATION_TURNS)
+
+    Returns:
+        Follow-up instructions to append to the tool prompt
+    """
+    if max_turns is None:
+        from utils.conversation_memory import MAX_CONVERSATION_TURNS
+
+        max_turns = MAX_CONVERSATION_TURNS
+
+    if current_turn_count >= max_turns - 1:
+        # We're at or approaching the turn limit - no more follow-ups
+        return """
+IMPORTANT: This is approaching the final exchange in this conversation thread.
+Do NOT include any follow-up questions in your response. Provide your complete
+final analysis and recommendations."""
+    else:
+        # Normal follow-up instructions
+        remaining_turns = max_turns - current_turn_count - 1
+        return f"""
+
+🤝 CONVERSATION THREADING: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
+
+If you'd like to ask a follow-up question, explore a specific aspect deeper, or need clarification,
+add this JSON block at the very end of your response:
+
+```json
+{{
+  "follow_up_question": "Would you like me to [specific action you could take]?",
+  "suggested_params": {{"files": ["relevant/files"], "focus_on": "specific area"}},
+  "ui_hint": "What this follow-up would accomplish"
+}}
+```
+
+💡 Good follow-up opportunities:
+- "Would you like me to examine the error handling in more detail?"
+- "Should I analyze the performance implications of this approach?" 
+- "Would it be helpful to review the security aspects of this implementation?"
+- "Should I dive deeper into the architecture patterns used here?"
+
+Only ask follow-ups when they would genuinely add value to the discussion."""
+
+
+async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
+    """
+    Reconstruct conversation context for thread continuation.
+
+    This function loads the conversation history from Redis and integrates it
+    into the request arguments to provide full context to the tool.
+
+    Args:
+        arguments: Original request arguments containing continuation_id
+
+    Returns:
+        Modified arguments with conversation history injected
+    """
+    from utils.conversation_memory import add_turn, build_conversation_history, get_thread
+
+    continuation_id = arguments["continuation_id"]
+
+    # Get thread context from Redis
+    context = get_thread(continuation_id)
+    if not context:
+        logger.warning(f"Thread not found: {continuation_id}")
+        # Return error asking Claude to restart conversation with full context
+        raise ValueError(
+            f"Conversation thread '{continuation_id}' was not found or has expired. "
+            f"This may happen if the conversation was created more than 1 hour ago or if there was an issue with Redis storage. "
+            f"Please restart the conversation by providing your full question/prompt without the continuation_id parameter. "
+            f"This will create a new conversation thread that can continue with follow-up exchanges."
+        )
+
+    # Add user's new input to the conversation
+    user_prompt = arguments.get("prompt", "")
+    if user_prompt:
+        # Capture files referenced in this turn
+        user_files = arguments.get("files", [])
+        success = add_turn(continuation_id, "user", user_prompt, files=user_files)
+        if not success:
+            logger.warning(f"Failed to add user turn to thread {continuation_id}")
+
+    # Build conversation history
+    conversation_history = build_conversation_history(context)
+
+    # Add dynamic follow-up instructions based on turn count
+    follow_up_instructions = get_follow_up_instructions(len(context.turns))
+
+    # Merge original context with new prompt and follow-up instructions
+    original_prompt = arguments.get("prompt", "")
+    if conversation_history:
+        enhanced_prompt = (
+            f"{conversation_history}\n\n=== NEW USER INPUT ===\n{original_prompt}\n\n{follow_up_instructions}"
+        )
+    else:
+        enhanced_prompt = f"{original_prompt}\n\n{follow_up_instructions}"
+
+    # Update arguments with enhanced context
+    enhanced_arguments = arguments.copy()
+    enhanced_arguments["prompt"] = enhanced_prompt
+
+    # Merge original context parameters (files, etc.) with new request
+    if context.initial_context:
+        for key, value in context.initial_context.items():
+            if key not in enhanced_arguments and key not in ["temperature", "thinking_mode", "model"]:
+                enhanced_arguments[key] = value
+
+    logger.info(f"Reconstructed context for thread {continuation_id} (turn {len(context.turns)})")
+    return enhanced_arguments
 
 
 async def handle_get_version() -> list[TextContent]:
