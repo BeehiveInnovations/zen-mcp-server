@@ -256,4 +256,19 @@ Please provide a code review aligned with the user's context and expectations, f
         header = f"Code Review ({request.review_type.upper()})"
         if request.focus_on:
             header += f" - Focus: {request.focus_on}"
-        return f"{header}\n{'=' * 50}\n\n{response}\n\n---\n\n**Follow-up Actions:** Address critical issues first, then high priority ones. Consider running tests after fixes and re-reviewing if substantial changes were made."
+        return f"""{header}
+{'=' * 50}
+
+{response}
+
+---
+
+**Claude's Next Steps:**
+
+1. **Understand the Context**: First examine the specific functions, files, and code sections mentioned in the review to understand each issue thoroughly.
+
+2. **Present Options to User**: After understanding the issues, ask the user which specific improvements they would like to implement, presenting them as a clear list of options.
+
+3. **Implement Selected Fixes**: Only implement the fixes the user chooses, ensuring each change is made correctly and maintains code quality.
+
+Remember: Always understand the code context before suggesting fixes, and let the user decide which improvements to implement."""
