@@ -18,15 +18,10 @@
       "mcp__memory__add_observations",
       "Bash(mkdir:*)",
       "Bash(mv:*)",
-      "mcp__memory__read_graph"
+      "mcp__memory__read_graph",
+      "mcp__memory__search_nodes"
     ],
     "deny": []
-  },
-  "commands": {
-    "compact": {
-      "description": "Compact context and auto-refresh CLAUDE.md collaboration rules",
-      "postAction": "Read CLAUDE.md and restore Memory Bank status"
-    }
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
@@ -35,5 +30,73 @@
     "memory",
     "sequential-thinking",
     "gemini"
-  ]
+  ],
+  "commands": {
+    "compact": {
+      "description": "Compact context and auto-refresh CLAUDE.md collaboration rules",
+      "postAction": "Read CLAUDE.md and restore Memory Bank status"
+    }
+  },
+  "rules": {
+    "mandatory": {
+      "memory_bank_check": {
+        "description": "Always check for memory-bank/ directory at session start",
+        "action": "Use LS tool to verify memory-bank/ exists before proceeding"
+      },
+      "claude_md_compliance": {
+        "description": "Follow CLAUDE.md collaboration patterns obligatorily",
+        "triggers": [
+          "session_start",
+          "every_10_interactions",
+          "before_complex_tasks",
+          "context_compaction"
+        ],
+        "action": "Read CLAUDE.md to ensure rule compliance"
+      },
+      "tool_selection_matrix": {
+        "description": "Use appropriate tools per CLAUDE.md matrix",
+        "requirements": {
+          "complex_tasks": "Use TodoWrite for >3 steps",
+          "architecture": "Use thinkdeep before implementation",
+          "code_review": "Use codereview before commits",
+          "documentation": "Update docs with every code change"
+        }
+      },
+      "collaboration_patterns": {
+        "description": "Enforce mandatory collaboration workflows",
+        "patterns": {
+          "double_validation": "Critical changes require Gemini + Claude review",
+          "memory_driven": "Query memory before tasks, store decisions",
+          "pre_commit": "Run precommit tool before every commit"
+        }
+      }
+    },
+    "session_management": {
+      "memory_bank_status": {
+        "description": "Display memory bank status in every response",
+        "format": "[MEMORY BANK: ACTIVE] or [MEMORY BANK: INACTIVE]"
+      },
+      "auto_refresh": {
+        "description": "Auto-reload CLAUDE.md when context >80%",
+        "preserve_rules": [
+          "tool_selection_matrix",
+          "memory_bank_protocols",
+          "collaboration_patterns",
+          "quality_gates"
+        ]
+      }
+    },
+    "quality_gates": {
+      "code_quality": {
+        "security": "No exposed secrets, proper validation",
+        "performance": "Consider token usage, avoid unnecessary calls",
+        "maintainability": "Clear naming, logical structure"
+      },
+      "documentation": {
+        "accuracy": "Must reflect actual code behavior",
+        "completeness": "Cover all user-facing functionality",
+        "accessibility": "Understandable by intended audience"
+      }
+    }
+  }
 }
