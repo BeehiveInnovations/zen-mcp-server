@@ -11,8 +11,22 @@
       "Bash(cat:*)",
       "Bash(grep:*)",
       "Bash(source:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "mcp__gemini__thinkdeep",
+      "mcp__memory__create_entities",
+      "mcp__memory__create_relations",
+      "mcp__memory__add_observations",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "github",
+    "context7",
+    "memory",
+    "sequential-thinking",
+    "gemini"
+  ]
 }
