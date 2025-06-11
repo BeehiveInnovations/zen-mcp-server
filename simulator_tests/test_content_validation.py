@@ -53,7 +53,7 @@ DATABASE_CONFIG = {
             validation_file = os.path.join(self.test_dir, "validation_config.py")
             with open(validation_file, "w") as f:
                 f.write(validation_content)
-            
+
             # Ensure absolute path for MCP server compatibility
             validation_file = os.path.abspath(validation_file)
 
@@ -113,11 +113,17 @@ DATABASE_CONFIG = {
             tools_to_test = [
                 (
                     "chat",
-                    {"prompt": "Please use low thinking mode. Analyze this config file", "files": [validation_file]},  # Using absolute path
+                    {
+                        "prompt": "Please use low thinking mode. Analyze this config file",
+                        "files": [validation_file],
+                    },  # Using absolute path
                 ),
                 (
                     "codereview",
-                    {"files": [validation_file], "context": "Please use low thinking mode. Review this configuration"},  # Using absolute path
+                    {
+                        "files": [validation_file],
+                        "context": "Please use low thinking mode. Review this configuration",
+                    },  # Using absolute path
                 ),
                 ("analyze", {"files": [validation_file], "analysis_type": "code_quality"}),  # Using absolute path
             ]

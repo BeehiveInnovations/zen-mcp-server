@@ -22,6 +22,7 @@ import asyncio
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 from typing import Any
 
@@ -52,7 +53,8 @@ from tools.models import ToolOutput
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Create timezone-aware formatter
-import time
+
+
 class LocalTimeFormatter(logging.Formatter):
     def formatTime(self, record, datefmt=None):
         """Override to use local timezone instead of UTC"""
@@ -61,8 +63,9 @@ class LocalTimeFormatter(logging.Formatter):
             s = time.strftime(datefmt, ct)
         else:
             t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
-            s = "%s,%03d" % (t, record.msecs)
+            s = f"{t},{record.msecs:03.0f}"
         return s
+
 
 # Configure both console and file logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -213,7 +216,9 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     if "continuation_id" in arguments and arguments["continuation_id"]:
         continuation_id = arguments["continuation_id"]
         logger.debug(f"Resuming conversation thread: {continuation_id}")
-        logger.debug(f"[CONVERSATION_DEBUG] Tool '{name}' resuming thread {continuation_id} with {len(arguments)} arguments")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Tool '{name}' resuming thread {continuation_id} with {len(arguments)} arguments"
+        )
         logger.debug(f"[CONVERSATION_DEBUG] Original arguments keys: {list(arguments.keys())}")
 
         # Log to activity file for monitoring
@@ -225,7 +230,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
 
         arguments = await reconstruct_thread_context(arguments)
         logger.debug(f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
-        if '_remaining_tokens' in arguments:
+        if "_remaining_tokens" in arguments:
             logger.debug(f"[CONVERSATION_DEBUG] Remaining token budget: {arguments['_remaining_tokens']:,}")
 
     # Route to AI-powered tools that require Gemini API calls
@@ -354,7 +359,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         success = add_turn(continuation_id, "user", user_prompt, files=user_files)
         if not success:
             logger.warning(f"Failed to add user turn to thread {continuation_id}")
-            logger.debug(f"[CONVERSATION_DEBUG] Failed to add user turn - thread may be at turn limit or expired")
+            logger.debug("[CONVERSATION_DEBUG] Failed to add user turn - thread may be at turn limit or expired")
         else:
             logger.debug(f"[CONVERSATION_DEBUG] Successfully added user turn to thread {continuation_id}")
 
@@ -387,7 +392,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     remaining_tokens = MAX_CONTENT_TOKENS - conversation_tokens
     enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
-    logger.debug(f"[CONVERSATION_DEBUG] Token budget calculation:")
+    logger.debug("[CONVERSATION_DEBUG] Token budget calculation:")
     logger.debug(f"[CONVERSATION_DEBUG]   MAX_CONTENT_TOKENS: {MAX_CONTENT_TOKENS:,}")
     logger.debug(f"[CONVERSATION_DEBUG]   Conversation tokens: {conversation_tokens:,}")
     logger.debug(f"[CONVERSATION_DEBUG]   Remaining tokens: {remaining_tokens:,}")
@@ -402,9 +407,9 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     logger.info(f"Reconstructed context for thread {continuation_id} (turn {len(context.turns)})")
     logger.debug(f"[CONVERSATION_DEBUG] Final enhanced arguments keys: {list(enhanced_arguments.keys())}")
-    
+
     # Debug log files in the enhanced arguments for file tracking
-    if 'files' in enhanced_arguments:
+    if "files" in enhanced_arguments:
         logger.debug(f"[CONVERSATION_DEBUG] Final files in enhanced arguments: {enhanced_arguments['files']}")
 
     # Log to activity file for monitoring

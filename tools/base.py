@@ -210,7 +210,7 @@ class BaseTool(ABC):
             list[str]: List of files that need to be embedded (not already in history)
         """
         logger.debug(f"[FILES] {self.name}: Filtering {len(requested_files)} requested files")
-        
+
         if not continuation_id:
             # New conversation, all files are new
             logger.debug(f"[FILES] {self.name}: New conversation, all {len(requested_files)} files are new")
@@ -226,12 +226,16 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}"
                 )
-                logger.debug(f"[FILES] {self.name}: No embedded files found, returning all {len(requested_files)} requested files")
+                logger.debug(
+                    f"[FILES] {self.name}: No embedded files found, returning all {len(requested_files)} requested files"
+                )
                 return requested_files
 
             # Return only files that haven't been embedded yet
             new_files = [f for f in requested_files if f not in embedded_files]
-            logger.debug(f"[FILES] {self.name}: After filtering: {len(new_files)} new files, {len(requested_files) - len(new_files)} already embedded")
+            logger.debug(
+                f"[FILES] {self.name}: After filtering: {len(new_files)} new files, {len(requested_files) - len(new_files)} already embedded"
+            )
             logger.debug(f"[FILES] {self.name}: New files to embed: {new_files}")
 
             # Log filtering results for debugging
@@ -249,7 +253,9 @@ class BaseTool(ABC):
             # and include all files rather than risk losing access to needed files
             logger.warning(f"📁 {self.name} tool: Error checking conversation history for {continuation_id}: {e}")
             logger.warning(f"📁 {self.name} tool: Including all requested files as fallback")
-            logger.debug(f"[FILES] {self.name}: Exception in filter_new_files, returning all {len(requested_files)} files as fallback")
+            logger.debug(
+                f"[FILES] {self.name}: Exception in filter_new_files, returning all {len(requested_files)} files as fallback"
+            )
             return requested_files
 
     def _prepare_file_content_for_prompt(
@@ -312,7 +318,9 @@ class BaseTool(ABC):
         # Read content of new files only
         if files_to_embed:
             logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
-            logger.debug(f"[FILES] {self.name}: Starting file embedding with token budget {effective_max_tokens + reserve_tokens:,}")
+            logger.debug(
+                f"[FILES] {self.name}: Starting file embedding with token budget {effective_max_tokens + reserve_tokens:,}"
+            )
             try:
                 file_content = read_files(
                     files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens
@@ -662,7 +670,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # Return error information in standardized format
             logger = logging.getLogger(f"tools.{self.name}")
             error_msg = str(e)
-            
+
             # Check if this is a 500 INTERNAL error that asks for retry
             if "500 INTERNAL" in error_msg and "Please retry" in error_msg:
                 logger.warning(f"500 INTERNAL error in {self.name} - attempting retry")
@@ -671,16 +679,16 @@ If any of these would strengthen your analysis, specify what Claude should searc
                     model = self._get_model_wrapper(request)
                     raw_response = await model.generate_content(prompt)
                     response = raw_response.text
-                    
+
                     # If successful, process normally
                     return [TextContent(type="text", text=self._process_response(response, request).model_dump_json())]
-                    
+
                 except Exception as retry_e:
                     logger.error(f"Retry failed for {self.name} tool: {str(retry_e)}")
                     error_msg = f"Tool failed after retry: {str(retry_e)}"
-            
+
             logger.error(f"Error in {self.name} tool execution: {error_msg}", exc_info=True)
-            
+
             error_output = ToolOutput(
                 status="error",
                 content=f"Error in {self.name}: {error_msg}",
@@ -911,11 +919,12 @@ If any of these would strengthen your analysis, specify what Claude should searc
             Dict with continuation data if opportunity should be offered, None otherwise
         """
         continuation_id = getattr(request, "continuation_id", None)
-        
+
         try:
             if continuation_id:
                 # Check remaining turns in existing thread
                 from utils.conversation_memory import get_thread
+
                 context = get_thread(continuation_id)
                 if context:
                     current_turns = len(context.turns)

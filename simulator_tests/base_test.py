@@ -96,10 +96,7 @@ class Calculator:
             f.write(config_content)
 
         # Ensure absolute paths for MCP server compatibility
-        self.test_files = {
-            "python": os.path.abspath(test_py), 
-            "config": os.path.abspath(test_config)
-        }
+        self.test_files = {"python": os.path.abspath(test_py), "config": os.path.abspath(test_config)}
         self.logger.debug(f"Created test files with absolute paths: {list(self.test_files.values())}")
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
@@ -237,9 +234,9 @@ class Calculator:
 
     def create_additional_test_file(self, filename: str, content: str) -> str:
         """Create an additional test file for mixed scenario testing"""
-        if not hasattr(self, 'test_dir') or not self.test_dir:
+        if not hasattr(self, "test_dir") or not self.test_dir:
             raise RuntimeError("Test directory not initialized. Call setup_test_files() first.")
-        
+
         file_path = os.path.join(self.test_dir, filename)
         with open(file_path, "w") as f:
             f.write(content)

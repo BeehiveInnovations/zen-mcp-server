@@ -470,7 +470,7 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
         logger.debug(f"[FILES] Reading file content for {file_path}")
         with open(path, encoding="utf-8", errors="replace") as f:
             file_content = f.read()
-        
+
         logger.debug(f"[FILES] Successfully read {len(file_content)} characters from {file_path}")
 
         # Format with clear delimiters that help the AI understand file boundaries
@@ -518,7 +518,9 @@ def read_files(
         max_tokens = MAX_CONTEXT_TOKENS
 
     logger.debug(f"[FILES] read_files called with {len(file_paths)} paths")
-    logger.debug(f"[FILES] Token budget: max={max_tokens:,}, reserve={reserve_tokens:,}, available={max_tokens - reserve_tokens:,}")
+    logger.debug(
+        f"[FILES] Token budget: max={max_tokens:,}, reserve={reserve_tokens:,}, available={max_tokens - reserve_tokens:,}"
+    )
 
     content_parts = []
     total_tokens = 0
@@ -546,7 +548,7 @@ def read_files(
 
         if not all_files and file_paths:
             # No files found but paths were provided
-            logger.debug(f"[FILES] No files found from provided paths")
+            logger.debug("[FILES] No files found from provided paths")
             content_parts.append(f"\n--- NO FILES FOUND ---\nProvided paths: {', '.join(file_paths)}\n--- END ---\n")
         else:
             # Read files sequentially until token limit is reached
@@ -567,7 +569,9 @@ def read_files(
                     logger.debug(f"[FILES] Added file {file_path}, total tokens: {total_tokens:,}")
                 else:
                     # File too large for remaining budget
-                    logger.debug(f"[FILES] File {file_path} too large for remaining budget ({file_tokens:,} tokens, {available_tokens - total_tokens:,} remaining)")
+                    logger.debug(
+                        f"[FILES] File {file_path} too large for remaining budget ({file_tokens:,} tokens, {available_tokens - total_tokens:,} remaining)"
+                    )
                     files_skipped.append(file_path)
 
     # Add informative note about skipped files to help users understand
