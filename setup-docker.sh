@@ -49,6 +49,54 @@ else
     echo ""
 fi
 
+# Detect and set timezone in .env
+echo "🔍 Detecting host timezone..."
+HOST_TZ=""
+
+# Try to detect timezone from /etc/localtime symlink (works on most modern Linux and macOS)
+if [ -f /etc/localtime ]; then
+    # Use readlink to resolve the symlink
+    TZ_PATH=$(readlink -f /etc/localtime 2>/dev/null || readlink /etc/localtime 2>/dev/null || echo "")
+    # Extract timezone from path (e.g., /usr/share/zoneinfo/America/New_York -> America/New_York)
+    if [[ "$TZ_PATH" == *"/zoneinfo/"* ]]; then
+        HOST_TZ=${TZ_PATH#*"/zoneinfo/"}
+    elif [[ "$TZ_PATH" == *"/usr/share/zoneinfo/"* ]]; then
+        HOST_TZ=${TZ_PATH#*"/usr/share/zoneinfo/"}
+    fi
+fi
+
+# Fallback: Try /etc/timezone file (Debian/Ubuntu)
+if [ -z "$HOST_TZ" ] && [ -f /etc/timezone ]; then
+    HOST_TZ=$(cat /etc/timezone 2>/dev/null || echo "")
+fi
+
+# Fallback: Try timedatectl command (systemd-based systems)
+if [ -z "$HOST_TZ" ] && command -v timedatectl >/dev/null 2>&1; then
+    HOST_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || echo "")
+fi
+
+# Final fallback to UTC
+if [ -z "$HOST_TZ" ]; then
+    HOST_TZ="UTC"
+    echo "⚠️  Could not detect host timezone. Defaulting to UTC."
+else
+    echo "✅ Detected timezone: $HOST_TZ"
+fi
+
+# Add or update TZ in .env file
+if grep -q "^TZ=" .env 2>/dev/null; then
+    # Update existing TZ value
+    if command -v sed >/dev/null 2>&1; then
+        sed -i.bak "s|^TZ=.*|TZ=$HOST_TZ|" .env && rm .env.bak
+        echo "✅ Updated TZ in .env file"
+    fi
+else
+    # Add TZ to .env
+    echo "TZ=$HOST_TZ" >> .env
+    echo "✅ Added TZ=$HOST_TZ to .env file"
+fi
+echo ""
+
 # Check if Docker and Docker Compose are installed
 if ! command -v docker &> /dev/null; then
     echo "❌ Docker is not installed. Please install Docker first."

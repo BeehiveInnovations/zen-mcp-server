@@ -38,11 +38,11 @@ services:
       - WORKSPACE_ROOT=${WORKSPACE_ROOT:-${HOME}}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-UTC}
     volumes:
       - ${HOME:-/tmp}:/workspace:ro
       - mcp_logs:/tmp  # Shared volume for logs
       - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
     stdin_open: true
     tty: true
     entrypoint: ["python"]
@@ -57,10 +57,10 @@ services:
       - gemini-mcp
     environment:
       - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-UTC}
     volumes:
       - mcp_logs:/tmp  # Shared volume for logs
       - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
     entrypoint: ["python"]
     command: ["log_monitor.py"]
 
