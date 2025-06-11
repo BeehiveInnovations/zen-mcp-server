@@ -241,7 +241,7 @@ class TestClaudeContinuationOffers:
     def test_max_turns_reached_no_continuation_offer(self):
         """Test that no continuation is offered when max turns would be exceeded"""
         # Mock MAX_CONVERSATION_TURNS to be 1 for this test
-        with patch("utils.conversation_memory.MAX_CONVERSATION_TURNS", 1):
+        with patch("tools.base.MAX_CONVERSATION_TURNS", 1):
             request = ContinuationRequest(prompt="Test prompt")
 
             # Check continuation opportunity

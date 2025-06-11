@@ -235,9 +235,9 @@ class TestCollaborationWorkflow:
         )
 
         response = json.loads(result[0].text)
-        assert response["status"] == "requires_clarification", (
-            "Should request clarification when asked about dependencies without package files"
-        )
+        assert (
+            response["status"] == "requires_clarification"
+        ), "Should request clarification when asked about dependencies without package files"
 
         clarification = json.loads(response["content"])
         assert "package.json" in str(clarification["files_needed"]), "Should specifically request package.json"

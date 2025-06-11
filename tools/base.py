@@ -14,7 +14,9 @@ Key responsibilities:
 """
 
 import json
+import logging
 import os
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Literal, Optional
 
@@ -23,7 +25,15 @@ from google.genai import types
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
-from config import MCP_PROMPT_SIZE_LIMIT
+from config import GEMINI_MODEL, MAX_CONTEXT_TOKENS, MCP_PROMPT_SIZE_LIMIT
+from utils import check_token_limit
+from utils.conversation_memory import (
+    MAX_CONVERSATION_TURNS,
+    add_turn,
+    build_conversation_history,
+    create_thread,
+    get_thread,
+)
 from utils.file_utils import read_file_content, translate_path_for_environment
 
 from .models import ClarificationRequest, ContinuationOffer, FollowUpRequest, ToolOutput
@@ -52,7 +62,7 @@ class ToolRequest(BaseModel):
     )
     continuation_id: Optional[str] = Field(
         None,
-        description="Thread continuation ID for multi-turn conversations. Only provide this if continuing a previous conversation thread.",
+        description="Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
     )
 
 
@@ -359,10 +369,15 @@ If any of these would strengthen your analysis, specify what Claude should searc
             List[TextContent]: Formatted response as MCP TextContent objects
         """
         try:
+            # Set up logger for this tool execution
+            logger = logging.getLogger(f"tools.{self.name}")
+            logger.info(f"Starting {self.name} tool execution with arguments: {list(arguments.keys())}")
+
             # Validate request using the tool's Pydantic model
             # This ensures all required fields are present and properly typed
             request_model = self.get_request_model()
             request = request_model(**arguments)
+            logger.debug(f"Request validation successful for {self.name}")
 
             # Validate file paths for security
             # This prevents path traversal attacks and ensures proper access control
@@ -383,13 +398,13 @@ If any of these would strengthen your analysis, specify what Claude should searc
             continuation_id = getattr(request, "continuation_id", None)
             if not continuation_id:
                 # Import here to avoid circular imports
-                import logging
-
                 from server import get_follow_up_instructions
 
                 follow_up_instructions = get_follow_up_instructions(0)  # New conversation, turn 0
                 prompt = f"{prompt}\n\n{follow_up_instructions}"
-                logging.debug(f"Added follow-up instructions for new {self.name} conversation")
+
+                logger.debug(f"Added follow-up instructions for new {self.name} conversation")
+
                 # Also log to file for debugging MCP issues
                 try:
                     with open("/tmp/gemini_debug.log", "a") as f:
@@ -397,13 +412,18 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 except Exception:
                     pass
             else:
-                import logging
+                logger.debug(f"Continuing {self.name} conversation with thread {continuation_id}")
 
-                logging.debug(f"Continuing {self.name} conversation with thread {continuation_id}")
+                # Add conversation history when continuing a threaded conversation
+                thread_context = get_thread(continuation_id)
+                if thread_context:
+                    conversation_history = build_conversation_history(thread_context)
+                    prompt = f"{conversation_history}\n\n{prompt}"
+                    logger.debug(f"Added conversation history to {self.name} prompt for thread {continuation_id}")
+                else:
+                    logger.warning(f"Thread {continuation_id} not found for {self.name} - continuing without history")
 
             # Extract model configuration from request or use defaults
-            from config import GEMINI_MODEL
-
             model_name = getattr(request, "model", None) or GEMINI_MODEL
             temperature = getattr(request, "temperature", None)
             if temperature is None:
@@ -417,7 +437,10 @@ If any of these would strengthen your analysis, specify what Claude should searc
             model = self.create_model(model_name, temperature, thinking_mode)
 
             # Generate AI response using the configured model
+            logger.info(f"Sending request to Gemini API for {self.name}")
+            logger.debug(f"Prompt length: {len(prompt)} characters")
             response = model.generate_content(prompt)
+            logger.info(f"Received response from Gemini API for {self.name}")
 
             # Process the model's response
             if response.candidates and response.candidates[0].content.parts:
@@ -425,11 +448,13 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
                 # Parse response to check for clarification requests or format output
                 tool_output = self._parse_response(raw_text, request)
+                logger.info(f"Successfully completed {self.name} tool execution")
 
             else:
                 # Handle cases where the model couldn't generate a response
                 # This might happen due to safety filters or other constraints
                 finish_reason = response.candidates[0].finish_reason if response.candidates else "Unknown"
+                logger.warning(f"Response blocked or incomplete for {self.name}. Finish reason: {finish_reason}")
                 tool_output = ToolOutput(
                     status="error",
                     content=f"Response blocked or incomplete. Finish reason: {finish_reason}",
@@ -442,6 +467,9 @@ If any of these would strengthen your analysis, specify what Claude should searc
         except Exception as e:
             # Catch all exceptions to prevent server crashes
             # Return error information in standardized format
+            logger = logging.getLogger(f"tools.{self.name}")
+            logger.error(f"Error in {self.name} tool execution: {str(e)}", exc_info=True)
+
             error_output = ToolOutput(
                 status="error",
                 content=f"Error in {self.name}: {str(e)}",
@@ -465,15 +493,14 @@ If any of these would strengthen your analysis, specify what Claude should searc
         """
         # Check for follow-up questions in JSON blocks at the end of the response
         follow_up_question = self._extract_follow_up_question(raw_text)
-
-        import logging
+        logger = logging.getLogger(f"tools.{self.name}")
 
         if follow_up_question:
-            logging.debug(
+            logger.debug(
                 f"Found follow-up question in {self.name} response: {follow_up_question.get('follow_up_question', 'N/A')}"
             )
         else:
-            logging.debug(f"No follow-up question found in {self.name} response")
+            logger.debug(f"No follow-up question found in {self.name} response")
 
         try:
             # Try to parse as JSON to check for clarification requests
@@ -505,15 +532,27 @@ If any of these would strengthen your analysis, specify what Claude should searc
         # Check if we should offer Claude a continuation opportunity
         continuation_offer = self._check_continuation_opportunity(request)
 
-        import logging
-
         if continuation_offer:
-            logging.debug(
+            logger.debug(
                 f"Creating continuation offer for {self.name} with {continuation_offer['remaining_turns']} turns remaining"
             )
             return self._create_continuation_offer_response(formatted_content, continuation_offer, request)
         else:
-            logging.debug(f"No continuation offer created for {self.name}")
+            logger.debug(f"No continuation offer created for {self.name}")
+
+        # If this is a threaded conversation (has continuation_id), save the response
+        continuation_id = getattr(request, "continuation_id", None)
+        if continuation_id:
+            request_files = getattr(request, "files", []) or []
+            success = add_turn(
+                continuation_id,
+                "assistant",
+                formatted_content,
+                files=request_files,
+                tool_name=self.name,
+            )
+            if not success:
+                logging.warning(f"Failed to add turn to thread {continuation_id} for {self.name}")
 
         # Determine content type based on the formatted content
         content_type = (
@@ -539,8 +578,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Returns:
             Dict with follow-up data if found, None otherwise
         """
-        import re
-
         # Look for JSON blocks that contain follow_up_question
         # Pattern handles optional leading whitespace and indentation
         json_pattern = r'```json\s*\n\s*(\{.*?"follow_up_question".*?\})\s*\n\s*```'
@@ -573,8 +610,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Returns:
             ToolOutput configured for conversation continuation
         """
-        from utils.conversation_memory import add_turn, create_thread
-
         # Create or get thread ID
         continuation_id = getattr(request, "continuation_id", None)
 
@@ -617,9 +652,8 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 )
             except Exception as e:
                 # Threading failed, return normal response
-                import logging
-
-                logging.warning(f"Follow-up threading failed in {self.name}: {str(e)}")
+                logger = logging.getLogger(f"tools.{self.name}")
+                logger.warning(f"Follow-up threading failed in {self.name}: {str(e)}")
                 return ToolOutput(
                     status="success",
                     content=content,
@@ -648,8 +682,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
     def _remove_follow_up_json(self, text: str) -> str:
         """Remove follow-up JSON blocks from the response text"""
-        import re
-
         # Remove JSON blocks containing follow_up_question
         pattern = r'```json\s*\n\s*\{.*?"follow_up_question".*?\}\s*\n\s*```'
         return re.sub(pattern, "", text, flags=re.DOTALL).strip()
@@ -676,8 +708,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         # Only offer if we haven't reached conversation limits
         try:
-            from utils.conversation_memory import MAX_CONVERSATION_TURNS
-
             # For new conversations, we have MAX_CONVERSATION_TURNS - 1 remaining
             # (since this response will be turn 1)
             remaining_turns = MAX_CONVERSATION_TURNS - 1
@@ -703,8 +733,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Returns:
             ToolOutput configured with continuation offer
         """
-        from utils.conversation_memory import create_thread
-
         try:
             # Create new thread for potential continuation
             thread_id = create_thread(
@@ -712,8 +740,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
             )
 
             # Add this response as the first turn (assistant turn)
-            from utils.conversation_memory import add_turn
-
             request_files = getattr(request, "files", []) or []
             add_turn(thread_id, "assistant", content, files=request_files, tool_name=self.name)
 
@@ -743,9 +769,8 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         except Exception as e:
             # If threading fails, return normal response but log the error
-            import logging
-
-            logging.warning(f"Conversation threading failed in {self.name}: {str(e)}")
+            logger = logging.getLogger(f"tools.{self.name}")
+            logger.warning(f"Conversation threading failed in {self.name}: {str(e)}")
             return ToolOutput(
                 status="success",
                 content=content,
@@ -800,9 +825,6 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Raises:
             ValueError: If text exceeds MAX_CONTEXT_TOKENS
         """
-        from config import MAX_CONTEXT_TOKENS
-        from utils import check_token_limit
-
         within_limit, estimated_tokens = check_token_limit(text)
         if not within_limit:
             raise ValueError(

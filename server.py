@@ -47,8 +47,22 @@ from tools import (
 )
 
 # Configure logging for server operations
-# Set to DEBUG level to capture detailed operational messages for troubleshooting
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+# Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Configure both console and file logging
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=getattr(logging, log_level, logging.INFO), format=log_format)
+
+# Add file handler for Docker log monitoring
+try:
+    file_handler = logging.FileHandler("/tmp/mcp_server.log")
+    file_handler.setLevel(getattr(logging, log_level, logging.INFO))
+    file_handler.setFormatter(logging.Formatter(log_format))
+    logging.getLogger().addHandler(file_handler)
+except Exception as e:
+    print(f"Warning: Could not set up file logging: {e}")
+
 logger = logging.getLogger(__name__)
 
 # Create the MCP server instance with a unique name identifier

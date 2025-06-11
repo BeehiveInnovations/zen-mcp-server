@@ -90,7 +90,7 @@ class AnalyzeTool(BaseTool):
                 },
                 "continuation_id": {
                     "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations. Only provide this if continuing a previous conversation thread.",
+                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
             "required": ["files", "question"],

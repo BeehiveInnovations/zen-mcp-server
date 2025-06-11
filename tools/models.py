@@ -10,7 +10,9 @@ from pydantic import BaseModel, Field
 class FollowUpRequest(BaseModel):
     """Request for follow-up conversation turn"""
 
-    continuation_id: str = Field(..., description="Thread continuation ID for multi-turn conversations")
+    continuation_id: str = Field(
+        ..., description="Thread continuation ID for multi-turn conversations across different tools"
+    )
     question_to_user: str = Field(..., description="Follow-up question to ask Claude")
     suggested_tool_params: Optional[dict[str, Any]] = Field(
         None, description="Suggested parameters for the next tool call"
@@ -23,7 +25,9 @@ class FollowUpRequest(BaseModel):
 class ContinuationOffer(BaseModel):
     """Offer for Claude to continue conversation when Gemini doesn't ask follow-up"""
 
-    continuation_id: str = Field(..., description="Thread continuation ID for multi-turn conversations")
+    continuation_id: str = Field(
+        ..., description="Thread continuation ID for multi-turn conversations across different tools"
+    )
     message_to_user: str = Field(..., description="Message explaining continuation opportunity to Claude")
     suggested_tool_params: Optional[dict[str, Any]] = Field(
         None, description="Suggested parameters for continued tool usage"

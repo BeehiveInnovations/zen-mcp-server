@@ -43,6 +43,14 @@ REDIS_URL=redis://redis:6379/0
 # not just files within the current project directory. Additionally, Claude Code
 # could be running from multiple locations at the same time.
 WORKSPACE_ROOT=$HOME
+
+# Logging level (DEBUG, INFO, WARNING, ERROR)
+# DEBUG: Shows detailed operational messages, conversation threading, tool execution flow
+# INFO: Shows general operational messages (default)
+# WARNING: Shows only warnings and errors
+# ERROR: Shows only errors
+# Uncomment and change to DEBUG if you need detailed troubleshooting information
+LOG_LEVEL=INFO
 EOF
     echo "✅ Created .env file with Redis configuration"
     echo ""
@@ -166,6 +174,17 @@ echo "      ]"
 echo "    }"
 echo "  }"
 echo "}"
+echo "==========================================="
+echo ""
+echo "===== CLAUDE CODE CLI CONFIGURATION ====="
+echo "# Add the MCP server via Claude Code CLI:"
+echo "claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py"
+echo ""
+echo "# List your MCP servers to verify:"
+echo "claude mcp list"
+echo ""
+echo "# Remove if needed:"
+echo "claude mcp remove gemini"
 echo "==========================================="
 echo ""
 

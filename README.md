@@ -186,6 +186,7 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 - **Claude can respond** with additional information, files, or refined instructions
 - **Claude can work independently** between exchanges - implementing solutions, gathering data, or performing analysis
 - **Claude can return to Gemini** with progress updates and new context for further collaboration
+- **Cross-tool continuation** - Start with one tool (e.g., `analyze`) and continue with another (e.g., `codereview`) using the same conversation thread
 - **Both AIs coordinate their approaches** - questioning assumptions, validating solutions, and building on each other's insights
 - Each conversation maintains full context while only sending incremental updates
 - Conversations are automatically managed with Redis for persistence
@@ -208,11 +209,26 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 - **Coordinated problem-solving**: Each AI contributes their strengths to complex problems
 - **Context building**: Claude gathers information while Gemini provides deep analysis
 - **Approach validation**: AIs can verify and improve each other's solutions
+- **Cross-tool continuation**: Seamlessly continue conversations across different tools while preserving all context
 - **Asynchronous workflow**: Conversations don't need to be sequential - Claude can work on tasks between exchanges, then return to Gemini with additional context and progress updates
 - **Incremental updates**: Share only new information in each exchange while maintaining full conversation history
 - **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
 - Up to 5 exchanges per conversation with 1-hour expiry
 - Thread-safe with Redis persistence across all tools
+
+**Cross-tool continuation example:**
+```
+1. Claude: "Use gemini to analyze /src/auth.py for security issues"
+   → Gemini analyzes and finds vulnerabilities, provides continuation_id
+
+2. Claude: "Use gemini to review the authentication logic thoroughly"
+   → Uses same continuation_id, Gemini sees previous analysis and files
+   → Provides detailed code review building on previous findings  
+
+3. Claude: "Use gemini to help debug the auth test failures"
+   → Same continuation_id, full context from analysis + review
+   → Gemini provides targeted debugging with complete understanding
+```
 
 ## Available Tools
 
@@ -836,6 +852,28 @@ Different tools use optimized temperature settings:
 - **`TEMPERATURE_ANALYTICAL`**: `0.2` - Used for code review and debugging (focused, deterministic)
 - **`TEMPERATURE_BALANCED`**: `0.5` - Used for general chat (balanced creativity/accuracy)
 - **`TEMPERATURE_CREATIVE`**: `0.7` - Used for deep thinking and architecture (more creative)
+
+### Logging Configuration
+Control logging verbosity via the `LOG_LEVEL` environment variable:
+- **`DEBUG`**: Shows detailed operational messages, tool execution flow, conversation threading
+- **`INFO`**: Shows general operational messages (default)
+- **`WARNING`**: Shows only warnings and errors
+- **`ERROR`**: Shows only errors
+
+**Set in your .env file:**
+```bash
+LOG_LEVEL=DEBUG  # For troubleshooting
+LOG_LEVEL=INFO   # For normal operation (default)
+```
+
+**For Docker:**
+```bash
+# In .env file
+LOG_LEVEL=DEBUG
+
+# Or set directly when starting
+LOG_LEVEL=DEBUG docker compose up
+```
 
 
 ## File Path Requirements
