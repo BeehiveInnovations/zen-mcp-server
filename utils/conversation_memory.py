@@ -190,7 +190,7 @@ def create_thread(tool_name: str, initial_request: dict[str, Any]) -> str:
                 logger.debug(f"[FLOW] Created thread {thread_id} with pipeline")
                 return thread_id
             else:
-                raise RuntimeError(f"Failed to create thread: {results}")
+                raise RuntimeError(f"Failed to create thread: Redis SETEX command returned {results[0]}")
                 
     except Exception as e:
         logger.error(f"[FLOW] Failed to create thread: {type(e).__name__}: {e}")
