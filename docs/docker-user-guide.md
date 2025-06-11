@@ -1,14 +1,14 @@
 # 🐳 Docker User Guide: Using Gemini MCP Server
 
-This guide is for users who want to use the Gemini MCP Server with Claude Desktop **without cloning the repository**. You'll use the pre-built Docker image published to GitHub Container Registry.
+This guide shows you how to use the Gemini MCP Server with Claude Desktop using the automated Docker setup. **Everything is handled automatically** - no manual Redis setup required!
 
 ## 🎯 What You'll Get
 
 After following this guide, you'll have:
 - ✅ Gemini MCP Server running with Claude Desktop
+- ✅ Redis automatically configured for conversation threading
 - ✅ Access to all Gemini tools: `chat`, `thinkdeep`, `codereview`, `debug`, `analyze`, `precommit`
-- ✅ Automatic conversation threading between Claude and Gemini
-- ✅ No need to manage Python dependencies or clone code
+- ✅ Persistent data storage that survives container restarts
 
 ## 📋 Prerequisites
 
@@ -16,59 +16,60 @@ After following this guide, you'll have:
 1. **Docker Desktop** - [Download here](https://www.docker.com/products/docker-desktop/)
 2. **Claude Desktop** - [Download here](https://claude.ai/download)
 3. **Gemini API Key** - [Get one here](https://makersuite.google.com/app/apikey)
+4. **Git** - For cloning the repository
 
 ### Platform Support
 - ✅ **macOS** (Intel and Apple Silicon)
 - ✅ **Linux** 
 - ✅ **Windows** (requires WSL2 for Claude Desktop)
 
-## 🚀 Quick Setup (5 minutes)
+## 🚀 Setup Option 1: Clone & Run (Recommended)
 
-### Step 1: Start Redis (Required for AI Conversations)
-
-```bash
-# Start Redis for conversation threading
-docker run -d \
-  --name gemini-redis \
-  --restart unless-stopped \
-  -p 6379:6379 \
-  redis:latest
-```
-
-This creates a persistent Redis container that will survive system restarts.
-
-### Step 2: Start Gemini MCP Server
+### Step 1: Clone Repository
 
 ```bash
-# Create and start the MCP server
-docker run -d \
-  --name gemini-mcp-server \
-  --restart unless-stopped \
-  --network host \
-  -e GEMINI_API_KEY="your-gemini-api-key-here" \
-  -e REDIS_URL="redis://localhost:6379/0" \
-  -v "$(pwd):/workspace" \
-  ghcr.io/beehiveinnovations/gemini-mcp-server:latest
+git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
+cd gemini-mcp-server
 ```
 
-**Replace `your-gemini-api-key-here` with your actual API key.**
+### Step 2: One-Command Setup
 
-**Command explained:**
-- `-d`: Run in background
-- `--restart unless-stopped`: Auto-restart container
-- `--network host`: Connect to your local Redis
-- `-e`: Set environment variables
-- `-v "$(pwd):/workspace"`: Mount current directory for file access
-- `ghcr.io/beehiveinnovations/gemini-mcp-server:latest`: The published image
+```bash
+# Automated setup - builds images and starts all services
+./setup-docker.sh
+```
 
-### Step 3: Configure Claude Desktop
+**What this script does automatically:**
+- ✅ Creates `.env` file with your API key (if `GEMINI_API_KEY` environment variable is set)
+- ✅ Builds the Gemini MCP Server Docker image
+- ✅ Starts Redis container for conversation threading
+- ✅ Starts MCP server container
+- ✅ Configures networking between containers
+- ✅ Shows you the exact Claude Desktop configuration
 
-Find your Claude Desktop config file:
+### Step 3: Add Your API Key (if needed)
+
+If you see a message about updating your API key:
+
+```bash
+# Edit .env file and replace placeholder with your actual key
+nano .env
+# Change: GEMINI_API_KEY=your-gemini-api-key-here
+# To: GEMINI_API_KEY=your_actual_api_key
+
+# Restart services to apply changes
+docker compose restart
+```
+
+### Step 4: Configure Claude Desktop
+
+The setup script shows you the exact configuration. Add this to your Claude Desktop config:
+
+**Find your config file:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows (WSL)**: `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
 
-Add this configuration:
-
+**Configuration:**
 ```json
 {
   "mcpServers": {
@@ -76,7 +77,7 @@ Add this configuration:
       "command": "docker",
       "args": [
         "exec",
-        "-i", 
+        "-i",
         "gemini-mcp-server",
         "python",
         "server.py"
@@ -86,18 +87,56 @@ Add this configuration:
 }
 ```
 
-### Step 4: Restart Claude Desktop
+### Step 5: Restart Claude Desktop & Test
 
-Completely quit and restart Claude Desktop for changes to take effect.
+1. Completely quit and restart Claude Desktop
+2. Test with: `"Use gemini to chat about Python best practices"`
 
-### Step 5: Test It Works
+## 🚀 Setup Option 2: Published Docker Image (Advanced)
 
-Open Claude Desktop and try:
+If you prefer to use the published image without cloning:
+
+```bash
+# Create a directory for your work
+mkdir gemini-mcp-project && cd gemini-mcp-project
+
+# Create minimal docker-compose.yml
+cat > docker-compose.yml << 'EOF'
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: gemini-mcp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  gemini-mcp:
+    image: ghcr.io/beehiveinnovations/gemini-mcp-server:latest
+    container_name: gemini-mcp-server
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - WORKSPACE_ROOT=${HOME}
+    volumes:
+      - ${HOME}:/workspace:ro
+    stdin_open: true
+    tty: true
+
+volumes:
+  redis_data:
+EOF
+
+# Create .env file
+echo "GEMINI_API_KEY=your-gemini-api-key-here" > .env
+
+# Start services
+docker compose up -d
 ```
-"Use gemini to chat about Python best practices"
-```
-
-You should see Gemini respond through Claude!
 
 ## 🛠️ Available Tools
 
@@ -114,108 +153,144 @@ Once set up, you can use any of these tools naturally in Claude:
 
 ## 📁 File Access
 
-The Docker setup automatically mounts your current directory as `/workspace`. This means:
+The Docker setup automatically mounts your home directory as `/workspace`. This means:
 
-- ✅ Gemini can read files in your current directory and subdirectories
-- ✅ You can analyze entire projects: "Use gemini to analyze my src/ directory"
-- ✅ Works with relative paths: "Use gemini to review ./main.py"
+- ✅ Gemini can read files anywhere in your home directory
+- ✅ You can analyze entire projects: "Use gemini to analyze my ~/Projects/myapp/src/ directory"
+- ✅ Works with absolute paths: "Use gemini to review /Users/yourname/project/main.py"
 
 ## 🔧 Management Commands
 
 ### Check Status
 ```bash
 # See if containers are running
-docker ps
+docker compose ps
 
-# Should show both 'gemini-redis' and 'gemini-mcp-server'
+# Should show both 'gemini-mcp-redis' and 'gemini-mcp-server' as 'Up'
 ```
 
 ### View Logs
 ```bash
 # Check MCP server logs
-docker logs gemini-mcp-server
+docker compose logs gemini-mcp -f
 
-# Follow logs in real-time
-docker logs -f gemini-mcp-server
+# Check Redis logs
+docker compose logs redis -f
+
+# View all logs
+docker compose logs -f
 ```
 
 ### Update to Latest Version
 ```bash
-# Stop current container
-docker stop gemini-mcp-server
-docker rm gemini-mcp-server
+# For cloned repository setup
+git pull origin main
+./setup-docker.sh
 
-# Pull latest image and restart (repeat Step 2)
-docker pull ghcr.io/beehiveinnovations/gemini-mcp-server:latest
-# Then run the docker run command from Step 2
+# For published image setup  
+docker compose pull
+docker compose up -d
 ```
 
-### Stop Everything
+### Stop/Start Services
 ```bash
-# Stop containers (keeps Redis data)
-docker stop gemini-mcp-server gemini-redis
+# Stop containers (keeps data)
+docker compose stop
 
-# Or remove everything completely
-docker stop gemini-mcp-server gemini-redis
-docker rm gemini-mcp-server gemini-redis
+# Start containers again
+docker compose start
+
+# Restart all services
+docker compose restart
+
+# Stop and remove everything
+docker compose down
+
+# Stop and remove everything including volumes (⚠️ deletes Redis data)
+docker compose down -v
 ```
 
 ## 🔒 Security Notes
 
-1. **API Key**: Your Gemini API key is stored in the Docker container environment. Use a dedicated key for this purpose.
+1. **API Key**: Your Gemini API key is stored in the container environment. The `.env` file is gitignored for security.
 
-2. **File Access**: The container can read files in your mounted directory. Don't mount sensitive directories unnecessarily.
+2. **File Access**: The container can read files in your home directory (mounted as read-only). This is necessary for file analysis.
 
-3. **Network**: The container uses host networking to connect to Redis. This is safe for local development.
+3. **Network**: Redis runs on localhost:6379 but is only accessible to the MCP server container by default.
 
 ## 🚨 Troubleshooting
 
 ### "Connection failed" in Claude Desktop
 ```bash
 # Check if containers are running
-docker ps
+docker compose ps
 
-# Restart MCP server if needed
-docker restart gemini-mcp-server
-
-# Check logs for errors
-docker logs gemini-mcp-server
+# Should show both containers as 'Up'
+# If not, check logs:
+docker compose logs gemini-mcp
 ```
 
 ### "GEMINI_API_KEY environment variable is required"
 ```bash
-# Stop and recreate container with correct API key
-docker stop gemini-mcp-server
-docker rm gemini-mcp-server
-# Then run Step 2 again with the correct API key
+# Edit your .env file
+nano .env
+# Update: GEMINI_API_KEY=your_actual_api_key
+
+# Restart services
+docker compose restart
 ```
 
-### "Redis connection failed"
+### Containers won't start
 ```bash
-# Check if Redis is running
-docker ps | grep redis
+# Check logs for specific errors
+docker compose logs
 
-# Start Redis if stopped
-docker start gemini-redis
-
-# Or recreate Redis
-docker rm -f gemini-redis
-# Then run Step 1 again
+# Rebuild and restart
+docker compose down
+docker compose up --build -d
 ```
 
-### Tools not responding / hanging
+### Tools not responding
 ```bash
-# Check for resource constraints
+# Check container resources
 docker stats
 
 # Restart everything
-docker restart gemini-redis gemini-mcp-server
+docker compose restart
+
+# If still having issues, check Claude Desktop config
 ```
 
-### Windows WSL2 Issues
-- Ensure Docker Desktop is set to use WSL2 backend
-- Run commands from within WSL2, not Windows Command Prompt
-- Use WSL2 paths for file mounting
+### Permission issues (Linux)
+```bash
+# Ensure proper ownership
+sudo chown -R $USER:$USER .
+
+# Make setup script executable
+chmod +x setup-docker.sh
+```
+
+## 💡 How It Works (Technical Details)
+
+The setup uses Docker Compose to orchestrate two services:
+
+1. **Redis Container** (`gemini-mcp-redis`)
+   - Official Redis 7 Alpine image
+   - Automatic data persistence with Docker volume
+   - Available at `redis:6379` within Docker network
+   - Available at `localhost:6379` from host machine
+
+2. **Gemini MCP Server** (`gemini-mcp-server`)
+   - Built from local Dockerfile or pulled from GHCR
+   - Automatically connects to Redis container
+   - Your home directory mounted for file access
+   - Configured with proper environment variables
+
+**Key Benefits:**
+- 🔄 **Automatic Service Discovery**: No IP configuration needed
+- 💾 **Data Persistence**: Redis data survives container restarts
+- 🛡️ **Isolation**: Services run in isolated containers
+- 🚀 **Easy Updates**: Pull latest images with one command
 
 ## 🎉 What's Next?
 
@@ -228,15 +303,15 @@ Once you're set up:
 
 ## 💡 Pro Tips
 
-1. **Conversation Threading**: Gemini remembers context across multiple interactions - you can have extended conversations!
+1. **Conversation Threading**: Gemini remembers context across multiple interactions thanks to automatic Redis setup!
 
-2. **File Analysis**: Point Gemini at entire directories: "Use gemini to analyze my entire project for architectural improvements"
+2. **File Analysis**: Point Gemini at entire directories: "Use gemini to analyze my entire ~/Projects/myapp for architectural improvements"
 
 3. **Collaborative Workflows**: Combine tools: "Use gemini to analyze this code, then review it for security issues"
 
 4. **Thinking Modes**: Control depth vs cost: "Use gemini with minimal thinking to quickly explain this function"
 
-5. **Web Search**: Enable web search for current info: "Use gemini to debug this React error with web search enabled"
+5. **Logs are your friend**: Always check `docker compose logs -f` if something seems wrong
 
 ---
 
