@@ -54,7 +54,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 # Configuration constants
-MAX_CONVERSATION_TURNS = 5  # Maximum turns allowed per conversation thread
+MAX_CONVERSATION_TURNS = 10  # Maximum turns allowed per conversation thread
 
 
 class ConversationTurn(BaseModel):
