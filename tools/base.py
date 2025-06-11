@@ -910,18 +910,23 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Returns:
             Dict with continuation data if opportunity should be offered, None otherwise
         """
-        # Only offer continuation for new conversations (not already threaded)
         continuation_id = getattr(request, "continuation_id", None)
-        if continuation_id:
-            # This is already a threaded conversation, don't offer continuation
-            # (either Gemini will ask follow-up or conversation naturally ends)
-            return None
-
-        # Only offer if we haven't reached conversation limits
+        
         try:
-            # For new conversations, we have MAX_CONVERSATION_TURNS - 1 remaining
-            # (since this response will be turn 1)
-            remaining_turns = MAX_CONVERSATION_TURNS - 1
+            if continuation_id:
+                # Check remaining turns in existing thread
+                from utils.conversation_memory import get_thread
+                context = get_thread(continuation_id)
+                if context:
+                    current_turns = len(context.turns)
+                    remaining_turns = MAX_CONVERSATION_TURNS - current_turns - 1  # -1 for this response
+                else:
+                    # Thread not found, don't offer continuation
+                    return None
+            else:
+                # New conversation, we have MAX_CONVERSATION_TURNS - 1 remaining
+                # (since this response will be turn 1)
+                remaining_turns = MAX_CONVERSATION_TURNS - 1
 
             if remaining_turns <= 0:
                 return None
