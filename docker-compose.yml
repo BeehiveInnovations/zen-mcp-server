@@ -35,12 +35,29 @@ services:
       # and Claude Code could be running from multiple locations at the same time
       - WORKSPACE_ROOT=${WORKSPACE_ROOT:-${HOME}}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
     volumes:
       - ${HOME:-/tmp}:/workspace:ro
+      - mcp_logs:/tmp  # Shared volume for logs
     stdin_open: true
     tty: true
     entrypoint: ["python"]
     command: ["server.py"]
 
+  log-monitor:
+    build: .
+    image: gemini-mcp-server:latest
+    container_name: gemini-mcp-log-monitor
+    restart: unless-stopped
+    depends_on:
+      - gemini-mcp
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - mcp_logs:/tmp  # Shared volume for logs
+    entrypoint: ["python"]
+    command: ["log_monitor.py"]
+
 volumes:
   redis_data:
+  mcp_logs:

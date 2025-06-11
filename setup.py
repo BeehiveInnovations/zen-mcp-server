@@ -6,6 +6,9 @@ from pathlib import Path
 
 from setuptools import setup
 
+# Import version and author from config to maintain single source of truth
+from config import __author__, __version__
+
 # Read README for long description
 readme_path = Path(__file__).parent / "README.md"
 long_description = ""
@@ -14,11 +17,11 @@ if readme_path.exists():
 
 setup(
     name="gemini-mcp-server",
-    version="3.1.0",
+    version=__version__,
     description="Model Context Protocol server for Google Gemini",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Fahad Gilani",
+    author=__author__,
     python_requires=">=3.10",
     py_modules=["gemini_server"],
     install_requires=[

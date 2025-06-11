@@ -125,7 +125,7 @@ else
     exit 1
 fi
 
-echo "  - Starting Redis and MCP services..."
+echo "  - Starting Redis and MCP services... please wait"
 if $COMPOSE_CMD up -d >/dev/null 2>&1; then
     echo "✅ Services started successfully!"
 else
@@ -184,7 +184,7 @@ echo "# List your MCP servers to verify:"
 echo "claude mcp list"
 echo ""
 echo "# Remove if needed:"
-echo "claude mcp remove gemini"
+echo "claude mcp remove gemini -s user"
 echo "==========================================="
 echo ""
 

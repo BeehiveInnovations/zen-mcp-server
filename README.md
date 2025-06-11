@@ -10,6 +10,8 @@
 
 The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini 2.5 Pro for extended thinking, code analysis, and problem-solving. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
 
+**Think of it as Claude Code _for_ Claude Code.**
+
 ## Quick Navigation
 
 - **Getting Started**
@@ -159,7 +161,6 @@ The setup script shows you the exact configuration. It looks like this:
 - **Redis** automatically handles conversation memory between requests  
 - **AI-to-AI conversations** persist across multiple exchanges
 - **File access** through mounted workspace directory
-- **Fast communication** via `docker exec` to running container
 
 **That's it!** The Docker setup handles all dependencies, Redis configuration, and service management automatically.
 

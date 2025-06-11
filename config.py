@@ -12,7 +12,9 @@ import os
 
 # Version and metadata
 # These values are used in server responses and for tracking releases
-__version__ = "3.0.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+# IMPORTANT: This is the single source of truth for version and author info
+# setup.py imports these values to avoid duplication
+__version__ = "3.2.0"  # Semantic versioning: MAJOR.MINOR.PATCH
 __updated__ = "2025-06-10"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 

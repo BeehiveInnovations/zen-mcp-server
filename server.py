@@ -45,6 +45,7 @@ from tools import (
     Precommit,
     ThinkDeepTool,
 )
+from tools.models import ToolOutput
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
@@ -52,7 +53,12 @@ log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Configure both console and file logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(level=getattr(logging, log_level, logging.INFO), format=log_format)
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format=log_format,
+    force=True,  # Force reconfiguration if already configured
+    stream=sys.stderr,  # Use stderr to avoid interfering with MCP stdin/stdout protocol
+)
 
 # Add file handler for Docker log monitoring
 try:
@@ -60,8 +66,17 @@ try:
     file_handler.setLevel(getattr(logging, log_level, logging.INFO))
     file_handler.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(file_handler)
+
+    # Create a special logger for MCP activity tracking
+    mcp_logger = logging.getLogger("mcp_activity")
+    mcp_file_handler = logging.FileHandler("/tmp/mcp_activity.log")
+    mcp_file_handler.setLevel(logging.INFO)
+    mcp_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+    mcp_logger.addHandler(mcp_file_handler)
+    mcp_logger.setLevel(logging.INFO)
+
 except Exception as e:
-    print(f"Warning: Could not set up file logging: {e}")
+    print(f"Warning: Could not set up file logging: {e}", file=sys.stderr)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +130,7 @@ async def handle_list_tools() -> list[Tool]:
     Returns:
         List of Tool objects representing all available tools
     """
+    logger.debug("MCP client requested tool list")
     tools = []
 
     # Add all registered AI-powered tools from the TOOLS registry
@@ -142,6 +158,7 @@ async def handle_list_tools() -> list[Tool]:
         ]
     )
 
+    logger.debug(f"Returning {len(tools)} tools to MCP client")
     return tools
 
 
@@ -165,19 +182,51 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     Returns:
         List of TextContent objects containing the tool's response
     """
+    logger.info(f"MCP tool call: {name}")
+    logger.debug(f"MCP tool arguments: {list(arguments.keys())}")
+
+    # Log to activity file for monitoring
+    try:
+        mcp_activity_logger = logging.getLogger("mcp_activity")
+        mcp_activity_logger.info(f"TOOL_CALL: {name} with {len(arguments)} arguments")
+    except Exception:
+        pass
 
     # Handle thread context reconstruction if continuation_id is present
     if "continuation_id" in arguments and arguments["continuation_id"]:
+        continuation_id = arguments["continuation_id"]
+        logger.debug(f"Resuming conversation thread: {continuation_id}")
+
+        # Log to activity file for monitoring
+        try:
+            mcp_activity_logger = logging.getLogger("mcp_activity")
+            mcp_activity_logger.info(f"CONVERSATION_RESUME: {name} resuming thread {continuation_id}")
+        except Exception:
+            pass
+
         arguments = await reconstruct_thread_context(arguments)
 
     # Route to AI-powered tools that require Gemini API calls
     if name in TOOLS:
+        logger.info(f"Executing tool '{name}' with {len(arguments)} parameter(s)")
         tool = TOOLS[name]
-        return await tool.execute(arguments)
+        result = await tool.execute(arguments)
+        logger.info(f"Tool '{name}' execution completed")
+
+        # Log completion to activity file
+        try:
+            mcp_activity_logger = logging.getLogger("mcp_activity")
+            mcp_activity_logger.info(f"TOOL_COMPLETED: {name}")
+        except Exception:
+            pass
+        return result
 
     # Route to utility tools that provide server information
     elif name == "get_version":
-        return await handle_get_version()
+        logger.info(f"Executing utility tool '{name}'")
+        result = await handle_get_version()
+        logger.info(f"Utility tool '{name}' execution completed")
+        return result
 
     # Handle unknown tool requests gracefully
     else:
@@ -254,6 +303,14 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     context = get_thread(continuation_id)
     if not context:
         logger.warning(f"Thread not found: {continuation_id}")
+
+        # Log to activity file for monitoring
+        try:
+            mcp_activity_logger = logging.getLogger("mcp_activity")
+            mcp_activity_logger.info(f"CONVERSATION_ERROR: Thread {continuation_id} not found or expired")
+        except Exception:
+            pass
+
         # Return error asking Claude to restart conversation with full context
         raise ValueError(
             f"Conversation thread '{continuation_id}' was not found or has expired. "
@@ -297,6 +354,16 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
                 enhanced_arguments[key] = value
 
     logger.info(f"Reconstructed context for thread {continuation_id} (turn {len(context.turns)})")
+
+    # Log to activity file for monitoring
+    try:
+        mcp_activity_logger = logging.getLogger("mcp_activity")
+        mcp_activity_logger.info(
+            f"CONVERSATION_CONTEXT: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
+        )
+    except Exception:
+        pass
+
     return enhanced_arguments
 
 
@@ -339,7 +406,10 @@ Available Tools:
 
 For updates, visit: https://github.com/BeehiveInnovations/gemini-mcp-server"""
 
-    return [TextContent(type="text", text=text)]
+    # Create standardized tool output
+    tool_output = ToolOutput(status="success", content=text, content_type="text", metadata={"tool_name": "get_version"})
+
+    return [TextContent(type="text", text=tool_output.model_dump_json())]
 
 
 async def main():
@@ -355,6 +425,13 @@ async def main():
     """
     # Validate that Gemini API key is available before starting
     configure_gemini()
+
+    # Log startup message for Docker log monitoring
+    logger.info("Gemini MCP Server starting up...")
+    logger.info(f"Log level: {log_level}")
+    logger.info(f"Using model: {GEMINI_MODEL}")
+    logger.info(f"Available tools: {list(TOOLS.keys())}")
+    logger.info("Server ready - waiting for tool requests...")
 
     # Run the server using stdio transport (standard input/output)
     # This allows the server to be launched by MCP clients as a subprocess
