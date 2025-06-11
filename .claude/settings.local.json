@@ -17,7 +17,8 @@
       "mcp__memory__create_relations",
       "mcp__memory__add_observations",
       "Bash(mkdir:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "mcp__memory__read_graph"
     ],
     "deny": []
   },

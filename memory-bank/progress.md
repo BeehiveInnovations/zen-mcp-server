@@ -24,6 +24,9 @@ This file tracks the project's progress using a task list format.
 
 ## Next Steps
 
+- **PRIORITY**: Create GitHub workflow file (.github/workflows/build_and_publish_docker.yml)
+- Create GitHub issue templates (bug_report.md, feature_request.md) 
+- Create GitHub pull request template (pull_request_template.md)
 - Consider creating remaining documentation files:
   - docs/architecture/overview.md
   - docs/api/tools/ documentation for individual Gemini tools

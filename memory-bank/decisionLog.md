@@ -23,5 +23,22 @@ This file records architectural and implementation decisions using a list format
 **Rationale**: Professional repository needs structured issue/PR workflows for contributors
 **Implementation Details**: 4 YAML issue templates + markdown PR template with validation requirements
 
+**GitHub Workflow Decision**: Create automated Docker build and push workflow
+**Rationale**: Automate CI/CD pipeline for consistent Docker image deployment to GHCR
+**Implementation Details**: .github/workflows/build_and_publish_docker.yml with push trigger on main branch, GHCR authentication using secrets.GITHUB_TOKEN, dual tagging (latest + commit SHA)
+
+**Dependencies Management**: Use Poetry for Python dependency management
+**Rationale**: Deterministic builds with poetry.lock, single source of truth in pyproject.toml
+**Implementation Details**: Existing pyproject.toml configuration, Poetry-based dependency tracking
+
+**Code Quality Tools**: Black for formatting, Ruff for linting
+**Rationale**: Consistent code style and quality across project
+**Implementation Details**: Configuration in pyproject.toml, integration with pre-commit hooks and CI
+
+**Branching Strategy**: Simplified GitFlow with feature branches
+**Rationale**: Clean main branch representing production, structured development workflow
+**Implementation Details**: feature/* branches → main via Pull Requests
+
 ---
 2025-01-11 22:47:00 - Initial creation with key decisions from session
+2025-01-11 22:50:00 - Added GitHub workflow, Poetry, code quality, and branching decisions from Memory MCP history
