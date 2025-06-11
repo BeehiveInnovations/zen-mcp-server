@@ -167,4 +167,4 @@ gemini-repo.md
 .claude
 
 # Memory Bank (optional - can be committed for shared context)
-memory-bank
+# memory-bank
