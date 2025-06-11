@@ -40,7 +40,7 @@ services:
     stdin_open: true
     tty: true
     entrypoint: ["python"]
-    command: ["log_monitor.py"]
+    command: ["server.py"]
 
 volumes:
   redis_data:
