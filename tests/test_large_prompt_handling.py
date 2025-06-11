@@ -214,15 +214,15 @@ class TestLargePromptHandling:
             mock_model.generate_content.return_value = mock_response
             mock_create_model.return_value = mock_model
 
-            # Mock read_files to avoid file system access
-            with patch("tools.chat.read_files") as mock_read_files:
-                mock_read_files.return_value = "File content"
+            # Mock the centralized file preparation method to avoid file system access
+            with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
+                mock_prepare_files.return_value = "File content"
 
                 await tool.execute({"prompt": "", "files": [temp_prompt_file, other_file]})
 
                 # Verify prompt.txt was removed from files list
-                mock_read_files.assert_called_once()
-                files_arg = mock_read_files.call_args[0][0]
+                mock_prepare_files.assert_called_once()
+                files_arg = mock_prepare_files.call_args[0][0]
                 assert len(files_arg) == 1
                 assert files_arg[0] == other_file
 

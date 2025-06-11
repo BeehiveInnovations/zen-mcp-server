@@ -116,10 +116,15 @@ class ChatTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # Add context files if provided
+        # Add context files if provided (using centralized file handling with filtering)
         if request.files:
-            file_content = read_files(request.files)
-            user_content = f"{user_content}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ===="
+            file_content = self._prepare_file_content_for_prompt(
+                request.files, 
+                request.continuation_id, 
+                "Context files"
+            )
+            if file_content:
+                user_content = f"{user_content}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ===="
 
         # Check token limits
         self._validate_token_limit(user_content, "Content")

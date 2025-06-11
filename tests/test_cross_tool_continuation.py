@@ -247,7 +247,7 @@ class TestCrossToolContinuation:
         # Build conversation history
         from utils.conversation_memory import build_conversation_history
 
-        history = build_conversation_history(thread_context)
+        history, tokens = build_conversation_history(thread_context)
 
         # Verify tool names are included in the history
         assert "Turn 1 (Gemini using test_analysis)" in history

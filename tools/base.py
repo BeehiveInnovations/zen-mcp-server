@@ -195,9 +195,10 @@ class BaseTool(ABC):
         """
         Filter out files that are already embedded in conversation history.
 
-        This method takes a list of requested files and removes any that have
-        already been embedded in the conversation history, preventing duplicate
-        file embeddings and optimizing token usage.
+        This method prevents duplicate file embeddings by filtering out files that have
+        already been embedded in the conversation history. This optimizes token usage
+        while ensuring tools still have logical access to all requested files through
+        conversation history references.
 
         Args:
             requested_files: List of files requested for current tool execution
@@ -210,15 +211,36 @@ class BaseTool(ABC):
             # New conversation, all files are new
             return requested_files
 
-        embedded_files = set(self.get_conversation_embedded_files(continuation_id))
-
-        # Return only files that haven't been embedded yet
-        new_files = [f for f in requested_files if f not in embedded_files]
-
-        return new_files
+        try:
+            embedded_files = set(self.get_conversation_embedded_files(continuation_id))
+            
+            # Safety check: If no files are marked as embedded but we have a continuation_id,
+            # this might indicate an issue with conversation history. Be conservative.
+            if not embedded_files:
+                logger.debug(f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}")
+                return requested_files
+            
+            # Return only files that haven't been embedded yet
+            new_files = [f for f in requested_files if f not in embedded_files]
+            
+            # Log filtering results for debugging
+            if len(new_files) < len(requested_files):
+                skipped = [f for f in requested_files if f in embedded_files]
+                logger.debug(f"📁 {self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}")
+            
+            return new_files
+            
+        except Exception as e:
+            # If there's any issue with conversation history lookup, be conservative
+            # and include all files rather than risk losing access to needed files
+            logger.warning(f"📁 {self.name} tool: Error checking conversation history for {continuation_id}: {e}")
+            logger.warning(f"📁 {self.name} tool: Including all requested files as fallback")
+            return requested_files
 
     def _prepare_file_content_for_prompt(
-        self, request_files: list[str], continuation_id: Optional[str], context_description: str = "New files"
+        self, request_files: list[str], continuation_id: Optional[str], context_description: str = "New files",
+        max_tokens: Optional[int] = None, reserve_tokens: int = 1_000, remaining_budget: Optional[int] = None,
+        arguments: Optional[dict] = None
     ) -> str:
         """
         Centralized file processing for tool prompts.
@@ -232,12 +254,34 @@ class BaseTool(ABC):
             request_files: List of files requested for current tool execution
             continuation_id: Thread continuation ID, or None for new conversations
             context_description: Description for token limit validation (e.g. "Code", "New files")
+            max_tokens: Maximum tokens to use (defaults to remaining budget or MAX_CONTENT_TOKENS)
+            reserve_tokens: Tokens to reserve for additional prompt content (default 1K)
+            remaining_budget: Remaining token budget after conversation history (from server.py)
+            arguments: Original tool arguments (used to extract _remaining_tokens if available)
 
         Returns:
             str: Formatted file content string ready for prompt inclusion
         """
         if not request_files:
             return ""
+
+        # Extract remaining budget from arguments if available
+        if remaining_budget is None:
+            # Use provided arguments or fall back to stored arguments from execute()
+            args_to_use = arguments or getattr(self, '_current_arguments', {})
+            remaining_budget = args_to_use.get("_remaining_tokens")
+
+        # Use remaining budget if provided, otherwise fall back to max_tokens or default
+        if remaining_budget is not None:
+            effective_max_tokens = remaining_budget - reserve_tokens
+        elif max_tokens is not None:
+            effective_max_tokens = max_tokens - reserve_tokens
+        else:
+            from config import MAX_CONTENT_TOKENS
+            effective_max_tokens = MAX_CONTENT_TOKENS - reserve_tokens
+        
+        # Ensure we have a reasonable minimum budget
+        effective_max_tokens = max(1000, effective_max_tokens)
 
         files_to_embed = self.filter_new_files(request_files, continuation_id)
 
@@ -247,7 +291,7 @@ class BaseTool(ABC):
         if files_to_embed:
             logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
             try:
-                file_content = read_files(files_to_embed)
+                file_content = read_files(files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens)
                 self._validate_token_limit(file_content, context_description)
                 content_parts.append(file_content)
 
@@ -488,6 +532,9 @@ If any of these would strengthen your analysis, specify what Claude should searc
             List[TextContent]: Formatted response as MCP TextContent objects
         """
         try:
+            # Store arguments for access by helper methods (like _prepare_file_content_for_prompt)
+            self._current_arguments = arguments
+            
             # Set up logger for this tool execution
             logger = logging.getLogger(f"tools.{self.name}")
             logger.info(f"Starting {self.name} tool execution with arguments: {list(arguments.keys())}")

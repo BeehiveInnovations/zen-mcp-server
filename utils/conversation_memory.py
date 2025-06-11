@@ -312,7 +312,7 @@ def get_conversation_file_list(context: ThreadContext) -> list[str]:
     return unique_files
 
 
-def build_conversation_history(context: ThreadContext, read_files_func=None) -> str:
+def build_conversation_history(context: ThreadContext, read_files_func=None) -> tuple[str, int]:
     """
     Build formatted conversation history for tool prompts with embedded file contents.
 
@@ -325,8 +325,8 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
         context: ThreadContext containing the complete conversation
 
     Returns:
-        str: Formatted conversation history with embedded files ready for inclusion in prompts
-        Empty string if no conversation turns exist
+        tuple[str, int]: (formatted_conversation_history, total_tokens_used)
+        Returns ("", 0) if no conversation turns exist
 
     Format:
         - Header with thread metadata and turn count
@@ -341,7 +341,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
         while preventing duplicate file embeddings.
     """
     if not context.turns:
-        return ""
+        return "", 0
 
     # Get all unique files referenced in this conversation
     all_files = get_conversation_file_list(context)
@@ -366,7 +366,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
         )
 
         # Import required functions
-        from config import MAX_CONTEXT_TOKENS
+        from config import MAX_CONTENT_TOKENS
 
         if read_files_func is None:
             from utils.file_utils import read_file_content
@@ -384,7 +384,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
                     if formatted_content:
                         # read_file_content already returns formatted content, use it directly
                         # Check if adding this file would exceed the limit
-                        if total_tokens + content_tokens <= MAX_CONTEXT_TOKENS:
+                        if total_tokens + content_tokens <= MAX_CONTENT_TOKENS:
                             file_contents.append(formatted_content)
                             total_tokens += content_tokens
                             files_included += 1
@@ -394,7 +394,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
                         else:
                             files_truncated += 1
                             logger.debug(
-                                f"📄 File truncated due to token limit: {file_path} ({content_tokens:,} tokens, would exceed {MAX_CONTEXT_TOKENS:,} limit)"
+                                f"📄 File truncated due to token limit: {file_path} ({content_tokens:,} tokens, would exceed {MAX_CONTENT_TOKENS:,} limit)"
                             )
                             # Stop processing more files
                             break
@@ -434,7 +434,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
                     history_parts.append(files_content)
                 else:
                     # Handle token limit exceeded for conversation files
-                    error_message = f"ERROR: The total size of files referenced in this conversation has exceeded the context limit and cannot be displayed.\nEstimated tokens: {estimated_tokens}, but limit is {MAX_CONTEXT_TOKENS}."
+                    error_message = f"ERROR: The total size of files referenced in this conversation has exceeded the context limit and cannot be displayed.\nEstimated tokens: {estimated_tokens}, but limit is {MAX_CONTENT_TOKENS}."
                     history_parts.append(error_message)
             else:
                 history_parts.append("(No accessible files found)")
@@ -476,7 +476,12 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
         ["", "=== END CONVERSATION HISTORY ===", "", "Continue this conversation by building on the previous context."]
     )
 
-    return "\n".join(history_parts)
+    # Calculate total tokens for the complete conversation history
+    complete_history = "\n".join(history_parts)
+    from utils.token_utils import estimate_tokens
+    total_conversation_tokens = estimate_tokens(complete_history)
+
+    return complete_history, total_conversation_tokens
 
 
 def _is_valid_uuid(val: str) -> bool:

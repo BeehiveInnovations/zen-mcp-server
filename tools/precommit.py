@@ -298,11 +298,13 @@ class Precommit(BaseTool):
         if translated_files:
             remaining_tokens = max_tokens - total_tokens
 
-            # Use standardized file reading with token budget
-            file_content = read_files(
-                translated_files,
-                max_tokens=remaining_tokens,
-                reserve_tokens=1000,  # Small reserve for formatting
+            # Use centralized file handling with filtering for duplicate prevention
+            file_content = self._prepare_file_content_for_prompt(
+                translated_files, 
+                request.continuation_id, 
+                "Context files",
+                max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
+                reserve_tokens=1000  # Small reserve for formatting
             )
 
             if file_content:

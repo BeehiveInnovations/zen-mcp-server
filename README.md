@@ -14,6 +14,13 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 
 **Think of it as Claude Code _for_ Claude Code.**
 
+---
+
+> ⚠️ **Active Development Notice**  
+> This project is under rapid development with frequent commits and changes over the past few days. 
+> The goal is to expand support beyond Gemini to include additional AI models and providers. 
+> **Watch this space** for new capabilities and potentially breaking changes in between updates!
+
 ## Quick Navigation
 
 - **Getting Started**

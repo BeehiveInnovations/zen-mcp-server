@@ -328,8 +328,8 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         if not success:
             logger.warning(f"Failed to add user turn to thread {continuation_id}")
 
-    # Build conversation history
-    conversation_history = build_conversation_history(context)
+    # Build conversation history and track token usage
+    conversation_history, conversation_tokens = build_conversation_history(context)
 
     # Add dynamic follow-up instructions based on turn count
     follow_up_instructions = get_follow_up_instructions(len(context.turns))
@@ -343,9 +343,14 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     else:
         enhanced_prompt = f"{original_prompt}\n\n{follow_up_instructions}"
 
-    # Update arguments with enhanced context
+    # Update arguments with enhanced context and remaining token budget
     enhanced_arguments = arguments.copy()
     enhanced_arguments["prompt"] = enhanced_prompt
+    
+    # Calculate remaining token budget for current request files/content
+    from config import MAX_CONTENT_TOKENS
+    remaining_tokens = MAX_CONTENT_TOKENS - conversation_tokens
+    enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
 
     # Merge original context parameters (files, etc.) with new request
     if context.initial_context:
