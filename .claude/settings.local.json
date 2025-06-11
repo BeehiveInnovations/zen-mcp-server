@@ -22,6 +22,12 @@
     ],
     "deny": []
   },
+  "commands": {
+    "compact": {
+      "description": "Compact context and auto-refresh CLAUDE.md collaboration rules",
+      "postAction": "Read CLAUDE.md and restore Memory Bank status"
+    }
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "github",
