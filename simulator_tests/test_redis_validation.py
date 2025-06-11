@@ -7,6 +7,7 @@ for stored conversation threads and their content.
 """
 
 import json
+
 from .base_test import BaseSimulatorTest
 
 
@@ -30,15 +31,15 @@ class RedisValidationTest(BaseSimulatorTest):
             ping_result = self.run_command(
                 ["docker", "exec", self.redis_container, "redis-cli", "ping"], capture_output=True
             )
-            
+
             if ping_result.returncode != 0:
                 self.logger.error("Failed to connect to Redis")
                 return False
-                
+
             if "PONG" not in ping_result.stdout.decode():
                 self.logger.error("Redis ping failed")
                 return False
-                
+
             self.logger.info("✅ Redis connectivity confirmed")
 
             # Check Redis for stored conversations
@@ -76,51 +77,55 @@ class RedisValidationTest(BaseSimulatorTest):
             else:
                 # If no existing threads, create a test thread to validate Redis functionality
                 self.logger.info("📝 No existing threads found, creating test thread to validate Redis...")
-                
+
                 test_thread_id = "test_thread_validation"
                 test_data = {
                     "thread_id": test_thread_id,
                     "turns": [
-                        {
-                            "tool": "chat",
-                            "timestamp": "2025-06-11T16:30:00Z", 
-                            "prompt": "Test validation prompt"
-                        }
-                    ]
+                        {"tool": "chat", "timestamp": "2025-06-11T16:30:00Z", "prompt": "Test validation prompt"}
+                    ],
                 }
-                
+
                 # Store test data
-                store_result = self.run_command([
-                    "docker", "exec", self.redis_container, "redis-cli", 
-                    "SET", f"thread:{test_thread_id}", json.dumps(test_data)
-                ], capture_output=True)
-                
+                store_result = self.run_command(
+                    [
+                        "docker",
+                        "exec",
+                        self.redis_container,
+                        "redis-cli",
+                        "SET",
+                        f"thread:{test_thread_id}",
+                        json.dumps(test_data),
+                    ],
+                    capture_output=True,
+                )
+
                 if store_result.returncode != 0:
                     self.logger.error("Failed to store test data in Redis")
                     return False
-                    
+
                 # Retrieve test data
-                retrieve_result = self.run_command([
-                    "docker", "exec", self.redis_container, "redis-cli",
-                    "GET", f"thread:{test_thread_id}"
-                ], capture_output=True)
-                
+                retrieve_result = self.run_command(
+                    ["docker", "exec", self.redis_container, "redis-cli", "GET", f"thread:{test_thread_id}"],
+                    capture_output=True,
+                )
+
                 if retrieve_result.returncode != 0:
                     self.logger.error("Failed to retrieve test data from Redis")
                     return False
-                    
+
                 retrieved_data = retrieve_result.stdout.decode()
                 try:
                     parsed = json.loads(retrieved_data)
                     if parsed.get("thread_id") == test_thread_id:
                         self.logger.info("✅ Redis read/write validation successful")
-                        
+
                         # Clean up test data
-                        self.run_command([
-                            "docker", "exec", self.redis_container, "redis-cli",
-                            "DEL", f"thread:{test_thread_id}"
-                        ], capture_output=True)
-                        
+                        self.run_command(
+                            ["docker", "exec", self.redis_container, "redis-cli", "DEL", f"thread:{test_thread_id}"],
+                            capture_output=True,
+                        )
+
                         return True
                     else:
                         self.logger.error("Retrieved data doesn't match stored data")

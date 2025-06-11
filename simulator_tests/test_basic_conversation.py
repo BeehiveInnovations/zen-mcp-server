@@ -34,7 +34,10 @@ class BasicConversationTest(BaseSimulatorTest):
             self.logger.info("  1.1: Initial chat with file analysis")
             response1, continuation_id = self.call_mcp_tool(
                 "chat",
-                {"prompt": "Please use low thinking mode. Analyze this Python code and explain what it does", "files": [self.test_files["python"]]},
+                {
+                    "prompt": "Please use low thinking mode. Analyze this Python code and explain what it does",
+                    "files": [self.test_files["python"]],
+                },
             )
 
             if not response1 or not continuation_id:

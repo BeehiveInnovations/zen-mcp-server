@@ -43,8 +43,10 @@ class CrossToolContinuationTest(BaseSimulatorTest):
             if self._test_multi_file_continuation():
                 success_count += 1
 
-            self.logger.info(f"  ✅ Cross-tool continuation scenarios completed: {success_count}/{total_scenarios} scenarios passed")
-            
+            self.logger.info(
+                f"  ✅ Cross-tool continuation scenarios completed: {success_count}/{total_scenarios} scenarios passed"
+            )
+
             # Consider successful if at least one scenario worked
             return success_count > 0
 

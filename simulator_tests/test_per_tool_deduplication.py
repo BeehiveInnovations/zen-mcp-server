@@ -32,16 +32,22 @@ class PerToolDeduplicationTest(BaseSimulatorTest):
                 (
                     "thinkdeep",
                     {
-                        "prompt": "Please use low thinking mode. Think deeply about this Python code and identify potential architectural improvements",
+                        "current_analysis": "Please use low thinking mode. I'm analyzing this Python code to identify potential architectural improvements",
                         "files": [self.test_files["python"]],
                     },
                 ),
-                ("analyze", {"files": [self.test_files["python"]], "analysis_type": "architecture"}),
+                (
+                    "analyze",
+                    {
+                        "files": [self.test_files["python"]],
+                        "question": "Please use low thinking mode. What are the architectural patterns in this code?",
+                    },
+                ),
                 (
                     "debug",
                     {
                         "files": [self.test_files["python"]],
-                        "issue_description": "The fibonacci function seems slow for large numbers",
+                        "error_description": "Please use low thinking mode. The fibonacci function seems slow for large numbers",
                     },
                 ),
                 (
@@ -74,11 +80,17 @@ class PerToolDeduplicationTest(BaseSimulatorTest):
                 continue_params["continuation_id"] = continuation_id
 
                 if tool_name == "thinkdeep":
-                    continue_params["prompt"] = "Please use low thinking mode. Now focus specifically on the recursive fibonacci implementation"
+                    continue_params["current_analysis"] = (
+                        "Please use low thinking mode. Now focus specifically on the recursive fibonacci implementation"
+                    )
                 elif tool_name == "analyze":
-                    continue_params["analysis_type"] = "performance"
+                    continue_params["question"] = (
+                        "Please use low thinking mode. What are the performance characteristics of this code?"
+                    )
                 elif tool_name == "debug":
-                    continue_params["issue_description"] = "How can we optimize the fibonacci function?"
+                    continue_params["error_description"] = (
+                        "Please use low thinking mode. How can we optimize the fibonacci function?"
+                    )
                 elif tool_name == "codereview":
                     continue_params["context"] = "Focus on the Calculator class implementation"
 
@@ -89,8 +101,10 @@ class PerToolDeduplicationTest(BaseSimulatorTest):
                 else:
                     self.logger.warning(f"  ⚠️ {tool_name} tool continuation failed")
 
-            self.logger.info(f"  ✅ Per-tool file deduplication tests completed: {successful_tests}/{total_tests} tools passed")
-            
+            self.logger.info(
+                f"  ✅ Per-tool file deduplication tests completed: {successful_tests}/{total_tests} tools passed"
+            )
+
             # Consider test successful if at least one tool worked
             return successful_tests > 0
 

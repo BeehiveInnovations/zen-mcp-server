@@ -9,9 +9,7 @@ import json
 import logging
 import os
 import subprocess
-import tempfile
-import time
-from typing import Optional, Tuple
+from typing import Optional
 
 
 class BaseSimulatorTest:
@@ -23,7 +21,7 @@ class BaseSimulatorTest:
         self.test_dir = None
         self.container_name = "gemini-mcp-server"
         self.redis_container = "gemini-mcp-redis"
-        
+
         # Configure logging
         log_level = logging.DEBUG if verbose else logging.INFO
         logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -100,7 +98,7 @@ class Calculator:
         self.test_files = {"python": test_py, "config": test_config}
         self.logger.debug(f"Created test files: {list(self.test_files.values())}")
 
-    def call_mcp_tool(self, tool_name: str, params: dict) -> Tuple[Optional[str], Optional[str]]:
+    def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
         """Call an MCP tool via Claude CLI (docker exec)"""
         try:
             # Prepare the MCP initialization and tool call sequence
@@ -237,6 +235,7 @@ class Calculator:
         """Clean up test files"""
         if hasattr(self, "test_dir") and self.test_dir and os.path.exists(self.test_dir):
             import shutil
+
             shutil.rmtree(self.test_dir)
             self.logger.debug(f"Removed test files directory: {self.test_dir}")
 

@@ -14,12 +14,12 @@ Test Flow:
 
 Usage:
     python communication_simulator_test.py [--verbose] [--keep-logs] [--tests TEST_NAME...] [--individual TEST_NAME] [--skip-docker]
-    
+
     --tests: Run specific tests only (space-separated)
     --list-tests: List all available tests
     --individual: Run a single test individually
     --skip-docker: Skip Docker setup (assumes containers are already running)
-    
+
 Available tests:
     basic_conversation          - Basic conversation flow with chat tool
     per_tool_deduplication      - File deduplication for individual tools
@@ -31,16 +31,16 @@ Available tests:
 Examples:
     # Run all tests
     python communication_simulator_test.py
-    
+
     # Run only basic conversation and content validation tests
     python communication_simulator_test.py --tests basic_conversation content_validation
-    
+
     # Run a single test individually (with full Docker setup)
     python communication_simulator_test.py --individual content_validation
-    
+
     # Run a single test individually (assuming Docker is already running)
     python communication_simulator_test.py --individual content_validation --skip-docker
-    
+
     # List available tests
     python communication_simulator_test.py --list-tests
 """
@@ -53,7 +53,6 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Optional
 
 
 class CommunicationSimulator:
@@ -69,16 +68,16 @@ class CommunicationSimulator:
 
         # Import test registry
         from simulator_tests import TEST_REGISTRY
+
         self.test_registry = TEST_REGISTRY
 
         # Available test methods mapping
         self.available_tests = {
-            name: self._create_test_runner(test_class)
-            for name, test_class in self.test_registry.items()
+            name: self._create_test_runner(test_class) for name, test_class in self.test_registry.items()
         }
 
         # Test result tracking
-        self.test_results = {test_name: False for test_name in self.test_registry.keys()}
+        self.test_results = dict.fromkeys(self.test_registry.keys(), False)
 
         # Configure logging
         log_level = logging.DEBUG if verbose else logging.INFO
@@ -87,6 +86,7 @@ class CommunicationSimulator:
 
     def _create_test_runner(self, test_class):
         """Create a test runner function for a test class"""
+
         def run_test():
             test_instance = test_class(verbose=self.verbose)
             result = test_instance.run_test()
@@ -94,6 +94,7 @@ class CommunicationSimulator:
             test_name = test_instance.test_name
             self.test_results[test_name] = result
             return result
+
         return run_test
 
     def setup_test_environment(self) -> bool:
@@ -181,10 +182,10 @@ class CommunicationSimulator:
             # If specific tests are selected, run only those
             if self.selected_tests:
                 return self._run_selected_tests()
-            
+
             # Otherwise run all tests in order
             test_sequence = list(self.test_registry.keys())
-            
+
             for test_name in test_sequence:
                 if not self._run_single_test(test_name):
                     return False
@@ -200,14 +201,14 @@ class CommunicationSimulator:
         """Run only the selected tests"""
         try:
             self.logger.info(f"🎯 Running selected tests: {', '.join(self.selected_tests)}")
-            
+
             for test_name in self.selected_tests:
                 if not self._run_single_test(test_name):
                     return False
-                    
+
             self.logger.info("✅ All selected tests passed")
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Selected tests failed: {e}")
             return False
@@ -219,18 +220,18 @@ class CommunicationSimulator:
                 self.logger.error(f"Unknown test: {test_name}")
                 self.logger.info(f"Available tests: {', '.join(self.available_tests.keys())}")
                 return False
-                
+
             self.logger.info(f"🧪 Running test: {test_name}")
             test_function = self.available_tests[test_name]
             result = test_function()
-            
+
             if result:
                 self.logger.info(f"✅ Test {test_name} passed")
             else:
                 self.logger.error(f"❌ Test {test_name} failed")
-                
+
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Test {test_name} failed with exception: {e}")
             return False
@@ -364,7 +365,9 @@ def parse_arguments():
     parser.add_argument("--tests", "-t", nargs="+", help="Specific tests to run (space-separated)")
     parser.add_argument("--list-tests", action="store_true", help="List available tests and exit")
     parser.add_argument("--individual", "-i", help="Run a single test individually")
-    parser.add_argument("--skip-docker", action="store_true", help="Skip Docker setup (assumes containers are already running)")
+    parser.add_argument(
+        "--skip-docker", action="store_true", help="Skip Docker setup (assumes containers are already running)"
+    )
 
     return parser.parse_args()
 
@@ -381,14 +384,14 @@ def run_individual_test(simulator, test_name, skip_docker):
     """Run a single test individually"""
     try:
         success = simulator.run_individual_test(test_name, skip_docker_setup=skip_docker)
-        
+
         if success:
             print(f"\\n🎉 INDIVIDUAL TEST {test_name.upper()}: PASSED")
             return 0
         else:
             print(f"\\n❌ INDIVIDUAL TEST {test_name.upper()}: FAILED")
             return 1
-            
+
     except KeyboardInterrupt:
         print(f"\\n🛑 Individual test {test_name} interrupted by user")
         if not skip_docker:
@@ -436,18 +439,14 @@ def main():
         return
 
     # Initialize simulator consistently for all use cases
-    simulator = CommunicationSimulator(
-        verbose=args.verbose,
-        keep_logs=args.keep_logs,
-        selected_tests=args.tests
-    )
+    simulator = CommunicationSimulator(verbose=args.verbose, keep_logs=args.keep_logs, selected_tests=args.tests)
 
     # Determine execution mode and run
     if args.individual:
         exit_code = run_individual_test(simulator, args.individual, args.skip_docker)
     else:
         exit_code = run_test_suite(simulator, args.skip_docker)
-    
+
     sys.exit(exit_code)
 
 
