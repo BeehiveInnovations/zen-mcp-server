@@ -46,12 +46,15 @@ USAGE EXAMPLE:
 This enables true AI-to-AI collaboration across the entire tool ecosystem.
 """
 
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 # Configuration constants
 MAX_CONVERSATION_TURNS = 10  # Maximum turns allowed per conversation thread
@@ -278,35 +281,70 @@ def add_turn(
         return False
 
 
-def build_conversation_history(context: ThreadContext) -> str:
+def get_conversation_file_list(context: ThreadContext) -> list[str]:
     """
-    Build formatted conversation history for tool prompts
+    Get all unique files referenced across all turns in a conversation.
 
-    Creates a formatted string representation of the conversation history
-    that can be included in tool prompts to provide context. This is the
-    critical function that enables cross-tool continuation by reconstructing
-    the full conversation context.
+    This function extracts and deduplicates file references from all conversation
+    turns to enable efficient file embedding - files are read once and shared
+    across all turns rather than being embedded multiple times.
 
     Args:
         context: ThreadContext containing the complete conversation
 
     Returns:
-        str: Formatted conversation history ready for inclusion in prompts
+        list[str]: Deduplicated list of file paths referenced in the conversation
+    """
+    if not context.turns:
+        return []
+
+    # Collect all unique files from all turns, preserving order of first appearance
+    seen_files = set()
+    unique_files = []
+
+    for turn in context.turns:
+        if turn.files:
+            for file_path in turn.files:
+                if file_path not in seen_files:
+                    seen_files.add(file_path)
+                    unique_files.append(file_path)
+
+    return unique_files
+
+
+def build_conversation_history(context: ThreadContext, read_files_func=None) -> str:
+    """
+    Build formatted conversation history for tool prompts with embedded file contents.
+
+    Creates a formatted string representation of the conversation history that includes
+    full file contents from all referenced files. Files are embedded only ONCE at the
+    start, even if referenced in multiple turns, to prevent duplication and optimize
+    token usage.
+
+    Args:
+        context: ThreadContext containing the complete conversation
+
+    Returns:
+        str: Formatted conversation history with embedded files ready for inclusion in prompts
         Empty string if no conversation turns exist
 
     Format:
         - Header with thread metadata and turn count
-        - Each turn shows: role, tool used, files referenced, content
-        - Files from previous turns are explicitly listed
+        - All referenced files embedded once with full contents
+        - Each turn shows: role, tool used, which files were used, content
         - Clear delimiters for AI parsing
         - Continuation instruction at end
 
     Note:
-        This formatted history allows tools to "see" files and context
-        from previous tools, enabling true cross-tool collaboration.
+        This formatted history allows tools to "see" both conversation context AND
+        file contents from previous tools, enabling true cross-tool collaboration
+        while preventing duplicate file embeddings.
     """
     if not context.turns:
         return ""
+
+    # Get all unique files referenced in this conversation
+    all_files = get_conversation_file_list(context)
 
     history_parts = [
         "=== CONVERSATION HISTORY ===",
@@ -314,8 +352,102 @@ def build_conversation_history(context: ThreadContext) -> str:
         f"Tool: {context.tool_name}",  # Original tool that started the conversation
         f"Turn {len(context.turns)}/{MAX_CONVERSATION_TURNS}",
         "",
-        "Previous exchanges:",
     ]
+
+    # Embed all files referenced in this conversation once at the start
+    if all_files:
+        history_parts.extend(
+            [
+                "=== FILES REFERENCED IN THIS CONVERSATION ===",
+                "The following files have been shared and analyzed during our conversation.",
+                "Refer to these when analyzing the context and requests below:",
+                "",
+            ]
+        )
+
+        # Import required functions
+        from config import MAX_CONTEXT_TOKENS
+
+        if read_files_func is None:
+            from utils.file_utils import read_file_content
+
+            # Optimized: read files incrementally with token tracking
+            file_contents = []
+            total_tokens = 0
+            files_included = 0
+            files_truncated = 0
+
+            for file_path in all_files:
+                try:
+                    # Correctly unpack the tuple returned by read_file_content
+                    formatted_content, content_tokens = read_file_content(file_path)
+                    if formatted_content:
+                        # read_file_content already returns formatted content, use it directly
+                        # Check if adding this file would exceed the limit
+                        if total_tokens + content_tokens <= MAX_CONTEXT_TOKENS:
+                            file_contents.append(formatted_content)
+                            total_tokens += content_tokens
+                            files_included += 1
+                            logger.debug(
+                                f"📄 File embedded in conversation history: {file_path} ({content_tokens:,} tokens)"
+                            )
+                        else:
+                            files_truncated += 1
+                            logger.debug(
+                                f"📄 File truncated due to token limit: {file_path} ({content_tokens:,} tokens, would exceed {MAX_CONTEXT_TOKENS:,} limit)"
+                            )
+                            # Stop processing more files
+                            break
+                    else:
+                        logger.debug(f"📄 File skipped (empty content): {file_path}")
+                except Exception as e:
+                    # Skip files that can't be read but log the failure
+                    logger.warning(
+                        f"📄 Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
+                    )
+                    continue
+
+            if file_contents:
+                files_content = "".join(file_contents)
+                if files_truncated > 0:
+                    files_content += (
+                        f"\n[NOTE: {files_truncated} additional file(s) were truncated due to token limit]\n"
+                    )
+                history_parts.append(files_content)
+                logger.debug(
+                    f"📄 Conversation history file embedding complete: {files_included} files embedded, {files_truncated} truncated, {total_tokens:,} total tokens"
+                )
+            else:
+                history_parts.append("(No accessible files found)")
+                logger.debug(
+                    f"📄 Conversation history file embedding: no accessible files found from {len(all_files)} requested"
+                )
+        else:
+            # Fallback to original read_files function for backward compatibility
+            files_content = read_files_func(all_files)
+            if files_content:
+                # Add token validation for the combined file content
+                from utils.token_utils import check_token_limit
+
+                within_limit, estimated_tokens = check_token_limit(files_content)
+                if within_limit:
+                    history_parts.append(files_content)
+                else:
+                    # Handle token limit exceeded for conversation files
+                    error_message = f"ERROR: The total size of files referenced in this conversation has exceeded the context limit and cannot be displayed.\nEstimated tokens: {estimated_tokens}, but limit is {MAX_CONTEXT_TOKENS}."
+                    history_parts.append(error_message)
+            else:
+                history_parts.append("(No accessible files found)")
+
+        history_parts.extend(
+            [
+                "",
+                "=== END REFERENCED FILES ===",
+                "",
+            ]
+        )
+
+    history_parts.append("Previous conversation turns:")
 
     for i, turn in enumerate(context.turns, 1):
         role_label = "Claude" if turn.role == "user" else "Gemini"
@@ -327,9 +459,10 @@ def build_conversation_history(context: ThreadContext) -> str:
         turn_header += ") ---"
         history_parts.append(turn_header)
 
-        # Add files context if present - critical for cross-tool file access
+        # Add files context if present - but just reference which files were used
+        # (the actual contents are already embedded above)
         if turn.files:
-            history_parts.append(f"📁 Files referenced: {', '.join(turn.files)}")
+            history_parts.append(f"📁 Files used in this turn: {', '.join(turn.files)}")
             history_parts.append("")  # Empty line for readability
 
         # Add the actual content
@@ -340,7 +473,7 @@ def build_conversation_history(context: ThreadContext) -> str:
             history_parts.append(f"\n[Gemini's Follow-up: {turn.follow_up_question}]")
 
     history_parts.extend(
-        ["", "=== END HISTORY ===", "", "Continue this conversation by building on the previous context."]
+        ["", "=== END CONVERSATION HISTORY ===", "", "Continue this conversation by building on the previous context."]
     )
 
     return "\n".join(history_parts)

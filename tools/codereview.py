@@ -21,7 +21,6 @@ from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
 from prompts import CODEREVIEW_PROMPT
-from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -70,6 +69,8 @@ class CodeReviewTool(BaseTool):
             "PROFESSIONAL CODE REVIEW - Comprehensive analysis for bugs, security, and quality. "
             "Supports both individual files and entire directories/projects. "
             "Use this when you need to review code, check for issues, find bugs, or perform security audits. "
+            "ALSO use this to validate claims about code, verify code flow and logic, confirm assertions, "
+            "cross-check functionality, or investigate how code actually behaves when you need to be certain. "
             "I'll identify issues by severity (Critical→High→Medium→Low) with specific fixes. "
             "Supports focused reviews: security, performance, or quick checks. "
             "Choose thinking_mode based on review scope: 'low' for small code snippets, "
@@ -185,11 +186,9 @@ class CodeReviewTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # Read all requested files, expanding directories as needed
-        file_content = read_files(request.files)
-
-        # Validate that the code fits within model context limits
-        self._validate_token_limit(file_content, "Code")
+        # Use centralized file processing logic
+        continuation_id = getattr(request, "continuation_id", None)
+        file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code")
 
         # Build customized review instructions based on review type
         review_focus = []

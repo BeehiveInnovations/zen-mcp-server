@@ -9,7 +9,6 @@ from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
 from prompts import DEBUG_ISSUE_PROMPT
-from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -159,8 +158,12 @@ class DebugIssueTool(BaseTool):
 
         # Add relevant files if provided
         if request.files:
-            file_content = read_files(request.files)
-            context_parts.append(f"\n=== RELEVANT CODE ===\n{file_content}\n=== END CODE ===")
+            # Use centralized file processing logic
+            continuation_id = getattr(request, "continuation_id", None)
+            file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code")
+
+            if file_content:
+                context_parts.append(f"\n=== RELEVANT CODE ===\n{file_content}\n=== END CODE ===")
 
         full_context = "\n".join(context_parts)
 

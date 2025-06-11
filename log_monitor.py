@@ -73,6 +73,14 @@ def monitor_mcp_activity():
                                 print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ {line}")
                             elif "WARNING" in line:
                                 print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  {line}")
+                            elif "DEBUG" in line:
+                                # Highlight file embedding debug logs
+                                if "📄" in line or "📁" in line:
+                                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 📂 FILE: {line}")
+                                else:
+                                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 {line}")
+                            elif "INFO" in line and ("Gemini API" in line or "Tool" in line or "Conversation" in line):
+                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  {line}")
                             elif "Gemini API" in line and ("Sending" in line or "Received" in line):
                                 print(f"[{datetime.now().strftime('%H:%M:%S')}] API: {line}")
 

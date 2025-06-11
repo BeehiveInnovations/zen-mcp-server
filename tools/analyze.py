@@ -9,7 +9,6 @@ from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
 from prompts import ANALYZE_PROMPT
-from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -132,11 +131,9 @@ class AnalyzeTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # Read all files
-        file_content = read_files(request.files)
-
-        # Check token limits
-        self._validate_token_limit(file_content, "Files")
+        # Use centralized file processing logic
+        continuation_id = getattr(request, "continuation_id", None)
+        file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Files")
 
         # Build analysis instructions
         analysis_focus = []

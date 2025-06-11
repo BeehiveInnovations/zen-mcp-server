@@ -9,7 +9,6 @@ from pydantic import Field
 
 from config import TEMPERATURE_CREATIVE
 from prompts import THINKDEEP_PROMPT
-from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -142,8 +141,12 @@ class ThinkDeepTool(BaseTool):
 
         # Add reference files if provided
         if request.files:
-            file_content = read_files(request.files)
-            context_parts.append(f"\n=== REFERENCE FILES ===\n{file_content}\n=== END FILES ===")
+            # Use centralized file processing logic
+            continuation_id = getattr(request, "continuation_id", None)
+            file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Reference files")
+
+            if file_content:
+                context_parts.append(f"\n=== REFERENCE FILES ===\n{file_content}\n=== END FILES ===")
 
         full_context = "\n".join(context_parts)
 

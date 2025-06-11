@@ -183,8 +183,13 @@ class TestConversationMemory:
         assert "Python is a programming language" in history
 
         # Test file tracking
-        assert "📁 Files referenced: /home/user/main.py, /home/user/docs/readme.md" in history
-        assert "📁 Files referenced: /home/user/examples/" in history
+        # Check that the new file embedding section is included
+        assert "=== FILES REFERENCED IN THIS CONVERSATION ===" in history
+        assert "The following files have been shared and analyzed during our conversation." in history
+
+        # Check that file context from previous turns is included (now shows files used per turn)
+        assert "📁 Files used in this turn: /home/user/main.py, /home/user/docs/readme.md" in history
+        assert "📁 Files used in this turn: /home/user/examples/" in history
 
         # Test follow-up attribution
         assert "[Gemini's Follow-up: Would you like examples?]" in history
@@ -598,9 +603,9 @@ class TestConversationFlow:
         assert "--- Turn 3 (Gemini using analyze) ---" in history
 
         # Verify all files are preserved in chronological order
-        turn_1_files = "📁 Files referenced: /project/src/main.py, /project/src/utils.py"
-        turn_2_files = "📁 Files referenced: /project/tests/, /project/test_main.py"
-        turn_3_files = "📁 Files referenced: /project/tests/test_utils.py, /project/coverage.html"
+        turn_1_files = "📁 Files used in this turn: /project/src/main.py, /project/src/utils.py"
+        turn_2_files = "📁 Files used in this turn: /project/tests/, /project/test_main.py"
+        turn_3_files = "📁 Files used in this turn: /project/tests/test_utils.py, /project/coverage.html"
 
         assert turn_1_files in history
         assert turn_2_files in history
@@ -717,6 +722,63 @@ class TestConversationFlow:
         assert retrieved_context is not None
         assert len(retrieved_context.turns) == 1
         assert retrieved_context.turns[0].follow_up_question == "Want to explore scalability?"
+
+    def test_token_limit_optimization_in_conversation_history(self):
+        """Test that build_conversation_history efficiently handles token limits"""
+        import os
+        import tempfile
+
+        from utils.conversation_memory import build_conversation_history
+
+        # Create test files with known content sizes
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create small and large test files
+            small_file = os.path.join(temp_dir, "small.py")
+            large_file = os.path.join(temp_dir, "large.py")
+
+            small_content = "# Small file\nprint('hello')\n"
+            large_content = "# Large file\n" + "x = 1\n" * 10000  # Very large file
+
+            with open(small_file, "w") as f:
+                f.write(small_content)
+            with open(large_file, "w") as f:
+                f.write(large_content)
+
+            # Create context with files that would exceed token limit
+            context = ThreadContext(
+                thread_id="test-token-limit",
+                created_at="2023-01-01T00:00:00Z",
+                last_updated_at="2023-01-01T00:01:00Z",
+                tool_name="analyze",
+                turns=[
+                    ConversationTurn(
+                        role="user",
+                        content="Analyze these files",
+                        timestamp="2023-01-01T00:00:30Z",
+                        files=[small_file, large_file],  # Large file should be truncated
+                    )
+                ],
+                initial_context={"prompt": "Analyze code"},
+            )
+
+            # Build conversation history (should handle token limits gracefully)
+            history = build_conversation_history(context)
+
+            # Verify the history was built successfully
+            assert "=== CONVERSATION HISTORY ===" in history
+            assert "=== FILES REFERENCED IN THIS CONVERSATION ===" in history
+
+            # The small file should be included, but large file might be truncated
+            # At minimum, verify no crashes and history is generated
+            assert len(history) > 0
+
+            # If truncation occurred, there should be a note about it
+            if "additional file(s) were truncated due to token limit" in history:
+                assert small_file in history or large_file in history
+            else:
+                # Both files fit within limit
+                assert small_file in history
+                assert large_file in history
 
 
 if __name__ == "__main__":

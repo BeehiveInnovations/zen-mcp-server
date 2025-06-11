@@ -117,7 +117,7 @@ class TestPromptRegression:
             mock_create_model.return_value = mock_model
 
             # Mock file reading
-            with patch("tools.codereview.read_files") as mock_read_files:
+            with patch("tools.base.read_files") as mock_read_files:
                 mock_read_files.return_value = "def main(): pass"
 
                 result = await tool.execute(
@@ -205,7 +205,7 @@ class TestPromptRegression:
             mock_create_model.return_value = mock_model
 
             # Mock file reading
-            with patch("tools.analyze.read_files") as mock_read_files:
+            with patch("tools.base.read_files") as mock_read_files:
                 mock_read_files.return_value = "class UserController: ..."
 
                 result = await tool.execute(
@@ -287,7 +287,7 @@ class TestPromptRegression:
             mock_model.generate_content.return_value = mock_model_response()
             mock_create_model.return_value = mock_model
 
-            with patch("tools.analyze.read_files") as mock_read_files:
+            with patch("tools.base.read_files") as mock_read_files:
                 mock_read_files.return_value = "Content"
 
                 result = await tool.execute(

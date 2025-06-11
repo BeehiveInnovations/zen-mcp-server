@@ -30,13 +30,15 @@ from utils import check_token_limit
 from utils.conversation_memory import (
     MAX_CONVERSATION_TURNS,
     add_turn,
-    build_conversation_history,
     create_thread,
+    get_conversation_file_list,
     get_thread,
 )
-from utils.file_utils import read_file_content, translate_path_for_environment
+from utils.file_utils import read_file_content, read_files, translate_path_for_environment
 
 from .models import ClarificationRequest, ContinuationOffer, FollowUpRequest, ToolOutput
+
+logger = logging.getLogger(__name__)
 
 
 class ToolRequest(BaseModel):
@@ -162,6 +164,123 @@ class BaseTool(ABC):
             str: One of "minimal", "low", "medium", "high", "max"
         """
         return "medium"  # Default to medium thinking for better reasoning
+
+    def get_conversation_embedded_files(self, continuation_id: Optional[str]) -> list[str]:
+        """
+        Get list of files already embedded in conversation history.
+
+        This method returns the list of files that have already been embedded
+        in the conversation history for a given continuation thread. Tools can
+        use this to avoid re-embedding files that are already available in the
+        conversation context.
+
+        Args:
+            continuation_id: Thread continuation ID, or None for new conversations
+
+        Returns:
+            list[str]: List of file paths already embedded in conversation history
+        """
+        if not continuation_id:
+            # New conversation, no files embedded yet
+            return []
+
+        thread_context = get_thread(continuation_id)
+        if not thread_context:
+            # Thread not found, no files embedded
+            return []
+
+        return get_conversation_file_list(thread_context)
+
+    def filter_new_files(self, requested_files: list[str], continuation_id: Optional[str]) -> list[str]:
+        """
+        Filter out files that are already embedded in conversation history.
+
+        This method takes a list of requested files and removes any that have
+        already been embedded in the conversation history, preventing duplicate
+        file embeddings and optimizing token usage.
+
+        Args:
+            requested_files: List of files requested for current tool execution
+            continuation_id: Thread continuation ID, or None for new conversations
+
+        Returns:
+            list[str]: List of files that need to be embedded (not already in history)
+        """
+        if not continuation_id:
+            # New conversation, all files are new
+            return requested_files
+
+        embedded_files = set(self.get_conversation_embedded_files(continuation_id))
+
+        # Return only files that haven't been embedded yet
+        new_files = [f for f in requested_files if f not in embedded_files]
+
+        return new_files
+
+    def _prepare_file_content_for_prompt(
+        self, request_files: list[str], continuation_id: Optional[str], context_description: str = "New files"
+    ) -> str:
+        """
+        Centralized file processing for tool prompts.
+
+        This method handles the common pattern across all tools:
+        1. Filter out files already embedded in conversation history
+        2. Read content of only new files
+        3. Generate informative note about skipped files
+
+        Args:
+            request_files: List of files requested for current tool execution
+            continuation_id: Thread continuation ID, or None for new conversations
+            context_description: Description for token limit validation (e.g. "Code", "New files")
+
+        Returns:
+            str: Formatted file content string ready for prompt inclusion
+        """
+        if not request_files:
+            return ""
+
+        files_to_embed = self.filter_new_files(request_files, continuation_id)
+
+        content_parts = []
+
+        # Read content of new files only
+        if files_to_embed:
+            logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
+            try:
+                file_content = read_files(files_to_embed)
+                self._validate_token_limit(file_content, context_description)
+                content_parts.append(file_content)
+
+                # Estimate tokens for debug logging
+                from utils.token_utils import estimate_tokens
+
+                content_tokens = estimate_tokens(file_content)
+                logger.debug(
+                    f"📁 {self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
+                )
+            except Exception as e:
+                logger.error(f"📁 {self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
+                raise
+
+        # Generate note about files already in conversation history
+        if continuation_id and len(files_to_embed) < len(request_files):
+            embedded_files = self.get_conversation_embedded_files(continuation_id)
+            skipped_files = [f for f in request_files if f in embedded_files]
+            if skipped_files:
+                logger.debug(
+                    f"📁 {self.name} tool skipping {len(skipped_files)} files already in conversation history: {', '.join(skipped_files)}"
+                )
+                if content_parts:
+                    content_parts.append("\n\n")
+                note_lines = [
+                    "--- NOTE: Additional files referenced in conversation history ---",
+                    "The following files are already available in our conversation context:",
+                    "\n".join(f"  - {f}" for f in skipped_files),
+                    "--- END NOTE ---",
+                ]
+                content_parts.append("\n".join(note_lines))
+
+        return "".join(content_parts) if content_parts else ""
 
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
         """
@@ -413,15 +532,8 @@ If any of these would strengthen your analysis, specify what Claude should searc
                     pass
             else:
                 logger.debug(f"Continuing {self.name} conversation with thread {continuation_id}")
-
-                # Add conversation history when continuing a threaded conversation
-                thread_context = get_thread(continuation_id)
-                if thread_context:
-                    conversation_history = build_conversation_history(thread_context)
-                    prompt = f"{conversation_history}\n\n{prompt}"
-                    logger.debug(f"Added conversation history to {self.name} prompt for thread {continuation_id}")
-                else:
-                    logger.warning(f"Thread {continuation_id} not found for {self.name} - continuing without history")
+                # History reconstruction is handled by server.py:reconstruct_thread_context
+                # No need to rebuild it here - prompt already contains conversation history
 
             # Extract model configuration from request or use defaults
             model_name = getattr(request, "model", None) or GEMINI_MODEL
