@@ -401,6 +401,18 @@ make any necessary adjustments and show me the final secure implementation."
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` or `max` for critical releases when thorough validation justifies the token cost.
 
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/584adfa6-d252-49b4-b5b0-0cd6e97fb2c6" width="600">
+</div>
+
+**Prompt:**
+```
+Now use gemini and perform a review and precommit and ensure original requirements are met, no duplication of code or
+logic, everything should work as expected
+```
+
+How beautiful is that? Claude used `precommit` twice and `codereview` once and actually found and fixed two critical errors before commit!
+
 #### Example Prompts:
 
 **Basic Usage:**
