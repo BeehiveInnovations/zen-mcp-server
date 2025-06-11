@@ -13,7 +13,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
 **Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex task and ask it to collaborate with Gemini. 
 Claude stays in control, performs the actual work, but gets a second perspective from Gemini. Claude will talk to Gemini, work on implementation, then automatically resume the 
 conversation with Gemini while maintaining the full thread. 
-Claude can switch between different Gemini tools (analyze → codereview → debug) and the conversation context carries forward seamlessly. 
+Claude can switch between different Gemini tools ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) → [`chat`](#1-chat---general-development-chat--collaborative-thinking) → [`precommit`](#4-precommit---pre-commit-validation) → [`codereview`](#3-codereview---professional-code-review)) and the conversation context carries forward seamlessly. 
 For example, in the video above, Claude was asked to debate SwiftUI vs UIKit with Gemini, resulting in a back-and-forth discussion rather than a simple one-shot query and response.
 
 **Think of it as Claude Code _for_ Claude Code.**
