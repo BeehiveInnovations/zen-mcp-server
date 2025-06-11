@@ -20,7 +20,9 @@
       "Bash(mv:*)",
       "mcp__memory__read_graph",
       "mcp__memory__search_nodes",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   },

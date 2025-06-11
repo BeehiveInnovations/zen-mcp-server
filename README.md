@@ -991,6 +991,7 @@ python tests/test_live_integration.py
 
 **For comprehensive testing documentation, see:**
 - **[Testing Strategy Guide](docs/contributing/testing.md)** - TDD methodology, test categories, quality gates
+- **[Test Structure Analysis](docs/contributing/test-structure.md)** - Detailed analysis of existing 17-file test suite
 - **[Development Workflows](docs/contributing/workflows.md)** - Testing integration with git processes
 
 ## Troubleshooting
