@@ -366,7 +366,10 @@ def parse_arguments():
     parser.add_argument("--list-tests", action="store_true", help="List available tests and exit")
     parser.add_argument("--individual", "-i", help="Run a single test individually")
     parser.add_argument(
-        "--skip-docker", action="store_true", help="Skip Docker setup (assumes containers are already running)"
+        "--skip-docker", action="store_true", default=True, help="Skip Docker setup (assumes containers are already running) - DEFAULT"
+    )
+    parser.add_argument(
+        "--rebuild-docker", action="store_true", help="Force rebuild Docker environment (overrides --skip-docker)"
     )
 
     return parser.parse_args()
@@ -442,10 +445,13 @@ def main():
     simulator = CommunicationSimulator(verbose=args.verbose, keep_logs=args.keep_logs, selected_tests=args.tests)
 
     # Determine execution mode and run
+    # Override skip_docker if rebuild_docker is specified
+    skip_docker = args.skip_docker and not args.rebuild_docker
+    
     if args.individual:
-        exit_code = run_individual_test(simulator, args.individual, args.skip_docker)
+        exit_code = run_individual_test(simulator, args.individual, skip_docker)
     else:
-        exit_code = run_test_suite(simulator, args.skip_docker)
+        exit_code = run_test_suite(simulator, skip_docker)
 
     sys.exit(exit_code)
 

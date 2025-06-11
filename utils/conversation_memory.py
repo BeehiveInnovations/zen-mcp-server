@@ -250,12 +250,16 @@ def add_turn(
         - Turn limits prevent runaway conversations
         - File references are preserved for cross-tool access
     """
+    logger.debug(f"[FLOW] Adding {role} turn to {thread_id} ({tool_name})")
+    
     context = get_thread(thread_id)
     if not context:
+        logger.debug(f"[FLOW] Thread {thread_id} not found for turn addition")
         return False
 
     # Check turn limit to prevent runaway conversations
     if len(context.turns) >= MAX_CONVERSATION_TURNS:
+        logger.debug(f"[FLOW] Thread {thread_id} at max turns ({MAX_CONVERSATION_TURNS})")
         return False
 
     # Create new turn with complete metadata
@@ -277,7 +281,8 @@ def add_turn(
         key = f"thread:{thread_id}"
         client.setex(key, 3600, context.model_dump_json())  # Refresh TTL to 1 hour
         return True
-    except Exception:
+    except Exception as e:
+        logger.debug(f"[FLOW] Failed to save turn to Redis: {type(e).__name__}")
         return False
 
 
@@ -296,19 +301,29 @@ def get_conversation_file_list(context: ThreadContext) -> list[str]:
         list[str]: Deduplicated list of file paths referenced in the conversation
     """
     if not context.turns:
+        logger.debug(f"[FILES] No turns found, returning empty file list")
         return []
 
     # Collect all unique files from all turns, preserving order of first appearance
     seen_files = set()
     unique_files = []
+    
+    logger.debug(f"[FILES] Collecting files from {len(context.turns)} turns")
 
-    for turn in context.turns:
+    for i, turn in enumerate(context.turns):
         if turn.files:
+            logger.debug(f"[FILES] Turn {i+1} has {len(turn.files)} files: {turn.files}")
             for file_path in turn.files:
                 if file_path not in seen_files:
                     seen_files.add(file_path)
                     unique_files.append(file_path)
-
+                    logger.debug(f"[FILES] Added new file: {file_path}")
+                else:
+                    logger.debug(f"[FILES] Duplicate file skipped: {file_path}")
+        else:
+            logger.debug(f"[FILES] Turn {i+1} has no files")
+    
+    logger.debug(f"[FILES] Final unique file list ({len(unique_files)}): {unique_files}")
     return unique_files
 
 
@@ -345,6 +360,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
 
     # Get all unique files referenced in this conversation
     all_files = get_conversation_file_list(context)
+    logger.debug(f"[FILES] Found {len(all_files)} unique files in conversation history")
 
     history_parts = [
         "=== CONVERSATION HISTORY ===",
@@ -356,6 +372,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
 
     # Embed all files referenced in this conversation once at the start
     if all_files:
+        logger.debug(f"[FILES] Starting embedding for {len(all_files)} files")
         history_parts.extend(
             [
                 "=== FILES REFERENCED IN THIS CONVERSATION ===",
@@ -379,6 +396,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
 
             for file_path in all_files:
                 try:
+                    logger.debug(f"[FILES] Processing file {file_path}")
                     # Correctly unpack the tuple returned by read_file_content
                     formatted_content, content_tokens = read_file_content(file_path)
                     if formatted_content:
@@ -391,20 +409,24 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
                             logger.debug(
                                 f"📄 File embedded in conversation history: {file_path} ({content_tokens:,} tokens)"
                             )
+                            logger.debug(f"[FILES] Successfully embedded {file_path} - {content_tokens:,} tokens (total: {total_tokens:,})")
                         else:
                             files_truncated += 1
                             logger.debug(
                                 f"📄 File truncated due to token limit: {file_path} ({content_tokens:,} tokens, would exceed {MAX_CONTENT_TOKENS:,} limit)"
                             )
+                            logger.debug(f"[FILES] File {file_path} would exceed token limit - skipping (would be {total_tokens + content_tokens:,} tokens)")
                             # Stop processing more files
                             break
                     else:
                         logger.debug(f"📄 File skipped (empty content): {file_path}")
+                        logger.debug(f"[FILES] File {file_path} has empty content - skipping")
                 except Exception as e:
                     # Skip files that can't be read but log the failure
                     logger.warning(
                         f"📄 Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
                     )
+                    logger.debug(f"[FILES] Failed to read file {file_path} - {type(e).__name__}: {e}")
                     continue
 
             if file_contents:
@@ -417,11 +439,13 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
                 logger.debug(
                     f"📄 Conversation history file embedding complete: {files_included} files embedded, {files_truncated} truncated, {total_tokens:,} total tokens"
                 )
+                logger.debug(f"[FILES] File embedding summary - {files_included} embedded, {files_truncated} truncated, {total_tokens:,} tokens total")
             else:
                 history_parts.append("(No accessible files found)")
                 logger.debug(
                     f"📄 Conversation history file embedding: no accessible files found from {len(all_files)} requested"
                 )
+                logger.debug(f"[FILES] No accessible files found from {len(all_files)} requested files")
         else:
             # Fallback to original read_files function for backward compatibility
             files_content = read_files_func(all_files)
@@ -481,6 +505,11 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
     from utils.token_utils import estimate_tokens
 
     total_conversation_tokens = estimate_tokens(complete_history)
+    
+    # Summary log of what was built
+    user_turns = len([t for t in context.turns if t.role == "user"])
+    assistant_turns = len([t for t in context.turns if t.role == "assistant"])
+    logger.debug(f"[FLOW] Built conversation history: {user_turns} user + {assistant_turns} assistant turns, {len(all_files)} files, {total_conversation_tokens:,} tokens")
 
     return complete_history, total_conversation_tokens
 

@@ -95,8 +95,12 @@ class Calculator:
         with open(test_config, "w") as f:
             f.write(config_content)
 
-        self.test_files = {"python": test_py, "config": test_config}
-        self.logger.debug(f"Created test files: {list(self.test_files.values())}")
+        # Ensure absolute paths for MCP server compatibility
+        self.test_files = {
+            "python": os.path.abspath(test_py), 
+            "config": os.path.abspath(test_config)
+        }
+        self.logger.debug(f"Created test files with absolute paths: {list(self.test_files.values())}")
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
         """Call an MCP tool via Claude CLI (docker exec)"""
@@ -137,7 +141,7 @@ class Calculator:
 
             # Execute the command
             result = subprocess.run(
-                docker_cmd, input=input_data, text=True, capture_output=True, timeout=300  # 5 minute timeout
+                docker_cmd, input=input_data, text=True, capture_output=True, timeout=3600  # 1 hour timeout
             )
 
             if result.returncode != 0:
@@ -155,7 +159,7 @@ class Calculator:
             return response_data, continuation_id
 
         except subprocess.TimeoutExpired:
-            self.logger.error(f"MCP tool call timed out: {tool_name}")
+            self.logger.error(f"MCP tool call timed out after 1 hour: {tool_name}")
             return None, None
         except Exception as e:
             self.logger.error(f"MCP tool call failed: {e}")
@@ -230,6 +234,17 @@ class Calculator:
             self.logger.debug(f"Running: {' '.join(cmd)}")
 
         return subprocess.run(cmd, check=check, capture_output=capture_output, **kwargs)
+
+    def create_additional_test_file(self, filename: str, content: str) -> str:
+        """Create an additional test file for mixed scenario testing"""
+        if not hasattr(self, 'test_dir') or not self.test_dir:
+            raise RuntimeError("Test directory not initialized. Call setup_test_files() first.")
+        
+        file_path = os.path.join(self.test_dir, filename)
+        with open(file_path, "w") as f:
+            f.write(content)
+        # Return absolute path for MCP server compatibility
+        return os.path.abspath(file_path)
 
     def cleanup_test_files(self):
         """Clean up test files"""

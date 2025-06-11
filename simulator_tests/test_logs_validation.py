@@ -25,7 +25,7 @@ class LogsValidationTest(BaseSimulatorTest):
         try:
             self.logger.info("📋 Test: Validating Docker logs for file deduplication...")
 
-            # Get server logs from both main container and activity logs
+            # Get server logs from main container
             result = self.run_command(["docker", "logs", self.container_name], capture_output=True)
 
             if result.returncode != 0:
@@ -33,6 +33,12 @@ class LogsValidationTest(BaseSimulatorTest):
                 return False
 
             main_logs = result.stdout.decode() + result.stderr.decode()
+
+            # Get logs from log monitor container (where detailed activity is logged)
+            monitor_result = self.run_command(["docker", "logs", "gemini-mcp-log-monitor"], capture_output=True)
+            monitor_logs = ""
+            if monitor_result.returncode == 0:
+                monitor_logs = monitor_result.stdout.decode() + monitor_result.stderr.decode()
 
             # Also get activity logs for more detailed conversation tracking
             activity_result = self.run_command(
@@ -43,7 +49,7 @@ class LogsValidationTest(BaseSimulatorTest):
             if activity_result.returncode == 0:
                 activity_logs = activity_result.stdout.decode()
 
-            logs = main_logs + "\n" + activity_logs
+            logs = main_logs + "\n" + monitor_logs + "\n" + activity_logs
 
             # Look for conversation threading patterns that indicate the system is working
             conversation_patterns = [

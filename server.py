@@ -51,6 +51,19 @@ from tools.models import ToolOutput
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
+# Create timezone-aware formatter
+import time
+class LocalTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        """Override to use local timezone instead of UTC"""
+        ct = self.converter(record.created)
+        if datefmt:
+            s = time.strftime(datefmt, ct)
+        else:
+            t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
+            s = "%s,%03d" % (t, record.msecs)
+        return s
+
 # Configure both console and file logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(
@@ -60,18 +73,22 @@ logging.basicConfig(
     stream=sys.stderr,  # Use stderr to avoid interfering with MCP stdin/stdout protocol
 )
 
+# Apply local time formatter to root logger
+for handler in logging.getLogger().handlers:
+    handler.setFormatter(LocalTimeFormatter(log_format))
+
 # Add file handler for Docker log monitoring
 try:
     file_handler = logging.FileHandler("/tmp/mcp_server.log")
     file_handler.setLevel(getattr(logging, log_level, logging.INFO))
-    file_handler.setFormatter(logging.Formatter(log_format))
+    file_handler.setFormatter(LocalTimeFormatter(log_format))
     logging.getLogger().addHandler(file_handler)
 
     # Create a special logger for MCP activity tracking
     mcp_logger = logging.getLogger("mcp_activity")
     mcp_file_handler = logging.FileHandler("/tmp/mcp_activity.log")
     mcp_file_handler.setLevel(logging.INFO)
-    mcp_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+    mcp_file_handler.setFormatter(LocalTimeFormatter("%(asctime)s - %(message)s"))
     mcp_logger.addHandler(mcp_file_handler)
     mcp_logger.setLevel(logging.INFO)
 
@@ -196,6 +213,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     if "continuation_id" in arguments and arguments["continuation_id"]:
         continuation_id = arguments["continuation_id"]
         logger.debug(f"Resuming conversation thread: {continuation_id}")
+        logger.debug(f"[CONVERSATION_DEBUG] Tool '{name}' resuming thread {continuation_id} with {len(arguments)} arguments")
+        logger.debug(f"[CONVERSATION_DEBUG] Original arguments keys: {list(arguments.keys())}")
 
         # Log to activity file for monitoring
         try:
@@ -205,6 +224,9 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
             pass
 
         arguments = await reconstruct_thread_context(arguments)
+        logger.debug(f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
+        if '_remaining_tokens' in arguments:
+            logger.debug(f"[CONVERSATION_DEBUG] Remaining token budget: {arguments['_remaining_tokens']:,}")
 
     # Route to AI-powered tools that require Gemini API calls
     if name in TOOLS:
@@ -300,9 +322,11 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     continuation_id = arguments["continuation_id"]
 
     # Get thread context from Redis
+    logger.debug(f"[CONVERSATION_DEBUG] Looking up thread {continuation_id} in Redis")
     context = get_thread(continuation_id)
     if not context:
         logger.warning(f"Thread not found: {continuation_id}")
+        logger.debug(f"[CONVERSATION_DEBUG] Thread {continuation_id} not found in Redis or expired")
 
         # Log to activity file for monitoring
         try:
@@ -324,15 +348,26 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     if user_prompt:
         # Capture files referenced in this turn
         user_files = arguments.get("files", [])
+        logger.debug(f"[CONVERSATION_DEBUG] Adding user turn to thread {continuation_id}")
+        logger.debug(f"[CONVERSATION_DEBUG] User prompt length: {len(user_prompt)} chars")
+        logger.debug(f"[CONVERSATION_DEBUG] User files: {user_files}")
         success = add_turn(continuation_id, "user", user_prompt, files=user_files)
         if not success:
             logger.warning(f"Failed to add user turn to thread {continuation_id}")
+            logger.debug(f"[CONVERSATION_DEBUG] Failed to add user turn - thread may be at turn limit or expired")
+        else:
+            logger.debug(f"[CONVERSATION_DEBUG] Successfully added user turn to thread {continuation_id}")
 
     # Build conversation history and track token usage
+    logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")
+    logger.debug(f"[CONVERSATION_DEBUG] Thread has {len(context.turns)} turns, tool: {context.tool_name}")
     conversation_history, conversation_tokens = build_conversation_history(context)
+    logger.debug(f"[CONVERSATION_DEBUG] Conversation history built: {conversation_tokens:,} tokens")
+    logger.debug(f"[CONVERSATION_DEBUG] Conversation history length: {len(conversation_history)} chars")
 
     # Add dynamic follow-up instructions based on turn count
     follow_up_instructions = get_follow_up_instructions(len(context.turns))
+    logger.debug(f"[CONVERSATION_DEBUG] Follow-up instructions added for turn {len(context.turns)}")
 
     # Merge original context with new prompt and follow-up instructions
     original_prompt = arguments.get("prompt", "")
@@ -352,14 +387,25 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     remaining_tokens = MAX_CONTENT_TOKENS - conversation_tokens
     enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
+    logger.debug(f"[CONVERSATION_DEBUG] Token budget calculation:")
+    logger.debug(f"[CONVERSATION_DEBUG]   MAX_CONTENT_TOKENS: {MAX_CONTENT_TOKENS:,}")
+    logger.debug(f"[CONVERSATION_DEBUG]   Conversation tokens: {conversation_tokens:,}")
+    logger.debug(f"[CONVERSATION_DEBUG]   Remaining tokens: {remaining_tokens:,}")
 
     # Merge original context parameters (files, etc.) with new request
     if context.initial_context:
+        logger.debug(f"[CONVERSATION_DEBUG] Merging initial context with {len(context.initial_context)} parameters")
         for key, value in context.initial_context.items():
             if key not in enhanced_arguments and key not in ["temperature", "thinking_mode", "model"]:
                 enhanced_arguments[key] = value
+                logger.debug(f"[CONVERSATION_DEBUG] Merged initial context param: {key}")
 
     logger.info(f"Reconstructed context for thread {continuation_id} (turn {len(context.turns)})")
+    logger.debug(f"[CONVERSATION_DEBUG] Final enhanced arguments keys: {list(enhanced_arguments.keys())}")
+    
+    # Debug log files in the enhanced arguments for file tracking
+    if 'files' in enhanced_arguments:
+        logger.debug(f"[CONVERSATION_DEBUG] Final files in enhanced arguments: {enhanced_arguments['files']}")
 
     # Log to activity file for monitoring
     try:

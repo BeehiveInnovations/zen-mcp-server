@@ -189,7 +189,9 @@ class BaseTool(ABC):
             # Thread not found, no files embedded
             return []
 
-        return get_conversation_file_list(thread_context)
+        embedded_files = get_conversation_file_list(thread_context)
+        logger.debug(f"[FILES] {self.name}: Found {len(embedded_files)} embedded files")
+        return embedded_files
 
     def filter_new_files(self, requested_files: list[str], continuation_id: Optional[str]) -> list[str]:
         """
@@ -207,12 +209,16 @@ class BaseTool(ABC):
         Returns:
             list[str]: List of files that need to be embedded (not already in history)
         """
+        logger.debug(f"[FILES] {self.name}: Filtering {len(requested_files)} requested files")
+        
         if not continuation_id:
             # New conversation, all files are new
+            logger.debug(f"[FILES] {self.name}: New conversation, all {len(requested_files)} files are new")
             return requested_files
 
         try:
             embedded_files = set(self.get_conversation_embedded_files(continuation_id))
+            logger.debug(f"[FILES] {self.name}: Found {len(embedded_files)} embedded files in conversation")
 
             # Safety check: If no files are marked as embedded but we have a continuation_id,
             # this might indicate an issue with conversation history. Be conservative.
@@ -220,10 +226,13 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}"
                 )
+                logger.debug(f"[FILES] {self.name}: No embedded files found, returning all {len(requested_files)} requested files")
                 return requested_files
 
             # Return only files that haven't been embedded yet
             new_files = [f for f in requested_files if f not in embedded_files]
+            logger.debug(f"[FILES] {self.name}: After filtering: {len(new_files)} new files, {len(requested_files) - len(new_files)} already embedded")
+            logger.debug(f"[FILES] {self.name}: New files to embed: {new_files}")
 
             # Log filtering results for debugging
             if len(new_files) < len(requested_files):
@@ -231,6 +240,7 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}"
                 )
+                logger.debug(f"[FILES] {self.name}: Skipped (already embedded): {skipped}")
 
             return new_files
 
@@ -239,6 +249,7 @@ class BaseTool(ABC):
             # and include all files rather than risk losing access to needed files
             logger.warning(f"📁 {self.name} tool: Error checking conversation history for {continuation_id}: {e}")
             logger.warning(f"📁 {self.name} tool: Including all requested files as fallback")
+            logger.debug(f"[FILES] {self.name}: Exception in filter_new_files, returning all {len(requested_files)} files as fallback")
             return requested_files
 
     def _prepare_file_content_for_prompt(
@@ -294,12 +305,14 @@ class BaseTool(ABC):
         effective_max_tokens = max(1000, effective_max_tokens)
 
         files_to_embed = self.filter_new_files(request_files, continuation_id)
+        logger.debug(f"[FILES] {self.name}: Will embed {len(files_to_embed)} files after filtering")
 
         content_parts = []
 
         # Read content of new files only
         if files_to_embed:
             logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
+            logger.debug(f"[FILES] {self.name}: Starting file embedding with token budget {effective_max_tokens + reserve_tokens:,}")
             try:
                 file_content = read_files(
                     files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens
@@ -314,9 +327,13 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
                 )
+                logger.debug(f"[FILES] {self.name}: Successfully embedded files - {content_tokens:,} tokens used")
             except Exception as e:
                 logger.error(f"📁 {self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
+                logger.debug(f"[FILES] {self.name}: File embedding failed - {type(e).__name__}: {e}")
                 raise
+        else:
+            logger.debug(f"[FILES] {self.name}: No files to embed after filtering")
 
         # Generate note about files already in conversation history
         if continuation_id and len(files_to_embed) < len(request_files):
@@ -326,6 +343,7 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool skipping {len(skipped_files)} files already in conversation history: {', '.join(skipped_files)}"
                 )
+                logger.debug(f"[FILES] {self.name}: Adding note about {len(skipped_files)} skipped files")
                 if content_parts:
                     content_parts.append("\n\n")
                 note_lines = [
@@ -335,8 +353,12 @@ class BaseTool(ABC):
                     "--- END NOTE ---",
                 ]
                 content_parts.append("\n".join(note_lines))
+            else:
+                logger.debug(f"[FILES] {self.name}: No skipped files to note")
 
-        return "".join(content_parts) if content_parts else ""
+        result = "".join(content_parts) if content_parts else ""
+        logger.debug(f"[FILES] {self.name}: _prepare_file_content_for_prompt returning {len(result)} chars")
+        return result
 
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
         """
@@ -639,11 +661,29 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # Catch all exceptions to prevent server crashes
             # Return error information in standardized format
             logger = logging.getLogger(f"tools.{self.name}")
-            logger.error(f"Error in {self.name} tool execution: {str(e)}", exc_info=True)
-
+            error_msg = str(e)
+            
+            # Check if this is a 500 INTERNAL error that asks for retry
+            if "500 INTERNAL" in error_msg and "Please retry" in error_msg:
+                logger.warning(f"500 INTERNAL error in {self.name} - attempting retry")
+                try:
+                    # Single retry attempt
+                    model = self._get_model_wrapper(request)
+                    raw_response = await model.generate_content(prompt)
+                    response = raw_response.text
+                    
+                    # If successful, process normally
+                    return [TextContent(type="text", text=self._process_response(response, request).model_dump_json())]
+                    
+                except Exception as retry_e:
+                    logger.error(f"Retry failed for {self.name} tool: {str(retry_e)}")
+                    error_msg = f"Tool failed after retry: {str(retry_e)}"
+            
+            logger.error(f"Error in {self.name} tool execution: {error_msg}", exc_info=True)
+            
             error_output = ToolOutput(
                 status="error",
-                content=f"Error in {self.name}: {str(e)}",
+                content=f"Error in {self.name}: {error_msg}",
                 content_type="text",
             )
             return [TextContent(type="text", text=error_output.model_dump_json())]

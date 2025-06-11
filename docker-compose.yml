@@ -7,7 +7,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 64mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -39,6 +39,8 @@ services:
     volumes:
       - ${HOME:-/tmp}:/workspace:ro
       - mcp_logs:/tmp  # Shared volume for logs
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     stdin_open: true
     tty: true
     entrypoint: ["python"]
@@ -55,6 +57,8 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - mcp_logs:/tmp  # Shared volume for logs
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     entrypoint: ["python"]
     command: ["log_monitor.py"]
 
