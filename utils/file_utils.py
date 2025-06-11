@@ -463,6 +463,9 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
 
         # Format with clear delimiters that help the AI understand file boundaries
         # Using consistent markers makes it easier for the model to parse
+        # NOTE: These markers ("--- BEGIN FILE: ... ---") are distinct from git diff markers
+        # ("--- BEGIN DIFF: ... ---") to allow AI to distinguish between complete file content
+        # vs. partial diff content when files appear in both sections
         formatted = f"\n--- BEGIN FILE: {file_path} ---\n{file_content}\n--- END FILE: {file_path} ---\n"
         return formatted, estimate_tokens(formatted)
 

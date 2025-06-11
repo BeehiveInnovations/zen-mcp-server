@@ -113,7 +113,14 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
 
     @pytest.mark.asyncio
     async def test_no_duplicate_file_content_in_prompt(self, tool, temp_repo, mock_redis):
-        """Test that file content appears in expected locations"""
+        """Test that file content appears in expected locations
+
+        This test validates our design decision that files can legitimately appear in both:
+        1. Git Diffs section: Shows only changed lines + limited context (wrapped with BEGIN DIFF markers)
+        2. Additional Context section: Shows complete file content (wrapped with BEGIN FILE markers)
+
+        This is intentional, not a bug - the AI needs both perspectives for comprehensive analysis.
+        """
         temp_dir, config_path = temp_repo
 
         # Create request with files parameter
