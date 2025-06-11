@@ -402,7 +402,7 @@ make any necessary adjustments and show me the final secure implementation."
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` or `max` for critical releases when thorough validation justifies the token cost.
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/584adfa6-d252-49b4-b5b0-0cd6e97fb2c6" width="600">
+  <img src="https://github.com/user-attachments/assets/584adfa6-d252-49b4-b5b0-0cd6e97fb2c6" width="950">
 </div>
 
 **Prompt:**
