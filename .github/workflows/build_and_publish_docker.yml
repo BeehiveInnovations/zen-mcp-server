@@ -73,5 +73,5 @@ jobs:
       uses: actions/attest-build-provenance@v1
       with:
         subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-        subject-digest: ${{ steps.build.outputs.digest }}
+        subject-digest: ${{ steps.meta.outputs.digest }}
         push-to-registry: true
