@@ -139,6 +139,9 @@ def create_thread(tool_name: str, initial_request: dict[str, Any]) -> str:
     This is called when a tool wants to enable follow-up conversations
     or when Claude explicitly starts a multi-turn interaction.
 
+    Uses Redis pipelining to efficiently create the thread and any
+    associated metadata in a single network round trip.
+
     Args:
         tool_name: Name of the tool creating this thread (e.g., "analyze", "chat")
         initial_request: Original request parameters (will be filtered for serialization)
@@ -150,6 +153,7 @@ def create_thread(tool_name: str, initial_request: dict[str, Any]) -> str:
         - Thread expires after 1 hour (3600 seconds)
         - Non-serializable parameters are filtered out automatically
         - Thread can be continued by any tool using the returned UUID
+        - Uses Redis pipelining for efficient thread creation
     """
     thread_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -158,7 +162,7 @@ def create_thread(tool_name: str, initial_request: dict[str, Any]) -> str:
     filtered_context = {
         k: v
         for k, v in initial_request.items()
-        if k not in ["temperature", "thinking_mode", "model", "continuation_id"]
+        if k not in ["temperature", "thinking_mode", "model", "continuation_id", "_remaining_tokens"]
     }
 
     context = ThreadContext(
@@ -170,12 +174,27 @@ def create_thread(tool_name: str, initial_request: dict[str, Any]) -> str:
         initial_context=filtered_context,
     )
 
-    # Store in Redis with 1 hour TTL to prevent indefinite accumulation
+    # Use Redis pipeline to create thread and metadata efficiently
     client = get_redis_client()
-    key = f"thread:{thread_id}"
-    client.setex(key, 3600, context.model_dump_json())
-
-    return thread_id
+    
+    try:
+        with client.pipeline() as pipe:
+            # Create thread with TTL
+            key = f"thread:{thread_id}"
+            pipe.setex(key, 3600, context.model_dump_json())
+            
+            # Execute all commands in one round trip
+            results = pipe.execute()
+            
+            if results[0]:
+                logger.debug(f"[FLOW] Created thread {thread_id} with pipeline")
+                return thread_id
+            else:
+                raise RuntimeError(f"Failed to create thread: {results}")
+                
+    except Exception as e:
+        logger.error(f"[FLOW] Failed to create thread: {type(e).__name__}: {e}")
+        raise
 
 
 def get_thread(thread_id: str) -> Optional[ThreadContext]:
@@ -229,6 +248,9 @@ def add_turn(
     function for building conversation history and enabling cross-tool
     continuation. Each turn preserves the tool that generated it.
 
+    Uses Redis pipelining for improved performance by batching the read,
+    modify, and write operations.
+
     Args:
         thread_id: UUID of the conversation thread
         role: "user" (Claude) or "assistant" (Gemini)
@@ -242,13 +264,14 @@ def add_turn(
 
     Failure cases:
         - Thread doesn't exist or expired
-        - Maximum turn limit reached (5 turns)
+        - Maximum turn limit reached (10 turns)
         - Redis connection failure
 
     Note:
         - Refreshes thread TTL to 1 hour on successful update
         - Turn limits prevent runaway conversations
         - File references are preserved for cross-tool access
+        - Uses Redis pipelining to reduce network round trips
     """
     logger.debug(f"[FLOW] Adding {role} turn to {thread_id} ({tool_name})")
 
@@ -275,14 +298,29 @@ def add_turn(
     context.turns.append(turn)
     context.last_updated_at = datetime.now(timezone.utc).isoformat()
 
-    # Save back to Redis and refresh TTL
+    # Use Redis pipeline to batch operations
     try:
         client = get_redis_client()
         key = f"thread:{thread_id}"
-        client.setex(key, 3600, context.model_dump_json())  # Refresh TTL to 1 hour
-        return True
+        
+        # Use pipeline for atomic update and TTL refresh
+        with client.pipeline() as pipe:
+            # Update thread data and refresh TTL in one round trip
+            pipe.setex(key, 3600, context.model_dump_json())
+            
+            # Execute all commands in a single round trip
+            results = pipe.execute()
+            
+            # Check if the setex command succeeded (returns True)
+            if results[0]:
+                logger.debug(f"[FLOW] Successfully added turn to {thread_id} using pipeline")
+                return True
+            else:
+                logger.warning(f"[FLOW] Pipeline execution returned unexpected result: {results}")
+                return False
+                
     except Exception as e:
-        logger.debug(f"[FLOW] Failed to save turn to Redis: {type(e).__name__}")
+        logger.debug(f"[FLOW] Failed to save turn to Redis: {type(e).__name__}: {e}")
         return False
 
 

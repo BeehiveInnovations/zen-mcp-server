@@ -27,6 +27,29 @@ from .token_utils import MAX_CONTEXT_TOKENS, estimate_tokens
 
 logger = logging.getLogger(__name__)
 
+# Redis client for token caching (optional, graceful degradation if not available)
+_redis_client = None
+
+# Cache TTL configuration (default 1 hour, configurable via environment)
+CACHE_TTL_SECONDS = int(os.getenv("FILE_TOKEN_CACHE_TTL", "3600"))
+
+def get_redis_client_for_cache():
+    """Get Redis client for caching, with graceful fallback if not available."""
+    global _redis_client
+    if _redis_client is None:
+        try:
+            import redis
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            _redis_client = redis.from_url(redis_url, decode_responses=True)
+            # Test connection
+            _redis_client.ping()
+            logger.debug("[CACHE] Redis connection established for file token caching")
+        except Exception as e:
+            logger.warning(f"[CACHE] Redis not available for caching: {type(e).__name__}. Continuing without cache.")
+            _redis_client = False  # Sentinel value to avoid repeated connection attempts
+    
+    return _redis_client if _redis_client else None
+
 # Get workspace root for Docker path translation
 # IMPORTANT: WORKSPACE_ROOT should contain the HOST path (e.g., /Users/john/project)
 # that gets mounted to /workspace in the Docker container. This enables proper
@@ -406,6 +429,62 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
     return expanded_files
 
 
+def _get_cached_token_count(file_path: str, mtime: float) -> Optional[int]:
+    """
+    Get cached token count for a file.
+    
+    Args:
+        file_path: Absolute path to file
+        mtime: File modification time (as float)
+        
+    Returns:
+        Cached token count if found and valid, None otherwise
+    """
+    client = get_redis_client_for_cache()
+    if not client:
+        return None
+        
+    try:
+        # Create cache key using path and mtime
+        cache_key = f"file:tokens:{file_path}:{int(mtime)}"
+        cached_value = client.get(cache_key)
+        
+        if cached_value:
+            token_count = int(cached_value)
+            logger.debug(f"[CACHE] Token cache hit for {file_path}: {token_count} tokens")
+            return token_count
+        else:
+            logger.debug(f"[CACHE] Token cache miss for {file_path}")
+            
+    except Exception as e:
+        logger.warning(f"[CACHE] Error reading token cache: {type(e).__name__}")
+    
+    return None
+
+
+def _set_cached_token_count(file_path: str, mtime: float, token_count: int) -> None:
+    """
+    Cache token count for a file.
+    
+    Args:
+        file_path: Absolute path to file
+        mtime: File modification time (as float)
+        token_count: Number of tokens to cache
+    """
+    client = get_redis_client_for_cache()
+    if not client:
+        return
+        
+    try:
+        # Create cache key and store with configurable TTL
+        cache_key = f"file:tokens:{file_path}:{int(mtime)}"
+        client.setex(cache_key, CACHE_TTL_SECONDS, str(token_count))
+        logger.debug(f"[CACHE] Cached token count for {file_path}: {token_count} tokens (TTL: {CACHE_TTL_SECONDS}s)")
+        
+    except Exception as e:
+        logger.warning(f"[CACHE] Error writing token cache: {type(e).__name__}")
+
+
 def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, int]:
     """
     Read a single file and format it for inclusion in AI prompts.
@@ -457,14 +536,20 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
             content = f"\n--- NOT A FILE: {file_path} ---\nError: Path is not a file\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
-        # Check file size to prevent memory exhaustion
-        file_size = path.stat().st_size
+        # Get file stats for size and mtime
+        stat = path.stat()
+        file_size = stat.st_size
+        mtime = stat.st_mtime
+        
         logger.debug(f"[FILES] File size for {file_path}: {file_size:,} bytes")
         if file_size > max_size:
             logger.debug(f"[FILES] File too large: {file_path} ({file_size:,} > {max_size:,} bytes)")
             content = f"\n--- FILE TOO LARGE: {file_path} ---\nFile size: {file_size:,} bytes (max: {max_size:,})\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
+        # Check cache for token count first
+        cached_tokens = _get_cached_token_count(str(path), mtime)
+        
         # Read the file with UTF-8 encoding, replacing invalid characters
         # This ensures we can handle files with mixed encodings
         logger.debug(f"[FILES] Reading file content for {file_path}")
@@ -479,7 +564,16 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
         # ("--- BEGIN DIFF: ... ---") to allow AI to distinguish between complete file content
         # vs. partial diff content when files appear in both sections
         formatted = f"\n--- BEGIN FILE: {file_path} ---\n{file_content}\n--- END FILE: {file_path} ---\n"
-        tokens = estimate_tokens(formatted)
+        
+        # Use cached token count if available, otherwise calculate and cache
+        if cached_tokens is not None:
+            tokens = cached_tokens
+            logger.debug(f"[FILES] Using cached token count for {file_path}: {tokens} tokens")
+        else:
+            tokens = estimate_tokens(formatted)
+            _set_cached_token_count(str(path), mtime, tokens)
+            logger.debug(f"[FILES] Calculated and cached token count for {file_path}: {tokens} tokens")
+        
         logger.debug(f"[FILES] Formatted content for {file_path}: {len(formatted)} chars, {tokens} tokens")
         return formatted, tokens
 
@@ -491,11 +585,60 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
         return content, tokens
 
 
+def sort_files_by_size(file_paths: list[str], use_cached_tokens: bool = True) -> list[tuple[str, int]]:
+    """
+    Sort files by size (or cached token count if available) to optimize token budget usage.
+    
+    Args:
+        file_paths: List of file paths to sort
+        use_cached_tokens: Whether to use cached token counts for sorting
+        
+    Returns:
+        List of tuples (file_path, size_or_tokens) sorted by size/tokens ascending
+    """
+    file_info = []
+    redis_client = get_redis_client_for_cache() if use_cached_tokens else None
+    
+    for file_path in file_paths:
+        try:
+            path = Path(file_path)
+            if path.exists() and path.is_file():
+                stat = path.stat()
+                size = stat.st_size
+                
+                # Try to get cached token count if enabled
+                if redis_client and use_cached_tokens:
+                    cached_tokens = _get_cached_token_count(file_path, stat.st_mtime)
+                    if cached_tokens is not None:
+                        # Use actual token count for more accurate sorting
+                        file_info.append((file_path, cached_tokens))
+                        logger.debug(f"[SORT] Using cached tokens for {file_path}: {cached_tokens}")
+                        continue
+                
+                # Fall back to file size as proxy for tokens
+                # Approximate: 1 token ≈ 4 bytes (rough estimate)
+                estimated_tokens = size // 4
+                file_info.append((file_path, estimated_tokens))
+                logger.debug(f"[SORT] Using size estimate for {file_path}: {size} bytes ≈ {estimated_tokens} tokens")
+                
+        except Exception as e:
+            logger.warning(f"[SORT] Error getting file info for {file_path}: {type(e).__name__}")
+            # Add with max size to sort to end
+            file_info.append((file_path, float('inf')))
+    
+    # Sort by size/tokens ascending to fit more files
+    file_info.sort(key=lambda x: x[1])
+    logger.debug(f"[SORT] Sorted {len(file_info)} files by size/tokens")
+    
+    return file_info
+
+
 def read_files(
     file_paths: list[str],
     code: Optional[str] = None,
     max_tokens: Optional[int] = None,
     reserve_tokens: int = 50_000,
+    sort_by_size: bool = True,
 ) -> str:
     """
     Read multiple files and optional direct code with smart token management.
@@ -505,11 +648,14 @@ def read_files(
     within token limits. It prioritizes direct code and reads files until
     the token budget is exhausted.
 
+    Now includes file ordering by size to fit more files within the token budget.
+
     Args:
         file_paths: List of file or directory paths (absolute paths required)
         code: Optional direct code to include (prioritized over files)
         max_tokens: Maximum tokens to use (defaults to MAX_CONTEXT_TOKENS)
         reserve_tokens: Tokens to reserve for prompt and response (default 50K)
+        sort_by_size: Whether to sort files by size to maximize count (default True)
 
     Returns:
         str: All file contents formatted for AI consumption
@@ -551,6 +697,12 @@ def read_files(
             logger.debug("[FILES] No files found from provided paths")
             content_parts.append(f"\n--- NO FILES FOUND ---\nProvided paths: {', '.join(file_paths)}\n--- END ---\n")
         else:
+            # Sort files by size if enabled
+            if sort_by_size:
+                sorted_file_info = sort_files_by_size(all_files)
+                all_files = [path for path, _ in sorted_file_info]
+                logger.debug(f"[FILES] Files sorted by size for optimal token usage")
+            
             # Read files sequentially until token limit is reached
             logger.debug(f"[FILES] Reading {len(all_files)} files with token budget {available_tokens:,}")
             for i, file_path in enumerate(all_files):
@@ -581,7 +733,7 @@ def read_files(
         skip_note = "\n\n--- SKIPPED FILES (TOKEN LIMIT) ---\n"
         skip_note += f"Total skipped: {len(files_skipped)}\n"
         # Show first 10 skipped files as examples
-        for _i, file_path in enumerate(files_skipped[:10]):
+        for file_path in files_skipped[:10]:
             skip_note += f"  - {file_path}\n"
         if len(files_skipped) > 10:
             skip_note += f"  ... and {len(files_skipped) - 10} more\n"

@@ -36,7 +36,7 @@ from utils.conversation_memory import (
 )
 from utils.file_utils import read_file_content, read_files, translate_path_for_environment
 
-from .models import ClarificationRequest, ContinuationOffer, FollowUpRequest, ToolOutput
+from .models import ClarificationRequest, ContinuationOffer, FollowUpRequest, ToolOutput, TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -640,18 +640,58 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # This handles both regular models and thinking-enabled models
             model = self.create_model(model_name, temperature, thinking_mode)
 
+            # Track prompt tokens
+            from utils.token_utils import estimate_tokens
+            prompt_tokens = estimate_tokens(prompt)
+            
             # Generate AI response using the configured model
             logger.info(f"Sending request to Gemini API for {self.name}")
-            logger.debug(f"Prompt length: {len(prompt)} characters")
+            logger.debug(f"Prompt length: {len(prompt)} characters (~{prompt_tokens:,} tokens)")
             response = model.generate_content(prompt)
             logger.info(f"Received response from Gemini API for {self.name}")
+
+            # Extract token usage from response if available
+            token_usage = None
+            try:
+                # Try to get usage metadata from response
+                if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    usage = response.usage_metadata
+                    # Safely extract attributes with defaults
+                    token_usage = TokenUsage(
+                        prompt_tokens=getattr(usage, 'prompt_token_count', prompt_tokens),
+                        completion_tokens=getattr(usage, 'candidates_token_count', 0),
+                        total_tokens=getattr(usage, 'total_token_count', prompt_tokens),
+                        cached_tokens=getattr(usage, 'cached_content_token_count', None)
+                    )
+                    logger.debug(f"[TOKENS] API reported usage for {self.name}: {token_usage.total_tokens:,} total tokens")
+                else:
+                    # Fallback: estimate tokens if API doesn't provide usage
+                    completion_text = ""
+                    if response.candidates and response.candidates[0].content.parts:
+                        completion_text = response.candidates[0].content.parts[0].text
+                    completion_tokens = estimate_tokens(completion_text) if completion_text else 0
+                    
+                    token_usage = TokenUsage(
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=prompt_tokens + completion_tokens
+                    )
+                    logger.debug(f"[TOKENS] Estimated usage for {self.name}: {token_usage.total_tokens:,} total tokens")
+            except Exception as e:
+                # Final fallback: provide basic token usage even on error
+                logger.warning(f"[TOKENS] Failed to extract token usage for {self.name}: {type(e).__name__}")
+                token_usage = TokenUsage(
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=0,
+                    total_tokens=prompt_tokens
+                )
 
             # Process the model's response
             if response.candidates and response.candidates[0].content.parts:
                 raw_text = response.candidates[0].content.parts[0].text
 
                 # Parse response to check for clarification requests or format output
-                tool_output = self._parse_response(raw_text, request)
+                tool_output = self._parse_response(raw_text, request, token_usage)
                 logger.info(f"Successfully completed {self.name} tool execution")
 
             else:
@@ -663,6 +703,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                     status="error",
                     content=f"Response blocked or incomplete. Finish reason: {finish_reason}",
                     content_type="text",
+                    token_usage=token_usage
                 )
 
             # Return standardized JSON response for consistent client handling
@@ -699,7 +740,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             )
             return [TextContent(type="text", text=error_output.model_dump_json())]
 
-    def _parse_response(self, raw_text: str, request) -> ToolOutput:
+    def _parse_response(self, raw_text: str, request, token_usage: Optional[TokenUsage] = None) -> ToolOutput:
         """
         Parse the raw response and determine if it's a clarification request or follow-up.
 
@@ -709,6 +750,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Args:
             raw_text: The raw text response from the model
             request: The original request for context
+            token_usage: Optional token usage information from the API
 
         Returns:
             ToolOutput: Standardized output object
@@ -738,6 +780,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                     metadata={
                         "original_request": (request.model_dump() if hasattr(request, "model_dump") else str(request))
                     },
+                    token_usage=token_usage
                 )
 
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -749,7 +792,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         # If we found a follow-up question, prepare the threading response
         if follow_up_question:
-            return self._create_follow_up_response(formatted_content, follow_up_question, request)
+            return self._create_follow_up_response(formatted_content, follow_up_question, request, token_usage)
 
         # Check if we should offer Claude a continuation opportunity
         continuation_offer = self._check_continuation_opportunity(request)
@@ -758,7 +801,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             logger.debug(
                 f"Creating continuation offer for {self.name} with {continuation_offer['remaining_turns']} turns remaining"
             )
-            return self._create_continuation_offer_response(formatted_content, continuation_offer, request)
+            return self._create_continuation_offer_response(formatted_content, continuation_offer, request, token_usage)
         else:
             logger.debug(f"No continuation offer created for {self.name}")
 
@@ -786,6 +829,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             content=formatted_content,
             content_type=content_type,
             metadata={"tool_name": self.name},
+            token_usage=token_usage
         )
 
     def _extract_follow_up_question(self, text: str) -> Optional[dict]:
@@ -820,7 +864,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         return None
 
-    def _create_follow_up_response(self, content: str, follow_up_data: dict, request) -> ToolOutput:
+    def _create_follow_up_response(self, content: str, follow_up_data: dict, request, token_usage: Optional[TokenUsage] = None) -> ToolOutput:
         """
         Create a response with follow-up question for conversation threading.
 
@@ -828,6 +872,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             content: The main response content
             follow_up_data: Dict containing follow_up_question and optional suggested_params
             request: Original request for context
+            token_usage: Optional token usage information
 
         Returns:
             ToolOutput configured for conversation continuation
@@ -853,6 +898,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                     content=content,
                     content_type="markdown",
                     metadata={"tool_name": self.name},
+                    token_usage=token_usage
                 )
             thread_id = continuation_id
         else:
@@ -881,6 +927,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                     content=content,
                     content_type="markdown",
                     metadata={"tool_name": self.name, "follow_up_error": str(e)},
+                    token_usage=token_usage
                 )
 
         # Create follow-up request
@@ -900,6 +947,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             content_type="markdown",
             follow_up_request=follow_up_request,
             metadata={"tool_name": self.name, "thread_id": thread_id},
+            token_usage=token_usage
         )
 
     def _remove_follow_up_json(self, text: str) -> str:
@@ -949,7 +997,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # If anything fails, don't offer continuation
             return None
 
-    def _create_continuation_offer_response(self, content: str, continuation_data: dict, request) -> ToolOutput:
+    def _create_continuation_offer_response(self, content: str, continuation_data: dict, request, token_usage: Optional[TokenUsage] = None) -> ToolOutput:
         """
         Create a response offering Claude the opportunity to continue conversation.
 
@@ -957,6 +1005,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
             content: The main response content
             continuation_data: Dict containing remaining_turns and tool_name
             request: Original request for context
+            token_usage: Optional token usage information
 
         Returns:
             ToolOutput configured with continuation offer
@@ -993,6 +1042,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 content_type="markdown",
                 continuation_offer=continuation_offer,
                 metadata={"tool_name": self.name, "thread_id": thread_id, "remaining_turns": remaining_turns},
+                token_usage=token_usage
             )
 
         except Exception as e:
@@ -1004,6 +1054,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 content=content,
                 content_type="markdown",
                 metadata={"tool_name": self.name, "threading_error": str(e)},
+                token_usage=token_usage
             )
 
     @abstractmethod

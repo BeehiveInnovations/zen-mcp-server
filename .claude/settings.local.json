@@ -11,7 +11,7 @@
       "Bash(cat:*)",
       "Bash(grep:*)",
       "Bash(source:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
     ],
     "deny": []
   }
