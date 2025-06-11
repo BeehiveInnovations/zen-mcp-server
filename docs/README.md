@@ -16,6 +16,7 @@ This documentation is organized into four main categories to serve different aud
 - **[Development Workflows](contributing/workflows.md)** - Git workflows, testing, and collaboration patterns
 - **[Code Style Guide](contributing/code-style.md)** - Coding standards and best practices
 - **[Testing Strategy](contributing/testing.md)** - Testing approaches and quality assurance
+- **[Test Structure Analysis](contributing/test-structure.md)** - Detailed analysis of existing test suite
 - **[Repository Overview](contributing/file-overview.md)** - Understanding the codebase structure
 
 ### 🏗️ For System Architects
