@@ -10,7 +10,7 @@ from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
 from prompts.tool_prompts import PRECOMMIT_PROMPT
-from utils.file_utils import translate_file_paths, translate_path_for_environment
+from utils.file_utils import read_files, translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
@@ -300,11 +300,11 @@ class Precommit(BaseTool):
 
             # Use centralized file handling with filtering for duplicate prevention
             file_content = self._prepare_file_content_for_prompt(
-                translated_files,
-                request.continuation_id,
+                translated_files, 
+                request.continuation_id, 
                 "Context files",
                 max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
-                reserve_tokens=1000,  # Small reserve for formatting
+                reserve_tokens=1000  # Small reserve for formatting
             )
 
             if file_content:
