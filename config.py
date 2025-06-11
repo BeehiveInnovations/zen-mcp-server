@@ -13,15 +13,15 @@ import os
 # Version and metadata
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
-# setup.py imports these values to avoid duplication
-__version__ = "3.2.0"  # Semantic versioning: MAJOR.MINOR.PATCH
-__updated__ = "2025-06-10"  # Last update date in ISO format
+__version__ = "3.3.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+__updated__ = "2025-06-11"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
 # Model configuration
-# GEMINI_MODEL: The Gemini model used for all AI operations
+# DEFAULT_MODEL: The default model used for all AI operations
 # This should be a stable, high-performance model suitable for code analysis
-GEMINI_MODEL = "gemini-2.5-pro-preview-06-05"
+# Can be overridden by setting DEFAULT_MODEL environment variable
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-2.5-pro-preview-06-05")
 
 # Token allocation for Gemini Pro (1M total capacity)
 # MAX_CONTEXT_TOKENS: Total model capacity
@@ -47,6 +47,11 @@ TEMPERATURE_BALANCED = 0.5  # For general chat
 # TEMPERATURE_CREATIVE: Higher temperature for exploratory tasks
 # Used when brainstorming, exploring alternatives, or architectural discussions
 TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
+
+# Thinking Mode Defaults
+# DEFAULT_THINKING_MODE_THINKDEEP: Default thinking depth for extended reasoning tool
+# Higher modes use more computational budget but provide deeper analysis
+DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "high")
 
 # MCP Protocol Limits
 # MCP_PROMPT_SIZE_LIMIT: Maximum character size for prompts sent directly through MCP

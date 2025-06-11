@@ -25,7 +25,7 @@ from google.genai import types
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
-from config import GEMINI_MODEL, MAX_CONTEXT_TOKENS, MCP_PROMPT_SIZE_LIMIT
+from config import DEFAULT_MODEL, MAX_CONTEXT_TOKENS, MCP_PROMPT_SIZE_LIMIT
 from utils import check_token_limit
 from utils.conversation_memory import (
     MAX_CONVERSATION_TURNS,
@@ -50,7 +50,10 @@ class ToolRequest(BaseModel):
     these common fields.
     """
 
-    model: Optional[str] = Field(None, description="Model to use (defaults to Gemini 2.5 Pro)")
+    model: Optional[str] = Field(
+        None,
+        description=f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
+    )
     temperature: Optional[float] = Field(None, description="Temperature for response (tool-specific defaults)")
     # Thinking mode controls how much computational budget the model uses for reasoning
     # Higher values allow for more complex reasoning but increase latency and cost
@@ -625,7 +628,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 # No need to rebuild it here - prompt already contains conversation history
 
             # Extract model configuration from request or use defaults
-            model_name = getattr(request, "model", None) or GEMINI_MODEL
+            model_name = getattr(request, "model", None) or DEFAULT_MODEL
             temperature = getattr(request, "temperature", None)
             if temperature is None:
                 temperature = self.get_default_temperature()
@@ -1064,13 +1067,22 @@ If any of these would strengthen your analysis, specify what Claude should searc
         temperature and thinking budget configuration for models that support it.
 
         Args:
-            model_name: Name of the Gemini model to use
+            model_name: Name of the Gemini model to use (or shorthand like 'flash', 'pro')
             temperature: Temperature setting for response generation
             thinking_mode: Thinking depth mode (affects computational budget)
 
         Returns:
             Model instance configured and ready for generation
         """
+        # Define model shorthands for user convenience
+        model_shorthands = {
+            "pro": "gemini-2.5-pro-preview-06-05",
+            "flash": "gemini-2.0-flash-exp",
+        }
+
+        # Resolve shorthand to full model name
+        resolved_model_name = model_shorthands.get(model_name.lower(), model_name)
+
         # Map thinking modes to computational budget values
         # Higher budgets allow for more complex reasoning but increase latency
         thinking_budgets = {
@@ -1085,7 +1097,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         # Gemini 2.5 models support thinking configuration for enhanced reasoning
         # Skip special handling in test environment to allow mocking
-        if "2.5" in model_name and not os.environ.get("PYTEST_CURRENT_TEST"):
+        if "2.5" in resolved_model_name and not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
                 # Retrieve API key for Gemini client creation
                 api_key = os.environ.get("GEMINI_API_KEY")
@@ -1144,7 +1156,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
                         return ResponseWrapper(response.text)
 
-                return ModelWrapper(client, model_name, temperature, thinking_budget)
+                return ModelWrapper(client, resolved_model_name, temperature, thinking_budget)
 
             except Exception:
                 # Fall back to regular API if thinking configuration fails
@@ -1197,4 +1209,4 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
                 return ResponseWrapper(response.text)
 
-        return SimpleModelWrapper(client, model_name, temperature)
+        return SimpleModelWrapper(client, resolved_model_name, temperature)

@@ -37,6 +37,7 @@ The ultimate development partner for Claude - a Model Context Protocol server th
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
 
 - **Advanced Topics**
+  - [Model Configuration](#model-configuration) - Pro vs Flash model selection
   - [Thinking Modes](#thinking-modes---managing-token-costs--quality) - Control depth vs cost
   - [Working with Large Prompts](#working-with-large-prompts) - Bypass MCP's 25K token limit
   - [Web Search Integration](#web-search-integration) - Smart search recommendations
@@ -587,6 +588,7 @@ All tools that work with files support **both individual files and entire direct
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
 - `question`: What to analyze (required)
+- `model`: pro|flash (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium)
@@ -594,11 +596,13 @@ All tools that work with files support **both individual files and entire direct
 
 ```
 "Use gemini to analyze the src/ directory for architectural patterns"
-"Get gemini to analyze main.py and tests/ to understand test coverage"
+"Use flash to quickly analyze main.py and tests/ to understand test coverage"
+"Use pro for deep analysis of the entire backend/ directory structure"
 ```
 
 **`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
+- `model`: pro|flash (default: server default)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
@@ -606,12 +610,13 @@ All tools that work with files support **both individual files and entire direct
 - `thinking_mode`: minimal|low|medium|high|max (default: medium)
 
 ```
-"Use gemini to review the entire api/ directory for security issues"
-"Get gemini to review src/ with focus on performance, only show critical issues"
+"Use pro to review the entire api/ directory for security issues"
+"Use flash to quickly review src/ with focus on performance, only show critical issues"
 ```
 
 **`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
+- `model`: pro|flash (default: server default)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
@@ -625,6 +630,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
+- `model`: pro|flash (default: server default)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
@@ -866,7 +872,31 @@ This enables better integration, error handling, and support for the dynamic con
 The server includes several configurable properties that control its behavior:
 
 ### Model Configuration
-- **`GEMINI_MODEL`**: `"gemini-2.5-pro-preview-06-05"` - The latest Gemini 2.5 Pro model with native thinking support
+
+**Default Model (Environment Variable):**
+- **`DEFAULT_MODEL`**: Set your preferred default model globally
+  - Default: `"gemini-2.5-pro-preview-06-05"` (extended thinking capabilities)
+  - Alternative: `"gemini-2.0-flash-exp"` (faster responses)
+
+**Per-Tool Model Selection:**
+All tools support a `model` parameter for flexible model switching:
+- **`"pro"`** → Gemini 2.5 Pro (extended thinking, slower, higher quality)
+- **`"flash"`** → Gemini 2.0 Flash (faster responses, lower cost)
+- **Full model names** → Direct model specification
+
+**Examples:**
+```env
+# Set default globally in .env file
+DEFAULT_MODEL=flash
+```
+
+```
+# Per-tool usage in Claude
+"Use flash to quickly analyze this function"
+"Use pro for deep architectural analysis"
+```
+
+**Token Limits:**
 - **`MAX_CONTEXT_TOKENS`**: `1,000,000` - Maximum input context (1M tokens for Gemini 2.5 Pro)
 
 ### Temperature Defaults

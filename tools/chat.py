@@ -44,6 +44,8 @@ class ChatTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
+        from config import DEFAULT_MODEL
+
         return {
             "type": "object",
             "properties": {
@@ -55,6 +57,10 @@ class ChatTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Optional files for context (must be absolute paths)",
+                },
+                "model": {
+                    "type": "string",
+                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
                 },
                 "temperature": {
                     "type": "number",

@@ -79,6 +79,8 @@ class CodeReviewTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
+        from config import DEFAULT_MODEL
+
         return {
             "type": "object",
             "properties": {
@@ -86,6 +88,10 @@ class CodeReviewTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Code files or directories to review (must be absolute paths)",
+                },
+                "model": {
+                    "type": "string",
+                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
                 },
                 "context": {
                     "type": "string",

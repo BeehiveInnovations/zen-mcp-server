@@ -98,7 +98,15 @@ class Precommit(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
+        from config import DEFAULT_MODEL
+
         schema = self.get_request_model().model_json_schema()
+        # Ensure model parameter has enhanced description
+        if "properties" in schema and "model" in schema["properties"]:
+            schema["properties"]["model"] = {
+                "type": "string",
+                "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
+            }
         # Ensure use_websearch is in the schema with proper description
         if "properties" in schema and "use_websearch" not in schema["properties"]:
             schema["properties"]["use_websearch"] = {

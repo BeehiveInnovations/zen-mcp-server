@@ -11,6 +11,7 @@ from .test_content_validation import ContentValidationTest
 from .test_cross_tool_comprehensive import CrossToolComprehensiveTest
 from .test_cross_tool_continuation import CrossToolContinuationTest
 from .test_logs_validation import LogsValidationTest
+from .test_model_thinking_config import TestModelThinkingConfig
 from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_redis_validation import RedisValidationTest
 
@@ -23,6 +24,7 @@ TEST_REGISTRY = {
     "cross_tool_comprehensive": CrossToolComprehensiveTest,
     "logs_validation": LogsValidationTest,
     "redis_validation": RedisValidationTest,
+    "model_thinking_config": TestModelThinkingConfig,
 }
 
 __all__ = [
@@ -34,5 +36,6 @@ __all__ = [
     "CrossToolComprehensiveTest",
     "LogsValidationTest",
     "RedisValidationTest",
+    "TestModelThinkingConfig",
     "TEST_REGISTRY",
 ]

@@ -3,7 +3,7 @@ Tests for configuration
 """
 
 from config import (
-    GEMINI_MODEL,
+    DEFAULT_MODEL,
     MAX_CONTEXT_TOKENS,
     TEMPERATURE_ANALYTICAL,
     TEMPERATURE_BALANCED,
@@ -31,7 +31,7 @@ class TestConfig:
 
     def test_model_config(self):
         """Test model configuration"""
-        assert GEMINI_MODEL == "gemini-2.5-pro-preview-06-05"
+        assert DEFAULT_MODEL == "gemini-2.5-pro-preview-06-05"
         assert MAX_CONTEXT_TOKENS == 1_000_000
 
     def test_temperature_defaults(self):

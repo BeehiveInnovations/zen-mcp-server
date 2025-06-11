@@ -32,7 +32,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import ServerCapabilities, TextContent, Tool, ToolsCapability
 
 from config import (
-    GEMINI_MODEL,
+    DEFAULT_MODEL,
     MAX_CONTEXT_TOKENS,
     __author__,
     __updated__,
@@ -435,12 +435,16 @@ async def handle_get_version() -> list[TextContent]:
     Returns:
         Formatted text with version and configuration details
     """
+    # Import thinking mode here to avoid circular imports
+    from config import DEFAULT_THINKING_MODE_THINKDEEP
+
     # Gather comprehensive server information
     version_info = {
         "version": __version__,
         "updated": __updated__,
         "author": __author__,
-        "gemini_model": GEMINI_MODEL,
+        "default_model": DEFAULT_MODEL,
+        "default_thinking_mode_thinkdeep": DEFAULT_THINKING_MODE_THINKDEEP,
         "max_context_tokens": f"{MAX_CONTEXT_TOKENS:,}",
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "server_started": datetime.now().isoformat(),
@@ -453,7 +457,8 @@ Updated: {__updated__}
 Author: {__author__}
 
 Configuration:
-- Gemini Model: {GEMINI_MODEL}
+- Default Model: {DEFAULT_MODEL}
+- Default Thinking Mode (ThinkDeep): {DEFAULT_THINKING_MODE_THINKDEEP}
 - Max Context: {MAX_CONTEXT_TOKENS:,} tokens
 - Python: {version_info["python_version"]}
 - Started: {version_info["server_started"]}
@@ -486,7 +491,13 @@ async def main():
     # Log startup message for Docker log monitoring
     logger.info("Gemini MCP Server starting up...")
     logger.info(f"Log level: {log_level}")
-    logger.info(f"Using model: {GEMINI_MODEL}")
+    logger.info(f"Using default model: {DEFAULT_MODEL}")
+
+    # Import here to avoid circular imports
+    from config import DEFAULT_THINKING_MODE_THINKDEEP
+
+    logger.info(f"Default thinking mode (ThinkDeep): {DEFAULT_THINKING_MODE_THINKDEEP}")
+
     logger.info(f"Available tools: {list(TOOLS.keys())}")
     logger.info("Server ready - waiting for tool requests...")
 
