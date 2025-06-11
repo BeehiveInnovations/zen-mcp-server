@@ -37,8 +37,12 @@ GEMINI_API_KEY=$API_KEY_VALUE
 # Redis configuration (automatically set for Docker Compose)
 REDIS_URL=redis://redis:6379/0
 
-# Workspace root (automatically set for Docker Compose)
-WORKSPACE_ROOT=/workspace
+# Workspace root - host path that maps to /workspace in container
+# This should be the host directory path that contains all files Claude might reference
+# We use $HOME (not $PWD) because Claude needs access to ANY absolute file path,
+# not just files within the current project directory. Additionally, Claude Code
+# could be running from multiple locations at the same time.
+WORKSPACE_ROOT=$HOME
 EOF
     echo "✅ Created .env file with Redis configuration"
     echo ""

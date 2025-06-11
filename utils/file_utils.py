@@ -28,8 +28,9 @@ from .token_utils import MAX_CONTEXT_TOKENS, estimate_tokens
 logger = logging.getLogger(__name__)
 
 # Get workspace root for Docker path translation
-# When running in Docker with a mounted workspace, WORKSPACE_ROOT contains
-# the host path that corresponds to /workspace in the container
+# IMPORTANT: WORKSPACE_ROOT should contain the HOST path (e.g., /Users/john/project)
+# that gets mounted to /workspace in the Docker container. This enables proper
+# path translation between host absolute paths and container workspace paths.
 WORKSPACE_ROOT = os.environ.get("WORKSPACE_ROOT")
 CONTAINER_WORKSPACE = Path("/workspace")
 
@@ -43,6 +44,7 @@ DANGEROUS_WORKSPACE_PATHS = {
     "/var",
     "/root",
     "/home",
+    "/workspace",  # Container path - WORKSPACE_ROOT should be host path
     "C:\\",
     "C:\\Windows",
     "C:\\Program Files",
@@ -54,7 +56,17 @@ if WORKSPACE_ROOT:
     # Resolve to canonical path for comparison
     resolved_workspace = Path(WORKSPACE_ROOT).resolve()
 
-    # Check against dangerous paths
+    # Special check for /workspace - common configuration mistake
+    if str(resolved_workspace) == "/workspace":
+        raise RuntimeError(
+            f"Configuration Error: WORKSPACE_ROOT should be set to the HOST path, not the container path. "
+            f"Found: WORKSPACE_ROOT={WORKSPACE_ROOT} "
+            f"Expected: WORKSPACE_ROOT should be set to your host directory path (e.g., $HOME) "
+            f"that contains all files Claude might reference. "
+            f"This path gets mounted to /workspace inside the Docker container."
+        )
+
+    # Check against other dangerous paths
     if str(resolved_workspace) in DANGEROUS_WORKSPACE_PATHS:
         raise RuntimeError(
             f"Security Error: WORKSPACE_ROOT '{WORKSPACE_ROOT}' is set to a dangerous system directory. "
@@ -181,12 +193,17 @@ def translate_path_for_environment(path_str: str) -> str:
 
     This is the unified path translation function that should be used by all
     tools and utilities throughout the codebase. It handles:
-    1. Docker host-to-container path translation
+    1. Docker host-to-container path translation (host paths -> /workspace/...)
     2. Direct mode (no translation needed)
     3. Security validation and error handling
 
+    Docker Path Translation Logic:
+    - Input: /Users/john/project/src/file.py (host path from Claude)
+    - WORKSPACE_ROOT: /Users/john/project (host path in env var)
+    - Output: /workspace/src/file.py (container path for file operations)
+
     Args:
-        path_str: Original path string from the client
+        path_str: Original path string from the client (absolute host path)
 
     Returns:
         Translated path appropriate for the current environment

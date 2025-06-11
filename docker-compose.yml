@@ -31,7 +31,9 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - REDIS_URL=redis://redis:6379/0
-      - WORKSPACE_ROOT=${WORKSPACE_ROOT:-/workspace}
+      # Use HOME not PWD: Claude needs access to any absolute file path, not just current project,
+      # and Claude Code could be running from multiple locations at the same time
+      - WORKSPACE_ROOT=${WORKSPACE_ROOT:-${HOME}}
     volumes:
       - ${HOME:-/tmp}:/workspace:ro
     stdin_open: true

@@ -300,7 +300,7 @@ class TestConversationFlow:
         # REQUEST 6: Try to exceed MAX_CONVERSATION_TURNS limit - should fail
         turns_at_limit = [
             ConversationTurn(
-                role="assistant" if i % 2 == 0 else "user", content=f"Turn {i+1}", timestamp="2023-01-01T00:00:30Z"
+                role="assistant" if i % 2 == 0 else "user", content=f"Turn {i + 1}", timestamp="2023-01-01T00:00:30Z"
             )
             for i in range(MAX_CONVERSATION_TURNS)
         ]
@@ -423,7 +423,9 @@ class TestConversationFlow:
             # Mock context with current turns
             turns = [
                 ConversationTurn(
-                    role="user" if i % 2 == 0 else "assistant", content=f"Turn {i+1}", timestamp="2023-01-01T00:00:00Z"
+                    role="user" if i % 2 == 0 else "assistant",
+                    content=f"Turn {i + 1}",
+                    timestamp="2023-01-01T00:00:00Z",
                 )
                 for i in range(turn_num)
             ]
@@ -445,7 +447,7 @@ class TestConversationFlow:
         # Now we should be at the limit - create final context
         final_turns = [
             ConversationTurn(
-                role="user" if i % 2 == 0 else "assistant", content=f"Turn {i+1}", timestamp="2023-01-01T00:00:00Z"
+                role="user" if i % 2 == 0 else "assistant", content=f"Turn {i + 1}", timestamp="2023-01-01T00:00:00Z"
             )
             for i in range(MAX_CONVERSATION_TURNS)
         ]
