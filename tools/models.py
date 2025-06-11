@@ -35,6 +35,15 @@ class ContinuationOffer(BaseModel):
     remaining_turns: int = Field(..., description="Number of conversation turns remaining")
 
 
+class TokenUsage(BaseModel):
+    """Token usage information for a tool execution"""
+    
+    prompt_tokens: int = Field(..., description="Number of tokens in the prompt")
+    completion_tokens: int = Field(..., description="Number of tokens in the completion")
+    total_tokens: int = Field(..., description="Total tokens used (prompt + completion)")
+    cached_tokens: Optional[int] = Field(None, description="Number of tokens served from cache")
+
+
 class ToolOutput(BaseModel):
     """Standardized output format for all tools"""
 
@@ -54,6 +63,9 @@ class ToolOutput(BaseModel):
     )
     continuation_offer: Optional[ContinuationOffer] = Field(
         None, description="Optional offer for Claude to continue conversation"
+    )
+    token_usage: Optional[TokenUsage] = Field(
+        None, description="Token usage information for this tool execution"
     )
 
 
