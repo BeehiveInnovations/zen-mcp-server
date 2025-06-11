@@ -161,4 +161,4 @@ coverage.xml
 .pytest_cache/
 
 # Test simulation artifacts (dynamically created during testing)
-test_simulation_files/
+test_simulation_files/.claude/
