@@ -154,11 +154,58 @@ Before every commit:
 ### CLAUDE.md Auto-Refresh Protocol
 **Mandatory context updates for consistent collaboration:**
 
+#### Session Management
 1. **Session Start**: Always read CLAUDE.md to understand current collaboration rules
 2. **Every 10 interactions**: Re-read CLAUDE.md to ensure rule compliance
 3. **Before complex tasks**: Check CLAUDE.md for appropriate tool selection and collaboration patterns
 4. **After rule changes**: Immediately inform Gemini of any CLAUDE.md updates
 5. **Memory synchronization**: Store CLAUDE.md key principles in Memory MCP for quick reference
+
+#### Context Compaction Auto-Refresh
+**When Claude's context approaches limits, automatically reload CLAUDE.md:**
+
+**Trigger Conditions:**
+- Context usage >80% of maximum tokens
+- Before context compaction/summarization
+- When starting new conversation segments
+- After long tool execution sequences
+
+**Auto-Refresh Process:**
+```bash
+# Detect context compaction need
+<thinking>
+Context is approaching limits. I need to reload CLAUDE.md to ensure collaboration rules are preserved after compaction.
+</thinking>
+
+# Re-read CLAUDE.md before compaction
+Read: /path/to/CLAUDE.md
+
+# Extract and preserve key collaboration rules
+mcp_memory_create_entities: "CLAUDE Collaboration Rules - Session Preserved" (entityType: "compaction_preserved")
+
+# Store current session context patterns
+mcp_memory_add_observations: "Session collaboration patterns, tool usage, active workflows"
+
+# Continue with context-aware operation
+```
+
+**Post-Compaction Recovery:**
+```bash
+# After context compaction, immediately restore collaboration framework
+Read: /path/to/CLAUDE.md
+
+# Retrieve preserved session context
+mcp_memory_search_nodes: "CLAUDE Collaboration Rules"
+
+# Re-establish collaboration patterns
+mcp_gemini_chat: "Context compacted. Collaboration rules reloaded. Continuing with established patterns: [summary]"
+```
+
+**Critical Rule Preservation:**
+- Tool selection matrix priorities
+- Memory Bank status and protocols
+- Active collaboration patterns
+- Quality gates and validation requirements
 
 **Implementation Pattern:**
 ```bash
@@ -443,28 +490,105 @@ YYYY-MM-DD HH:MM:SS - Log of updates made.
 ```
 
 #### Update Triggers & Patterns
-**Real-time updates throughout session when:**
+**UPDATE MEMORY BANK THROUGHOUT THE CHAT SESSION, WHEN SIGNIFICANT CHANGES OCCUR IN THE PROJECT.**
 
-- **Product Context**: High-level goals/features/architecture changes
-- **Active Context**: Focus shifts, significant progress, new issues arise
-- **Progress**: Tasks begin, complete, or change status
-- **Decision Log**: Architectural decisions, technology choices, design patterns
-- **System Patterns**: New patterns introduced or existing ones modified
+**decisionLog.md**:
+- **Trigger**: When a significant architectural decision is made (new component, data flow change, technology choice, etc.). Use your judgment to determine significance.
+- **Action**: 
+  ```bash
+  <thinking>
+  I need to update decisionLog.md with a decision, the rationale, and any implications.
+  Use append_to_file to *append* new information. Never overwrite existing entries. Always include a timestamp.
+  </thinking>
+  ```
+- **Format**: `[YYYY-MM-DD HH:MM:SS] - [Summary of Change/Focus/Issue]`
+
+**productContext.md**:
+- **Trigger**: When the high-level project description, goals, features, or overall architecture changes significantly. Use your judgment to determine significance.
+- **Action**:
+  ```bash
+  <thinking>
+  A fundamental change has occurred which warrants an update to productContext.md.
+  Use append_to_file to *append* new information or use apply_diff to modify existing entries if necessary. Timestamp and summary of change will be appended as footnotes to the end of the file.
+  </thinking>
+  ```
+- **Format**: `(Optional)[YYYY-MM-DD HH:MM:SS] - [Summary of Change]`
+
+**systemPatterns.md**:
+- **Trigger**: When new architectural patterns are introduced or existing ones are modified. Use your judgement.
+- **Action**:
+  ```bash
+  <thinking>
+  I need to update systemPatterns.md with a brief summary and time stamp.
+  Use append_to_file to *append* new patterns or use apply_diff to modify existing entries if warranted. Always include a timestamp.
+  </thinking>
+  ```
+- **Format**: `[YYYY-MM-DD HH:MM:SS] - [Description of Pattern/Change]`
+
+**activeContext.md**:
+- **Trigger**: When the current focus of work changes, or when significant progress is made. Use your judgement.
+- **Action**:
+  ```bash
+  <thinking>
+  I need to update activeContext.md with a brief summary and time stamp.
+  Use append_to_file to *append* to the relevant section (Current Focus, Recent Changes, Open Questions/Issues) or use apply_diff to modify existing entries if warranted. Always include a timestamp.
+  </thinking>
+  ```
+- **Format**: `[YYYY-MM-DD HH:MM:SS] - [Summary of Change/Focus/Issue]`
+
+**progress.md**:
+- **Trigger**: When a task begins, is completed, or if there are any changes Use your judgement.
+- **Action**:
+  ```bash
+  <thinking>
+  I need to update progress.md with a brief summary and time stamp.
+  Use append_to_file to *append* the new entry, never overwrite existing entries. Always include a timestamp.
+  </thinking>
+  ```
+- **Format**: `[YYYY-MM-DD HH:MM:SS] - [Summary of Change/Focus/Issue]`
 
 #### UMB Command (`Update Memory Bank`)
 **Manual synchronization command for comprehensive updates:**
 
-```bash
-User: "UMB" or "Update Memory Bank"
-Response: "[MEMORY BANK: UPDATING]"
-```
+**Trigger**: `^(Update Memory Bank|UMB)$`
 
-**UMB Process**:
-1. Review complete chat history
-2. Extract cross-mode information and context
-3. Update all affected memory-bank files
-4. Sync with Memory MCP entities
-5. Ensure consistency across all systems
+**Instructions**:
+- "Halt Current Task: Stop current activity"
+- "Acknowledge Command: '[MEMORY BANK: UPDATING]'"
+- "Review Chat History"
+
+**User Acknowledgement Text**: `[MEMORY BANK: UPDATING]`
+
+**Core Update Process**:
+1. **Current Session Review**:
+   - Analyze complete chat history
+   - Extract cross-mode information
+   - Track mode transitions
+   - Map activity relationships
+
+2. **Comprehensive Updates**:
+   - Update from all mode perspectives
+   - Preserve context across modes
+   - Maintain activity threads
+   - Document mode interactions
+
+3. **Memory Bank Synchronization**:
+   - Update all affected *.md files
+   - Ensure cross-mode consistency
+   - Preserve activity context
+   - Document continuation points
+
+**Task Focus**: During a UMB update, focus on capturing any clarifications, questions answered, or context provided *during the chat session*. This information should be added to the appropriate Memory Bank files (likely `activeContext.md` or `decisionLog.md`), using the other modes' update formats as a guide. *Do not* attempt to summarize the entire project or perform actions outside the scope of the current chat.
+
+**Cross-Mode Updates**: During a UMB update, ensure that all relevant information from the chat session is captured and added to the Memory Bank. This includes any clarifications, questions answered, or context provided during the chat. Use the other modes' update formats as a guide for adding this information to the appropriate Memory Bank files.
+
+**Post-UMB Actions**:
+- "Memory Bank fully synchronized"
+- "All mode contexts preserved"
+- "Session can be safely closed"
+- "Next assistant will have complete context"
+
+**Override Restrictions**: UMB command overrides file restrictions and mode restrictions.
 
 #### Memory Bank ↔ Memory MCP Integration
 **Dual-system approach for maximum context preservation:**
