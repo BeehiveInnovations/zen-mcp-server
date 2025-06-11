@@ -82,12 +82,12 @@ class PerToolDeduplicationTest(BaseSimulatorTest):
             self.setup_test_files()
 
             # Create a short dummy file for quick testing
-            dummy_content = '''def add(a, b):
+            dummy_content = """def add(a, b):
     return a + b  # Missing type hints
 
 def divide(x, y):
     return x / y  # No zero check
-'''
+"""
             dummy_file_path = self.create_additional_test_file("dummy_code.py", dummy_content)
 
             # Get timestamp for log filtering
@@ -125,7 +125,7 @@ def divide(x, y):
             codereview_params = {
                 "files": [dummy_file_path],
                 "context": "Please give me a quick one line reply. General code review for quality and best practices",
-                "thinking_mode": "low"
+                "thinking_mode": "low",
             }
 
             response2, _ = self.call_mcp_tool("codereview", codereview_params)
@@ -137,12 +137,12 @@ def divide(x, y):
 
             # Step 3: Create new file and continue with precommit
             self.logger.info("  Step 3: precommit continuation with old + new file")
-            new_file_content = '''def multiply(x, y):
+            new_file_content = """def multiply(x, y):
     return x * y
 
 def subtract(a, b):
     return a - b
-'''
+"""
             new_file_path = self.create_additional_test_file("new_feature.py", new_file_content)
 
             # Continue precommit with both files

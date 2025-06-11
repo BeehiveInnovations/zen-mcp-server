@@ -54,7 +54,7 @@ class CrossToolComprehensiveTest(BaseSimulatorTest):
             self.setup_test_files()
 
             # Create short test files for quick testing
-            python_code = '''def login(user, pwd):
+            python_code = """def login(user, pwd):
     # Security issue: plain text password
     if user == "admin" and pwd == "123":
         return True
@@ -63,7 +63,7 @@ class CrossToolComprehensiveTest(BaseSimulatorTest):
 def hash_pwd(pwd):
     # Weak hashing
     return str(hash(pwd))
-'''
+"""
 
             config_file = """{
     "db_password": "weak123",
@@ -90,7 +90,7 @@ def hash_pwd(pwd):
             chat_params = {
                 "prompt": "Please give me a quick one line reply. I have an authentication module that needs review. Can you help me understand potential issues?",
                 "files": [auth_file],
-                "thinking_mode": "low"
+                "thinking_mode": "low",
             }
 
             response1, continuation_id1 = self.call_mcp_tool("chat", chat_params)
@@ -107,7 +107,7 @@ def hash_pwd(pwd):
             analyze_params = {
                 "files": [auth_file],
                 "question": "Please give me a quick one line reply. What are the security vulnerabilities and architectural issues in this authentication code?",
-                "thinking_mode": "low"
+                "thinking_mode": "low",
             }
 
             response2, continuation_id2 = self.call_mcp_tool("analyze", analyze_params)
@@ -126,7 +126,7 @@ def hash_pwd(pwd):
                 "continuation_id": current_continuation_id,
                 "prompt": "Please give me a quick one line reply. I also have this configuration file. Can you analyze it alongside the authentication code?",
                 "files": [auth_file, config_file_path],  # Old + new file
-                "thinking_mode": "low"
+                "thinking_mode": "low",
             }
 
             response3, _ = self.call_mcp_tool("chat", chat_continue_params)
@@ -142,7 +142,7 @@ def hash_pwd(pwd):
             debug_params = {
                 "files": [auth_file, config_file_path],
                 "error_description": "Please give me a quick one line reply. The authentication system has security vulnerabilities. Help me identify and fix the main issues.",
-                "thinking_mode": "low"
+                "thinking_mode": "low",
             }
 
             response4, continuation_id4 = self.call_mcp_tool("debug", debug_params)
@@ -162,7 +162,7 @@ def hash_pwd(pwd):
                     "continuation_id": continuation_id4,
                     "files": [auth_file, config_file_path],
                     "error_description": "Please give me a quick one line reply. What specific code changes would you recommend to fix the password hashing vulnerability?",
-                    "thinking_mode": "low"
+                    "thinking_mode": "low",
                 }
 
                 response5, _ = self.call_mcp_tool("debug", debug_continue_params)
@@ -175,7 +175,7 @@ def hash_pwd(pwd):
             codereview_params = {
                 "files": [auth_file, config_file_path],
                 "context": "Please give me a quick one line reply. Comprehensive security-focused code review for production readiness",
-                "thinking_mode": "low"
+                "thinking_mode": "low",
             }
 
             response6, continuation_id6 = self.call_mcp_tool("codereview", codereview_params)
@@ -192,7 +192,7 @@ def hash_pwd(pwd):
             self.logger.info("  Step 7: precommit tool - Pre-commit validation")
 
             # Create a short improved version
-            improved_code = '''import hashlib
+            improved_code = """import hashlib
 
 def secure_login(user, pwd):
     # Better: hashed password check
@@ -200,7 +200,7 @@ def secure_login(user, pwd):
     if user == "admin" and hashed == "expected_hash":
         return True
     return False
-'''
+"""
 
             improved_file = self.create_additional_test_file("auth_improved.py", improved_code)
 
