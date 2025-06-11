@@ -252,7 +252,7 @@ class TestPrecommitTool:
             (True, ""),  # unstaged files list (empty)
         ]
 
-        # Mock the centralized file preparation method  
+        # Mock the centralized file preparation method
         with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
             mock_prepare_files.return_value = "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ==="
 

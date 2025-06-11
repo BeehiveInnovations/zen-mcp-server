@@ -28,7 +28,7 @@ GEMINI_MODEL = "gemini-2.5-pro-preview-06-05"
 # MAX_CONTENT_TOKENS: Available for prompts, conversation history, and files
 # RESPONSE_RESERVE_TOKENS: Reserved for model response generation
 MAX_CONTEXT_TOKENS = 1_000_000  # 1M tokens total capacity for Gemini Pro
-MAX_CONTENT_TOKENS = 800_000    # 800K tokens for content (prompts + files + history)
+MAX_CONTENT_TOKENS = 800_000  # 800K tokens for content (prompts + files + history)
 RESPONSE_RESERVE_TOKENS = 200_000  # 200K tokens reserved for response generation
 
 # Temperature defaults for different tool types

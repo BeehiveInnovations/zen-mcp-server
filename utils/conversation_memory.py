@@ -479,6 +479,7 @@ def build_conversation_history(context: ThreadContext, read_files_func=None) -> 
     # Calculate total tokens for the complete conversation history
     complete_history = "\n".join(history_parts)
     from utils.token_utils import estimate_tokens
+
     total_conversation_tokens = estimate_tokens(complete_history)
 
     return complete_history, total_conversation_tokens

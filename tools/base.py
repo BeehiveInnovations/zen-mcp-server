@@ -213,23 +213,27 @@ class BaseTool(ABC):
 
         try:
             embedded_files = set(self.get_conversation_embedded_files(continuation_id))
-            
+
             # Safety check: If no files are marked as embedded but we have a continuation_id,
             # this might indicate an issue with conversation history. Be conservative.
             if not embedded_files:
-                logger.debug(f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}")
+                logger.debug(
+                    f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}"
+                )
                 return requested_files
-            
+
             # Return only files that haven't been embedded yet
             new_files = [f for f in requested_files if f not in embedded_files]
-            
+
             # Log filtering results for debugging
             if len(new_files) < len(requested_files):
                 skipped = [f for f in requested_files if f in embedded_files]
-                logger.debug(f"📁 {self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}")
-            
+                logger.debug(
+                    f"📁 {self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}"
+                )
+
             return new_files
-            
+
         except Exception as e:
             # If there's any issue with conversation history lookup, be conservative
             # and include all files rather than risk losing access to needed files
@@ -238,9 +242,14 @@ class BaseTool(ABC):
             return requested_files
 
     def _prepare_file_content_for_prompt(
-        self, request_files: list[str], continuation_id: Optional[str], context_description: str = "New files",
-        max_tokens: Optional[int] = None, reserve_tokens: int = 1_000, remaining_budget: Optional[int] = None,
-        arguments: Optional[dict] = None
+        self,
+        request_files: list[str],
+        continuation_id: Optional[str],
+        context_description: str = "New files",
+        max_tokens: Optional[int] = None,
+        reserve_tokens: int = 1_000,
+        remaining_budget: Optional[int] = None,
+        arguments: Optional[dict] = None,
     ) -> str:
         """
         Centralized file processing for tool prompts.
@@ -268,7 +277,7 @@ class BaseTool(ABC):
         # Extract remaining budget from arguments if available
         if remaining_budget is None:
             # Use provided arguments or fall back to stored arguments from execute()
-            args_to_use = arguments or getattr(self, '_current_arguments', {})
+            args_to_use = arguments or getattr(self, "_current_arguments", {})
             remaining_budget = args_to_use.get("_remaining_tokens")
 
         # Use remaining budget if provided, otherwise fall back to max_tokens or default
@@ -278,8 +287,9 @@ class BaseTool(ABC):
             effective_max_tokens = max_tokens - reserve_tokens
         else:
             from config import MAX_CONTENT_TOKENS
+
             effective_max_tokens = MAX_CONTENT_TOKENS - reserve_tokens
-        
+
         # Ensure we have a reasonable minimum budget
         effective_max_tokens = max(1000, effective_max_tokens)
 
@@ -291,7 +301,9 @@ class BaseTool(ABC):
         if files_to_embed:
             logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
             try:
-                file_content = read_files(files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens)
+                file_content = read_files(
+                    files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens
+                )
                 self._validate_token_limit(file_content, context_description)
                 content_parts.append(file_content)
 
@@ -534,7 +546,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
         try:
             # Store arguments for access by helper methods (like _prepare_file_content_for_prompt)
             self._current_arguments = arguments
-            
+
             # Set up logger for this tool execution
             logger = logging.getLogger(f"tools.{self.name}")
             logger.info(f"Starting {self.name} tool execution with arguments: {list(arguments.keys())}")

@@ -346,9 +346,10 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     # Update arguments with enhanced context and remaining token budget
     enhanced_arguments = arguments.copy()
     enhanced_arguments["prompt"] = enhanced_prompt
-    
+
     # Calculate remaining token budget for current request files/content
     from config import MAX_CONTENT_TOKENS
+
     remaining_tokens = MAX_CONTENT_TOKENS - conversation_tokens
     enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
 

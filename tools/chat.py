@@ -9,7 +9,6 @@ from pydantic import Field
 
 from config import TEMPERATURE_BALANCED
 from prompts import CHAT_PROMPT
-from utils import read_files
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -119,9 +118,7 @@ class ChatTool(BaseTool):
         # Add context files if provided (using centralized file handling with filtering)
         if request.files:
             file_content = self._prepare_file_content_for_prompt(
-                request.files, 
-                request.continuation_id, 
-                "Context files"
+                request.files, request.continuation_id, "Context files"
             )
             if file_content:
                 user_content = f"{user_content}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ===="
