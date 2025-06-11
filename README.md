@@ -10,7 +10,7 @@
 
 The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini models (2.5 Pro for extended thinking, 2.0 Flash for speed) for code analysis, problem-solving, and collaborative development. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
 
-**Features true AI orchestration with conversation continuity across tool usage** - start a task with one tool, continue with another, and maintain full context throughout. Claude and Gemini can collaborate seamlessly across multiple interactions and different tools, creating a unified development experience.
+**Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex task and ask it to collaborate with Gemini. Claude will talk to Gemini, work on implementation, then automatically resume the conversation with Gemini while maintaining the full thread. Claude can switch between different Gemini tools (analyze → codereview → debug) and the conversation context carries forward seamlessly.
 
 **Think of it as Claude Code _for_ Claude Code.**
 
