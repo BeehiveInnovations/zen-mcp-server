@@ -23,7 +23,78 @@ After following this guide, you'll have:
 - ✅ **Linux** 
 - ✅ **Windows** (requires WSL2 for Claude Desktop)
 
-## 🚀 Setup Option 1: Clone & Run (Recommended)
+## 🚀 Setup Option 1: Published Docker Image (Fastest)
+
+**Quick setup using pre-built image from GitHub Container Registry - no build required!**
+
+### Step 1: Pull Published Image
+
+```bash
+# Download the latest stable version
+docker pull ghcr.io/patrykiti/gemini-mcp-server:latest
+
+# Optional: Pull a specific version
+docker pull ghcr.io/patrykiti/gemini-mcp-server:v1.2.0
+```
+
+### Step 2: Configure Claude Desktop
+
+**Find your Claude Desktop config file:**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows (WSL required)**: `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
+
+**Add this configuration:**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
+```
+
+### Step 3: Update Available Tags
+
+Available image tags:
+- `latest` - Most recent stable release
+- `v1.2.0`, `v1.1.0`, etc. - Specific version releases
+- `pr-{number}` - Development builds from pull requests
+- `main-{sha}` - Development builds from main branch
+
+```bash
+# See all available tags
+docker search ghcr.io/patrykiti/gemini-mcp-server
+
+# Or check GitHub Container Registry
+open https://github.com/PatrykIti/gemini-mcp-server/pkgs/container/gemini-mcp-server
+```
+
+### Step 4: Test Installation
+
+Restart Claude Desktop and try:
+```
+"Use gemini to say hello and confirm the connection works"
+```
+
+**Benefits of Published Image:**
+- ✅ **Instant setup** - No build time, no source code needed
+- ✅ **Always updated** - Automatically built with every release
+- ✅ **Smaller footprint** - No development dependencies
+- ✅ **Version control** - Pin to specific versions for stability
+- ✅ **Cross-platform** - Works on any Docker-supported OS
+
+---
+
+## 🛠️ Setup Option 2: Local Build (For Development)
 
 ### Step 1: Clone Repository
 

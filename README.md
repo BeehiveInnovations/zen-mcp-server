@@ -157,9 +157,9 @@ claude mcp list
 claude mcp remove gemini
 ```
 
-#### Docker Configuration (Copy from setup script output)
+#### Option A: Local Development Setup (using local Docker build)
 
-The setup script shows you the exact configuration. It looks like this:
+The setup script shows you the exact configuration for local development:
 
 ```json
 {
@@ -177,6 +177,41 @@ The setup script shows you the exact configuration. It looks like this:
   }
 }
 ```
+
+#### Option B: Published Docker Image (no local setup required)
+
+**Quick setup using the published Docker image from GitHub Container Registry:**
+
+```bash
+# Pull the latest published image
+docker pull ghcr.io/patrykiti/gemini-mcp-server:latest
+```
+
+**Claude Desktop Configuration:**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Benefits of using published image:**
+- ✅ **No local build required** - Download and run immediately
+- ✅ **Always latest stable version** - Automatically updated with releases
+- ✅ **Smaller local footprint** - No source code or build dependencies needed
+- ✅ **Easy updates** - Simply pull new image versions
+- ✅ **Cross-platform** - Works on any Docker-supported platform
 
 **How it works:**
 - **Docker Compose services** run continuously in the background

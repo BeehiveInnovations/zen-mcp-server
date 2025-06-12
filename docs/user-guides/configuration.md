@@ -28,6 +28,64 @@ Add to your Claude Desktop config file:
 
 **Location:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+### Configuration Options
+
+#### Option 1: Published Docker Image (Recommended)
+
+**Simplest setup using pre-built images from GitHub Container Registry:**
+
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Available Image Tags:**
+- `latest` - Most recent stable release (recommended)
+- `v1.2.0`, `v1.1.0` - Specific version tags
+- `pr-{number}` - Development builds from pull requests
+- `main-{commit-sha}` - Development builds from main branch
+
+**Benefits:**
+- ✅ No local build required - instant setup
+- ✅ Automatically updated with releases  
+- ✅ Smaller local footprint
+- ✅ Version pinning for stability
+- ✅ Cross-platform compatibility
+
+**Version Pinning Example:**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "ghcr.io/patrykiti/gemini-mcp-server:v1.2.0"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
+```
+
+#### Option 2: Local Development Build
 - **Windows (WSL)**: `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
 
 **Configuration:**
