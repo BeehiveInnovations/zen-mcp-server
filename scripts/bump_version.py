@@ -104,7 +104,6 @@ def main():
 
         # Output new version for GitHub Actions
         print(f"New version: {new_version}")
-        print(f"::set-output name=version::{new_version}")
 
     except Exception as e:
         print(f"Error: {e}")
