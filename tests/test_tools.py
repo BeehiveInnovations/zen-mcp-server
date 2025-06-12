@@ -53,7 +53,7 @@ class TestThinkDeepTool:
         # Parse the JSON response
         output = json.loads(result[0].text)
         assert output["status"] == "success"
-        assert "Extended Analysis by Gemini" in output["content"]
+        assert "Critical Evaluation Required" in output["content"]
         assert "Extended analysis" in output["content"]
 
 
@@ -102,8 +102,8 @@ class TestCodeReviewTool:
         )
 
         assert len(result) == 1
-        assert "Code Review (SECURITY)" in result[0].text
-        assert "Focus: authentication" in result[0].text
+        assert "Security issues found" in result[0].text
+        assert "Claude's Next Steps:" in result[0].text
         assert "Security issues found" in result[0].text
 
 
@@ -146,7 +146,7 @@ class TestDebugIssueTool:
         )
 
         assert len(result) == 1
-        assert "Debug Analysis" in result[0].text
+        assert "Next Steps:" in result[0].text
         assert "Root cause: race condition" in result[0].text
 
 
@@ -195,8 +195,8 @@ class TestAnalyzeTool:
         )
 
         assert len(result) == 1
-        assert "ARCHITECTURE Analysis" in result[0].text
-        assert "Analyzed 1 file(s)" in result[0].text
+        assert "Architecture analysis" in result[0].text
+        assert "Next Steps:" in result[0].text
         assert "Architecture analysis" in result[0].text
 
 

@@ -236,7 +236,7 @@ class TestConversationHistoryBugFix:
 
             # Should include follow-up instructions for new conversation
             # (This is the existing behavior for new conversations)
-            assert "If you'd like to ask a follow-up question" in captured_prompt
+            assert "CONVERSATION CONTINUATION" in captured_prompt
 
     @patch("tools.base.get_thread")
     @patch("tools.base.add_turn")

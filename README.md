@@ -503,6 +503,8 @@ To help choose the right tool for your needs:
 
 ### Thinking Modes & Token Budgets
 
+These only apply to models that support customizing token usage for extended thinking, such as Gemini 2.5 Pro.
+
 | Mode | Token Budget | Use Case | Cost Impact |
 |------|-------------|----------|-------------|
 | `minimal` | 128 tokens | Simple, straightforward tasks | Lowest cost |
@@ -540,17 +542,17 @@ To help choose the right tool for your needs:
 
 **Examples by scenario:**
 ```
-# Quick style check
-"Use o3 to review formatting in utils.py with minimal thinking"
+# Quick style check with o3
+"Use flash to review formatting in utils.py"
 
-# Security audit
+# Security audit with o3
 "Get o3 to do a security review of auth/ with thinking mode high"
 
-# Complex debugging
+# Complex debugging, letting claude pick the best model
 "Use zen to debug this race condition with max thinking mode"
 
-# Architecture analysis
-"Analyze the entire src/ directory architecture with high thinking using zen"
+# Architecture analysis with Gemini 2.5 Pro
+"Analyze the entire src/ directory architecture with high thinking using pro"
 ```
 
 ## Advanced Features

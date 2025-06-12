@@ -100,7 +100,7 @@ class CommunicationSimulator:
     def setup_test_environment(self) -> bool:
         """Setup fresh Docker environment"""
         try:
-            self.logger.info("🚀 Setting up test environment...")
+            self.logger.info("Setting up test environment...")
 
             # Create temporary directory for test files
             self.temp_dir = tempfile.mkdtemp(prefix="mcp_test_")
@@ -116,7 +116,7 @@ class CommunicationSimulator:
     def _setup_docker(self) -> bool:
         """Setup fresh Docker environment"""
         try:
-            self.logger.info("🐳 Setting up Docker environment...")
+            self.logger.info("Setting up Docker environment...")
 
             # Stop and remove existing containers
             self._run_command(["docker", "compose", "down", "--remove-orphans"], check=False, capture_output=True)
@@ -128,27 +128,27 @@ class CommunicationSimulator:
                 self._run_command(["docker", "rm", container], check=False, capture_output=True)
 
             # Build and start services
-            self.logger.info("📦 Building Docker images...")
+            self.logger.info("Building Docker images...")
             result = self._run_command(["docker", "compose", "build", "--no-cache"], capture_output=True)
             if result.returncode != 0:
                 self.logger.error(f"Docker build failed: {result.stderr}")
                 return False
 
-            self.logger.info("🚀 Starting Docker services...")
+            self.logger.info("Starting Docker services...")
             result = self._run_command(["docker", "compose", "up", "-d"], capture_output=True)
             if result.returncode != 0:
                 self.logger.error(f"Docker startup failed: {result.stderr}")
                 return False
 
             # Wait for services to be ready
-            self.logger.info("⏳ Waiting for services to be ready...")
+            self.logger.info("Waiting for services to be ready...")
             time.sleep(10)  # Give services time to initialize
 
             # Verify containers are running
             if not self._verify_containers():
                 return False
 
-            self.logger.info("✅ Docker environment ready")
+            self.logger.info("Docker environment ready")
             return True
 
         except Exception as e:
@@ -177,7 +177,7 @@ class CommunicationSimulator:
     def simulate_claude_cli_session(self) -> bool:
         """Simulate a complete Claude CLI session with conversation continuity"""
         try:
-            self.logger.info("🤖 Starting Claude CLI simulation...")
+            self.logger.info("Starting Claude CLI simulation...")
 
             # If specific tests are selected, run only those
             if self.selected_tests:
@@ -190,7 +190,7 @@ class CommunicationSimulator:
                 if not self._run_single_test(test_name):
                     return False
 
-            self.logger.info("✅ All tests passed")
+            self.logger.info("All tests passed")
             return True
 
         except Exception as e:
@@ -200,13 +200,13 @@ class CommunicationSimulator:
     def _run_selected_tests(self) -> bool:
         """Run only the selected tests"""
         try:
-            self.logger.info(f"🎯 Running selected tests: {', '.join(self.selected_tests)}")
+            self.logger.info(f"Running selected tests: {', '.join(self.selected_tests)}")
 
             for test_name in self.selected_tests:
                 if not self._run_single_test(test_name):
                     return False
 
-            self.logger.info("✅ All selected tests passed")
+            self.logger.info("All selected tests passed")
             return True
 
         except Exception as e:
@@ -221,14 +221,14 @@ class CommunicationSimulator:
                 self.logger.info(f"Available tests: {', '.join(self.available_tests.keys())}")
                 return False
 
-            self.logger.info(f"🧪 Running test: {test_name}")
+            self.logger.info(f"Running test: {test_name}")
             test_function = self.available_tests[test_name]
             result = test_function()
 
             if result:
-                self.logger.info(f"✅ Test {test_name} passed")
+                self.logger.info(f"Test {test_name} passed")
             else:
-                self.logger.error(f"❌ Test {test_name} failed")
+                self.logger.error(f"Test {test_name} failed")
 
             return result
 
@@ -244,12 +244,12 @@ class CommunicationSimulator:
                 self.logger.info(f"Available tests: {', '.join(self.available_tests.keys())}")
                 return False
 
-            self.logger.info(f"🧪 Running individual test: {test_name}")
+            self.logger.info(f"Running individual test: {test_name}")
 
             # Setup environment unless skipped
             if not skip_docker_setup:
                 if not self.setup_test_environment():
-                    self.logger.error("❌ Environment setup failed")
+                    self.logger.error("Environment setup failed")
                     return False
 
             # Run the single test
@@ -257,9 +257,9 @@ class CommunicationSimulator:
             result = test_function()
 
             if result:
-                self.logger.info(f"✅ Individual test {test_name} passed")
+                self.logger.info(f"Individual test {test_name} passed")
             else:
-                self.logger.error(f"❌ Individual test {test_name} failed")
+                self.logger.error(f"Individual test {test_name} failed")
 
             return result
 
@@ -282,40 +282,40 @@ class CommunicationSimulator:
     def print_test_summary(self):
         """Print comprehensive test results summary"""
         print("\\n" + "=" * 70)
-        print("🧪 ZEN MCP COMMUNICATION SIMULATOR - TEST RESULTS SUMMARY")
+        print("ZEN MCP COMMUNICATION SIMULATOR - TEST RESULTS SUMMARY")
         print("=" * 70)
 
         passed_count = sum(1 for result in self.test_results.values() if result)
         total_count = len(self.test_results)
 
         for test_name, result in self.test_results.items():
-            status = "✅ PASS" if result else "❌ FAIL"
+            status = "PASS" if result else "FAIL"
             # Get test description
             temp_instance = self.test_registry[test_name](verbose=False)
             description = temp_instance.test_description
-            print(f"📝 {description}: {status}")
+            print(f"{description}: {status}")
 
-        print(f"\\n🎯 OVERALL RESULT: {'🎉 SUCCESS' if passed_count == total_count else '❌ FAILURE'}")
-        print(f"✅ {passed_count}/{total_count} tests passed")
+        print(f"\\nOVERALL RESULT: {'SUCCESS' if passed_count == total_count else 'FAILURE'}")
+        print(f"{passed_count}/{total_count} tests passed")
         print("=" * 70)
         return passed_count == total_count
 
     def run_full_test_suite(self, skip_docker_setup: bool = False) -> bool:
         """Run the complete test suite"""
         try:
-            self.logger.info("🚀 Starting Zen MCP Communication Simulator Test Suite")
+            self.logger.info("Starting Zen MCP Communication Simulator Test Suite")
 
             # Setup
             if not skip_docker_setup:
                 if not self.setup_test_environment():
-                    self.logger.error("❌ Environment setup failed")
+                    self.logger.error("Environment setup failed")
                     return False
             else:
-                self.logger.info("⏩ Skipping Docker setup (containers assumed running)")
+                self.logger.info("Skipping Docker setup (containers assumed running)")
 
             # Main simulation
             if not self.simulate_claude_cli_session():
-                self.logger.error("❌ Claude CLI simulation failed")
+                self.logger.error("Claude CLI simulation failed")
                 return False
 
             # Print comprehensive summary
@@ -333,13 +333,13 @@ class CommunicationSimulator:
     def cleanup(self):
         """Cleanup test environment"""
         try:
-            self.logger.info("🧹 Cleaning up test environment...")
+            self.logger.info("Cleaning up test environment...")
 
             if not self.keep_logs:
                 # Stop Docker services
                 self._run_command(["docker", "compose", "down", "--remove-orphans"], check=False, capture_output=True)
             else:
-                self.logger.info("📋 Keeping Docker services running for log inspection")
+                self.logger.info("Keeping Docker services running for log inspection")
 
             # Remove temp directory
             if self.temp_dir and os.path.exists(self.temp_dir):
@@ -392,19 +392,19 @@ def run_individual_test(simulator, test_name, skip_docker):
         success = simulator.run_individual_test(test_name, skip_docker_setup=skip_docker)
 
         if success:
-            print(f"\\n🎉 INDIVIDUAL TEST {test_name.upper()}: PASSED")
+            print(f"\\nINDIVIDUAL TEST {test_name.upper()}: PASSED")
             return 0
         else:
-            print(f"\\n❌ INDIVIDUAL TEST {test_name.upper()}: FAILED")
+            print(f"\\nINDIVIDUAL TEST {test_name.upper()}: FAILED")
             return 1
 
     except KeyboardInterrupt:
-        print(f"\\n🛑 Individual test {test_name} interrupted by user")
+        print(f"\\nIndividual test {test_name} interrupted by user")
         if not skip_docker:
             simulator.cleanup()
         return 130
     except Exception as e:
-        print(f"\\n💥 Individual test {test_name} failed with error: {e}")
+        print(f"\\nIndividual test {test_name} failed with error: {e}")
         if not skip_docker:
             simulator.cleanup()
         return 1
@@ -416,20 +416,20 @@ def run_test_suite(simulator, skip_docker=False):
         success = simulator.run_full_test_suite(skip_docker_setup=skip_docker)
 
         if success:
-            print("\\n🎉 COMPREHENSIVE MCP COMMUNICATION TEST: PASSED")
+            print("\\nCOMPREHENSIVE MCP COMMUNICATION TEST: PASSED")
             return 0
         else:
-            print("\\n❌ COMPREHENSIVE MCP COMMUNICATION TEST: FAILED")
-            print("⚠️  Check detailed results above")
+            print("\\nCOMPREHENSIVE MCP COMMUNICATION TEST: FAILED")
+            print("Check detailed results above")
             return 1
 
     except KeyboardInterrupt:
-        print("\\n🛑 Test interrupted by user")
+        print("\\nTest interrupted by user")
         if not skip_docker:
             simulator.cleanup()
         return 130
     except Exception as e:
-        print(f"\\n💥 Unexpected error: {e}")
+        print(f"\\nUnexpected error: {e}")
         if not skip_docker:
             simulator.cleanup()
         return 1

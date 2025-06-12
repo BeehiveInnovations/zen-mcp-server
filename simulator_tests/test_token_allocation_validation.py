@@ -102,7 +102,7 @@ class TokenAllocationValidationTest(BaseSimulatorTest):
     def run_test(self) -> bool:
         """Test token allocation and conversation history functionality"""
         try:
-            self.logger.info("🔥 Test: Token allocation and conversation history validation")
+            self.logger.info(" Test: Token allocation and conversation history validation")
 
             # Setup test files
             self.setup_test_files()
@@ -282,7 +282,7 @@ if __name__ == "__main__":
                     step1_file_tokens = int(match.group(1))
                     break
 
-            self.logger.info(f"  📊 Step 1 File Processing - Embedded files: {step1_file_tokens:,} tokens")
+            self.logger.info(f"   Step 1 File Processing - Embedded files: {step1_file_tokens:,} tokens")
 
             # Validate that file1 is actually mentioned in the embedding logs (check for actual filename)
             file1_mentioned = any("math_functions.py" in log for log in file_embedding_logs_step1)
@@ -354,7 +354,7 @@ if __name__ == "__main__":
 
             latest_usage_step2 = usage_step2[-1]  # Get most recent usage
             self.logger.info(
-                f"  📊 Step 2 Token Usage - Total Capacity: {latest_usage_step2.get('total_capacity', 0):,}, "
+                f"   Step 2 Token Usage - Total Capacity: {latest_usage_step2.get('total_capacity', 0):,}, "
                 f"Conversation: {latest_usage_step2.get('conversation_tokens', 0):,}, "
                 f"Remaining: {latest_usage_step2.get('remaining_tokens', 0):,}"
             )
@@ -403,7 +403,7 @@ if __name__ == "__main__":
 
             latest_usage_step3 = usage_step3[-1]  # Get most recent usage
             self.logger.info(
-                f"  📊 Step 3 Token Usage - Total Capacity: {latest_usage_step3.get('total_capacity', 0):,}, "
+                f"   Step 3 Token Usage - Total Capacity: {latest_usage_step3.get('total_capacity', 0):,}, "
                 f"Conversation: {latest_usage_step3.get('conversation_tokens', 0):,}, "
                 f"Remaining: {latest_usage_step3.get('remaining_tokens', 0):,}"
             )
@@ -468,13 +468,13 @@ if __name__ == "__main__":
             criteria.append(("All continuation IDs are different", step_ids_different))
 
             # Log detailed analysis
-            self.logger.info("  📊 Token Processing Analysis:")
+            self.logger.info("   Token Processing Analysis:")
             self.logger.info(f"    Step 1 - File tokens: {step1_file_tokens:,} (new conversation)")
             self.logger.info(f"    Step 2 - Conversation: {step2_conversation:,}, Remaining: {step2_remaining:,}")
             self.logger.info(f"    Step 3 - Conversation: {step3_conversation:,}, Remaining: {step3_remaining:,}")
 
             # Log continuation ID analysis
-            self.logger.info("  📊 Continuation ID Analysis:")
+            self.logger.info("   Continuation ID Analysis:")
             self.logger.info(f"    Step 1 ID: {continuation_ids[0][:8]}... (generated)")
             self.logger.info(f"    Step 2 ID: {continuation_ids[1][:8]}... (generated from Step 1)")
             self.logger.info(f"    Step 3 ID: {continuation_ids[2][:8]}... (generated from Step 2)")
@@ -492,7 +492,7 @@ if __name__ == "__main__":
                 if ("embedded" in log.lower() and ("conversation" in log.lower() or "tool" in log.lower()))
             )
 
-            self.logger.info("  📊 File Processing in Step 3:")
+            self.logger.info("   File Processing in Step 3:")
             self.logger.info(f"    File1 (math_functions.py) mentioned: {file1_still_mentioned_step3}")
             self.logger.info(f"    File2 (calculator.py) mentioned: {file2_mentioned_step3}")
 
@@ -504,7 +504,7 @@ if __name__ == "__main__":
             passed_criteria = sum(1 for _, passed in criteria if passed)
             total_criteria = len(criteria)
 
-            self.logger.info(f"  📊 Validation criteria: {passed_criteria}/{total_criteria}")
+            self.logger.info(f"   Validation criteria: {passed_criteria}/{total_criteria}")
             for criterion, passed in criteria:
                 status = "✅" if passed else "❌"
                 self.logger.info(f"    {status} {criterion}")
@@ -516,11 +516,11 @@ if __name__ == "__main__":
 
             conversation_logs = [line for line in logs_step3.split("\n") if "conversation history" in line.lower()]
 
-            self.logger.info(f"  📊 File embedding logs: {len(file_embedding_logs)}")
-            self.logger.info(f"  📊 Conversation history logs: {len(conversation_logs)}")
+            self.logger.info(f"   File embedding logs: {len(file_embedding_logs)}")
+            self.logger.info(f"   Conversation history logs: {len(conversation_logs)}")
 
-            # Success criteria: At least 6 out of 8 validation criteria should pass
-            success = passed_criteria >= 6
+            # Success criteria: All validation criteria must pass
+            success = passed_criteria == total_criteria
 
             if success:
                 self.logger.info("  ✅ Token allocation validation test PASSED")

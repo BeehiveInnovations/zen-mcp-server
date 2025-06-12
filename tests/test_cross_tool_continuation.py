@@ -93,28 +93,23 @@ class TestCrossToolContinuation:
         self.review_tool = MockReviewTool()
 
     @patch("utils.conversation_memory.get_redis_client")
+    @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
     async def test_continuation_id_works_across_different_tools(self, mock_redis):
         """Test that a continuation_id from one tool can be used with another tool"""
         mock_client = Mock()
         mock_redis.return_value = mock_client
 
-        # Step 1: Analysis tool creates a conversation with follow-up
+        # Step 1: Analysis tool creates a conversation with continuation offer
         with patch.object(self.analysis_tool, "get_model_provider") as mock_get_provider:
             mock_provider = create_mock_provider()
             mock_provider.get_provider_type.return_value = Mock(value="google")
             mock_provider.supports_thinking_mode.return_value = False
-            # Include follow-up JSON in the content
-            content_with_followup = """Found potential security issues in authentication logic.
+            # Simple content without JSON follow-up
+            content = """Found potential security issues in authentication logic.
 
-```json
-{
-  "follow_up_question": "Would you like me to review these security findings in detail?",
-  "suggested_params": {"findings": "Authentication bypass vulnerability detected"},
-  "ui_hint": "Security review recommended"
-}
-```"""
+I'd be happy to review these security findings in detail if that would be helpful."""
             mock_provider.generate_content.return_value = Mock(
-                content=content_with_followup,
+                content=content,
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
                 metadata={"finish_reason": "STOP"},
@@ -126,8 +121,8 @@ class TestCrossToolContinuation:
             response = await self.analysis_tool.execute(arguments)
             response_data = json.loads(response[0].text)
 
-            assert response_data["status"] == "requires_continuation"
-            continuation_id = response_data["follow_up_request"]["continuation_id"]
+            assert response_data["status"] == "continuation_available"
+            continuation_id = response_data["continuation_offer"]["continuation_id"]
 
         # Step 2: Mock the existing thread context for the review tool
         # The thread was created by analysis_tool but will be continued by review_tool
@@ -139,10 +134,9 @@ class TestCrossToolContinuation:
             turns=[
                 ConversationTurn(
                     role="assistant",
-                    content="Found potential security issues in authentication logic.",
+                    content="Found potential security issues in authentication logic.\n\nI'd be happy to review these security findings in detail if that would be helpful.",
                     timestamp="2023-01-01T00:00:30Z",
                     tool_name="test_analysis",  # Original tool
-                    follow_up_question="Would you like me to review these security findings in detail?",
                 )
             ],
             initial_context={"code": "function authenticate(user) { return true; }"},
@@ -250,6 +244,7 @@ class TestCrossToolContinuation:
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch("utils.conversation_memory.get_thread")
+    @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
     async def test_cross_tool_conversation_with_files_context(self, mock_get_thread, mock_redis):
         """Test that file context is preserved across tool switches"""
         mock_client = Mock()

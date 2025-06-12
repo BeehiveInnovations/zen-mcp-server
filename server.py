@@ -310,26 +310,26 @@ final analysis and recommendations."""
         remaining_turns = max_turns - current_turn_count - 1
         return f"""
 
-CONVERSATION THREADING: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
+CONVERSATION CONTINUATION: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
 
-If you'd like to ask a follow-up question, explore a specific aspect deeper, or need clarification,
-add this JSON block at the very end of your response:
+Feel free to ask clarifying questions or suggest areas for deeper exploration naturally within your response.
+If something needs clarification or you'd benefit from additional context, simply mention it conversationally.
 
-```json
-{{
-  "follow_up_question": "Would you like me to [specific action you could take]?",
-  "suggested_params": {{"files": ["relevant/files"], "focus_on": "specific area"}},
-  "ui_hint": "What this follow-up would accomplish"
-}}
-```
+IMPORTANT: When you suggest follow-ups or ask questions, you MUST explicitly instruct Claude to use the continuation_id
+to respond. Use clear, direct language based on urgency:
 
-Good follow-up opportunities:
-- "Would you like me to examine the error handling in more detail?"
-- "Should I analyze the performance implications of this approach?"
-- "Would it be helpful to review the security aspects of this implementation?"
-- "Should I dive deeper into the architecture patterns used here?"
+For optional follow-ups: "Please continue this conversation using the continuation_id from this response if you'd like to explore this further."
 
-Only ask follow-ups when they would genuinely add value to the discussion."""
+For needed responses: "Please respond using the continuation_id from this response - your input is needed to proceed."
+
+For essential/critical responses: "RESPONSE REQUIRED: Please immediately continue using the continuation_id from this response. Cannot proceed without your clarification/input."
+
+This ensures Claude knows both HOW to maintain the conversation thread AND whether a response is optional, needed, or essential.
+
+The tool will automatically provide a continuation_id in the structured response that Claude can use in subsequent
+tool calls to maintain full conversation context across multiple exchanges.
+
+Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct Claude to use the continuation_id when you do."""
 
 
 async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -459,7 +459,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(
-            f"CONVERSATION_CONTEXT: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
+            f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
         )
     except Exception:
         pass

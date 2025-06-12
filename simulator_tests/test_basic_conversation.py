@@ -25,7 +25,7 @@ class BasicConversationTest(BaseSimulatorTest):
     def run_test(self) -> bool:
         """Test basic conversation flow with chat tool"""
         try:
-            self.logger.info("📝 Test: Basic conversation flow")
+            self.logger.info("Test: Basic conversation flow")
 
             # Setup test files
             self.setup_test_files()

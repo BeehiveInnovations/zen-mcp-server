@@ -32,13 +32,30 @@ class PerToolDeduplicationTest(BaseSimulatorTest):
         try:
             # Check both main server and log monitor for comprehensive logs
             cmd_server = ["docker", "logs", "--since", since_time, self.container_name]
-            cmd_monitor = ["docker", "logs", "--since", since_time, "gemini-mcp-log-monitor"]
+            cmd_monitor = ["docker", "logs", "--since", since_time, "zen-mcp-log-monitor"]
 
             result_server = subprocess.run(cmd_server, capture_output=True, text=True)
             result_monitor = subprocess.run(cmd_monitor, capture_output=True, text=True)
 
-            # Combine logs from both containers
-            combined_logs = result_server.stdout + "\n" + result_monitor.stdout
+            # Get the internal log files which have more detailed logging
+            server_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_server.log"], capture_output=True, text=True
+            )
+
+            activity_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_activity.log"], capture_output=True, text=True
+            )
+
+            # Combine all logs
+            combined_logs = (
+                result_server.stdout
+                + "\n"
+                + result_monitor.stdout
+                + "\n"
+                + server_log_result.stdout
+                + "\n"
+                + activity_log_result.stdout
+            )
             return combined_logs
         except Exception as e:
             self.logger.error(f"Failed to get docker logs: {e}")
@@ -177,7 +194,7 @@ def subtract(a, b):
             embedding_logs = [
                 line
                 for line in logs.split("\n")
-                if "📁" in line or "embedding" in line.lower() or "file" in line.lower()
+                if "[FILE_PROCESSING]" in line or "embedding" in line.lower() or "[FILES]" in line
             ]
 
             # Check for continuation evidence
@@ -190,11 +207,11 @@ def subtract(a, b):
             new_file_mentioned = any("new_feature.py" in line for line in logs.split("\n"))
 
             # Print diagnostic information
-            self.logger.info(f"  📊 Conversation logs found: {len(conversation_logs)}")
-            self.logger.info(f"  📊 File embedding logs found: {len(embedding_logs)}")
-            self.logger.info(f"  📊 Continuation logs found: {len(continuation_logs)}")
-            self.logger.info(f"  📊 Dummy file mentioned: {dummy_file_mentioned}")
-            self.logger.info(f"  📊 New file mentioned: {new_file_mentioned}")
+            self.logger.info(f"   Conversation logs found: {len(conversation_logs)}")
+            self.logger.info(f"   File embedding logs found: {len(embedding_logs)}")
+            self.logger.info(f"   Continuation logs found: {len(continuation_logs)}")
+            self.logger.info(f"   Dummy file mentioned: {dummy_file_mentioned}")
+            self.logger.info(f"   New file mentioned: {new_file_mentioned}")
 
             if self.verbose:
                 self.logger.debug("  📋 Sample embedding logs:")
@@ -218,9 +235,9 @@ def subtract(a, b):
             passed_criteria = sum(success_criteria)
             total_criteria = len(success_criteria)
 
-            self.logger.info(f"  📊 Success criteria met: {passed_criteria}/{total_criteria}")
+            self.logger.info(f"   Success criteria met: {passed_criteria}/{total_criteria}")
 
-            if passed_criteria >= 3:  # At least 3 out of 4 criteria
+            if passed_criteria == total_criteria:  # All criteria must pass
                 self.logger.info("  ✅ File deduplication workflow test: PASSED")
                 return True
             else:

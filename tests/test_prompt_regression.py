@@ -109,7 +109,7 @@ class TestPromptRegression:
             assert len(result) == 1
             output = json.loads(result[0].text)
             assert output["status"] == "success"
-            assert "Extended Analysis by Gemini" in output["content"]
+            assert "Critical Evaluation Required" in output["content"]
             assert "deeper analysis" in output["content"]
 
     @pytest.mark.asyncio
@@ -203,7 +203,7 @@ class TestPromptRegression:
             assert len(result) == 1
             output = json.loads(result[0].text)
             assert output["status"] == "success"
-            assert "Debug Analysis" in output["content"]
+            assert "Next Steps:" in output["content"]
             assert "Root cause" in output["content"]
 
     @pytest.mark.asyncio

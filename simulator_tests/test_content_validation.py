@@ -27,15 +27,32 @@ class ContentValidationTest(BaseSimulatorTest):
         try:
             # Check both main server and log monitor for comprehensive logs
             cmd_server = ["docker", "logs", "--since", since_time, self.container_name]
-            cmd_monitor = ["docker", "logs", "--since", since_time, "gemini-mcp-log-monitor"]
+            cmd_monitor = ["docker", "logs", "--since", since_time, "zen-mcp-log-monitor"]
 
             import subprocess
 
             result_server = subprocess.run(cmd_server, capture_output=True, text=True)
             result_monitor = subprocess.run(cmd_monitor, capture_output=True, text=True)
 
-            # Combine logs from both containers
-            combined_logs = result_server.stdout + "\n" + result_monitor.stdout
+            # Get the internal log files which have more detailed logging
+            server_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_server.log"], capture_output=True, text=True
+            )
+
+            activity_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_activity.log"], capture_output=True, text=True
+            )
+
+            # Combine all logs
+            combined_logs = (
+                result_server.stdout
+                + "\n"
+                + result_monitor.stdout
+                + "\n"
+                + server_log_result.stdout
+                + "\n"
+                + activity_log_result.stdout
+            )
             return combined_logs
         except Exception as e:
             self.logger.error(f"Failed to get docker logs: {e}")
@@ -140,19 +157,24 @@ DATABASE_CONFIG = {
 
             # Check for proper file embedding logs
             embedding_logs = [
-                line for line in logs.split("\n") if "📁" in line or "embedding" in line.lower() or "[FILES]" in line
+                line
+                for line in logs.split("\n")
+                if "[FILE_PROCESSING]" in line or "embedding" in line.lower() or "[FILES]" in line
             ]
 
             # Check for deduplication evidence
             deduplication_logs = [
                 line
                 for line in logs.split("\n")
-                if "skipping" in line.lower() and "already in conversation" in line.lower()
+                if ("skipping" in line.lower() and "already in conversation" in line.lower())
+                or "No new files to embed" in line
             ]
 
             # Check for file processing patterns
             new_file_logs = [
-                line for line in logs.split("\n") if "all 1 files are new" in line or "New conversation" in line
+                line
+                for line in logs.split("\n")
+                if "will embed new files" in line or "New conversation" in line or "[FILE_PROCESSING]" in line
             ]
 
             # Validation criteria
@@ -160,10 +182,10 @@ DATABASE_CONFIG = {
             embedding_found = len(embedding_logs) > 0
             (len(deduplication_logs) > 0 or len(new_file_logs) >= 2)  # Should see new conversation patterns
 
-            self.logger.info(f"  📊 Embedding logs found: {len(embedding_logs)}")
-            self.logger.info(f"  📊 Deduplication evidence: {len(deduplication_logs)}")
-            self.logger.info(f"  📊 New conversation patterns: {len(new_file_logs)}")
-            self.logger.info(f"  📊 Validation file mentioned: {validation_file_mentioned}")
+            self.logger.info(f"   Embedding logs found: {len(embedding_logs)}")
+            self.logger.info(f"   Deduplication evidence: {len(deduplication_logs)}")
+            self.logger.info(f"   New conversation patterns: {len(new_file_logs)}")
+            self.logger.info(f"   Validation file mentioned: {validation_file_mentioned}")
 
             # Log sample evidence for debugging
             if self.verbose and embedding_logs:
@@ -179,7 +201,7 @@ DATABASE_CONFIG = {
             ]
 
             passed_criteria = sum(1 for _, passed in success_criteria if passed)
-            self.logger.info(f"  📊 Success criteria met: {passed_criteria}/{len(success_criteria)}")
+            self.logger.info(f"   Success criteria met: {passed_criteria}/{len(success_criteria)}")
 
             # Cleanup
             os.remove(validation_file)

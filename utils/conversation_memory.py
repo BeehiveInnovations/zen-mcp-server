@@ -71,7 +71,6 @@ class ConversationTurn(BaseModel):
         role: "user" (Claude) or "assistant" (Gemini/O3/etc)
         content: The actual message content/response
         timestamp: ISO timestamp when this turn was created
-        follow_up_question: Optional follow-up question from assistant to Claude
         files: List of file paths referenced in this specific turn
         tool_name: Which tool generated this turn (for cross-tool tracking)
         model_provider: Provider used (e.g., "google", "openai")
@@ -82,7 +81,6 @@ class ConversationTurn(BaseModel):
     role: str  # "user" or "assistant"
     content: str
     timestamp: str
-    follow_up_question: Optional[str] = None
     files: Optional[list[str]] = None  # Files referenced in this turn
     tool_name: Optional[str] = None  # Tool used for this turn
     model_provider: Optional[str] = None  # Model provider (google, openai, etc)
@@ -231,7 +229,6 @@ def add_turn(
     thread_id: str,
     role: str,
     content: str,
-    follow_up_question: Optional[str] = None,
     files: Optional[list[str]] = None,
     tool_name: Optional[str] = None,
     model_provider: Optional[str] = None,
@@ -249,7 +246,6 @@ def add_turn(
         thread_id: UUID of the conversation thread
         role: "user" (Claude) or "assistant" (Gemini/O3/etc)
         content: The actual message/response content
-        follow_up_question: Optional follow-up question from assistant
         files: Optional list of files referenced in this turn
         tool_name: Name of the tool adding this turn (for attribution)
         model_provider: Provider used (e.g., "google", "openai")
@@ -287,7 +283,6 @@ def add_turn(
         role=role,
         content=content,
         timestamp=datetime.now(timezone.utc).isoformat(),
-        follow_up_question=follow_up_question,
         files=files,  # Preserved for cross-tool file context
         tool_name=tool_name,  # Track which tool generated this turn
         model_provider=model_provider,  # Track model provider
@@ -473,10 +468,11 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     logger.debug(f"[HISTORY]   Max history tokens: {max_history_tokens:,}")
 
     history_parts = [
-        "=== CONVERSATION HISTORY ===",
+        "=== CONVERSATION HISTORY (CONTINUATION) ===",
         f"Thread: {context.thread_id}",
         f"Tool: {context.tool_name}",  # Original tool that started the conversation
         f"Turn {total_turns}/{MAX_CONVERSATION_TURNS}",
+        "You are continuing this conversation thread from where it left off.",
         "",
     ]
 
@@ -622,10 +618,6 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         # Add the actual content
         turn_parts.append(turn.content)
 
-        # Add follow-up question if present
-        if turn.follow_up_question:
-            turn_parts.append(f"\n[Gemini's Follow-up: {turn.follow_up_question}]")
-
         # Calculate tokens for this turn
         turn_content = "\n".join(turn_parts)
         turn_tokens = model_context.estimate_tokens(turn_content)
@@ -660,7 +652,14 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         history_parts.append(f"\n[Note: Showing {included_turns} most recent turns out of {total_turns} total]")
 
     history_parts.extend(
-        ["", "=== END CONVERSATION HISTORY ===", "", "Continue this conversation by building on the previous context."]
+        [
+            "",
+            "=== END CONVERSATION HISTORY ===",
+            "",
+            "IMPORTANT: You are continuing an existing conversation thread. Build upon the previous exchanges shown above,",
+            "reference earlier points, and maintain consistency with what has been discussed.",
+            f"This is turn {len(all_turns) + 1} of the conversation - use the conversation history above to provide a coherent continuation.",
+        ]
     )
 
     # Calculate total tokens for the complete conversation history

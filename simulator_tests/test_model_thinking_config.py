@@ -135,7 +135,7 @@ class TestModelThinkingConfig(BaseSimulatorTest):
 
     def run_test(self) -> bool:
         """Run all model thinking configuration tests"""
-        self.logger.info(f"📝 Test: {self.test_description}")
+        self.logger.info(f" Test: {self.test_description}")
 
         try:
             # Test Pro model with thinking config
