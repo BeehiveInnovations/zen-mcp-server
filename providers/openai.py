@@ -1,5 +1,6 @@
 """OpenAI model provider implementation."""
 
+import json
 import logging
 from typing import Optional
 
@@ -124,7 +125,8 @@ class OpenAIModelProvider(ModelProvider):
 
         # Add any additional OpenAI-specific parameters
         for key, value in kwargs.items():
-            if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop"]:
+            # Skip empty keys and only include known OpenAI parameters
+            if key and key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop"]:
                 completion_params[key] = value
 
         try:
@@ -183,20 +185,26 @@ class OpenAIModelProvider(ModelProvider):
             headers["OpenAI-Organization"] = self.organization
 
         # Build the request payload
+        # Note: v1/responses API uses "input" instead of "prompt"
         payload = {
             "model": model_name,
-            "prompt": full_prompt,
+            "input": full_prompt,
             "temperature": temperature,
         }
 
-        # Add max tokens if specified
+        # Add max output tokens if specified
+        # Note: v1/responses uses "max_output_tokens" not "max_tokens"
         if max_output_tokens:
-            payload["max_tokens"] = max_output_tokens
+            payload["max_output_tokens"] = max_output_tokens
 
         # Add any additional parameters
         for key, value in kwargs.items():
-            if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop"]:
+            # Skip empty keys and only include known OpenAI parameters
+            if key and key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop"]:
                 payload[key] = value
+            elif not key:
+                # Log empty key detection
+                logging.warning(f"Detected empty key in kwargs with value: {value}")
 
         # Determine the API endpoint
         base_url = self.base_url or "https://api.openai.com"
@@ -212,26 +220,46 @@ class OpenAIModelProvider(ModelProvider):
 
         try:
             # Make API request
-            response = requests.post(endpoint, headers=headers, json=payload)
+            # Create clean payload to ensure no empty keys
+            clean_payload = {k: v for k, v in payload.items() if k}
+
+            # Manually serialize JSON to ensure proper formatting
+            json_data = json.dumps(clean_payload)
+
+            # Update headers for manual JSON
+            headers["Content-Length"] = str(len(json_data))
+
+            response = requests.post(endpoint, headers=headers, data=json_data)
             response.raise_for_status()
 
             data = response.json()
 
             # Extract content from response
-            # The v1/responses API may have different response structure
-            if "choices" in data and len(data["choices"]) > 0:
-                content = data["choices"][0].get("text", "")
-            elif "text" in data:
-                content = data["text"]
-            else:
-                content = data.get("response", "")
+            # The v1/responses API has a different structure than chat completions
+            content = ""
+            if "output" in data and isinstance(data["output"], list):
+                # Look for the message output item
+                for item in data["output"]:
+                    if item.get("type") == "message" and "content" in item:
+                        # Extract text from content array
+                        for content_item in item["content"]:
+                            if content_item.get("type") == "output_text" and "text" in content_item:
+                                content = content_item["text"]
+                                break
+                        if content:
+                            break
+
+            # Fallback for unexpected response structure
+            if not content:
+                content = str(data)
 
             # Extract usage information if available
             usage = {}
             if "usage" in data:
+                # v1/responses uses different field names
                 usage = {
-                    "input_tokens": data["usage"].get("prompt_tokens", 0),
-                    "output_tokens": data["usage"].get("completion_tokens", 0),
+                    "input_tokens": data["usage"].get("input_tokens", 0),
+                    "output_tokens": data["usage"].get("output_tokens", 0),
                     "total_tokens": data["usage"].get("total_tokens", 0),
                 }
 
@@ -244,8 +272,9 @@ class OpenAIModelProvider(ModelProvider):
                 metadata={
                     "model": data.get("model", model_name),
                     "id": data.get("id", ""),
-                    "created": data.get("created", 0),
+                    "created": data.get("created_at", 0),
                     "api_endpoint": "v1/responses",
+                    "status": data.get("status", ""),
                 },
             )
 
