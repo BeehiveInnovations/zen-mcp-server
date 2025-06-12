@@ -267,7 +267,7 @@ LOG_LEVEL=DEBUG docker compose up
        "gemini-dev": {
          "command": "docker",
          "args": [
-           "exec", "-i", "gemini-mcp-server", 
+           "exec", "-i", "zen-mcp-server", 
            "python", "server.py"
          ]
        }
@@ -341,7 +341,7 @@ def profile_function():
 
 ```bash
 # Monitor memory usage
-docker stats gemini-mcp-server
+docker stats zen-mcp-server
 
 # Profile memory in Python
 pip install memory-profiler

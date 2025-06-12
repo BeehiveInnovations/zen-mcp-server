@@ -97,7 +97,7 @@ Add to your Claude Desktop config file:
       "args": [
         "exec",
         "-i",
-        "gemini-mcp-server",
+        "zen-mcp-server",
         "python",
         "server.py"
       ]
@@ -110,7 +110,7 @@ Add to your Claude Desktop config file:
 
 ```bash
 # Add MCP server via CLI
-claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py
+claude mcp add gemini -s user -- docker exec -i zen-mcp-server python server.py
 
 # List servers
 claude mcp list
@@ -234,7 +234,7 @@ services:
 2. **File Access Issues**
    ```bash
    # Check mounted directory
-   docker exec -it gemini-mcp-server ls -la /workspace
+   docker exec -it zen-mcp-server ls -la /workspace
    ```
 
 3. **Redis Connection Issues**

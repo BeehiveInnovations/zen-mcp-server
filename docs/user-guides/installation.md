@@ -163,7 +163,7 @@ The setup script shows you the exact configuration. Add this to your Claude Desk
       "args": [
         "exec",
         "-i",
-        "gemini-mcp-server",
+        "zen-mcp-server",
         "python",
         "server.py"
       ]
@@ -199,7 +199,7 @@ services:
 
   gemini-mcp:
     image: ghcr.io/beehiveinnovations/zen-mcp-server:latest
-    container_name: gemini-mcp-server
+    container_name: zen-mcp-server
     restart: unless-stopped
     depends_on:
       - redis
@@ -251,7 +251,7 @@ The Docker setup automatically mounts your home directory as `/workspace`. This 
 # See if containers are running
 docker compose ps
 
-# Should show both 'gemini-mcp-redis' and 'gemini-mcp-server' as 'Up'
+# Should show both 'gemini-mcp-redis' and 'zen-mcp-server' as 'Up'
 ```
 
 ### View Logs
@@ -365,7 +365,7 @@ The setup uses Docker Compose to orchestrate two services:
    - Available at `redis:6379` within Docker network
    - Available at `localhost:6379` from host machine
 
-2. **Gemini MCP Server** (`gemini-mcp-server`)
+2. **Gemini MCP Server** (`zen-mcp-server`)
    - Built from local Dockerfile or pulled from GHCR
    - Automatically connects to Redis container
    - Your home directory mounted for file access

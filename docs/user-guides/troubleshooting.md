@@ -14,7 +14,7 @@ docker compose ps
 docker compose logs -f
 
 # Test API connectivity
-docker exec -it gemini-mcp-server python -c "import os; print('API Key set:', bool(os.getenv('GEMINI_API_KEY')))"
+docker exec -it zen-mcp-server python -c "import os; print('API Key set:', bool(os.getenv('GEMINI_API_KEY')))"
 ```
 
 ## Common Issues
@@ -104,7 +104,7 @@ docker exec -it gemini-mcp-redis redis-cli ping
 2. **Reset Redis data:**
    ```bash
    docker compose down
-   docker volume rm gemini-mcp-server_redis_data
+   docker volume rm zen-mcp-server_redis_data
    docker compose up -d
    ```
 
@@ -159,7 +159,7 @@ docker stats
 **Diagnosis:**
 ```bash
 # Check mounted directory
-docker exec -it gemini-mcp-server ls -la /workspace
+docker exec -it zen-mcp-server ls -la /workspace
 
 # Verify file permissions
 ls -la /path/to/your/file
@@ -300,7 +300,7 @@ Access container for inspection:
 
 ```bash
 # Enter MCP server container
-docker exec -it gemini-mcp-server bash
+docker exec -it zen-mcp-server bash
 
 # Check Python environment
 python --version
@@ -323,10 +323,10 @@ Check container networking:
 ```bash
 # Inspect Docker network
 docker network ls
-docker network inspect gemini-mcp-server_default
+docker network inspect zen-mcp-server_default
 
 # Test container communication
-docker exec -it gemini-mcp-server ping redis
+docker exec -it zen-mcp-server ping redis
 ```
 
 ### Clean Reset
@@ -338,7 +338,7 @@ Complete environment reset:
 docker compose down -v
 
 # Remove images
-docker rmi $(docker images "gemini-mcp-server*" -q)
+docker rmi $(docker images "zen-mcp-server*" -q)
 
 # Clean setup
 ./setup-docker.sh

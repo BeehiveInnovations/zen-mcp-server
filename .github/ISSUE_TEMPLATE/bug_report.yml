@@ -32,7 +32,7 @@ body:
       description: "Provide the exact steps to reproduce the behavior. Include the full command you ran."
       placeholder: |
         1. Create a file `test.py` with the content `def my_func(a,b)`
-        2. Run the command: `docker exec -i gemini-mcp-server python server.py`
+        2. Run the command: `docker exec -i zen-mcp-server python server.py`
         3. Use Claude Desktop with gemini codereview tool on test.py
         4. Observe the behavior...
     validations:
