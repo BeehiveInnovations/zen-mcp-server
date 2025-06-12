@@ -67,7 +67,7 @@ class ModelProviderRegistry:
         """Get provider instance for a specific model name.
 
         Args:
-            model_name: Name of the model (e.g., "gemini-2.0-flash-exp", "o3-mini")
+            model_name: Name of the model (e.g., "gemini-2.0-flash", "o3-mini")
 
         Returns:
             ModelProvider instance that supports this model
@@ -124,6 +124,50 @@ class ModelProviderRegistry:
             return None
 
         return os.getenv(env_var)
+
+    @classmethod
+    def get_preferred_fallback_model(cls) -> str:
+        """Get the preferred fallback model based on available API keys.
+
+        This method checks which providers have valid API keys and returns
+        a sensible default model for auto mode fallback situations.
+
+        Priority order:
+        1. OpenAI o3-mini (balanced performance/cost) if OpenAI API key available
+        2. Gemini 2.0 Flash (fast and efficient) if Gemini API key available
+        3. OpenAI o3 (high performance) if OpenAI API key available
+        4. Gemini 2.5 Pro (deep reasoning) if Gemini API key available
+        5. Fallback to gemini-2.0-flash (most common case)
+
+        Returns:
+            Model name string for fallback use
+        """
+        # Check provider availability by trying to get instances
+        openai_available = cls.get_provider(ProviderType.OPENAI) is not None
+        gemini_available = cls.get_provider(ProviderType.GOOGLE) is not None
+
+        # Priority order: prefer balanced models first, then high-performance
+        if openai_available:
+            return "o3-mini"  # Balanced performance/cost
+        elif gemini_available:
+            return "gemini-2.0-flash"  # Fast and efficient
+        else:
+            # No API keys available - return a reasonable default
+            # This maintains backward compatibility for tests
+            return "gemini-2.0-flash"
+
+    @classmethod
+    def get_available_providers_with_keys(cls) -> list[ProviderType]:
+        """Get list of provider types that have valid API keys.
+
+        Returns:
+            List of ProviderType values for providers with valid API keys
+        """
+        available = []
+        for provider_type in cls._providers:
+            if cls.get_provider(provider_type) is not None:
+                available.append(provider_type)
+        return available
 
     @classmethod
     def clear_cache(cls) -> None:

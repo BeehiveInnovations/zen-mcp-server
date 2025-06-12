@@ -23,7 +23,7 @@ if "OPENAI_API_KEY" not in os.environ:
 
 # Set default model to a specific value for tests to avoid auto mode
 # This prevents all tests from failing due to missing model parameter
-os.environ["DEFAULT_MODEL"] = "gemini-2.0-flash-exp"
+os.environ["DEFAULT_MODEL"] = "gemini-2.0-flash"
 
 # Force reload of config module to pick up the env var
 import importlib

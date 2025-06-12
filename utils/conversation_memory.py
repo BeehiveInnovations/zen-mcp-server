@@ -74,7 +74,7 @@ class ConversationTurn(BaseModel):
         files: List of file paths referenced in this specific turn
         tool_name: Which tool generated this turn (for cross-tool tracking)
         model_provider: Provider used (e.g., "google", "openai")
-        model_name: Specific model used (e.g., "gemini-2.0-flash-exp", "o3-mini")
+        model_name: Specific model used (e.g., "gemini-2.0-flash", "o3-mini")
         model_metadata: Additional model-specific metadata (e.g., thinking mode, token usage)
     """
 
@@ -249,7 +249,7 @@ def add_turn(
         files: Optional list of files referenced in this turn
         tool_name: Name of the tool adding this turn (for attribution)
         model_provider: Provider used (e.g., "google", "openai")
-        model_name: Specific model used (e.g., "gemini-2.0-flash-exp", "o3-mini")
+        model_name: Specific model used (e.g., "gemini-2.0-flash", "o3-mini")
         model_metadata: Additional model info (e.g., thinking mode, token usage)
 
     Returns:
@@ -454,10 +454,19 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
     # Get model-specific token allocation early (needed for both files and turns)
     if model_context is None:
-        from config import DEFAULT_MODEL
+        from config import DEFAULT_MODEL, IS_AUTO_MODE
         from utils.model_context import ModelContext
 
-        model_context = ModelContext(DEFAULT_MODEL)
+        # In auto mode, use an intelligent fallback model for token calculations
+        # since "auto" is not a real model with a provider
+        model_name = DEFAULT_MODEL
+        if IS_AUTO_MODE and model_name.lower() == "auto":
+            # Use intelligent fallback based on available API keys
+            from providers.registry import ModelProviderRegistry
+
+            model_name = ModelProviderRegistry.get_preferred_fallback_model()
+
+        model_context = ModelContext(model_name)
 
     token_allocation = model_context.calculate_token_allocation()
     max_file_tokens = token_allocation.file_tokens

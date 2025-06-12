@@ -45,7 +45,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Minimal thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content="Minimal thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -82,7 +82,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Low thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content="Low thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -114,7 +114,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Medium thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content="Medium thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -145,7 +145,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="High thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content="High thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -175,7 +175,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Max thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content="Max thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 

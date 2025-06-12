@@ -49,7 +49,7 @@ class TestModelProviderRegistry:
         """Test getting provider for a specific model"""
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
-        provider = ModelProviderRegistry.get_provider_for_model("gemini-2.0-flash-exp")
+        provider = ModelProviderRegistry.get_provider_for_model("gemini-2.0-flash")
 
         assert provider is not None
         assert isinstance(provider, GeminiModelProvider)
@@ -80,10 +80,10 @@ class TestGeminiProvider:
         """Test getting model capabilities"""
         provider = GeminiModelProvider(api_key="test-key")
 
-        capabilities = provider.get_capabilities("gemini-2.0-flash-exp")
+        capabilities = provider.get_capabilities("gemini-2.0-flash")
 
         assert capabilities.provider == ProviderType.GOOGLE
-        assert capabilities.model_name == "gemini-2.0-flash-exp"
+        assert capabilities.model_name == "gemini-2.0-flash"
         assert capabilities.max_tokens == 1_048_576
         assert not capabilities.supports_extended_thinking
 
@@ -103,13 +103,13 @@ class TestGeminiProvider:
         assert provider.validate_model_name("pro")
 
         capabilities = provider.get_capabilities("flash")
-        assert capabilities.model_name == "gemini-2.0-flash-exp"
+        assert capabilities.model_name == "gemini-2.0-flash"
 
     def test_supports_thinking_mode(self):
         """Test thinking mode support detection"""
         provider = GeminiModelProvider(api_key="test-key")
 
-        assert not provider.supports_thinking_mode("gemini-2.0-flash-exp")
+        assert not provider.supports_thinking_mode("gemini-2.0-flash")
         assert provider.supports_thinking_mode("gemini-2.5-pro-preview-06-05")
 
     @patch("google.genai.Client")
@@ -133,11 +133,11 @@ class TestGeminiProvider:
 
         provider = GeminiModelProvider(api_key="test-key")
 
-        response = provider.generate_content(prompt="Test prompt", model_name="gemini-2.0-flash-exp", temperature=0.7)
+        response = provider.generate_content(prompt="Test prompt", model_name="gemini-2.0-flash", temperature=0.7)
 
         assert isinstance(response, ModelResponse)
         assert response.content == "Generated content"
-        assert response.model_name == "gemini-2.0-flash-exp"
+        assert response.model_name == "gemini-2.0-flash"
         assert response.provider == ProviderType.GOOGLE
         assert response.usage["input_tokens"] == 10
         assert response.usage["output_tokens"] == 20

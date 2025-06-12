@@ -111,7 +111,7 @@ I'd be happy to review these security findings in detail if that would be helpfu
             mock_provider.generate_content.return_value = Mock(
                 content=content,
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.0-flash-exp",
+                model_name="gemini-2.0-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -158,7 +158,7 @@ I'd be happy to review these security findings in detail if that would be helpfu
             mock_provider.generate_content.return_value = Mock(
                 content="Critical security vulnerability confirmed. The authentication function always returns true, bypassing all security checks.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.0-flash-exp",
+                model_name="gemini-2.0-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -279,7 +279,7 @@ I'd be happy to review these security findings in detail if that would be helpfu
             mock_provider.generate_content.return_value = Mock(
                 content="Security review of auth.py shows vulnerabilities",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.0-flash-exp",
+                model_name="gemini-2.0-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider

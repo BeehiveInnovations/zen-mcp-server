@@ -41,7 +41,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -82,7 +82,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=normal_response, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=normal_response, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -106,7 +106,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=malformed_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=malformed_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -146,7 +146,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -233,7 +233,7 @@ class TestCollaborationWorkflow:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -272,7 +272,7 @@ class TestCollaborationWorkflow:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -299,7 +299,7 @@ class TestCollaborationWorkflow:
         """
 
         mock_provider.generate_content.return_value = Mock(
-            content=final_response, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
+            content=final_response, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
 
         result2 = await tool.execute(

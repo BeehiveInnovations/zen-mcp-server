@@ -13,7 +13,7 @@ class GeminiModelProvider(ModelProvider):
 
     # Model configurations
     SUPPORTED_MODELS = {
-        "gemini-2.0-flash-exp": {
+        "gemini-2.0-flash": {
             "max_tokens": 1_048_576,  # 1M tokens
             "supports_extended_thinking": False,
         },
@@ -22,7 +22,7 @@ class GeminiModelProvider(ModelProvider):
             "supports_extended_thinking": True,
         },
         # Shorthands
-        "flash": "gemini-2.0-flash-exp",
+        "flash": "gemini-2.0-flash",
         "pro": "gemini-2.5-pro-preview-06-05",
     }
 
