@@ -1,6 +1,6 @@
 # Zen MCP: One Context. Many Minds.
 
-  https://github.com/user-attachments/assets/a67099df-9387-4720-9b41-c986243ac11b
+https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
 
 <div align="center">  
   <b>🤖 Claude + [Gemini / O3 / or Both] = Your Ultimate AI Development Team</b>
