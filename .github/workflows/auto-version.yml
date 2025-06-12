@@ -57,7 +57,7 @@ jobs:
           echo "Detected non-versioned change - no version bump"
           echo "bump_type=none" >> $GITHUB_OUTPUT
           echo "should_bump=false" >> $GITHUB_OUTPUT
-        else:
+        else
           echo "No recognized prefix - no version bump"
           echo "bump_type=none" >> $GITHUB_OUTPUT
           echo "should_bump=false" >> $GITHUB_OUTPUT
