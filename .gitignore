@@ -172,3 +172,4 @@ memory-bank/
 # Claude local settings
 @.claude/
 @memory-bank/
+CLAUDE.md
