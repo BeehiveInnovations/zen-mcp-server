@@ -125,7 +125,7 @@ def configure_providers():
     At least one valid API key (Gemini or OpenAI) is required.
 
     Raises:
-        ValueError: If no valid API keys are found
+        ValueError: If no valid API keys are found or conflicting configurations detected
     """
     from providers import ModelProviderRegistry
     from providers.base import ProviderType
@@ -134,28 +134,59 @@ def configure_providers():
     from providers.openrouter import OpenRouterProvider
 
     valid_providers = []
+    has_native_apis = False
+    has_openrouter = False
 
     # Check for Gemini API key
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key and gemini_key != "your_gemini_api_key_here":
-        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
         valid_providers.append("Gemini")
+        has_native_apis = True
         logger.info("Gemini API key found - Gemini models available")
 
     # Check for OpenAI API key
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key and openai_key != "your_openai_api_key_here":
-        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         valid_providers.append("OpenAI (o3)")
+        has_native_apis = True
         logger.info("OpenAI API key found - o3 model available")
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
     if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
-        ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
         valid_providers.append("OpenRouter")
+        has_openrouter = True
         logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
 
+    # Check for conflicting configuration
+    if has_native_apis and has_openrouter:
+        logger.warning(
+            "\n" + "=" * 70 + "\n"
+            "WARNING: Both OpenRouter and native API keys detected!\n"
+            "\n"
+            "This creates ambiguity about which provider will be used for models\n"
+            "available through both APIs (e.g., 'o3' could come from OpenAI or OpenRouter).\n"
+            "\n"
+            "RECOMMENDATION: Use EITHER OpenRouter OR native APIs, not both.\n"
+            "\n"
+            "To fix this:\n"
+            "1. Use only OpenRouter: unset GEMINI_API_KEY and OPENAI_API_KEY\n"
+            "2. Use only native APIs: unset OPENROUTER_API_KEY\n"
+            "\n"
+            "Current configuration will prioritize native APIs over OpenRouter.\n" +
+            "=" * 70 + "\n"
+        )
+
+    # Register providers - native APIs first to ensure they take priority
+    if has_native_apis:
+        if gemini_key and gemini_key != "your_gemini_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+        if openai_key and openai_key != "your_openai_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+
+    # Register OpenRouter last so native APIs take precedence
+    if has_openrouter:
+        ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
     # Require at least one valid provider
     if not valid_providers:
@@ -167,6 +198,10 @@ def configure_providers():
         )
 
     logger.info(f"Available providers: {', '.join(valid_providers)}")
+
+    # Log provider priority if both are configured
+    if has_native_apis and has_openrouter:
+        logger.info("Provider priority: Native APIs (Gemini, OpenAI) will be checked before OpenRouter")
 
 
 @server.list_tools()
@@ -504,6 +539,22 @@ async def handle_get_version() -> list[TextContent]:
         "available_tools": list(TOOLS.keys()) + ["get_version"],
     }
 
+    # Check configured providers
+    from providers import ModelProviderRegistry
+    from providers.base import ProviderType
+    
+    configured_providers = []
+    if ModelProviderRegistry.get_provider(ProviderType.GOOGLE):
+        configured_providers.append("Gemini (flash, pro)")
+    if ModelProviderRegistry.get_provider(ProviderType.OPENAI):
+        configured_providers.append("OpenAI (o3, o3-mini)")
+    if ModelProviderRegistry.get_provider(ProviderType.OPENROUTER):
+        openrouter_allowed = os.getenv("OPENROUTER_ALLOWED_MODELS", "")
+        if openrouter_allowed:
+            configured_providers.append(f"OpenRouter (restricted to: {openrouter_allowed})")
+        else:
+            configured_providers.append("OpenRouter (ANY model on openrouter.ai)")
+
     # Format the information in a human-readable way
     text = f"""Zen MCP Server v{__version__}
 Updated: {__updated__}
@@ -515,6 +566,9 @@ Configuration:
 - Max Context: {MAX_CONTEXT_TOKENS:,} tokens
 - Python: {version_info["python_version"]}
 - Started: {version_info["server_started"]}
+
+Configured Providers:
+{chr(10).join(f"  - {provider}" for provider in configured_providers)}
 
 Available Tools:
 {chr(10).join(f"  - {tool}" for tool in version_info["available_tools"])}

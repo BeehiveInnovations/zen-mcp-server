@@ -98,9 +98,19 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Windows users**: WSL2 is required for Claude Code CLI
 
 ### 1. Get API Keys (at least one required)
+
+**Important:** Choose EITHER native APIs OR OpenRouter, not both:
+
+**Option A: Native APIs (Recommended)**
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
+
+**Option B: OpenRouter (Access multiple models with one API)**
 - **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/openrouter.md)
+  - Set `OPENROUTER_ALLOWED_MODELS` to restrict which models can be used (recommended)
+  - Leave empty to allow ANY model (warning: some models are expensive!)
+
+> **Note:** Using both OpenRouter and native APIs creates ambiguity about which provider serves each model. If both are configured, native APIs will take priority.
 
 ### 2. Clone and Set Up
 

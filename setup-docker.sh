@@ -118,6 +118,35 @@ if [ -n "${OPENROUTER_API_KEY:-}" ] && [ "$OPENROUTER_API_KEY" != "your_openrout
     echo "✅ Valid OPENROUTER_API_KEY found"
 fi
 
+# Check for conflicting configuration
+if [ "$VALID_OPENROUTER_KEY" = true ] && ([ "$VALID_GEMINI_KEY" = true ] || [ "$VALID_OPENAI_KEY" = true ]); then
+    echo ""
+    echo "⚠️  WARNING: Conflicting API configuration detected!"
+    echo ""
+    echo "You have configured both:"
+    echo "  - OpenRouter API key"
+    if [ "$VALID_GEMINI_KEY" = true ]; then
+        echo "  - Native Gemini API key"
+    fi
+    if [ "$VALID_OPENAI_KEY" = true ]; then
+        echo "  - Native OpenAI API key"
+    fi
+    echo ""
+    echo "This creates ambiguity about which provider to use for models available"
+    echo "through multiple APIs (e.g., 'o3' could come from OpenAI or OpenRouter)."
+    echo ""
+    echo "RECOMMENDATION: Use EITHER OpenRouter OR native APIs, not both."
+    echo ""
+    echo "To fix this, edit .env and:"
+    echo "  Option 1: Use only OpenRouter - comment out GEMINI_API_KEY and OPENAI_API_KEY"
+    echo "  Option 2: Use only native APIs - comment out OPENROUTER_API_KEY"
+    echo ""
+    echo "The server will start anyway, but native APIs will take priority over OpenRouter."
+    echo ""
+    # Give user time to read the warning
+    sleep 3
+fi
+
 # Require at least one valid API key
 if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ]; then
     echo ""

@@ -153,12 +153,20 @@ class BaseTool(ABC):
             Dict containing the model field JSON schema
         """
         from config import DEFAULT_MODEL, IS_AUTO_MODE, MODEL_CAPABILITIES_DESC
+        import os
+
+        # Check if OpenRouter is configured
+        has_openrouter = bool(os.getenv("OPENROUTER_API_KEY") and 
+                            os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here")
 
         if IS_AUTO_MODE:
             # In auto mode, model is required and we provide detailed descriptions
             model_desc_parts = ["Choose the best model for this task based on these capabilities:"]
             for model, desc in MODEL_CAPABILITIES_DESC.items():
                 model_desc_parts.append(f"- '{model}': {desc}")
+            
+            if has_openrouter:
+                model_desc_parts.append("\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter (e.g., 'gpt-4', 'claude-3-opus', 'mistral-large'). Check openrouter.ai/models for available models.")
 
             return {
                 "type": "string",
@@ -169,9 +177,15 @@ class BaseTool(ABC):
             # Normal mode - model is optional with default
             available_models = list(MODEL_CAPABILITIES_DESC.keys())
             models_str = ", ".join(f"'{m}'" for m in available_models)
+            
+            description = f"Model to use. Native models: {models_str}."
+            if has_openrouter:
+                description += " OpenRouter: Any model available on openrouter.ai (e.g., 'gpt-4', 'claude-3-opus', 'mistral-large')."
+            description += f" Defaults to '{DEFAULT_MODEL}' if not specified."
+            
             return {
                 "type": "string",
-                "description": f"Model to use. Available: {models_str}. Defaults to '{DEFAULT_MODEL}' if not specified.",
+                "description": description,
             }
 
     def get_default_temperature(self) -> float:
