@@ -38,7 +38,7 @@ Add to your Claude Desktop config file:
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
@@ -70,7 +70,7 @@ Add to your Claude Desktop config file:
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
@@ -92,7 +92,7 @@ Add to your Claude Desktop config file:
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "exec",

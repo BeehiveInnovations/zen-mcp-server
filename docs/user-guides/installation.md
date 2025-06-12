@@ -61,7 +61,7 @@ docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v1.2.0
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
@@ -158,7 +158,7 @@ The setup script shows you the exact configuration. Add this to your Claude Desk
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "exec",

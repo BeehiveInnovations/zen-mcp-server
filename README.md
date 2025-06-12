@@ -201,7 +201,7 @@ docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
@@ -223,7 +223,7 @@ You can customize the server behavior by adding additional environment variables
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
@@ -262,7 +262,7 @@ You can customize the server behavior by adding additional environment variables
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [...],
       "env": {
