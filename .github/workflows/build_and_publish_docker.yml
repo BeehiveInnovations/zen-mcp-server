@@ -121,6 +121,9 @@ jobs:
     - name: Update README with latest image info
       if: github.ref_type == 'tag' || (github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '')
       run: |
+        # Checkout main branch to avoid detached HEAD when pushing
+        git checkout main
+        git pull origin main
         # Extract the primary image tag for updating README
         if [[ "${{ github.ref_type }}" == "tag" ]]; then
           # For tag releases, use the version tag
@@ -183,8 +186,8 @@ jobs:
           🤖 Automated by GitHub Actions"
           fi
           
-          # Push changes back to the repository (handle detached HEAD state)
-          git push origin HEAD:main
+          # Push changes back to the repository
+          git push
           
           echo "### 📝 Documentation Updated" >> $GITHUB_STEP_SUMMARY
           echo "README.md and user guides have been automatically updated with the new Docker image tag: \`$LATEST_TAG\`" >> $GITHUB_STEP_SUMMARY
