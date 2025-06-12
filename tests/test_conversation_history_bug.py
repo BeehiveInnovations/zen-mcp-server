@@ -95,7 +95,7 @@ class TestConversationHistoryBugFix:
                 return Mock(
                     content="Response with conversation context",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-2.5-flash-preview-05-20",
                     metadata={"finish_reason": "STOP"},
                 )
 
@@ -155,7 +155,7 @@ class TestConversationHistoryBugFix:
                 return Mock(
                     content="Response without history",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-2.5-flash-preview-05-20",
                     metadata={"finish_reason": "STOP"},
                 )
 
@@ -193,7 +193,7 @@ class TestConversationHistoryBugFix:
                 return Mock(
                     content="New conversation response",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-2.5-flash-preview-05-20",
                     metadata={"finish_reason": "STOP"},
                 )
 
@@ -277,7 +277,7 @@ class TestConversationHistoryBugFix:
                 return Mock(
                     content="Analysis of new files complete",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-2.5-flash-preview-05-20",
                     metadata={"finish_reason": "STOP"},
                 )
 

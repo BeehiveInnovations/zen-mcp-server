@@ -75,7 +75,7 @@ async def test_conversation_history_field_mapping():
                         mock_provider = MagicMock()
                         mock_provider.get_capabilities.return_value = ModelCapabilities(
                             provider=ProviderType.GOOGLE,
-                            model_name="gemini-2.0-flash",
+                            model_name="gemini-2.5-flash-preview-05-20",
                             friendly_name="Gemini",
                             max_tokens=200000,
                             supports_extended_thinking=True,

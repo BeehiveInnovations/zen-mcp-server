@@ -13,26 +13,29 @@ class GeminiModelProvider(ModelProvider):
 
     # Model configurations
     SUPPORTED_MODELS = {
-        "gemini-2.0-flash": {
+        "gemini-2.5-flash-preview-05-20": {
             "max_tokens": 1_048_576,  # 1M tokens
-            "supports_extended_thinking": False,
+            "supports_extended_thinking": True,
+            "max_thinking_tokens": 24576,  # Flash 2.5 thinking budget limit
         },
         "gemini-2.5-pro-preview-06-05": {
             "max_tokens": 1_048_576,  # 1M tokens
             "supports_extended_thinking": True,
+            "max_thinking_tokens": 32768,  # Pro 2.5 thinking budget limit
         },
         # Shorthands
-        "flash": "gemini-2.0-flash",
+        "flash": "gemini-2.5-flash-preview-05-20",
         "pro": "gemini-2.5-pro-preview-06-05",
     }
 
-    # Thinking mode configurations for models that support it
+    # Thinking mode configurations - percentages of model's max_thinking_tokens
+    # These percentages work across all models that support thinking
     THINKING_BUDGETS = {
-        "minimal": 128,  # Minimum for 2.5 Pro - fast responses
-        "low": 2048,  # Light reasoning tasks
-        "medium": 8192,  # Balanced reasoning (default)
-        "high": 16384,  # Complex analysis
-        "max": 32768,  # Maximum reasoning depth
+        "minimal": 0.005,  # 0.5% of max - minimal thinking for fast responses
+        "low": 0.08,  # 8% of max - light reasoning tasks
+        "medium": 0.33,  # 33% of max - balanced reasoning (default)
+        "high": 0.67,  # 67% of max - complex analysis
+        "max": 1.0,  # 100% of max - full thinking budget
     }
 
     def __init__(self, api_key: str, **kwargs):
@@ -107,9 +110,12 @@ class GeminiModelProvider(ModelProvider):
         # Add thinking configuration for models that support it
         capabilities = self.get_capabilities(resolved_name)
         if capabilities.supports_extended_thinking and thinking_mode in self.THINKING_BUDGETS:
-            generation_config.thinking_config = types.ThinkingConfig(
-                thinking_budget=self.THINKING_BUDGETS[thinking_mode]
-            )
+            # Get model's max thinking tokens and calculate actual budget
+            model_config = self.SUPPORTED_MODELS.get(resolved_name)
+            if model_config and "max_thinking_tokens" in model_config:
+                max_thinking_tokens = model_config["max_thinking_tokens"]
+                actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
+                generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
         try:
             # Generate content
@@ -163,6 +169,23 @@ class GeminiModelProvider(ModelProvider):
         """Check if the model supports extended thinking mode."""
         capabilities = self.get_capabilities(model_name)
         return capabilities.supports_extended_thinking
+
+    def get_thinking_budget(self, model_name: str, thinking_mode: str) -> int:
+        """Get actual thinking token budget for a model and thinking mode."""
+        resolved_name = self._resolve_model_name(model_name)
+        model_config = self.SUPPORTED_MODELS.get(resolved_name, {})
+
+        if not model_config.get("supports_extended_thinking", False):
+            return 0
+
+        if thinking_mode not in self.THINKING_BUDGETS:
+            return 0
+
+        max_thinking_tokens = model_config.get("max_thinking_tokens", 0)
+        if max_thinking_tokens == 0:
+            return 0
+
+        return int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
 
     def _resolve_model_name(self, model_name: str) -> str:
         """Resolve model shorthand to full name."""

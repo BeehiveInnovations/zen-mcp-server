@@ -56,7 +56,7 @@ class TestServerTools:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content="Chat response", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Chat response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 

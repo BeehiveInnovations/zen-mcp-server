@@ -27,7 +27,15 @@ DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "auto")
 
 # Validate DEFAULT_MODEL and set to "auto" if invalid
 # Only include actually supported models from providers
-VALID_MODELS = ["auto", "flash", "pro", "o3", "o3-mini", "gemini-2.0-flash", "gemini-2.5-pro-preview-06-05"]
+VALID_MODELS = [
+    "auto",
+    "flash",
+    "pro",
+    "o3",
+    "o3-mini",
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-pro-preview-06-05",
+]
 if DEFAULT_MODEL not in VALID_MODELS:
     import logging
 
@@ -48,7 +56,7 @@ MODEL_CAPABILITIES_DESC = {
     "o3": "Strong reasoning (200K context) - Logical problems, code generation, systematic analysis",
     "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
     # Full model names also supported
-    "gemini-2.0-flash": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
+    "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
     "gemini-2.5-pro-preview-06-05": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
 }
 
