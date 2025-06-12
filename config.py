@@ -13,8 +13,7 @@ import os
 # Version and metadata
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
-# Test comment for workflow automation verification
-__version__ = "4.0.10"  # Semantic versioning: MAJOR.MINOR.PATCH
+__version__ = "4.0.0"  # Semantic versioning: MAJOR.MINOR.PATCH
 __updated__ = "2025-06-12"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
