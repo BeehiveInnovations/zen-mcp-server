@@ -27,7 +27,7 @@ with context carrying forward seamlessly.
 All within a single conversation thread! Gemini Pro in step 6 _knows_ what was recommended by O3 in step 3! Taking that context
 and review into consideration to aid with its pre-commit review.
 
-**Think of it as Claude Code _for_ Claude Code.**
+**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
 
 ## Quick Navigation
 
@@ -216,7 +216,6 @@ Just ask Claude naturally:
 > **Remember:** Claude remains in control — but **you** are the true orchestrator.  
 > You're the prompter, the guide, the signal.  
 > Your prompt decides when Claude brings in Gemini, Flash, O3 — or handles it solo. 
-> This MCP isn't magic. It's just **super-glue**.
 
 ## Available Tools
 
