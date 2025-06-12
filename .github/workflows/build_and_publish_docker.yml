@@ -160,8 +160,8 @@ jobs:
           All documentation now references the latest stable image.
 
           🤖 Automated by GitHub Actions"
-                    else
-                      git commit -m "docs: Update Docker image references for PR #${{ github.event.client_payload.pr_number }}
+          else
+            git commit -m "docs: Update Docker image references for PR #${{ github.event.client_payload.pr_number }}
 
           Automated update after Docker image publish for development build.
           Documentation updated to reference the latest development image.
