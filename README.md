@@ -214,8 +214,8 @@ Just ask Claude naturally:
 - "Brainstorm scaling strategies with pro. Study the code, pick your preferred strategy and debate with pro to settle on two best approaches" → Uses Gemini Pro specifically
 
 > **Remember:** Claude remains in control — but **you** are the true orchestrator.  
-> You're the prompter, the guide, the signal.  
-> Your prompt decides when Claude brings in Gemini, Flash, O3 — or handles it solo. 
+> You're the prompter, the guide, the puppeteer.  
+> Your prompt decides when Claude brings in Gemini, Flash, O3 — or handles it solo.
 
 ## Available Tools
 
