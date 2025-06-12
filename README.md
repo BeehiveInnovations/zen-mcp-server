@@ -393,8 +393,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - **Web search capability**: When enabled with `use_websearch`, can look up framework documentation, design patterns, and best practices relevant to the code being analyzed
 ### 7. `get_version` - Server Information
 ```
-"Use gemini for its version"
-"Get gemini to show server configuration"
+"Get zen to show server configuration"
 ```
 
 ## Tool Parameters
@@ -470,20 +469,25 @@ All tools that work with files support **both individual files and entire direct
 
 ### Design → Review → Implement
 ```
-"Design a real-time collaborative editor. Use gemini to think deeper about edge cases and scalability.
-Implement an improved version incorporating gemini's suggestions."
+Think hard about designing and developing a fun calculator app in swift. Review your design plans with o3, taking in
+their suggestions but keep the feature-set realistic and doable without adding bloat. Begin implementing and in between
+implementation, get a codereview done by Gemini Pro and chat with Flash if you need to for creative directions.   
 ```
 
 ### Code → Review → Fix
 ```
-"Implement JWT authentication. Get gemini to do a security review. Fix any issues gemini identifies and
-show me the secure implementation."
+Implement a new screen where the locations taken from the database display on a map, with pins falling from
+the top and landing with animation. Once done, codereview with gemini pro and o3 both and ask them to critique your
+work. Fix medium to critical bugs / concerns / issues and show me the final product
 ```
 
-### Debug → Analyze → Solution
+### Debug → Analyze → Solution → Precommit Check → Publish
 ```
-"Debug why our API crashes under load. Use gemini to analyze deeper with context from api/handlers/. Implement a
-fix based on gemini's root cause analysis."
+Take a look at these log files saved under subfolder/diagnostics.log there's a bug where the user says the app
+crashes at launch. Think hard and go over each line, tallying it with corresponding code within the project. After
+you've performed initial investigation, ask gemini pro to analyze the log files and the related code where you 
+suspect lies the bug and then formulate and implement a bare minimal fix. Must not regress. Perform a precommit
+with zen in the end using gemini pro to confirm we're okay to publish the fix 
 ```
 
 ### Tool Selection Guidance
