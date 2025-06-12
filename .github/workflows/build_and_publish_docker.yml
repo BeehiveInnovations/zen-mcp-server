@@ -132,13 +132,13 @@ jobs:
         echo "Updating README.md with latest Docker image: $LATEST_TAG"
         
         # Update README.md with the latest image tag
-        sed -i.bak "s|ghcr\.io/patrykiti/gemini-mcp-server:[a-zA-Z0-9\.-]*|$LATEST_TAG|g" README.md
+        sed -i.bak "s|ghcr\.io/${{ github.repository_owner }}/gemini-mcp-server:[a-zA-Z0-9\._-]*|$LATEST_TAG|g" README.md
         
         # Also update docs/user-guides/installation.md
-        sed -i.bak "s|ghcr\.io/patrykiti/gemini-mcp-server:[a-zA-Z0-9\.-]*|$LATEST_TAG|g" docs/user-guides/installation.md
+        sed -i.bak "s|ghcr\.io/${{ github.repository_owner }}/gemini-mcp-server:[a-zA-Z0-9\._-]*|$LATEST_TAG|g" docs/user-guides/installation.md
         
         # Also update docs/user-guides/configuration.md  
-        sed -i.bak "s|ghcr\.io/patrykiti/gemini-mcp-server:[a-zA-Z0-9\.-]*|$LATEST_TAG|g" docs/user-guides/configuration.md
+        sed -i.bak "s|ghcr\.io/${{ github.repository_owner }}/gemini-mcp-server:[a-zA-Z0-9\._-]*|$LATEST_TAG|g" docs/user-guides/configuration.md
         
         # Check if there are any changes
         if git diff --quiet README.md docs/user-guides/installation.md docs/user-guides/configuration.md; then
