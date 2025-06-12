@@ -2,16 +2,27 @@
 
 **Please ensure your PR title follows one of these formats:**
 
+### Version Bumping Prefixes (trigger Docker build + version bump):
 - `feat: <description>` - New features (triggers MINOR version bump)
 - `fix: <description>` - Bug fixes (triggers PATCH version bump)
 - `breaking: <description>` or `BREAKING CHANGE: <description>` - Breaking changes (triggers MAJOR version bump)
 - `perf: <description>` - Performance improvements (triggers PATCH version bump)
 - `refactor: <description>` - Code refactoring (triggers PATCH version bump)
-- `docs: <description>` - Documentation only (no version bump)
-- `chore: <description>` - Maintenance tasks (no version bump)
-- `test: <description>` - Test additions/changes (no version bump)
-- `ci: <description>` - CI/CD changes (no version bump)
-- `style: <description>` - Code style changes (no version bump)
+
+### Non-Version Prefixes (no version bump):
+- `docs: <description>` - Documentation only
+- `chore: <description>` - Maintenance tasks
+- `test: <description>` - Test additions/changes
+- `ci: <description>` - CI/CD changes
+- `style: <description>` - Code style changes
+
+### Docker Build Options:
+- `docker: <description>` - Force Docker build without version bump
+- `docs+docker: <description>` - Documentation + Docker build
+- `chore+docker: <description>` - Maintenance + Docker build
+- `test+docker: <description>` - Tests + Docker build
+- `ci+docker: <description>` - CI changes + Docker build
+- `style+docker: <description>` - Style changes + Docker build
 
 ## Description
 

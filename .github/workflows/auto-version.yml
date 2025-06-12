@@ -45,22 +45,37 @@ jobs:
           echo "Detected BREAKING CHANGE - major version bump"
           echo "bump_type=major" >> $GITHUB_OUTPUT
           echo "should_bump=true" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
         elif [[ "$PR_TITLE_LOWER" =~ ^feat: ]]; then
           echo "Detected new feature - minor version bump"
           echo "bump_type=minor" >> $GITHUB_OUTPUT
           echo "should_bump=true" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
         elif [[ "$PR_TITLE_LOWER" =~ ^(fix|perf|refactor): ]]; then
           echo "Detected fix/perf/refactor - patch version bump"
           echo "bump_type=patch" >> $GITHUB_OUTPUT
           echo "should_bump=true" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
+        elif [[ "$PR_TITLE_LOWER" =~ ^docker: ]]; then
+          echo "Detected docker build request - no version bump but build Docker"
+          echo "bump_type=none" >> $GITHUB_OUTPUT
+          echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
+        elif [[ "$PR_TITLE_LOWER" =~ ^(docs|chore|test|ci|style)\+docker: ]]; then
+          echo "Detected non-versioned change with Docker build request"
+          echo "bump_type=none" >> $GITHUB_OUTPUT
+          echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
         elif [[ "$PR_TITLE_LOWER" =~ ^(docs|chore|test|ci|style): ]]; then
           echo "Detected non-versioned change - no version bump"
           echo "bump_type=none" >> $GITHUB_OUTPUT
           echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=false" >> $GITHUB_OUTPUT
         else
           echo "No recognized prefix - no version bump"
           echo "bump_type=none" >> $GITHUB_OUTPUT
           echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=false" >> $GITHUB_OUTPUT
         fi
     
     - name: Get current version
@@ -149,6 +164,21 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
+    - name: Trigger Docker build
+      if: steps.bump_type.outputs.should_build_docker == 'true'
+      run: |
+        echo "🐳 Triggering Docker build and publish workflow"
+        # The Docker workflow will be triggered by the tag creation (if version bumped)
+        # or by repository_dispatch (if docker: prefix without version bump)
+        if [ "${{ steps.bump_type.outputs.should_bump }}" == "false" ]; then
+          # For docker: prefix without version bump, trigger via repository_dispatch
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/dispatches" \
+            -d '{"event_type":"docker-build","client_payload":{"pr_number":"${{ github.event.pull_request.number }}","pr_title":"${{ github.event.pull_request.title }}","commit_sha":"${{ github.sha }}"}}'
+        fi
+
     - name: Summary
       run: |
         if [ "${{ steps.bump_type.outputs.should_bump }}" == "true" ]; then
@@ -159,6 +189,14 @@ jobs:
           echo "- **Bump type**: ${{ steps.bump_type.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag**: v${{ steps.new_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker**: Will build and publish with new tag" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ steps.bump_type.outputs.should_build_docker }}" == "true" ]; then
+          echo "### 🐳 Docker Build Requested" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No version bump but Docker image will be built and published." >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Title**: ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker tag**: Based on commit SHA" >> $GITHUB_STEP_SUMMARY
         else
           echo "### ℹ️ No Version Bump Required" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
