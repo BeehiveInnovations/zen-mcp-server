@@ -390,7 +390,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Supports specialized analysis types: architecture, performance, security, quality
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
-- **Web search capability**: When enabled with `use_websearch`, can look up framework documentation, design patterns, and best practices relevant to the code being analyzed
+- **Web search capability**: When enabled with `use_websearch`, the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
 ### 7. `get_version` - Server Information
 ```
 "Get zen to show its version"
@@ -409,7 +409,7 @@ All tools that work with files support **both individual files and entire direct
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for documentation and best practices (default: false)
+- `use_websearch`: Enable web search for documentation and best practices - allows model to request Claude perform searches (default: true)
 
 ```
 "Analyze the src/ directory for architectural patterns" (auto mode picks best model)
@@ -442,7 +442,7 @@ All tools that work with files support **both individual files and entire direct
 - `runtime_info`: Environment details
 - `previous_attempts`: What you've tried
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for error messages and solutions (default: false)
+- `use_websearch`: Enable web search for error messages and solutions - allows model to request Claude perform searches (default: true)
 
 ```
 "Debug this logic error with context from backend/" (auto mode picks best model)
@@ -457,7 +457,7 @@ All tools that work with files support **both individual files and entire direct
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
 - `thinking_mode`: minimal|low|medium|high|max (default: max, Gemini only)
-- `use_websearch`: Enable web search for documentation and insights (default: false)
+- `use_websearch`: Enable web search for documentation and insights - allows model to request Claude perform searches (default: true)
 
 ```
 "Think deeper about my design with reference to src/models/" (auto mode picks best model)
@@ -705,24 +705,11 @@ Claude can then search for these specific topics and provide you with the most c
 - More collaborative approach between the two AI assistants
 - Reduces hallucination by encouraging verification of assumptions
 
-**Disabling web search:**
-If you prefer Gemini to work only with its training data, you can disable web search:
+**Web search control:**
+Web search is enabled by default, allowing models to request Claude perform searches for current documentation and solutions. If you prefer the model to work only with its training data, you can disable web search:
 ```
 "Use gemini to review this code with use_websearch false"
 ```
-
-### Standardized Response Format
-All tools now return structured JSON responses for consistent handling:
-```json
-{
-  "status": "success|error|requires_clarification",
-  "content": "The actual response content",
-  "content_type": "text|markdown|json",
-  "metadata": {"tool_name": "analyze", ...}
-}
-```
-
-This enables better integration, error handling, and support for the dynamic context request feature.
 
 ## Configuration
 

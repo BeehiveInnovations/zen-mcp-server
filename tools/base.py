@@ -60,8 +60,8 @@ class ToolRequest(BaseModel):
         description="Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
     )
     use_websearch: Optional[bool] = Field(
-        False,
-        description="Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+        True,
+        description="Enable web search for documentation, best practices, and current information. When enabled, the model can request Claude to perform web searches and share results back during conversations. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
     )
     continuation_id: Optional[str] = Field(
         None,
@@ -473,7 +473,7 @@ class BaseTool(ABC):
 
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
         """
-        Generate web search instruction based on the use_websearch parameter.
+        Generate standardized web search instruction based on the use_websearch parameter.
 
         Args:
             use_websearch: Whether web search is enabled
@@ -487,30 +487,39 @@ class BaseTool(ABC):
 
         base_instruction = """
 
-WEB SEARCH REASONING: As you analyze this request, consider whether web searches would enhance your response.
-If you identify areas where current documentation, API references, or community solutions would be valuable,
-please note in your response what specific searches Claude should perform and why they would be helpful."""
+WEB SEARCH CAPABILITY: You can request Claude to perform web searches to enhance your analysis with current information!
+
+IMPORTANT: When you identify areas where web searches would significantly improve your response (such as checking current documentation, finding recent solutions, verifying best practices, or gathering community insights), you MUST explicitly instruct Claude to perform specific web searches and then respond back using the continuation_id from this response to continue the analysis.
+
+Use clear, direct language based on the value of the search:
+
+For valuable supplementary information: "Please perform a web search on '[specific topic/query]' and then continue this analysis using the continuation_id from this response if you find relevant information."
+
+For important missing information: "Please search for '[specific topic/query]' and respond back with the findings using the continuation_id from this response - this information is needed to provide a complete analysis."
+
+For critical/essential information: "SEARCH REQUIRED: Please immediately perform a web search on '[specific topic/query]' and respond back with the results using the continuation_id from this response. Cannot provide accurate analysis without this current information."
+
+This ensures you get the most current and comprehensive information while maintaining conversation context through the continuation_id."""
 
         if tool_specific:
             return f"""{base_instruction}
 
 {tool_specific}
 
-In your response, if web searches would be beneficial, include a section like:
-**Recommended Web Searches for Claude:**
-- [Specific topic/framework/library] - to verify/understand/confirm [specific aspect]
-- [Another search topic] - to explore [specific concern or feature]"""
+When recommending searches, be specific about what information you need and why it would improve your analysis."""
 
         # Default instruction for all tools
         return f"""{base_instruction}
 
-Consider searches for:
-- Current documentation and best practices
-- Similar issues and community solutions
-- API references and usage examples
-- Recent developments and updates
+Consider requesting searches for:
+- Current documentation and API references
+- Recent best practices and patterns
+- Known issues and community solutions
+- Framework updates and compatibility
+- Security advisories and patches
+- Performance benchmarks and optimizations
 
-If any of these would strengthen your analysis, specify what Claude should search for and why."""
+When recommending searches, be specific about what information you need and why it would improve your analysis. Always remember to instruct Claude to use the continuation_id from this response when providing search results."""
 
     @abstractmethod
     def get_request_model(self):
