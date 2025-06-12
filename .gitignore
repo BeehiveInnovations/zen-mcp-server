@@ -160,8 +160,16 @@ htmlcov/
 coverage.xml
 .pytest_cache/
 
-# Test simulation artifacts (dynamically created during testing)
-test_simulation_files/.claude/
+# Additional files
+run-gemini-mcp.sh
+gemini-repo.md
+.mcp.json
+.claude
 
-# Temporary test directories
-test-setup/
+# Memory Bank (optional - can be committed for shared context)
+memory-bank/
+
+# Claude local settings
+@.claude/
+@memory-bank/
+CLAUDE.md

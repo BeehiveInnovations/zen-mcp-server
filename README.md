@@ -8,6 +8,8 @@
 
 <br/>
 
+> **📚 [Comprehensive Documentation Available](docs/)** - This README provides quick start instructions. For detailed guides, API references, architecture documentation, and development workflows, see our [complete documentation](docs/).
+
 The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini models (2.5 Pro for extended thinking, 2.0 Flash for speed) for code analysis, problem-solving, and collaborative development. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
 
 **Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex task and ask it to collaborate with Gemini. 
@@ -31,6 +33,12 @@ For example, in the video above, Claude was asked to debate SwiftUI vs UIKit wit
   - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes with Docker
   - [Available Tools](#available-tools) - Overview of all tools
   - [AI-to-AI Conversations](#ai-to-ai-conversation-threading) - Multi-turn conversations
+
+- **📚 Detailed Documentation** ([View All](docs/))
+  - **For Users**: [Installation](docs/user-guides/installation.md) | [Configuration](docs/user-guides/configuration.md) | [Troubleshooting](docs/user-guides/troubleshooting.md)
+  - **For Developers**: [Setup](docs/contributing/setup.md) | [Workflows](docs/contributing/workflows.md) | [Code Style](docs/contributing/code-style.md) | [Testing](docs/contributing/testing.md)
+  - **For Architects**: [System Design](docs/architecture/overview.md) | [Components](docs/architecture/components.md) | [Data Flow](docs/architecture/data-flow.md)
+  - **API Reference**: [MCP Protocol](docs/api/mcp-protocol.md) | [Tool APIs](docs/api/tools/)
 
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
@@ -981,97 +989,84 @@ To modify tool behavior, you can:
 
 ## Contributing
 
-We welcome contributions! The modular architecture makes it easy to add new tools:
+We welcome contributions! This project follows comprehensive development workflows and quality standards.
 
+**Quick Start for Contributors:**
 1. Create a new tool in `tools/`
 2. Inherit from `BaseTool`
 3. Implement required methods (including `get_system_prompt()`)
 4. Add your system prompt to `prompts/tool_prompts.py`
 5. Register your tool in `TOOLS` dict in `server.py`
 
+**For detailed contribution guidelines, see:**
+- **[Development Setup Guide](docs/contributing/setup.md)** - Environment setup and dependencies
+- **[Development Workflows](docs/contributing/workflows.md)** - Git processes, Memory Bank integration, testing workflows
+- **[Code Style Guide](docs/contributing/code-style.md)** - Python standards, type hints, security practices
+- **[Testing Strategy](docs/contributing/testing.md)** - TDD approach, testing frameworks, quality assurance
+- **[Repository Overview](docs/contributing/file-overview.md)** - Understanding the codebase structure
+
 See existing tools for examples.
 
 ## Testing
 
-### Unit Tests (No API Key Required)
-The project includes comprehensive unit tests that use mocks and don't require a Gemini API key:
+The project includes comprehensive testing strategies covering unit tests, integration tests, and quality assurance.
 
+### Quick Testing
 ```bash
-# Run all unit tests
+# Run all unit tests (no API key required)
 python -m pytest tests/ --ignore=tests/test_live_integration.py -v
 
 # Run with coverage
 python -m pytest tests/ --ignore=tests/test_live_integration.py --cov=. --cov-report=html
-```
 
-### Live Integration Tests (API Key Required)
-To test actual API integration:
-
-```bash
-# Set your API key
+# Live integration tests (API key required)
 export GEMINI_API_KEY=your-api-key-here
-
-# Run live integration tests
 python tests/test_live_integration.py
 ```
 
-### GitHub Actions CI/CD
-The project includes GitHub Actions workflows that:
+### CI/CD Pipeline
+- **✅ Unit tests** - Automated, no API key needed
+- **✅ Multi-Python support** - Tests Python 3.10, 3.11, 3.12
+- **✅ Code quality checks** - Linting and formatting
+- **🔒 Live tests** - Optional integration verification
 
-- **✅ Run unit tests automatically** - No API key needed, uses mocks
-- **✅ Test on Python 3.10, 3.11, 3.12** - Ensures compatibility
-- **✅ Run linting and formatting checks** - Maintains code quality  
-- **🔒 Run live tests only if API key is available** - Optional live verification
-
-The CI pipeline works without any secrets and will pass all tests using mocked responses. Live integration tests only run if a `GEMINI_API_KEY` secret is configured in the repository.
+**For comprehensive testing documentation, see:**
+- **[Testing Strategy Guide](docs/contributing/testing.md)** - TDD methodology, test categories, quality gates
+- **[Test Structure Analysis](docs/contributing/test-structure.md)** - Detailed analysis of existing 17-file test suite
+- **[Development Workflows](docs/contributing/workflows.md)** - Testing integration with git processes
 
 ## Troubleshooting
 
-### Docker Issues
+### Common Issues
 
-**"Connection failed" in Claude Desktop**
-- Ensure Docker services are running: `docker compose ps`
-- Check if the container name is correct: `docker ps` to see actual container names
-- Verify your .env file has the correct GEMINI_API_KEY
-
-**"GEMINI_API_KEY environment variable is required"**
-- Edit your .env file and add your API key
-- Restart services: `docker compose restart`
-
-**Container fails to start**
-- Check logs: `docker compose logs gemini-mcp`
-- Ensure Docker has enough resources (memory/disk space)
-- Try rebuilding: `docker compose build --no-cache`
-
-**"spawn ENOENT" or execution issues**
-- Verify the container is running: `docker compose ps`
-- Check that Docker Desktop is running
-- On Windows: Ensure WSL2 is properly configured for Docker
-
-**Testing your Docker setup:**
+**Docker Connection Problems:**
 ```bash
-# Check if services are running
+# Check services status
 docker compose ps
 
-# Test manual connection
-docker exec -i gemini-mcp-server-gemini-mcp-1 echo "Connection test"
+# Verify container connectivity
+docker exec -i gemini-mcp-server echo "Connection test"
 
-# View logs
+# View logs for errors
 docker compose logs -f
 ```
 
-**Conversation threading not working?**
-If you're not seeing follow-up questions from Gemini:
+**Configuration Issues:**
+- API key not set: Check your `.env` file
+- File access issues: Verify mounted directories
+- Redis connectivity: Test with `docker exec -it gemini-mcp-redis redis-cli ping`
+
+**Debug Mode:**
 ```bash
-# Check if Redis is running
-docker compose logs redis
-
-# Test conversation memory system
-docker exec -i gemini-mcp-server-gemini-mcp-1 python debug_conversation.py
-
-# Check for threading errors in logs
-docker compose logs gemini-mcp | grep "threading failed"
+# Enable detailed logging
+echo "LOG_LEVEL=DEBUG" >> .env
+docker compose restart
 ```
+
+**For comprehensive troubleshooting, see:**
+- **[Troubleshooting Guide](docs/user-guides/troubleshooting.md)** - Complete solutions for common issues
+- **[Configuration Guide](docs/user-guides/configuration.md)** - Proper setup and configuration options
+- **[Installation Guide](docs/user-guides/installation.md)** - Setup verification and validation
 
 ## License
 
