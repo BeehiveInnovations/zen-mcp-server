@@ -198,6 +198,23 @@ Paste the above into `claude_desktop_config.json`. If you have several other MCP
   }
 ```
 
+**Alternative: Using Pre-built Docker Image**
+
+You can also use the pre-built Docker image from GitHub Container Registry:
+```json
+  "zen": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "ghcr.io/beehiveinnovations/zen-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "paste-here-your-api-key-for-gemini"
+      }
+  }
+```
+
 3. **Restart Claude Desktop**
 Completely quit and restart Claude Desktop for the changes to take effect.
 
