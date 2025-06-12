@@ -199,7 +199,7 @@ have produced a configuration for you to copy:
 
 ```bash
 # Pull the latest published image
-docker pull ghcr.io/patrykiti/zen-mcp-server:latest
+docker pull ghcr.io/patrykiti/zen-mcp-server:v4.0.8
 ```
 
 **Claude Desktop Configuration:**
@@ -211,7 +211,7 @@ docker pull ghcr.io/patrykiti/zen-mcp-server:latest
       "args": [
         "run", "--rm", "-i",
         "-e", "GEMINI_API_KEY",
-        "ghcr.io/patrykiti/zen-mcp-server:latest"
+        "ghcr.io/patrykiti/zen-mcp-server:v4.0.8"
       ],
       "env": {
         "GEMINI_API_KEY": "your-gemini-api-key-here"
@@ -237,7 +237,7 @@ You can customize the server behavior by adding additional environment variables
         "-e", "DEFAULT_THINKING_MODE_THINKDEEP",
         "-e", "LOG_LEVEL",
         "-e", "MCP_PROJECT_ROOT",
-        "ghcr.io/patrykiti/zen-mcp-server:latest"
+        "ghcr.io/patrykiti/zen-mcp-server:v4.0.8"
       ],
       "env": {
         "GEMINI_API_KEY": "your-gemini-api-key-here",
