@@ -183,8 +183,8 @@ jobs:
           🤖 Automated by GitHub Actions"
           fi
           
-          # Push changes back to the repository
-          git push
+          # Push changes back to the repository (handle detached HEAD state)
+          git push origin HEAD:main
           
           echo "### 📝 Documentation Updated" >> $GITHUB_STEP_SUMMARY
           echo "README.md and user guides have been automatically updated with the new Docker image tag: \`$LATEST_TAG\`" >> $GITHUB_STEP_SUMMARY
