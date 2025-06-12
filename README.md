@@ -8,8 +8,6 @@ https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
 
 <br/>
 
-> **📚 [Comprehensive Documentation Available](docs/)** - This README provides quick start instructions. For detailed guides, API references, architecture documentation, and development workflows, see our [complete documentation](docs/).
-
 The ultimate development partners for Claude - a Model Context Protocol server that gives Claude access to multiple AI models for enhanced code analysis, 
 problem-solving, and collaborative development.
 
@@ -37,12 +35,6 @@ and review into consideration to aid with its pre-commit review.
   - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes with Docker
   - [Available Tools](#available-tools) - Overview of all tools
   - [AI-to-AI Conversations](#ai-to-ai-conversation-threading) - Multi-turn conversations
-
-- **📚 Detailed Documentation** ([View All](docs/))
-  - **For Users**: [Installation](docs/user-guides/installation.md) | [Configuration](docs/user-guides/configuration.md) | [Troubleshooting](docs/user-guides/troubleshooting.md)
-  - **For Developers**: [Setup](docs/contributing/setup.md) | [Workflows](docs/contributing/workflows.md) | [Code Style](docs/contributing/code-style.md) | [Testing](docs/contributing/testing.md)
-  - **For Architects**: [System Design](docs/architecture/overview.md) | [Components](docs/architecture/components.md) | [Data Flow](docs/architecture/data-flow.md)
-  - **API Reference**: [MCP Protocol](docs/api/mcp-protocol.md) | [Tool APIs](docs/api/tools/)
 
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
@@ -103,7 +95,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 - Docker Desktop installed ([Download here](https://www.docker.com/products/docker-desktop/))
 - Git
-- **Windows users**: WSL2 + Docker Desktop required for Docker images
+- **Windows users**: WSL2 is required for Claude Code CLI
 
 ### 1. Get API Keys (at least one required)
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
@@ -125,7 +117,7 @@ cd zen-mcp-server
 - **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
 - **Starts Redis service** for AI-to-AI conversation memory
 - **Starts MCP server** with providers based on available API keys
-- **Shows exact Claude Desktop configuration** to copy (optional when only using claude code)
+- **Adds Zen to Claude Code automatically**
 
 ### 3. Add Your API Keys
 
@@ -156,20 +148,22 @@ claude mcp list
 claude mcp remove zen -s user
 
 # You may need to remove an older version of this MCP after it was renamed:
-claude mcp remove zen -s user
+claude mcp remove gemini -s user
 ```
 Now run `claude` on the terminal for it to connect to the newly added mcp server. If you were already running a `claude` code session,
 please exit and start a new session.
 
-#### Option A: Local Development Setup (using local Docker build)
+#### If Setting up for Claude Desktop
 
-If you ran `./setup-docker.sh`, it provided you with the exact configuration for local development.
+- Open Claude Desktop
+- Go to **Settings** → **Developer** → **Edit Config**
 
-**Steps:**
-1. **Open Claude Desktop** → **Settings** → **Developer** → **Edit Config**
-   - This opens a folder revealing `claude_desktop_config.json`
+This will open a folder revealing `claude_desktop_config.json`.
 
-2. **Add the configuration** shown by setup script (or copy from below):
+2. ** Update Docker Configuration**
+
+The setup script shows you the exact configuration. It looks like this. When you ran `setup-docker.sh` it should
+have produced a configuration for you to copy:
 
 ```json
 {
@@ -188,120 +182,6 @@ If you ran `./setup-docker.sh`, it provided you with the exact configuration for
 }
 ```
 
-#### Option B: Published Docker Image (no local setup required)
-
-**Quick setup using the published Docker image from GitHub Container Registry:**
-
-```bash
-# Pull the latest published image
-docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
-```
-
-**Claude Desktop Configuration:**
-```json
-{
-  "mcpServers": {
-    "zen": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-e", "GEMINI_API_KEY",
-        "ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10"
-      ],
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
-    }
-  }
-}
-```
-
-**Advanced Configuration (Optional Parameters):**
-
-You can customize the server behavior by adding additional environment variables:
-
-```json
-{
-  "mcpServers": {
-    "zen": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-e", "GEMINI_API_KEY",
-        "-e", "DEFAULT_MODEL",
-        "-e", "DEFAULT_THINKING_MODE_THINKDEEP",
-        "-e", "LOG_LEVEL",
-        "-e", "MCP_PROJECT_ROOT",
-        "ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10"
-      ],
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here",
-        "DEFAULT_MODEL": "gemini-2.0-flash-exp",
-        "DEFAULT_THINKING_MODE_THINKDEEP": "medium",
-        "LOG_LEVEL": "INFO",
-        "MCP_PROJECT_ROOT": "/Users/yourusername/your-project"
-      }
-    }
-  }
-}
-```
-
-**Available Configuration Options:**
-
-| Environment Variable | Default Value | Description |
-|---------------------|---------------|-------------|
-| `GEMINI_API_KEY` | *Required* | Your Google AI Studio API key |
-| `DEFAULT_MODEL` | `auto` (if not set) | Model selection: `auto` (Claude picks best model), `gemini-2.5-pro-preview-06-05` (Pro), or `gemini-2.0-flash-exp` (Flash) |
-| `DEFAULT_THINKING_MODE_THINKDEEP` | `high` | Default thinking depth: `minimal`, `low`, `medium`, `high`, `max` |
-| `LOG_LEVEL` | `INFO` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `MCP_PROJECT_ROOT` | *Home directory* | Restrict file access to specific project directory |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for conversation threading |
-
-**Examples for Claude Desktop config:**
-
-```json
-{
-  "mcpServers": {
-    "zen": {
-      "command": "docker",
-      "args": [...],
-      "env": {
-        "GEMINI_API_KEY": "your-key",
-        "DEFAULT_MODEL": "gemini-2.0-flash-exp",
-        "DEFAULT_THINKING_MODE_THINKDEEP": "medium", 
-        "LOG_LEVEL": "DEBUG",
-        "MCP_PROJECT_ROOT": "/Users/yourusername/my-project"
-      }
-    }
-  }
-}
-```
-
-**Examples for direct docker run:**
-
-```bash
-# Use faster Flash model by default
-docker run -e DEFAULT_MODEL="gemini-2.0-flash-exp" ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
-
-# Use lower thinking mode to save tokens  
-docker run -e DEFAULT_THINKING_MODE_THINKDEEP="medium" ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
-
-# Enable debug logging for troubleshooting
-docker run -e LOG_LEVEL="DEBUG" ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
-```
-
-**Benefits of using published image:**
-- ✅ **No local build required** - Download and run immediately
-- ✅ **Always latest stable version** - Automatically updated with releases
-- ✅ **Smaller local footprint** - No source code or build dependencies needed
-- ✅ **Easy updates** - Simply pull new image versions
-- ✅ **Cross-platform** - Works on any Docker-supported platform
-
-**How it works:**
-- **Docker Compose services** run continuously in the background
-- **Redis** automatically handles conversation memory between requests  
-- **AI-to-AI conversations** persist across multiple exchanges
-- **File access** through mounted workspace directory
 Paste the above into `claude_desktop_config.json`. If you have several other MCP servers listed, simply add this below the rest after a `,` comma:
 ```json
   ... other mcp servers ... ,
@@ -510,7 +390,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Supports specialized analysis types: architecture, performance, security, quality
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
-- **Web search capability**: When enabled with `use_websearch`, can look up framework documentation, design patterns, and best practices relevant to the code being analyzed
+- **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
 ### 7. `get_version` - Server Information
 ```
 "Get zen to show its version"
@@ -529,7 +409,7 @@ All tools that work with files support **both individual files and entire direct
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for documentation and best practices (default: false)
+- `use_websearch`: Enable web search for documentation and best practices - allows model to request Claude perform searches (default: true)
 
 ```
 "Analyze the src/ directory for architectural patterns" (auto mode picks best model)
@@ -562,7 +442,7 @@ All tools that work with files support **both individual files and entire direct
 - `runtime_info`: Environment details
 - `previous_attempts`: What you've tried
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for error messages and solutions (default: false)
+- `use_websearch`: Enable web search for error messages and solutions - allows model to request Claude perform searches (default: true)
 
 ```
 "Debug this logic error with context from backend/" (auto mode picks best model)
@@ -577,7 +457,7 @@ All tools that work with files support **both individual files and entire direct
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
 - `thinking_mode`: minimal|low|medium|high|max (default: max, Gemini only)
-- `use_websearch`: Enable web search for documentation and insights (default: false)
+- `use_websearch`: Enable web search for documentation and insights - allows model to request Claude perform searches (default: true)
 
 ```
 "Think deeper about my design with reference to src/models/" (auto mode picks best model)
@@ -825,24 +705,11 @@ Claude can then search for these specific topics and provide you with the most c
 - More collaborative approach between the two AI assistants
 - Reduces hallucination by encouraging verification of assumptions
 
-**Disabling web search:**
-If you prefer Gemini to work only with its training data, you can disable web search:
+**Web search control:**
+Web search is enabled by default, allowing models to request Claude perform searches for current documentation and solutions. If you prefer the model to work only with its training data, you can disable web search:
 ```
 "Use gemini to review this code with use_websearch false"
 ```
-
-### Standardized Response Format
-All tools now return structured JSON responses for consistent handling:
-```json
-{
-  "status": "success|error|requires_clarification",
-  "content": "The actual response content",
-  "content_type": "text|markdown|json",
-  "metadata": {"tool_name": "analyze", ...}
-}
-```
-
-This enables better integration, error handling, and support for the dynamic context request feature.
 
 ## Configuration
 
@@ -974,53 +841,18 @@ To modify tool behavior, you can:
 2. Override `get_system_prompt()` in a tool class for tool-specific changes
 3. Use the `temperature` parameter to adjust response style (0.2 for focused, 0.7 for creative)
 
-## Contributing
-
-We welcome contributions! This project follows comprehensive development workflows and quality standards.
-
-**Quick Start for Contributors:**
-1. Create a new tool in `tools/`
-2. Inherit from `BaseTool`
-3. Implement required methods (including `get_system_prompt()`)
-4. Add your system prompt to `prompts/tool_prompts.py`
-5. Register your tool in `TOOLS` dict in `server.py`
-
-**For detailed contribution guidelines, see:**
-- **[Development Setup Guide](docs/contributing/setup.md)** - Environment setup and dependencies
-- **[Development Workflows](docs/contributing/workflows.md)** - Git processes, Memory Bank integration, testing workflows
-- **[Code Style Guide](docs/contributing/code-style.md)** - Python standards, type hints, security practices
-- **[Testing Strategy](docs/contributing/testing.md)** - TDD approach, testing frameworks, quality assurance
-- **[Repository Overview](docs/contributing/file-overview.md)** - Understanding the codebase structure
-
-See existing tools for examples.
-
 ## Testing
 
-The project includes comprehensive testing strategies covering unit tests, integration tests, and quality assurance.
+### Unit Tests (No API Key Required)
+The project includes comprehensive unit tests that use mocks and don't require a Gemini API key:
 
-### Quick Testing
 ```bash
-# Run all unit tests (no API key required)
-python -m pytest tests/ --ignore=tests/test_live_integration.py -v
+# Run all unit tests
+python -m pytest tests/ -v
 
 # Run with coverage
-python -m pytest tests/ --ignore=tests/test_live_integration.py --cov=. --cov-report=html
-
-# Live integration tests (API key required)
-export GEMINI_API_KEY=your-api-key-here
-python tests/test_live_integration.py
+python -m pytest tests/ --cov=. --cov-report=html
 ```
-
-### CI/CD Pipeline
-- **✅ Unit tests** - Automated, no API key needed
-- **✅ Multi-Python support** - Tests Python 3.10, 3.11, 3.12
-- **✅ Code quality checks** - Linting and formatting
-- **🔒 Live tests** - Optional integration verification
-
-**For comprehensive testing documentation, see:**
-- **[Testing Strategy Guide](docs/contributing/testing.md)** - TDD methodology, test categories, quality gates
-- **[Test Structure Analysis](docs/contributing/test-structure.md)** - Detailed analysis of existing 17-file test suite
-- **[Development Workflows](docs/contributing/workflows.md)** - Testing integration with git processes
 
 ### Simulation Tests (API Key Required)
 To test the MCP server with comprehensive end-to-end simulation:
@@ -1059,100 +891,10 @@ The project includes GitHub Actions workflows that:
 
 The CI pipeline works without any secrets and will pass all tests using mocked responses. Simulation tests require API key secrets (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`) to run the communication simulator.
 
-## Windows Setup Guide
-
-**Windows users need WSL2 + Docker Desktop to run Linux-based Docker containers.**
-
-### Why WSL2 is Required
-
-Our Docker images use `python:3.11-slim` (Linux-based), which cannot run natively on Windows. Docker Desktop solves this by running containers in WSL2's Linux environment.
-
-### Complete Windows Setup
-
-1. **Install WSL2**
-   ```powershell
-   # Run in PowerShell as Administrator
-   wsl --install
-   # Restart computer when prompted
-   ```
-
-2. **Install Docker Desktop for Windows**
-   - Download: [Docker Desktop for Windows](https://docs.docker.com/desktop/windows/install/)
-   - During installation, ensure "Use WSL 2 instead of Hyper-V" is selected
-
-3. **Configure Docker Desktop**
-   - Open Docker Desktop settings
-   - Go to "Resources" → "WSL Integration" 
-   - Enable integration with your default WSL distro (usually Ubuntu)
-
-4. **Verify Setup**
-   ```bash
-   # In WSL2 terminal (Ubuntu)
-   docker --version
-   docker pull hello-world
-   docker run hello-world
-   ```
-
-5. **Install Claude Desktop in Windows**
-   - Download and install Claude Desktop for Windows normally
-   - Docker commands will automatically route to WSL2
-
-### Usage on Windows
-
-Once set up, everything works normally:
-
-```bash
-# Pull the image (runs in WSL2 automatically)
-docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
-
-# Configure Claude Desktop normally in Windows
-# Docker Desktop handles WSL2 routing automatically
-```
-
-**Claude Desktop Config Location (Windows):**
-```
-C:\Users\[USERNAME]\AppData\Roaming\Claude\claude_desktop_config.json
-```
-
-### Alternative: Direct Python Installation
-
-If you prefer not to use Docker:
-
-```powershell
-# In PowerShell or Command Prompt
-git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
-cd zen-mcp-server
-pip install -r requirements.txt
-
-# Set your API key
-set GEMINI_API_KEY=your-api-key-here
-# or create .env file
-
-# Run server directly
-python server.py
-```
-
-Then configure Claude Desktop to use Python directly instead of Docker.
-
-### Windows Troubleshooting
-
-**"Docker command not found"**
-- Ensure Docker Desktop is running
-- Restart WSL2: `wsl --shutdown` then reopen terminal
-
-**"No matching manifest for linux/arm64"**
-- Our images support both AMD64 and ARM64
-- If you see this error, your Docker setup may need reconfiguring
-
-**WSL2 not working**
-- Enable virtualization in BIOS
-- Run `wsl --update` in PowerShell as Administrator
-
 ## Troubleshooting
 
-### Common Issues
+### Docker Issues
 
-**Docker Connection Problems:**
 **"Connection failed" in Claude Desktop**
 - Ensure Docker services are running: `docker compose ps`
 - Check if the container name is correct: `docker ps` to see actual container names
@@ -1174,32 +916,15 @@ Then configure Claude Desktop to use Python directly instead of Docker.
 
 **Testing your Docker setup:**
 ```bash
-# Check services status
+# Check if services are running
 docker compose ps
 
 # Test manual connection
 docker exec -i zen-mcp-server echo "Connection test"
 
-# View logs for errors
+# View logs
 docker compose logs -f
 ```
-
-**Configuration Issues:**
-- API key not set: Check your `.env` file
-- File access issues: Verify mounted directories
-- Redis connectivity: Test with `docker exec -it zen-mcp-redis redis-cli ping`
-
-**Debug Mode:**
-```bash
-# Enable detailed logging
-echo "LOG_LEVEL=DEBUG" >> .env
-docker compose restart
-```
-
-**For comprehensive troubleshooting, see:**
-- **[Troubleshooting Guide](docs/user-guides/troubleshooting.md)** - Complete solutions for common issues
-- **[Configuration Guide](docs/user-guides/configuration.md)** - Proper setup and configuration options
-- **[Installation Guide](docs/user-guides/installation.md)** - Setup verification and validation
 
 ## License
 
