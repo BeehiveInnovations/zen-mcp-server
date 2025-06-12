@@ -85,7 +85,7 @@ class TestGeminiProvider:
         assert capabilities.provider == ProviderType.GOOGLE
         assert capabilities.model_name == "gemini-2.5-flash-preview-05-20"
         assert capabilities.max_tokens == 1_048_576
-        assert not capabilities.supports_extended_thinking
+        assert capabilities.supports_extended_thinking
 
     def test_get_capabilities_pro_model(self):
         """Test getting capabilities for Pro model with thinking support"""

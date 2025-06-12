@@ -23,6 +23,7 @@ def setup_test_env():
 class TestThinkingModes:
     """Test thinking modes across all tools"""
 
+    @patch("config.DEFAULT_THINKING_MODE_THINKDEEP", "high")
     def test_default_thinking_modes(self):
         """Test that tools have correct default thinking modes"""
         tools = [
@@ -169,6 +170,7 @@ class TestThinkingModes:
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
+    @patch("config.DEFAULT_THINKING_MODE_THINKDEEP", "high")
     async def test_thinking_mode_max(self, mock_get_provider):
         """Test max thinking mode (default for thinkdeep)"""
         mock_provider = create_mock_provider()
