@@ -121,6 +121,9 @@ jobs:
     - name: Update README with latest image info
       if: github.ref_type == 'tag' || (github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '')
       run: |
+        # Checkout main branch to avoid detached HEAD when pushing
+        git checkout main
+        git pull origin main
         # Extract the primary image tag for updating README
         if [[ "${{ github.ref_type }}" == "tag" ]]; then
           # For tag releases, use the version tag
