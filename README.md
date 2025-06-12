@@ -117,8 +117,7 @@ cd zen-mcp-server
 - **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
 - **Starts Redis service** for AI-to-AI conversation memory
 - **Starts MCP server** with providers based on available API keys
-- **Shows exact Claude Desktop configuration** to copy
-- **Multi-turn AI conversations** - Models can ask follow-up questions that persist across requests
+- **Shows exact Claude Desktop configuration** to copy (optional when only using claude code)
 
 ### 3. Add Your API Keys
 
@@ -136,7 +135,7 @@ nano .env
 
 ### 4. Configure Claude
 
-#### Claude Code
+#### If Setting up for Claude Code
 Run the following commands on the terminal to add the MCP directly to Claude Code
 ```bash
 # Add the MCP server directly via Claude Code CLI
@@ -146,22 +145,25 @@ claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py
 claude mcp list
 
 # Remove when needed
-claude mcp remove zen
+claude mcp remove zen -s user
+
+# You may need to remove an older version of this MCP after it was renamed:
+claude mcp remove gemini -s user
 ```
+Now run `claude` on the terminal for it to connect to the newly added mcp server. If you were already running a `claude` code session,
+please exit and start a new session.
 
-#### Claude Desktop
+#### If Setting up for Claude Desktop
 
-1. **Find your config file:**
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-- **Windows (WSL required)**: Access from WSL using `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
-
-**Or use Claude Desktop UI (macOS):**
 - Open Claude Desktop
 - Go to **Settings** → **Developer** → **Edit Config**
 
-2. ** Update Docker Configuration (Copy from setup script output)**
+This will open a folder revealing `claude_desktop_config.json`.
 
-The setup script shows you the exact configuration. It looks like this:
+2. ** Update Docker Configuration**
+
+The setup script shows you the exact configuration. It looks like this. When you ran `setup-docker.sh` it should
+have produced a configuration for you to copy:
 
 ```json
 {
@@ -180,79 +182,35 @@ The setup script shows you the exact configuration. It looks like this:
 }
 ```
 
+Paste the above into `claude_desktop_config.json`. If you have several other MCP servers listed, simply add this below the rest after a `,` comma:
+```json
+  ... other mcp servers ... ,
+
+  "zen": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "zen-mcp-server",
+        "python",
+        "server.py"
+      ]
+  }
+```
+
 3. **Restart Claude Desktop**
 Completely quit and restart Claude Desktop for the changes to take effect.
 
 ### 5. Start Using It!
 
 Just ask Claude naturally:
-- "Think deeper about this architecture design" → Claude picks best model + `thinkdeep`
-- "Review this code for security issues" → Claude might pick Gemini Pro + `codereview`
-- "Debug why this test is failing" → Claude might pick O3 + `debug`
-- "Analyze these files to understand the data flow" → Claude picks appropriate model + `analyze`
-- "Use flash to quickly format this code" → Uses Gemini Flash specifically
-- "Get o3 to debug this logic error" → Uses O3 specifically
-- "Brainstorm scaling strategies with pro" → Uses Gemini Pro specifically
-
-## AI-to-AI Conversation Threading
-
-This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3, GPT-4o), where they can coordinate and question each other's approaches:
-
-**How it works:**
-- **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
-- **Claude can respond** with additional information, files, or refined instructions
-- **Claude can work independently** between exchanges - implementing solutions, gathering data, or performing analysis
-- **Claude can return to Gemini** with progress updates and new context for further collaboration
-- **Cross-tool continuation** - Start with one tool (e.g., `analyze`) and continue with another (e.g., `codereview`) using the same conversation thread
-- **Both AIs coordinate their approaches** - questioning assumptions, validating solutions, and building on each other's insights
-- Each conversation maintains full context while only sending incremental updates
-- Conversations are automatically managed with Redis for persistence
-
-**Example of Multi-Model AI Coordination:**
-1. You: "Debate SwiftUI vs UIKit - which is better for iOS development?"
-2. Claude (auto mode): "I'll orchestrate a debate between different models for diverse perspectives."
-3. Gemini Pro: "From an architectural standpoint, SwiftUI's declarative paradigm and state management make it superior for maintainable, modern apps."
-4. O3: "Logically analyzing the trade-offs: UIKit offers 15+ years of stability, complete control, and proven scalability. SwiftUI has <5 years maturity with ongoing breaking changes."
-5. Claude: "Let me get Flash's quick take on developer experience..."
-6. Gemini Flash: "SwiftUI = faster development, less code, better previews. UIKit = more control, better debugging, stable APIs."
-7. **Claude's synthesis**: "Based on the multi-model analysis: Use SwiftUI for new projects prioritizing development speed, UIKit for apps requiring fine control or supporting older iOS versions."
-
-**Asynchronous workflow example:**
-- Claude can work independently between exchanges (analyzing code, implementing fixes, gathering data)
-- Return to Gemini with progress updates and additional context  
-- Each exchange shares only incremental information while maintaining full conversation history
-- Automatically bypasses MCP's 25K token limits through incremental updates
-
-**Enhanced collaboration features:**
-- **Cross-questioning**: AIs can challenge each other's assumptions and approaches
-- **Coordinated problem-solving**: Each AI contributes their strengths to complex problems
-- **Context building**: Claude gathers information while Gemini provides deep analysis
-- **Approach validation**: AIs can verify and improve each other's solutions
-- **Cross-tool continuation**: Seamlessly continue conversations across different tools while preserving all context
-- **Asynchronous workflow**: Conversations don't need to be sequential - Claude can work on tasks between exchanges, then return to Gemini with additional context and progress updates
-- **Incremental updates**: Share only new information in each exchange while maintaining full conversation history
-- **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
-- Up to 5 exchanges per conversation with 1-hour expiry
-- Thread-safe with Redis persistence across all tools
-
-**Cross-tool & Cross-Model Continuation Example:**
-```
-1. Claude: "Analyze /src/auth.py for security issues"
-   → Auto mode: Claude picks Gemini Pro for deep security analysis
-   → Pro analyzes and finds vulnerabilities, provides continuation_id
-
-2. Claude: "Review the authentication logic thoroughly"
-   → Uses same continuation_id, but Claude picks O3 for logical analysis
-   → O3 sees previous Pro analysis and provides logic-focused review
-
-3. Claude: "Debug the auth test failures"
-   → Same continuation_id, Claude keeps O3 for debugging
-   → O3 provides targeted debugging with full context from both previous analyses
-
-4. Claude: "Quick style check before committing"
-   → Same thread, but Claude switches to Flash for speed
-   → Flash quickly validates formatting with awareness of all previous fixes
-```
+- "Think deeper about this architecture design with zen" → Claude picks best model + `thinkdeep`
+- "Using zen perform a code review of this code for security issues" → Claude might pick Gemini Pro + `codereview`
+- "Use zen and debug why this test is failing, the bug might be in my_class.swift" → Claude might pick O3 + `debug`
+- "With zen, analyze these files to understand the data flow" → Claude picks appropriate model + `analyze`
+- "Use flash to suggest how to format this code based on the specs mentioned in policy.md" → Uses Gemini Flash specifically
+- "Think deeply about this and get o3 to debug this logic error I found in the checkOrders() function" → Uses O3 specifically
+- "Brainstorm scaling strategies with pro. Study the code, pick your preferred strategy and debate with pro to settle on two best approaches" → Uses Gemini Pro specifically
 
 ## Available Tools
 
@@ -318,7 +276,7 @@ and then debate with the other models to give me a final verdict
 #### Example Prompt:
 
 ```
-Think deeper about my authentication design with zen using max thinking mode and brainstorm to come up 
+Think deeper about my authentication design with pro using max thinking mode and brainstorm to come up 
 with the best architecture for my project
 ```
 
@@ -340,7 +298,7 @@ with the best architecture for my project
 #### Example Prompts:
 
 ```
-Perform a codereview with zen using gemini pro and review auth.py for security issues and potential vulnerabilities.
+Perform a codereview with gemini pro and review auth.py for security issues and potential vulnerabilities.
 I need an actionable plan but break it down into smaller quick-wins that we can implement and test rapidly 
 ```
 
@@ -524,30 +482,6 @@ show me the secure implementation."
 fix based on gemini's root cause analysis."
 ```
 
-## Pro Tips
-
-### Natural Language Triggers
-The server recognizes natural phrases. Just talk normally:
-- ❌ "Use the thinkdeep tool with current_analysis parameter..."
-- ✅ "Use gemini to think deeper about this approach"
-
-### Automatic Tool Selection
-Claude will automatically pick the right tool based on your request:
-- "review" → `codereview`
-- "debug" → `debug`
-- "analyze" → `analyze`
-- "think deeper" → `thinkdeep`
-
-### Clean Terminal Output
-All file operations use paths, not content, so your terminal stays readable even with large files.
-
-### Context Awareness
-Tools can reference files for additional context:
-```
-"Use gemini to debug this error with context from app.py and config.py"
-"Get gemini to think deeper about my design, reference the current architecture.md"
-```
-
 ### Tool Selection Guidance
 To help choose the right tool for your needs:
 
@@ -580,16 +514,6 @@ To help choose the right tool for your needs:
 ### How to Use Thinking Modes
 
 **Claude automatically selects appropriate thinking modes**, but you can override this by explicitly requesting a specific mode in your prompts. Remember: higher thinking modes = more tokens = higher cost but better quality:
-
-#### Natural Language Examples
-
-| Your Goal | Example Prompt |
-|-----------|----------------|
-| **Auto-managed (recommended)** | "Use gemini to review auth.py" (Claude picks appropriate mode) |
-| **Override for simple tasks** | "Use gemini to format this code with minimal thinking" |
-| **Override for deep analysis** | "Use gemini to review this security module with high thinking mode" |
-| **Override for maximum depth** | "Get gemini to think deeper with max thinking about this architecture" |
-| **Compare approaches** | "First analyze this with low thinking, then again with high thinking" |
 
 #### Optimizing Token Usage & Costs
 
@@ -630,6 +554,66 @@ To help choose the right tool for your needs:
 ```
 
 ## Advanced Features
+
+### AI-to-AI Conversation Threading
+
+This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3, GPT-4o), where they can coordinate and question each other's approaches:
+
+**How it works:**
+- **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
+- **Claude can respond** with additional information, files, or refined instructions
+- **Claude can work independently** between exchanges - implementing solutions, gathering data, or performing analysis
+- **Claude can return to Gemini** with progress updates and new context for further collaboration
+- **Cross-tool continuation** - Start with one tool (e.g., `analyze`) and continue with another (e.g., `codereview`) using the same conversation thread
+- **Both AIs coordinate their approaches** - questioning assumptions, validating solutions, and building on each other's insights
+- Each conversation maintains full context while only sending incremental updates
+- Conversations are automatically managed with Redis for persistence
+
+**Example of Multi-Model AI Coordination:**
+1. You: "Debate SwiftUI vs UIKit - which is better for iOS development?"
+2. Claude (auto mode): "I'll orchestrate a debate between different models for diverse perspectives."
+3. Gemini Pro: "From an architectural standpoint, SwiftUI's declarative paradigm and state management make it superior for maintainable, modern apps."
+4. O3: "Logically analyzing the trade-offs: UIKit offers 15+ years of stability, complete control, and proven scalability. SwiftUI has <5 years maturity with ongoing breaking changes."
+5. Claude: "Let me get Flash's quick take on developer experience..."
+6. Gemini Flash: "SwiftUI = faster development, less code, better previews. UIKit = more control, better debugging, stable APIs."
+7. **Claude's synthesis**: "Based on the multi-model analysis: Use SwiftUI for new projects prioritizing development speed, UIKit for apps requiring fine control or supporting older iOS versions."
+
+**Asynchronous workflow example:**
+- Claude can work independently between exchanges (analyzing code, implementing fixes, gathering data)
+- Return to Gemini with progress updates and additional context  
+- Each exchange shares only incremental information while maintaining full conversation history
+- Automatically bypasses MCP's 25K token limits through incremental updates
+
+**Enhanced collaboration features:**
+- **Cross-questioning**: AIs can challenge each other's assumptions and approaches
+- **Coordinated problem-solving**: Each AI contributes their strengths to complex problems
+- **Context building**: Claude gathers information while Gemini provides deep analysis
+- **Approach validation**: AIs can verify and improve each other's solutions
+- **Cross-tool continuation**: Seamlessly continue conversations across different tools while preserving all context
+- **Asynchronous workflow**: Conversations don't need to be sequential - Claude can work on tasks between exchanges, then return to Gemini with additional context and progress updates
+- **Incremental updates**: Share only new information in each exchange while maintaining full conversation history
+- **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
+- Up to 5 exchanges per conversation with 1-hour expiry
+- Thread-safe with Redis persistence across all tools
+
+**Cross-tool & Cross-Model Continuation Example:**
+```
+1. Claude: "Analyze /src/auth.py for security issues"
+   → Auto mode: Claude picks Gemini Pro for deep security analysis
+   → Pro analyzes and finds vulnerabilities, provides continuation_id
+
+2. Claude: "Review the authentication logic thoroughly"
+   → Uses same continuation_id, but Claude picks O3 for logical analysis
+   → O3 sees previous Pro analysis and provides logic-focused review
+
+3. Claude: "Debug the auth test failures"
+   → Same continuation_id, Claude keeps O3 for debugging
+   → O3 provides targeted debugging with full context from both previous analyses
+
+4. Claude: "Quick style check before committing"
+   → Same thread, but Claude switches to Flash for speed
+   → Flash quickly validates formatting with awareness of all previous fixes
+```
 
 ### Working with Large Prompts
 
