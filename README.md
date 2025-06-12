@@ -100,6 +100,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 ### 1. Get API Keys (at least one required)
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
+- **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/openrouter.md)
 
 ### 2. Clone and Set Up
 
@@ -125,12 +126,13 @@ cd zen-mcp-server
 # Edit .env to add your API keys (if not already set in environment)
 nano .env
 
-# The file will contain:
+# The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
+# OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/openrouter.md)
 # WORKSPACE_ROOT=/Users/your-username  (automatically configured)
 
-# Note: At least one API key is required (Gemini or OpenAI)
+# Note: At least one API key is required
 ```
 
 ### 4. Configure Claude
@@ -742,6 +744,7 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
 | **`flash`** (Gemini 2.0 Flash) | Google | 1M tokens | Ultra-fast responses | Quick checks, formatting, simple analysis |
 | **`o3`** | OpenAI | 200K tokens | Strong logical reasoning | Debugging logic errors, systematic analysis |
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
+| **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
 
 **Manual Model Selection:**
 You can specify a default model instead of auto mode:

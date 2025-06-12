@@ -36,8 +36,6 @@ else
         else
             echo "⚠️  Found GEMINI_API_KEY in environment, but sed not available. Please update .env manually."
         fi
-    else
-        echo "⚠️  GEMINI_API_KEY not found in environment. Please edit .env and add your API key."
     fi
     
     if [ -n "${OPENAI_API_KEY:-}" ]; then
@@ -48,8 +46,16 @@ else
         else
             echo "⚠️  Found OPENAI_API_KEY in environment, but sed not available. Please update .env manually."
         fi
-    else
-        echo "⚠️  OPENAI_API_KEY not found in environment. Please edit .env and add your API key."
+    fi
+    
+    if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+        # Replace the placeholder API key with the actual value
+        if command -v sed >/dev/null 2>&1; then
+            sed -i.bak "s/your_openrouter_api_key_here/$OPENROUTER_API_KEY/" .env && rm .env.bak
+            echo "✅ Updated .env with existing OPENROUTER_API_KEY from environment"
+        else
+            echo "⚠️  Found OPENROUTER_API_KEY in environment, but sed not available. Please update .env manually."
+        fi
     fi
     
     # Update WORKSPACE_ROOT to use current user's home directory
@@ -92,6 +98,7 @@ source .env 2>/dev/null || true
 
 VALID_GEMINI_KEY=false
 VALID_OPENAI_KEY=false
+VALID_OPENROUTER_KEY=false
 
 # Check if GEMINI_API_KEY is set and not the placeholder
 if [ -n "${GEMINI_API_KEY:-}" ] && [ "$GEMINI_API_KEY" != "your_gemini_api_key_here" ]; then
@@ -105,18 +112,26 @@ if [ -n "${OPENAI_API_KEY:-}" ] && [ "$OPENAI_API_KEY" != "your_openai_api_key_h
     echo "✅ Valid OPENAI_API_KEY found"
 fi
 
+# Check if OPENROUTER_API_KEY is set and not the placeholder
+if [ -n "${OPENROUTER_API_KEY:-}" ] && [ "$OPENROUTER_API_KEY" != "your_openrouter_api_key_here" ]; then
+    VALID_OPENROUTER_KEY=true
+    echo "✅ Valid OPENROUTER_API_KEY found"
+fi
+
 # Require at least one valid API key
-if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ]; then
+if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ]; then
     echo ""
     echo "❌ ERROR: At least one valid API key is required!"
     echo ""
     echo "Please edit the .env file and set at least one of:"
     echo "  - GEMINI_API_KEY (get from https://makersuite.google.com/app/apikey)"
     echo "  - OPENAI_API_KEY (get from https://platform.openai.com/api-keys)"
+    echo "  - OPENROUTER_API_KEY (get from https://openrouter.ai/)"
     echo ""
     echo "Example:"
     echo "  GEMINI_API_KEY=your-actual-api-key-here"
     echo "  OPENAI_API_KEY=sk-your-actual-openai-key-here"
+    echo "  OPENROUTER_API_KEY=sk-or-your-actual-openrouter-key-here"
     echo ""
     exit 1
 fi
@@ -228,7 +243,7 @@ show_configuration_steps() {
     echo ""
     echo "🔄 Next steps:"
     NEEDS_KEY_UPDATE=false
-    if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null; then
+    if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null || grep -q "your_openrouter_api_key_here" .env 2>/dev/null; then
         NEEDS_KEY_UPDATE=true
     fi
 
@@ -236,6 +251,7 @@ show_configuration_steps() {
         echo "1. Edit .env and replace placeholder API keys with actual ones"
         echo "   - GEMINI_API_KEY: your-gemini-api-key-here"
         echo "   - OPENAI_API_KEY: your-openai-api-key-here"
+        echo "   - OPENROUTER_API_KEY: your-openrouter-api-key-here (optional)"
         echo "2. Restart services: $COMPOSE_CMD restart"
         echo "3. Copy the configuration below to your Claude Desktop config if required:"
     else

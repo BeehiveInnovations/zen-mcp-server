@@ -131,6 +131,7 @@ def configure_providers():
     from providers.base import ProviderType
     from providers.gemini import GeminiModelProvider
     from providers.openai import OpenAIModelProvider
+    from providers.openrouter import OpenRouterProvider
 
     valid_providers = []
 
@@ -148,12 +149,21 @@ def configure_providers():
         valid_providers.append("OpenAI (o3)")
         logger.info("OpenAI API key found - o3 model available")
 
+    # Check for OpenRouter API key
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
+        ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
+        valid_providers.append("OpenRouter")
+        logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
+
+
     # Require at least one valid provider
     if not valid_providers:
         raise ValueError(
             "At least one API key is required. Please set either:\n"
             "- GEMINI_API_KEY for Gemini models\n"
-            "- OPENAI_API_KEY for OpenAI o3 model"
+            "- OPENAI_API_KEY for OpenAI o3 model\n"
+            "- OPENROUTER_API_KEY for OpenRouter (multiple models)"
         )
 
     logger.info(f"Available providers: {', '.join(valid_providers)}")
