@@ -206,6 +206,63 @@ docker pull ghcr.io/patrykiti/gemini-mcp-server:latest
 }
 ```
 
+**Advanced Configuration (Optional Parameters):**
+
+You can customize the server behavior by adding additional environment variables:
+
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "-e", "DEFAULT_MODEL",
+        "-e", "DEFAULT_THINKING_MODE_THINKDEEP",
+        "-e", "LOG_LEVEL",
+        "-e", "MCP_PROJECT_ROOT",
+        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here",
+        "DEFAULT_MODEL": "gemini-2.0-flash-exp",
+        "DEFAULT_THINKING_MODE_THINKDEEP": "medium",
+        "LOG_LEVEL": "INFO",
+        "MCP_PROJECT_ROOT": "/Users/yourusername/your-project"
+      }
+    }
+  }
+}
+```
+
+**Available Configuration Options:**
+
+| Environment Variable | Default Value | Description |
+|---------------------|---------------|-------------|
+| `GEMINI_API_KEY` | *Required* | Your Google AI Studio API key |
+| `DEFAULT_MODEL` | `gemini-2.5-pro-preview-06-05` | Default model: `gemini-2.5-pro-preview-06-05` (Pro) or `gemini-2.0-flash-exp` (Flash) |
+| `DEFAULT_THINKING_MODE_THINKDEEP` | `high` | Default thinking depth: `minimal`, `low`, `medium`, `high`, `max` |
+| `LOG_LEVEL` | `INFO` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `MCP_PROJECT_ROOT` | *Home directory* | Restrict file access to specific project directory |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for conversation threading |
+
+**Examples:**
+
+```bash
+# Use faster Flash model by default
+"DEFAULT_MODEL": "gemini-2.0-flash-exp"
+
+# Use lower thinking mode to save tokens
+"DEFAULT_THINKING_MODE_THINKDEEP": "medium"
+
+# Enable debug logging for troubleshooting
+"LOG_LEVEL": "DEBUG"
+
+# Restrict file access to your project directory
+"MCP_PROJECT_ROOT": "/Users/yourusername/my-project"
+```
+
 **Benefits of using published image:**
 - ✅ **No local build required** - Download and run immediately
 - ✅ **Always latest stable version** - Automatically updated with releases
