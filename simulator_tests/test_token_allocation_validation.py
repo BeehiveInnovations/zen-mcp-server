@@ -275,8 +275,6 @@ if __name__ == "__main__":
             step1_file_tokens = 0
             for log in file_embedding_logs_step1:
                 # Look for pattern like "successfully embedded 1 files (146 tokens)"
-                import re
-
                 match = re.search(r"\((\d+) tokens\)", log)
                 if match:
                     step1_file_tokens = int(match.group(1))

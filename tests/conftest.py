@@ -3,6 +3,7 @@ Pytest configuration for Zen MCP Server tests
 """
 
 import asyncio
+import importlib
 import os
 import sys
 import tempfile
@@ -26,9 +27,7 @@ if "OPENAI_API_KEY" not in os.environ:
 os.environ["DEFAULT_MODEL"] = "gemini-2.0-flash"
 
 # Force reload of config module to pick up the env var
-import importlib
-
-import config
+import config  # noqa: E402
 
 importlib.reload(config)
 
@@ -43,10 +42,10 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Register providers for all tests
-from providers import ModelProviderRegistry
-from providers.base import ProviderType
-from providers.gemini import GeminiModelProvider
-from providers.openai import OpenAIModelProvider
+from providers import ModelProviderRegistry  # noqa: E402
+from providers.base import ProviderType  # noqa: E402
+from providers.gemini import GeminiModelProvider  # noqa: E402
+from providers.openai import OpenAIModelProvider  # noqa: E402
 
 # Register providers at test startup
 ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)

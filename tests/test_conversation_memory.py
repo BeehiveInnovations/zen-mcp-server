@@ -5,6 +5,7 @@ Tests the Redis-based conversation persistence needed for AI-to-AI multi-turn
 discussions in stateless MCP environments.
 """
 
+import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -136,8 +137,13 @@ class TestConversationMemory:
 
         assert success is False
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_build_conversation_history(self):
         """Test building conversation history format with files and speaker identification"""
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
+
         test_uuid = "12345678-1234-1234-1234-123456789012"
 
         turns = [
@@ -339,8 +345,13 @@ class TestConversationFlow:
             in error_msg
         )
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_dynamic_max_turns_configuration(self):
         """Test that all functions respect MAX_CONVERSATION_TURNS configuration"""
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
+
         # This test ensures if we change MAX_CONVERSATION_TURNS, everything updates
 
         # Test with different max values by patching the constant
@@ -465,8 +476,13 @@ class TestConversationFlow:
         assert success is False, f"Turn {MAX_CONVERSATION_TURNS + 1} should fail"
 
     @patch("utils.conversation_memory.get_redis_client")
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_conversation_with_files_and_context_preservation(self, mock_redis):
         """Test complete conversation flow with file tracking and context preservation"""
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
+
         mock_client = Mock()
         mock_redis.return_value = mock_client
 
@@ -657,10 +673,15 @@ class TestConversationFlow:
         assert retrieved_context is not None
         assert len(retrieved_context.turns) == 1
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_token_limit_optimization_in_conversation_history(self):
         """Test that build_conversation_history efficiently handles token limits"""
         import os
         import tempfile
+
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
 
         from utils.conversation_memory import build_conversation_history
 

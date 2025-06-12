@@ -73,30 +73,10 @@ class TestConversationHistoryBugFix:
     async def test_conversation_history_included_with_continuation_id(self, mock_add_turn):
         """Test that conversation history (including file context) is included when using continuation_id"""
 
-        # Create a thread context with previous turns including files
-        _thread_context = ThreadContext(
-            thread_id="test-history-id",
-            created_at="2023-01-01T00:00:00Z",
-            last_updated_at="2023-01-01T00:02:00Z",
-            tool_name="analyze",  # Started with analyze tool
-            turns=[
-                ConversationTurn(
-                    role="assistant",
-                    content="I've analyzed the authentication module and found several security issues.",
-                    timestamp="2023-01-01T00:01:00Z",
-                    tool_name="analyze",
-                    files=["/src/auth.py", "/src/security.py"],  # Files from analyze tool
-                ),
-                ConversationTurn(
-                    role="assistant",
-                    content="The code review shows these files have critical vulnerabilities.",
-                    timestamp="2023-01-01T00:02:00Z",
-                    tool_name="codereview",
-                    files=["/src/auth.py", "/tests/test_auth.py"],  # Files from codereview tool
-                ),
-            ],
-            initial_context={"prompt": "Analyze authentication security"},
-        )
+        # Test setup note: This test simulates a conversation thread with previous turns
+        # containing files from different tools (analyze -> codereview)
+        # The continuation_id "test-history-id" references this implicit thread context
+        # In the real flow, server.py would reconstruct this context and add it to the prompt
 
         # Mock add_turn to return success
         mock_add_turn.return_value = True

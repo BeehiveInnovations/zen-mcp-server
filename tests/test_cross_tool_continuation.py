@@ -6,6 +6,7 @@ allowing multi-turn conversations to span multiple tool types.
 """
 
 import json
+import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -230,9 +231,13 @@ I'd be happy to review these security findings in detail if that would be helpfu
         )
 
         # Build conversation history
+        from providers.registry import ModelProviderRegistry
         from utils.conversation_memory import build_conversation_history
 
-        history, tokens = build_conversation_history(thread_context, model_context=None)
+        # Set up provider for this test
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False):
+            ModelProviderRegistry.clear_cache()
+            history, tokens = build_conversation_history(thread_context, model_context=None)
 
         # Verify tool names are included in the history
         assert "Turn 1 (Gemini using test_analysis)" in history
