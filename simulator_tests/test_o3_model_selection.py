@@ -122,13 +122,15 @@ def multiply(x, y):
             # Check for OpenAI API calls (this proves O3 models are being used)
             openai_api_logs = [line for line in logs.split("\n") if "Sending request to openai API for" in line]
 
-            # Check for OpenAI model usage logs 
+            # Check for OpenAI model usage logs
             openai_model_logs = [
                 line for line in logs.split("\n") if "Using model:" in line and "openai provider" in line
             ]
 
             # Check for successful OpenAI responses
-            openai_response_logs = [line for line in logs.split("\n") if "openai provider" in line and "Using model:" in line]
+            openai_response_logs = [
+                line for line in logs.split("\n") if "openai provider" in line and "Using model:" in line
+            ]
 
             # Check that we have both chat and codereview tool calls to OpenAI
             chat_openai_logs = [line for line in logs.split("\n") if "Sending request to openai API for chat" in line]
