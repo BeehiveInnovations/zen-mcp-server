@@ -183,7 +183,7 @@ If you prefer to use the published image without cloning:
 
 ```bash
 # Create a directory for your work
-mkdir gemini-mcp-project && cd gemini-mcp-project
+mkdir zen-mcp-project && cd zen-mcp-project
 
 # Create minimal docker-compose.yml
 cat > docker-compose.yml << 'EOF'

@@ -195,13 +195,13 @@ services:
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 # Run tests in container
-docker compose exec gemini-mcp python -m pytest tests/ -v
+docker compose exec zen-mcp python -m pytest tests/ -v
 
 # Access container shell
-docker compose exec gemini-mcp bash
+docker compose exec zen-mcp bash
 
 # View logs
-docker compose logs -f gemini-mcp
+docker compose logs -f zen-mcp
 ```
 
 ## IDE Configuration
@@ -251,7 +251,7 @@ import pdb; pdb.set_trace()
 
 ```bash
 # Run container in debug mode
-docker compose exec gemini-mcp python -m pdb server.py
+docker compose exec zen-mcp python -m pdb server.py
 
 # Or add debug prints
 LOG_LEVEL=DEBUG docker compose up

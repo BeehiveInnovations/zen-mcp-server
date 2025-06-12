@@ -110,13 +110,13 @@ Add to your Claude Desktop config file:
 
 ```bash
 # Add MCP server via CLI
-claude mcp add gemini -s user -- docker exec -i zen-mcp-server python server.py
+claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py
 
 # List servers
 claude mcp list
 
 # Remove server
-claude mcp remove gemini -s user
+claude mcp remove zen -s user
 ```
 
 ## Docker Configuration
@@ -159,7 +159,7 @@ services:
 
 ```bash
 # Real-time logs
-docker compose logs -f gemini-mcp
+docker compose logs -f zen-mcp
 
 # Specific service logs
 docker compose logs redis

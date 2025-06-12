@@ -156,7 +156,7 @@ claude mcp list
 claude mcp remove zen -s user
 
 # You may need to remove an older version of this MCP after it was renamed:
-claude mcp remove gemini -s user
+claude mcp remove zen -s user
 ```
 Now run `claude` on the terminal for it to connect to the newly added mcp server. If you were already running a `claude` code session,
 please exit and start a new session.
