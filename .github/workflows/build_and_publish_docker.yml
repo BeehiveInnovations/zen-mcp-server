@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: patrykiti/zen-mcp-server
 
 jobs:
   build-and-push:
@@ -116,7 +116,7 @@ jobs:
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📦 View in GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
-        echo "[View all versions and tags →](https://github.com/${{ github.repository }}/pkgs/container/gemini-mcp-server)" >> $GITHUB_STEP_SUMMARY
+        echo "[View all versions and tags →](https://github.com/${{ github.repository }}/pkgs/container/zen-mcp-server)" >> $GITHUB_STEP_SUMMARY
 
     - name: Update README with latest image info
       if: github.ref_type == 'tag' || (github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '')
