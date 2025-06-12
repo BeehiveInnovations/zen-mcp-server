@@ -156,17 +156,17 @@ jobs:
           if [[ "$UPDATE_TYPE" == "release" ]]; then
             git commit -m "docs: Update Docker image references to ${{ github.ref_name }}
 
-Automated update after Docker image publish for release ${{ github.ref_name }}.
-All documentation now references the latest stable image.
+          Automated update after Docker image publish for release ${{ github.ref_name }}.
+          All documentation now references the latest stable image.
 
-🤖 Automated by GitHub Actions"
-          else
-            git commit -m "docs: Update Docker image references for PR #${{ github.event.client_payload.pr_number }}
+          🤖 Automated by GitHub Actions"
+                    else
+                      git commit -m "docs: Update Docker image references for PR #${{ github.event.client_payload.pr_number }}
 
-Automated update after Docker image publish for development build.
-Documentation updated to reference the latest development image.
+          Automated update after Docker image publish for development build.
+          Documentation updated to reference the latest development image.
 
-🤖 Automated by GitHub Actions"
+          🤖 Automated by GitHub Actions"
           fi
           
           # Push changes back to the repository
