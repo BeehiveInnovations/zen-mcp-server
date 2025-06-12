@@ -200,7 +200,7 @@ else
     exit 1
 fi
 
-echo "  - Starting Redis and MCP services... please wait"
+echo "  - Starting Redis (needed for conversational context persistence)... please wait"
 if $COMPOSE_CMD up -d >/dev/null 2>&1; then
     echo "✅ Services started successfully!"
 else
@@ -223,57 +223,111 @@ echo ""
 echo "📋 Service Status:"
 $COMPOSE_CMD ps --format table
 
-echo ""
-echo "🔄 Next steps:"
-NEEDS_KEY_UPDATE=false
-if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null; then
-    NEEDS_KEY_UPDATE=true
+# Function to show configuration steps - only if CLI not already set up
+show_configuration_steps() {
+    echo ""
+    echo "🔄 Next steps:"
+    NEEDS_KEY_UPDATE=false
+    if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null; then
+        NEEDS_KEY_UPDATE=true
+    fi
+
+    if [ "$NEEDS_KEY_UPDATE" = true ]; then
+        echo "1. Edit .env and replace placeholder API keys with actual ones"
+        echo "   - GEMINI_API_KEY: your-gemini-api-key-here"
+        echo "   - OPENAI_API_KEY: your-openai-api-key-here"
+        echo "2. Restart services: $COMPOSE_CMD restart"
+        echo "3. Copy the configuration below to your Claude Desktop config if required:"
+    else
+        echo "1. Copy the configuration below to your Claude Desktop config if required:"
+    fi
+
+    echo ""
+    echo "===== CLAUDE DESKTOP CONFIGURATION ====="
+    echo "{"
+    echo "  \"mcpServers\": {"
+    echo "    \"zen\": {"
+    echo "      \"command\": \"docker\","
+    echo "      \"args\": ["
+    echo "        \"exec\","
+    echo "        \"-i\","
+    echo "        \"zen-mcp-server\","
+    echo "        \"python\","
+    echo "        \"server.py\""
+    echo "      ]"
+    echo "    }"
+    echo "  }"
+    echo "}"
+    echo "==========================================="
+}
+# Function to automatically configure Claude Code CLI
+# Returns: 0 if already configured, 1 if CLI not found, 2 if configured/skipped
+setup_claude_code_cli() {
+    # Check if claude command exists
+    if ! command -v claude &> /dev/null; then
+        echo "⚠️  Claude Code CLI not found. Install it to use with CLI:"
+        echo "   npm install -g @anthropic-ai/claude-code"
+        echo ""
+        echo "📋 Manual MCP configuration for Claude Code CLI:"
+        echo "claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
+        return 1
+    fi
+    
+    echo "🔧 Configuring Claude Code CLI..."
+    
+    # Get current MCP list and check if zen-mcp-server already exists
+    if claude mcp list 2>/dev/null | grep -q "zen-mcp-server" 2>/dev/null; then
+        echo "✅ Zen MCP Server already configured in Claude Code CLI"
+        echo ""
+        return 0  # Already configured
+    else
+        echo "  - Zen MCP Server not found in Claude Code CLI configuration"
+        echo ""
+        echo -n "Would you like to add the Zen MCP Server to Claude Code CLI now? [Y/n]: "
+        read -r response
+        
+        # Default to yes if empty response (just pressed enter)
+        if [[ -z "$response" || "$response" =~ ^[Yy]$ ]]; then
+            echo "  - Adding Zen MCP Server to Claude Code CLI..."
+            if claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py >/dev/null 2>&1; then
+                echo "✅ Zen MCP Server added to Claude Code CLI successfully!"
+                echo "   Use 'claude' command to start a session with the MCP server"
+            else
+                echo "⚠️  Failed to add MCP server automatically. You can add it manually:"
+                echo "   claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
+            fi
+        else
+            echo "  - Skipped adding MCP server. You can add it manually later:"
+            echo "   claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
+        fi
+        echo ""
+        return 2  # Configured or skipped
+    fi
+}
+
+# Set up Claude Code CLI automatically
+setup_claude_code_cli
+CLI_STATUS=$?
+
+# Only show configuration details if zen is NOT already configured
+if [ $CLI_STATUS -ne 0 ]; then
+    # Show configuration steps
+    show_configuration_steps
+    
+    echo ""
+    echo "===== CLAUDE CODE CLI CONFIGURATION ====="
+    echo "# Useful Claude Code CLI commands:"
+    echo "claude                                    # Start interactive session"
+    echo "claude mcp list                          # List your MCP servers"
+    echo "claude mcp remove zen -s user            # Remove if needed"
+    echo "==========================================="
+    echo ""
+    
+    echo "📁 Config file locations:"
+    echo "  macOS: ~/Library/Application Support/Claude/claude_desktop_config.json"
+    echo '  Windows (WSL): /mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json'
+    echo ""
 fi
-
-if [ "$NEEDS_KEY_UPDATE" = true ]; then
-    echo "1. Edit .env and replace placeholder API keys with actual ones"
-    echo "   - GEMINI_API_KEY: your-gemini-api-key-here"
-    echo "   - OPENAI_API_KEY: your-openai-api-key-here"
-    echo "2. Restart services: $COMPOSE_CMD restart"
-    echo "3. Copy the configuration below to your Claude Desktop config:"
-else
-    echo "1. Copy the configuration below to your Claude Desktop config:"
-fi
-
-echo ""
-echo "===== CLAUDE DESKTOP CONFIGURATION ====="
-echo "{"
-echo "  \"mcpServers\": {"
-echo "    \"zen\": {"
-echo "      \"command\": \"docker\","
-echo "      \"args\": ["
-echo "        \"exec\","
-echo "        \"-i\","
-echo "        \"zen-mcp-server\","
-echo "        \"python\","
-echo "        \"server.py\""
-echo "      ]"
-echo "    }"
-echo "  }"
-echo "}"
-echo "==========================================="
-echo ""
-echo "===== CLAUDE CODE CLI CONFIGURATION ====="
-echo "# Add the MCP server via Claude Code CLI:"
-echo "claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
-echo ""
-echo "# List your MCP servers to verify:"
-echo "claude mcp list"
-echo ""
-echo "# Remove if needed:"
-echo "claude mcp remove zen -s user"
-echo "==========================================="
-echo ""
-
-echo "📁 Config file locations:"
-echo "  macOS: ~/Library/Application Support/Claude/claude_desktop_config.json"
-echo '  Windows (WSL): /mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json'
-echo ""
 
 echo "🔧 Useful commands:"
 echo "  Start services:    $COMPOSE_CMD up -d"
@@ -283,5 +337,4 @@ echo "  Restart services:  $COMPOSE_CMD restart"
 echo "  Service status:    $COMPOSE_CMD ps"
 echo ""
 
-echo "🗃️  Redis for conversation threading is automatically configured and running!"
-echo "   All AI-to-AI conversations will persist between requests."
+echo "Happy Clauding!"
