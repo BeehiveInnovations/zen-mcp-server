@@ -37,7 +37,7 @@ class TestThinkDeepTool:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Extended analysis", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Extended analysis", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -88,7 +88,7 @@ class TestCodeReviewTool:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content="Security issues found", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Security issues found", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -133,7 +133,7 @@ class TestDebugIssueTool:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content="Root cause: race condition", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Root cause: race condition", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -181,7 +181,7 @@ class TestAnalyzeTool:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content="Architecture analysis", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Architecture analysis", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -295,7 +295,7 @@ class TestAbsolutePathValidation:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content="Analysis complete", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Analysis complete", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 

@@ -81,7 +81,7 @@ class ThinkDeepTool(BaseTool):
                 "thinking_mode": {
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": f"Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768). Defaults to '{self.get_default_thinking_mode()}' if not specified.",
+                    "description": f"Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max). Defaults to '{self.get_default_thinking_mode()}' if not specified.",
                 },
                 "use_websearch": {
                     "type": "boolean",

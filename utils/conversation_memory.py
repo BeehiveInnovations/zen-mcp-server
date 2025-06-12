@@ -74,7 +74,7 @@ class ConversationTurn(BaseModel):
         files: List of file paths referenced in this specific turn
         tool_name: Which tool generated this turn (for cross-tool tracking)
         model_provider: Provider used (e.g., "google", "openai")
-        model_name: Specific model used (e.g., "gemini-2.0-flash", "o3-mini")
+        model_name: Specific model used (e.g., "gemini-2.5-flash-preview-05-20", "o3-mini")
         model_metadata: Additional model-specific metadata (e.g., thinking mode, token usage)
     """
 
@@ -249,7 +249,7 @@ def add_turn(
         files: Optional list of files referenced in this turn
         tool_name: Name of the tool adding this turn (for attribution)
         model_provider: Provider used (e.g., "google", "openai")
-        model_name: Specific model used (e.g., "gemini-2.0-flash", "o3-mini")
+        model_name: Specific model used (e.g., "gemini-2.5-flash-preview-05-20", "o3-mini")
         model_metadata: Additional model info (e.g., thinking mode, token usage)
 
     Returns:

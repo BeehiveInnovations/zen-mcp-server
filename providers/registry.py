@@ -67,7 +67,7 @@ class ModelProviderRegistry:
         """Get provider instance for a specific model name.
 
         Args:
-            model_name: Name of the model (e.g., "gemini-2.0-flash", "o3-mini")
+            model_name: Name of the model (e.g., "gemini-2.5-flash-preview-05-20", "o3-mini")
 
         Returns:
             ModelProvider instance that supports this model
@@ -137,7 +137,7 @@ class ModelProviderRegistry:
         2. Gemini 2.0 Flash (fast and efficient) if Gemini API key available
         3. OpenAI o3 (high performance) if OpenAI API key available
         4. Gemini 2.5 Pro (deep reasoning) if Gemini API key available
-        5. Fallback to gemini-2.0-flash (most common case)
+        5. Fallback to gemini-2.5-flash-preview-05-20 (most common case)
 
         Returns:
             Model name string for fallback use
@@ -150,11 +150,11 @@ class ModelProviderRegistry:
         if openai_available:
             return "o3-mini"  # Balanced performance/cost
         elif gemini_available:
-            return "gemini-2.0-flash"  # Fast and efficient
+            return "gemini-2.5-flash-preview-05-20"  # Fast and efficient
         else:
             # No API keys available - return a reasonable default
             # This maintains backward compatibility for tests
-            return "gemini-2.0-flash"
+            return "gemini-2.5-flash-preview-05-20"
 
     @classmethod
     def get_available_providers_with_keys(cls) -> list[ProviderType]:

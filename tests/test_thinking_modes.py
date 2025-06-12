@@ -45,7 +45,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Minimal thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Minimal thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -82,7 +82,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Low thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Low thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -114,7 +114,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Medium thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Medium thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -145,7 +145,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="High thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="High thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -175,7 +175,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Max thinking response", usage={}, model_name="gemini-2.0-flash", metadata={}
+            content="Max thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -222,18 +222,22 @@ class TestThinkingModes:
             async def prepare_prompt(self, request):
                 return "test"
 
-        # Expected mappings
+        # Test dynamic budget calculation for Flash 2.5
+        from providers.gemini import GeminiModelProvider
+
+        provider = GeminiModelProvider(api_key="test-key")
+        flash_model = "gemini-2.5-flash-preview-05-20"
+        flash_max_tokens = 24576
+
         expected_budgets = {
-            "minimal": 128,
-            "low": 2048,
-            "medium": 8192,
-            "high": 16384,
-            "max": 32768,
+            "minimal": int(flash_max_tokens * 0.005),  # 123
+            "low": int(flash_max_tokens * 0.08),  # 1966
+            "medium": int(flash_max_tokens * 0.33),  # 8110
+            "high": int(flash_max_tokens * 0.67),  # 16465
+            "max": int(flash_max_tokens * 1.0),  # 24576
         }
 
-        # Check each mode in create_model
-        for _mode, _expected_budget in expected_budgets.items():
-            # The budget mapping is inside create_model
-            # We can't easily test it without calling the method
-            # But we've verified the values are correct in the code
-            pass
+        # Check each mode using the helper method
+        for mode, expected_budget in expected_budgets.items():
+            actual_budget = provider.get_thinking_budget(flash_model, mode)
+            assert actual_budget == expected_budget, f"Mode {mode}: expected {expected_budget}, got {actual_budget}"

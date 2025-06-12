@@ -57,7 +57,7 @@ class ToolRequest(BaseModel):
     # Higher values allow for more complex reasoning but increase latency and cost
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
         None,
-        description="Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
+        description="Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
     )
     use_websearch: Optional[bool] = Field(
         True,

@@ -390,7 +390,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Supports specialized analysis types: architecture, performance, security, quality
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
-- **Web search capability**: When enabled with `use_websearch`, the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
+- **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
 ### 7. `get_version` - Server Information
 ```
 "Get zen to show its version"
