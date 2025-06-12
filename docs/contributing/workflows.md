@@ -4,6 +4,91 @@
 
 This document outlines the development workflows and processes for the Gemini MCP Server project, following the collaboration patterns defined in CLAUDE.md and integrating with the Memory Bank system for context preservation.
 
+## Pull Request Automation & Versioning
+
+### Automated Workflows
+
+The project implements automated versioning and Docker builds based on PR title prefixes, enabling seamless releases and testing.
+
+#### PR Title Prefix System
+
+**Version Bumping Prefixes** (creates releases):
+- `feat:` → Minor version bump (1.X.0) + Docker build + GitHub release
+- `fix:` → Patch version bump (1.0.X) + Docker build + GitHub release  
+- `breaking:` → Major version bump (X.0.0) + Docker build + GitHub release
+- `perf:` → Patch version bump + Docker build + GitHub release
+- `refactor:` → Patch version bump + Docker build + GitHub release
+
+**Non-Version Prefixes** (no releases):
+- `docs:` → Documentation changes only
+- `chore:` → Maintenance tasks
+- `test:` → Test updates
+- `ci:` → CI/CD pipeline changes
+- `style:` → Code formatting/style
+
+**Docker Build Combinations** (Docker without versioning):
+- `docker:` → Force Docker build only
+- `docs+docker:` → Documentation + Docker build
+- `chore+docker:` → Maintenance + Docker build
+- `test+docker:` → Test changes + Docker build
+- `ci+docker:` → CI changes + Docker build
+- `style+docker:` → Style changes + Docker build
+
+#### Workflow Execution Flow
+
+```mermaid
+flowchart TD
+    A[PR Created] --> B[docker-test.yml]
+    B --> C[test.yml] 
+    A --> C
+    
+    D[PR Merged] --> E[auto-version.yml]
+    E --> F{PR Title Analysis}
+    
+    F -->|feat:, fix:, etc.| G[Version Bump]
+    F -->|docker:, docs+docker:, etc.| H[Docker Build Flag]
+    F -->|docs:, chore:, etc.| I[No Action]
+    
+    G --> J[Create Git Tag]
+    J --> K[build_and_publish_docker.yml]
+    
+    H --> L[Repository Dispatch]
+    L --> K
+    
+    K --> M[Build & Push to GHCR]
+    
+    G --> N[Create GitHub Release]
+```
+
+#### Docker Image Tagging Strategy
+
+**For Version Releases:**
+- `v1.2.3` - Semantic version tag
+- `latest` - Latest stable release
+
+**For Docker-only Builds:**
+- `pr-{number}` - PR-specific tag (e.g., `pr-42`)
+- `main-{commit-sha}` - Commit-specific tag (e.g., `main-abc1234`)
+
+#### Implementation Details
+
+**Auto-version Workflow** (`.github/workflows/auto-version.yml`):
+1. Analyzes PR title for semantic prefix
+2. Updates `config.py` with new version
+3. Creates git tag and GitHub release
+4. Triggers Docker build via tag creation or repository dispatch
+
+**Docker Build Workflow** (`.github/workflows/build_and_publish_docker.yml`):
+1. Triggered by git tags or repository dispatch
+2. Builds multi-platform Docker images
+3. Pushes to GitHub Container Registry (GHCR)
+4. Handles different tagging strategies based on trigger
+
+**Docker Test Workflow** (`.github/workflows/docker-test.yml`):
+1. Runs on all PRs
+2. Validates Docker build without publishing
+3. Provides early feedback on containerization issues
+
 ## Core Development Workflow
 
 ### 1. Feature Development Process

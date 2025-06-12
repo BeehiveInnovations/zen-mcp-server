@@ -127,7 +127,52 @@ The GitHub Actions workflow:
 3. **Make your changes**
 4. **Add/update tests**
 5. **Run tests locally**: Ensure unit tests pass
-6. **Submit PR**: Include description of changes
+6. **Choose appropriate PR title prefix** (see below)
+7. **Submit PR**: Include description of changes
+
+### PR Title Prefixes and Automation
+
+The project uses automated versioning and Docker builds based on PR title prefixes:
+
+#### Version Bumping Prefixes (trigger version bump + Docker build):
+- `feat: <description>` - New features → **MINOR** version bump (1.X.0)
+- `fix: <description>` - Bug fixes → **PATCH** version bump (1.0.X)
+- `breaking: <description>` - Breaking changes → **MAJOR** version bump (X.0.0)
+- `perf: <description>` - Performance improvements → **PATCH** version bump
+- `refactor: <description>` - Code refactoring → **PATCH** version bump
+
+#### Non-Version Prefixes (no version bump):
+- `docs: <description>` - Documentation only
+- `chore: <description>` - Maintenance tasks  
+- `test: <description>` - Test additions/changes
+- `ci: <description>` - CI/CD changes
+- `style: <description>` - Code style changes
+
+#### Docker Build Options:
+For contributors who want to test Docker builds without version bumps:
+- `docker: <description>` - Force Docker build only
+- `docs+docker: <description>` - Documentation + Docker build
+- `chore+docker: <description>` - Maintenance + Docker build
+- `test+docker: <description>` - Tests + Docker build
+- `ci+docker: <description>` - CI changes + Docker build
+- `style+docker: <description>` - Style changes + Docker build
+
+#### What Happens When PR is Merged:
+
+**For version bumping prefixes:**
+1. Version in `config.py` is automatically updated
+2. Git tag is created (e.g., `v1.2.0`)
+3. GitHub release is published
+4. Docker image is built and pushed to GHCR with version tag
+
+**For Docker build prefixes:**
+1. Docker image is built and pushed to GHCR
+2. Image tagged with `pr-{number}` and `main-{commit-sha}`
+3. No version bump or release created
+
+**For standard non-version prefixes:**
+1. Changes are merged without automation
+2. No version bump, Docker build, or release
 
 ### Code Standards
 

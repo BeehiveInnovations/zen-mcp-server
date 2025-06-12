@@ -94,6 +94,7 @@ This project follows the **[CLAUDE.md Collaboration Framework](../CLAUDE.md)** w
 ### Project Information
 - **[Main README](../README.md)** - Project overview and quick start
 - **[Contributing Guidelines](../CONTRIBUTING.md)** - How to contribute to the project
+- **[Quick Contributing Guide](user-guides/contributing-guide.md)** - Simple guide for new contributors
 - **[License](../LICENSE)** - MIT License details
 - **[Collaboration Framework](../CLAUDE.md)** - Development collaboration patterns
 
