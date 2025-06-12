@@ -187,7 +187,7 @@ jobs:
           fi
           
           # Push changes back to the repository
-          git push
+          git push --set-upstream origin main
           
           echo "### 📝 Documentation Updated" >> $GITHUB_STEP_SUMMARY
           echo "README.md and user guides have been automatically updated with the new Docker image tag: \`$LATEST_TAG\`" >> $GITHUB_STEP_SUMMARY
