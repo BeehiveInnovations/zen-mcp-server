@@ -51,7 +51,6 @@ and review into consideration to aid with its pre-commit review.
   - [Web Search Integration](#web-search-integration) - Smart search recommendations
   - [Collaborative Workflows](#collaborative-workflows) - Multi-tool patterns
   - [Tool Parameters](#tool-parameters) - Detailed parameter reference
-  - [Docker Architecture](#docker-architecture) - How Docker integration works
 
 - **Resources**
   - [Windows Setup](#windows-setup-guide) - WSL setup instructions for Windows
