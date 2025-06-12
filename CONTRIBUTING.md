@@ -1,4 +1,4 @@
-# Contributing to Gemini MCP Server
+# Contributing to Zen MCP Server
 
 Thank you for your interest in contributing! This guide explains how to set up the development environment and contribute to the project.
 
@@ -6,8 +6,8 @@ Thank you for your interest in contributing! This guide explains how to set up t
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
-   cd gemini-mcp-server
+   git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
+   cd zen-mcp-server
    ```
 
 2. **Create virtual environment**

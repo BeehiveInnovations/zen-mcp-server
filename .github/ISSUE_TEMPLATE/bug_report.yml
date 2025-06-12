@@ -12,7 +12,7 @@ body:
     attributes:
       label: Project Version
       description: "Which version are you using? (e.g., Docker image tag like `latest` or `v1.2.3`, or a git commit SHA)"
-      placeholder: "e.g., ghcr.io/beehiveinnovations/gemini-mcp-server:latest"
+      placeholder: "e.g., ghcr.io/beehiveinnovations/zen-mcp-server:latest"
     validations:
       required: true
 
@@ -78,3 +78,4 @@ body:
           required: true
         - label: I have confirmed that my `GEMINI_API_KEY` is set correctly.
           required: true
+

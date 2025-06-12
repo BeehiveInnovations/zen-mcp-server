@@ -573,8 +573,8 @@ claude-code-cli --tool precommit --path /workspace/
 **Docker Image Workflow**:
 ```bash
 # 1. Build and test image locally
-docker build -t gemini-mcp-server:latest .
-docker run --rm gemini-mcp-server:latest --version
+docker build -t zen-mcp-server:latest .
+docker run --rm zen-mcp-server:latest --version
 
 # 2. Push to registry (automated via GitHub Actions)
 # 3. Update deployment configurations
@@ -620,3 +620,4 @@ Implementation: Added context managers and explicit cleanup in utils/conversatio
 ---
 
 This development workflow ensures high-quality, collaborative development while maintaining consistency with CLAUDE.md patterns and preserving knowledge through the Memory Bank system.
+

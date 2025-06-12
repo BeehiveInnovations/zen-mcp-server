@@ -108,13 +108,13 @@ After your PR is merged with a `+docker` prefix:
 
 ```bash
 # Pull your test image
-docker pull ghcr.io/patrykiti/gemini-mcp-server:pr-42
+docker pull ghcr.io/beehiveinnovations/zen-mcp-server:pr-42
 
 # Or use the commit-based tag
-docker pull ghcr.io/patrykiti/gemini-mcp-server:main-abc1234
+docker pull ghcr.io/beehiveinnovations/zen-mcp-server:main-abc1234
 
 # Test it locally
-docker run -it --rm ghcr.io/patrykiti/gemini-mcp-server:pr-42
+docker run -it --rm ghcr.io/beehiveinnovations/zen-mcp-server:pr-42
 ```
 
 ## Workflow Summary

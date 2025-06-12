@@ -7,7 +7,7 @@ This document provides a comprehensive guide to the repository structure, explai
 ## Repository Structure
 
 ```
-gemini-mcp-server/
+zen-mcp-server/
 ├── CLAUDE.md                    # Collaboration framework and development guidelines
 ├── README.md                    # Project overview and quick start guide
 ├── LICENSE                      # Project license (MIT)
@@ -380,3 +380,4 @@ tests/
 ---
 
 This file overview provides the foundation for understanding the repository structure and serves as a guide for contributors to navigate the codebase effectively and make informed architectural decisions.
+

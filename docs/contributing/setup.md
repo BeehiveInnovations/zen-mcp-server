@@ -21,8 +21,8 @@ This guide helps you set up a development environment for contributing to the Ge
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
-cd gemini-mcp-server
+git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
+cd zen-mcp-server
 ```
 
 ### 2. Choose Development Method
@@ -378,3 +378,4 @@ docker system prune -f
 - Read [Development Workflows](workflows.md)
 - Review [Code Style Guide](code-style.md)
 - Understand [Testing Strategy](testing.md)
+

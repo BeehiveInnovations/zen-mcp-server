@@ -393,8 +393,8 @@ cat .env | grep -v "GEMINI_API_KEY"
 ### Support Channels
 
 - 📖 [Documentation](../README.md)
-- 💬 [GitHub Discussions](https://github.com/BeehiveInnovations/gemini-mcp-server/discussions)
-- 🐛 [Issue Tracker](https://github.com/BeehiveInnovations/gemini-mcp-server/issues)
+- 💬 [GitHub Discussions](https://github.com/BeehiveInnovations/zen-mcp-server/discussions)
+- 🐛 [Issue Tracker](https://github.com/BeehiveInnovations/zen-mcp-server/issues)
 
 ### Creating Bug Reports
 

@@ -115,3 +115,4 @@ jobs:
       run: |
         echo "🔒 Simulation tests skipped (no API keys configured)"
         echo "To enable simulation tests, add GEMINI_API_KEY and/or OPENAI_API_KEY as repository secrets"
+

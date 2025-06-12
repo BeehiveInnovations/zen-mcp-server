@@ -53,8 +53,8 @@ This documentation is organized into four main categories to serve different aud
 
 The server provides six specialized tools for different AI collaboration scenarios:
 
-| Tool | Purpose | Best For | Documentation |
-|------|---------|----------|---------------|
+| Tool | Purpose | Best For | Complexity Level |
+|------|---------|----------|------------------|
 | **[chat](api/tools/chat.md)** | Quick questions, brainstorming | Immediate answers, idea exploration | Low complexity, fast iteration |
 | **[thinkdeep](api/tools/thinkdeep.md)** | Complex analysis, strategic planning | Architecture decisions, system design | High complexity, deep analysis |
 | **[analyze](api/tools/analyze.md)** | Code exploration, system understanding | Codebase comprehension, dependency analysis | Medium complexity, systematic exploration |
@@ -159,3 +159,4 @@ To contribute:
 ---
 
 **Need Help?** Check the [Troubleshooting Guide](user-guides/troubleshooting.md) or explore the specific documentation section for your use case. For development questions, start with the [Contributing Guidelines](contributing/setup.md).
+

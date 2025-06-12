@@ -45,12 +45,12 @@ body:
       placeholder: |
         Change:
         ```
-        docker run ghcr.io/beehiveinnovations/gemini-mcp-server:latest
+        docker run ghcr.io/beehiveinnovations/zen-mcp-server:latest
         ```
         
         To:
         ```
-        docker run --pull=always ghcr.io/beehiveinnovations/gemini-mcp-server:latest
+        docker run --pull=always ghcr.io/beehiveinnovations/zen-mcp-server:latest
         ```
 
   - type: dropdown
@@ -65,3 +65,4 @@ body:
         - All users
     validations:
       required: true
+

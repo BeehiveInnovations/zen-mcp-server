@@ -200,7 +200,7 @@ have produced a configuration for you to copy:
 
 ```bash
 # Pull the latest published image
-docker pull ghcr.io/patrykiti/zen-mcp-server:v4.0.10
+docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
 ```
 
 **Claude Desktop Configuration:**
@@ -212,7 +212,7 @@ docker pull ghcr.io/patrykiti/zen-mcp-server:v4.0.10
       "args": [
         "run", "--rm", "-i",
         "-e", "GEMINI_API_KEY",
-        "ghcr.io/patrykiti/zen-mcp-server:v4.0.10"
+        "ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10"
       ],
       "env": {
         "GEMINI_API_KEY": "your-gemini-api-key-here"
@@ -238,7 +238,7 @@ You can customize the server behavior by adding additional environment variables
         "-e", "DEFAULT_THINKING_MODE_THINKDEEP",
         "-e", "LOG_LEVEL",
         "-e", "MCP_PROJECT_ROOT",
-        "ghcr.io/patrykiti/zen-mcp-server:v4.0.10"
+        "ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10"
       ],
       "env": {
         "GEMINI_API_KEY": "your-gemini-api-key-here",
@@ -1095,7 +1095,7 @@ Once set up, everything works normally:
 
 ```bash
 # Pull the image (runs in WSL2 automatically)
-docker pull ghcr.io/patrykiti/zen-mcp-server:v4.0.10
+docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
 
 # Configure Claude Desktop normally in Windows
 # Docker Desktop handles WSL2 routing automatically
@@ -1112,7 +1112,7 @@ If you prefer not to use Docker:
 
 ```powershell
 # In PowerShell or Command Prompt
-git clone https://github.com/PatrykIti/zen-mcp-server.git
+git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
 cd zen-mcp-server
 pip install -r requirements.txt
 

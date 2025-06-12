@@ -8,7 +8,7 @@ This guide covers all configuration options for the Gemini MCP Server.
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `GEMINI_API_KEY` | Your Gemini API key from Google AI Studio | `AIzaSyC...` |
+| `GEMINI_API_KEY` | Your Gemini API key from Google AI Studio (replace entire placeholder) | `AIzaSyC_your_actual_key_here` |
 
 ### Optional Configuration
 
@@ -43,10 +43,10 @@ Add to your Claude Desktop config file:
       "args": [
         "run", "--rm", "-i",
         "-e", "GEMINI_API_KEY",
-        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+        "ghcr.io/beehiveinnovations/zen-mcp-server:latest"
       ],
       "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
+        "GEMINI_API_KEY": "AIzaSyC_your_actual_gemini_api_key_here"
       }
     }
   }
@@ -75,10 +75,10 @@ Add to your Claude Desktop config file:
       "args": [
         "run", "--rm", "-i",
         "-e", "GEMINI_API_KEY",
-        "ghcr.io/patrykiti/gemini-mcp-server:v1.2.0"
+        "ghcr.io/beehiveinnovations/zen-mcp-server:v1.2.0"
       ],
       "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
+        "GEMINI_API_KEY": "AIzaSyC_your_actual_gemini_api_key_here"
       }
     }
   }
@@ -289,3 +289,4 @@ services:
 **See Also:**
 - [Installation Guide](installation.md)
 - [Troubleshooting Guide](troubleshooting.md)
+

@@ -600,3 +600,4 @@ repos:
 ---
 
 Following these code style guidelines ensures consistent, maintainable, and secure code across the Gemini MCP Server project. All team members should adhere to these standards and use the automated tools to enforce compliance.
+

@@ -45,10 +45,10 @@ After following this guide, you'll have:
 
 ```bash
 # Download the latest stable version
-docker pull ghcr.io/patrykiti/gemini-mcp-server:latest
+docker pull ghcr.io/beehiveinnovations/zen-mcp-server:latest
 
 # Optional: Pull a specific version
-docker pull ghcr.io/patrykiti/gemini-mcp-server:v1.2.0
+docker pull ghcr.io/beehiveinnovations/zen-mcp-server:v1.2.0
 ```
 
 ### Step 2: Configure Claude Desktop
@@ -66,7 +66,7 @@ docker pull ghcr.io/patrykiti/gemini-mcp-server:v1.2.0
       "args": [
         "run", "--rm", "-i",
         "-e", "GEMINI_API_KEY",
-        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+        "ghcr.io/beehiveinnovations/zen-mcp-server:latest"
       ],
       "env": {
         "GEMINI_API_KEY": "your-gemini-api-key-here"
@@ -86,10 +86,10 @@ Available image tags:
 
 ```bash
 # See all available tags
-docker search ghcr.io/patrykiti/gemini-mcp-server
+docker search ghcr.io/beehiveinnovations/zen-mcp-server
 
 # Or check GitHub Container Registry
-open https://github.com/PatrykIti/gemini-mcp-server/pkgs/container/gemini-mcp-server
+open https://github.com/BeehiveInnovations/zen-mcp-server/pkgs/container/zen-mcp-server
 ```
 
 ### Step 4: Test Installation
@@ -113,8 +113,8 @@ Restart Claude Desktop and try:
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
-cd gemini-mcp-server
+git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
+cd zen-mcp-server
 ```
 
 ### Step 2: One-Command Setup
@@ -198,7 +198,7 @@ services:
       - redis_data:/data
 
   gemini-mcp:
-    image: ghcr.io/beehiveinnovations/gemini-mcp-server:latest
+    image: ghcr.io/beehiveinnovations/zen-mcp-server:latest
     container_name: gemini-mcp-server
     restart: unless-stopped
     depends_on:
@@ -383,8 +383,8 @@ Once you're set up:
 
 1. **Explore the tools**: Try each tool to understand their specialties
 2. **Read the main README**: [Full documentation](../README.md) has advanced usage patterns
-3. **Join discussions**: [GitHub Discussions](https://github.com/BeehiveInnovations/gemini-mcp-server/discussions) for tips and tricks
-4. **Contribute**: Found a bug or want a feature? [Open an issue](https://github.com/BeehiveInnovations/gemini-mcp-server/issues)
+3. **Join discussions**: [GitHub Discussions](https://github.com/BeehiveInnovations/zen-mcp-server/discussions) for tips and tricks
+4. **Contribute**: Found a bug or want a feature? [Open an issue](https://github.com/BeehiveInnovations/zen-mcp-server/issues)
 
 ## 💡 Pro Tips
 
@@ -402,5 +402,5 @@ Once you're set up:
 
 **Need Help?** 
 - 📖 [Full Documentation](../README.md)
-- 💬 [Community Discussions](https://github.com/BeehiveInnovations/gemini-mcp-server/discussions)  
-- 🐛 [Report Issues](https://github.com/BeehiveInnovations/gemini-mcp-server/issues)
+- 💬 [Community Discussions](https://github.com/BeehiveInnovations/zen-mcp-server/discussions)  
+- 🐛 [Report Issues](https://github.com/BeehiveInnovations/zen-mcp-server/issues)
