@@ -114,3 +114,64 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📦 View in GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
         echo "[View all versions and tags →](https://github.com/${{ github.repository }}/pkgs/container/gemini-mcp-server)" >> $GITHUB_STEP_SUMMARY
+
+    - name: Update README with latest image info
+      if: github.ref_type == 'tag' || github.event_name == 'repository_dispatch'
+      run: |
+        # Extract the primary image tag for updating README
+        if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          # For tag releases, use the version tag
+          LATEST_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+          UPDATE_TYPE="release"
+        else
+          # For repository_dispatch (PR builds), use the PR tag
+          LATEST_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.client_payload.pr_number }}"
+          UPDATE_TYPE="development"
+        fi
+        
+        echo "Updating README.md with latest Docker image: $LATEST_TAG"
+        
+        # Update README.md with the latest image tag
+        sed -i.bak "s|ghcr\.io/patrykiti/gemini-mcp-server:[a-zA-Z0-9\.-]*|$LATEST_TAG|g" README.md
+        
+        # Also update docs/user-guides/installation.md
+        sed -i.bak "s|ghcr\.io/patrykiti/gemini-mcp-server:[a-zA-Z0-9\.-]*|$LATEST_TAG|g" docs/user-guides/installation.md
+        
+        # Also update docs/user-guides/configuration.md  
+        sed -i.bak "s|ghcr\.io/patrykiti/gemini-mcp-server:[a-zA-Z0-9\.-]*|$LATEST_TAG|g" docs/user-guides/configuration.md
+        
+        # Check if there are any changes
+        if git diff --quiet README.md docs/user-guides/installation.md docs/user-guides/configuration.md; then
+          echo "No changes needed in documentation"
+        else
+          echo "Documentation updated with new image tag"
+          
+          # Configure git for automated commit
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add and commit changes
+          git add README.md docs/user-guides/installation.md docs/user-guides/configuration.md
+          
+          if [[ "$UPDATE_TYPE" == "release" ]]; then
+            git commit -m "docs: Update Docker image references to ${{ github.ref_name }}
+
+Automated update after Docker image publish for release ${{ github.ref_name }}.
+All documentation now references the latest stable image.
+
+🤖 Automated by GitHub Actions"
+          else
+            git commit -m "docs: Update Docker image references for PR #${{ github.event.client_payload.pr_number }}
+
+Automated update after Docker image publish for development build.
+Documentation updated to reference the latest development image.
+
+🤖 Automated by GitHub Actions"
+          fi
+          
+          # Push changes back to the repository
+          git push
+          
+          echo "### 📝 Documentation Updated" >> $GITHUB_STEP_SUMMARY
+          echo "README.md and user guides have been automatically updated with the new Docker image tag: \`$LATEST_TAG\`" >> $GITHUB_STEP_SUMMARY
+        fi
