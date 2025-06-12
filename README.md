@@ -18,17 +18,18 @@ task and let it orchestrate between models automatically. Claude stays in contro
 but gets perspectives from the best AI for each subtask. Claude can switch between different tools _and_ models mid-conversation, 
 with context carrying forward seamlessly.
 
-**Example Workflow:**
-1. Claude uses Gemini Pro to deeply [`analyze`](#6-analyze---smart-file-analysis) the code in question
-2. Switches to O3 to continue [`chatting`](#1-chat---general-development-chat--collaborative-thinking) about its findings 
-3. Uses Flash to validate formatting suggestions from O3
-4. Performs the actual work after taking in feedback from all three
-5. Returns to Pro for a [`precommit`](#4-precommit---pre-commit-validation) review
+**Example Workflow - Claude Code:**
+1. Performs its own reasoning
+2. Uses Gemini Pro to deeply [`analyze`](#6-analyze---smart-file-analysis) the code in question for a second opinion
+3. Switches to O3 to continue [`chatting`](#1-chat---general-development-chat--collaborative-thinking) about its findings 
+4. Uses Flash to evaluate formatting suggestions from O3
+5. Performs the actual work after taking in feedback from all three
+6. Returns to Pro for a [`precommit`](#4-precommit---pre-commit-validation) review
 
-All within a single conversation thread! Gemini Pro in step 5 _knows_ what was recommended by O3 in step 2! Taking that context
+All within a single conversation thread! Gemini Pro in step 6 _knows_ what was recommended by O3 in step 3! Taking that context
 and review into consideration to aid with its pre-commit review.
 
-**Think of it as Claude Code _for_ Claude Code.**
+**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
 
 ## Quick Navigation
 
@@ -319,6 +320,10 @@ Just ask Claude naturally:
 - "Use flash to suggest how to format this code based on the specs mentioned in policy.md" → Uses Gemini Flash specifically
 - "Think deeply about this and get o3 to debug this logic error I found in the checkOrders() function" → Uses O3 specifically
 - "Brainstorm scaling strategies with pro. Study the code, pick your preferred strategy and debate with pro to settle on two best approaches" → Uses Gemini Pro specifically
+
+> **Remember:** Claude remains in control — but **you** are the true orchestrator.  
+> You're the prompter, the guide, the puppeteer.  
+> Your prompt decides when Claude brings in Gemini, Flash, O3 — or handles it solo.
 
 ## Available Tools
 
@@ -667,7 +672,7 @@ These only apply to models that support customizing token usage for extended thi
 
 ### AI-to-AI Conversation Threading
 
-This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3, GPT-4o), where they can coordinate and question each other's approaches:
+This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3), where they can coordinate and question each other's approaches:
 
 **How it works:**
 - **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
@@ -1198,4 +1203,4 @@ Built with the power of **Multi-Model AI** collaboration 🤝
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
 - [Claude Code](https://claude.ai/code) - Your AI coding assistant & orchestrator
 - [Gemini 2.5 Pro & 2.0 Flash](https://ai.google.dev/) - Extended thinking & fast analysis
-- [OpenAI O3 & GPT-4o](https://openai.com/) - Strong reasoning & general intelligence
+- [OpenAI O3](https://openai.com/) - Strong reasoning & general intelligence
