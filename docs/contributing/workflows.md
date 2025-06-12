@@ -414,6 +414,39 @@ jobs:
 
 ## Release Workflow
 
+### Automatic Versioning System
+
+**Semantic versioning is automatically managed based on PR title prefixes**:
+
+#### PR Title Conventions
+- `feat:` - New features → **MINOR** version bump (0.X.0)
+- `fix:` - Bug fixes → **PATCH** version bump (0.0.X)
+- `breaking:` or `BREAKING CHANGE:` - Breaking changes → **MAJOR** version bump (X.0.0)
+- `perf:` - Performance improvements → **PATCH** version bump
+- `refactor:` - Code refactoring → **PATCH** version bump
+- `docs:`, `chore:`, `test:`, `ci:`, `style:` - No version bump
+
+#### Automatic Version Workflow
+1. **Create PR with appropriate prefix**: `feat: Add new debugging capability`
+2. **PR gets reviewed and merged to main**
+3. **GitHub Action automatically**:
+   - Detects version bump type from PR title
+   - Updates version in `config.py`
+   - Updates `__updated__` timestamp
+   - Commits version change
+   - Creates git tag (e.g., `v3.3.0`)
+   - Generates GitHub release with PR description
+   - Triggers Docker build workflow
+
+#### Manual Version Bumping (if needed)
+```bash
+# Run the version bump script manually
+python scripts/bump_version.py <major|minor|patch>
+
+# Example: bump minor version
+python scripts/bump_version.py minor
+```
+
 ### Pre-Release Validation
 
 **Comprehensive validation before release**:
@@ -444,11 +477,11 @@ claude-code-cli --tool precommit --path /workspace/
 
 ### Release Documentation
 
-**Update release documentation**:
-1. **CHANGELOG.md**: Document all changes, breaking changes, migration notes
-2. **README.md**: Update installation and usage instructions  
-3. **docs/**: Ensure all documentation reflects current version
-4. **Version Tags**: Create semantic version tags
+**Automatic release notes are generated from PR descriptions**:
+1. **GitHub Release**: Created automatically with PR details
+2. **CHANGELOG.md**: Update manually for major releases
+3. **README.md**: Update installation instructions if needed
+4. **docs/**: Ensure documentation reflects new features
 
 ### Deployment Process
 
