@@ -8,6 +8,8 @@ https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
 
 <br/>
 
+> **📚 [Comprehensive Documentation Available](docs/)** - This README provides quick start instructions. For detailed guides, API references, architecture documentation, and development workflows, see our [complete documentation](docs/).
+
 The ultimate development partners for Claude - a Model Context Protocol server that gives Claude access to multiple AI models for enhanced code analysis, 
 problem-solving, and collaborative development.
 
@@ -34,6 +36,12 @@ and review into consideration to aid with its pre-commit review.
   - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes with Docker
   - [Available Tools](#available-tools) - Overview of all tools
   - [AI-to-AI Conversations](#ai-to-ai-conversation-threading) - Multi-turn conversations
+
+- **📚 Detailed Documentation** ([View All](docs/))
+  - **For Users**: [Installation](docs/user-guides/installation.md) | [Configuration](docs/user-guides/configuration.md) | [Troubleshooting](docs/user-guides/troubleshooting.md)
+  - **For Developers**: [Setup](docs/contributing/setup.md) | [Workflows](docs/contributing/workflows.md) | [Code Style](docs/contributing/code-style.md) | [Testing](docs/contributing/testing.md)
+  - **For Architects**: [System Design](docs/architecture/overview.md) | [Components](docs/architecture/components.md) | [Data Flow](docs/architecture/data-flow.md)
+  - **API Reference**: [MCP Protocol](docs/api/mcp-protocol.md) | [Tool APIs](docs/api/tools/)
 
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
@@ -153,6 +161,9 @@ claude mcp remove gemini -s user
 Now run `claude` on the terminal for it to connect to the newly added mcp server. If you were already running a `claude` code session,
 please exit and start a new session.
 
+#### Option A: Local Development Setup (using local Docker build)
+
+The setup script shows you the exact configuration for local development:
 #### If Setting up for Claude Desktop
 
 - Open Claude Desktop
@@ -182,6 +193,103 @@ have produced a configuration for you to copy:
 }
 ```
 
+#### Option B: Published Docker Image (no local setup required)
+
+**Quick setup using the published Docker image from GitHub Container Registry:**
+
+```bash
+# Pull the latest published image
+docker pull ghcr.io/patrykiti/gemini-mcp-server:latest
+```
+
+**Claude Desktop Configuration:**
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Advanced Configuration (Optional Parameters):**
+
+You can customize the server behavior by adding additional environment variables:
+
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GEMINI_API_KEY",
+        "-e", "DEFAULT_MODEL",
+        "-e", "DEFAULT_THINKING_MODE_THINKDEEP",
+        "-e", "LOG_LEVEL",
+        "-e", "MCP_PROJECT_ROOT",
+        "ghcr.io/patrykiti/gemini-mcp-server:latest"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here",
+        "DEFAULT_MODEL": "gemini-2.0-flash-exp",
+        "DEFAULT_THINKING_MODE_THINKDEEP": "medium",
+        "LOG_LEVEL": "INFO",
+        "MCP_PROJECT_ROOT": "/Users/yourusername/your-project"
+      }
+    }
+  }
+}
+```
+
+**Available Configuration Options:**
+
+| Environment Variable | Default Value | Description |
+|---------------------|---------------|-------------|
+| `GEMINI_API_KEY` | *Required* | Your Google AI Studio API key |
+| `DEFAULT_MODEL` | `gemini-2.5-pro-preview-06-05` | Default model: `gemini-2.5-pro-preview-06-05` (Pro) or `gemini-2.0-flash-exp` (Flash) |
+| `DEFAULT_THINKING_MODE_THINKDEEP` | `high` | Default thinking depth: `minimal`, `low`, `medium`, `high`, `max` |
+| `LOG_LEVEL` | `INFO` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `MCP_PROJECT_ROOT` | *Home directory* | Restrict file access to specific project directory |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for conversation threading |
+
+**Examples:**
+
+```bash
+# Use faster Flash model by default
+"DEFAULT_MODEL": "gemini-2.0-flash-exp"
+
+# Use lower thinking mode to save tokens
+"DEFAULT_THINKING_MODE_THINKDEEP": "medium"
+
+# Enable debug logging for troubleshooting
+"LOG_LEVEL": "DEBUG"
+
+# Restrict file access to your project directory
+"MCP_PROJECT_ROOT": "/Users/yourusername/my-project"
+```
+
+**Benefits of using published image:**
+- ✅ **No local build required** - Download and run immediately
+- ✅ **Always latest stable version** - Automatically updated with releases
+- ✅ **Smaller local footprint** - No source code or build dependencies needed
+- ✅ **Easy updates** - Simply pull new image versions
+- ✅ **Cross-platform** - Works on any Docker-supported platform
+
+**How it works:**
+- **Docker Compose services** run continuously in the background
+- **Redis** automatically handles conversation memory between requests  
+- **AI-to-AI conversations** persist across multiple exchanges
+- **File access** through mounted workspace directory
 Paste the above into `claude_desktop_config.json`. If you have several other MCP servers listed, simply add this below the rest after a `,` comma:
 ```json
   ... other mcp servers ... ,
@@ -846,12 +954,54 @@ To modify tool behavior, you can:
 2. Override `get_system_prompt()` in a tool class for tool-specific changes
 3. Use the `temperature` parameter to adjust response style (0.2 for focused, 0.7 for creative)
 
+## Contributing
+
+We welcome contributions! This project follows comprehensive development workflows and quality standards.
+
+**Quick Start for Contributors:**
+1. Create a new tool in `tools/`
+2. Inherit from `BaseTool`
+3. Implement required methods (including `get_system_prompt()`)
+4. Add your system prompt to `prompts/tool_prompts.py`
+5. Register your tool in `TOOLS` dict in `server.py`
+
+**For detailed contribution guidelines, see:**
+- **[Development Setup Guide](docs/contributing/setup.md)** - Environment setup and dependencies
+- **[Development Workflows](docs/contributing/workflows.md)** - Git processes, Memory Bank integration, testing workflows
+- **[Code Style Guide](docs/contributing/code-style.md)** - Python standards, type hints, security practices
+- **[Testing Strategy](docs/contributing/testing.md)** - TDD approach, testing frameworks, quality assurance
+- **[Repository Overview](docs/contributing/file-overview.md)** - Understanding the codebase structure
+
+See existing tools for examples.
+
 ## Testing
 
-### Unit Tests (No API Key Required)
-The project includes comprehensive unit tests that use mocks and don't require a Gemini API key:
+The project includes comprehensive testing strategies covering unit tests, integration tests, and quality assurance.
 
+### Quick Testing
 ```bash
+# Run all unit tests (no API key required)
+python -m pytest tests/ --ignore=tests/test_live_integration.py -v
+
+# Run with coverage
+python -m pytest tests/ --ignore=tests/test_live_integration.py --cov=. --cov-report=html
+
+# Live integration tests (API key required)
+export GEMINI_API_KEY=your-api-key-here
+python tests/test_live_integration.py
+```
+
+### CI/CD Pipeline
+- **✅ Unit tests** - Automated, no API key needed
+- **✅ Multi-Python support** - Tests Python 3.10, 3.11, 3.12
+- **✅ Code quality checks** - Linting and formatting
+- **🔒 Live tests** - Optional integration verification
+
+**For comprehensive testing documentation, see:**
+- **[Testing Strategy Guide](docs/contributing/testing.md)** - TDD methodology, test categories, quality gates
+- **[Test Structure Analysis](docs/contributing/test-structure.md)** - Detailed analysis of existing 17-file test suite
+- **[Development Workflows](docs/contributing/workflows.md)** - Testing integration with git processes
+
 # Run all unit tests
 python -m pytest tests/ -v
 
@@ -898,8 +1048,9 @@ The CI pipeline works without any secrets and will pass all tests using mocked r
 
 ## Troubleshooting
 
-### Docker Issues
+### Common Issues
 
+**Docker Connection Problems:**
 **"Connection failed" in Claude Desktop**
 - Ensure Docker services are running: `docker compose ps`
 - Check if the container name is correct: `docker ps` to see actual container names
@@ -921,15 +1072,32 @@ The CI pipeline works without any secrets and will pass all tests using mocked r
 
 **Testing your Docker setup:**
 ```bash
-# Check if services are running
+# Check services status
 docker compose ps
 
 # Test manual connection
 docker exec -i zen-mcp-server echo "Connection test"
 
-# View logs
+# View logs for errors
 docker compose logs -f
 ```
+
+**Configuration Issues:**
+- API key not set: Check your `.env` file
+- File access issues: Verify mounted directories
+- Redis connectivity: Test with `docker exec -it zen-mcp-redis redis-cli ping`
+
+**Debug Mode:**
+```bash
+# Enable detailed logging
+echo "LOG_LEVEL=DEBUG" >> .env
+docker compose restart
+```
+
+**For comprehensive troubleshooting, see:**
+- **[Troubleshooting Guide](docs/user-guides/troubleshooting.md)** - Complete solutions for common issues
+- **[Configuration Guide](docs/user-guides/configuration.md)** - Proper setup and configuration options
+- **[Installation Guide](docs/user-guides/installation.md)** - Setup verification and validation
 
 ## License
 

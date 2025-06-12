@@ -1,0 +1,80 @@
+name: 🐞 Bug Report
+description: Create a report to help us improve
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to file a bug report! Please provide as much detail as possible to help us reproduce and fix the issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: Project Version
+      description: "Which version are you using? (e.g., Docker image tag like `latest` or `v1.2.3`, or a git commit SHA)"
+      placeholder: "e.g., ghcr.io/beehiveinnovations/gemini-mcp-server:latest"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I run the `codereview` tool on a Python file with syntax errors, it hangs instead of reporting an error."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: "Provide the exact steps to reproduce the behavior. Include the full command you ran."
+      placeholder: |
+        1. Create a file `test.py` with the content `def my_func(a,b)`
+        2. Run the command: `docker exec -i gemini-mcp-server python server.py`
+        3. Use Claude Desktop with gemini codereview tool on test.py
+        4. Observe the behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "I expected the tool to exit with an error message about the invalid Python syntax."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: "Please copy and paste any relevant log output. This will be automatically formatted into a code block."
+      render: shell
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Operating System
+      description: What operating system are you running the Docker client on?
+      options:
+        - Windows (via WSL2)
+        - Windows (via Docker Desktop)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Linux
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: no-duplicate-issues
+    attributes:
+      label: Sanity Checks
+      description: "Before submitting, please confirm the following:"
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I have confirmed that my `GEMINI_API_KEY` is set correctly.
+          required: true
