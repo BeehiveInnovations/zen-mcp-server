@@ -163,18 +163,13 @@ please exit and start a new session.
 
 #### Option A: Local Development Setup (using local Docker build)
 
-The setup script shows you the exact configuration for local development:
-#### If Setting up for Claude Desktop
+If you ran `./setup-docker.sh`, it provided you with the exact configuration for local development.
 
-- Open Claude Desktop
-- Go to **Settings** → **Developer** → **Edit Config**
+**Steps:**
+1. **Open Claude Desktop** → **Settings** → **Developer** → **Edit Config**
+   - This opens a folder revealing `claude_desktop_config.json`
 
-This will open a folder revealing `claude_desktop_config.json`.
-
-2. ** Update Docker Configuration**
-
-The setup script shows you the exact configuration. It looks like this. When you ran `setup-docker.sh` it should
-have produced a configuration for you to copy:
+2. **Add the configuration** shown by setup script (or copy from below):
 
 ```json
 {
@@ -256,26 +251,43 @@ You can customize the server behavior by adding additional environment variables
 | Environment Variable | Default Value | Description |
 |---------------------|---------------|-------------|
 | `GEMINI_API_KEY` | *Required* | Your Google AI Studio API key |
-| `DEFAULT_MODEL` | `gemini-2.5-pro-preview-06-05` | Default model: `gemini-2.5-pro-preview-06-05` (Pro) or `gemini-2.0-flash-exp` (Flash) |
+| `DEFAULT_MODEL` | `auto` (if not set) | Model selection: `auto` (Claude picks best model), `gemini-2.5-pro-preview-06-05` (Pro), or `gemini-2.0-flash-exp` (Flash) |
 | `DEFAULT_THINKING_MODE_THINKDEEP` | `high` | Default thinking depth: `minimal`, `low`, `medium`, `high`, `max` |
 | `LOG_LEVEL` | `INFO` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `MCP_PROJECT_ROOT` | *Home directory* | Restrict file access to specific project directory |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for conversation threading |
 
-**Examples:**
+**Examples for Claude Desktop config:**
+
+```json
+{
+  "mcpServers": {
+    "gemini": {
+      "command": "docker",
+      "args": [...],
+      "env": {
+        "GEMINI_API_KEY": "your-key",
+        "DEFAULT_MODEL": "gemini-2.0-flash-exp",
+        "DEFAULT_THINKING_MODE_THINKDEEP": "medium", 
+        "LOG_LEVEL": "DEBUG",
+        "MCP_PROJECT_ROOT": "/Users/yourusername/my-project"
+      }
+    }
+  }
+}
+```
+
+**Examples for direct docker run:**
 
 ```bash
 # Use faster Flash model by default
-"DEFAULT_MODEL": "gemini-2.0-flash-exp"
+docker run -e DEFAULT_MODEL="gemini-2.0-flash-exp" ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
 
-# Use lower thinking mode to save tokens
-"DEFAULT_THINKING_MODE_THINKDEEP": "medium"
+# Use lower thinking mode to save tokens  
+docker run -e DEFAULT_THINKING_MODE_THINKDEEP="medium" ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
 
 # Enable debug logging for troubleshooting
-"LOG_LEVEL": "DEBUG"
-
-# Restrict file access to your project directory
-"MCP_PROJECT_ROOT": "/Users/yourusername/my-project"
+docker run -e LOG_LEVEL="DEBUG" ghcr.io/beehiveinnovations/zen-mcp-server:v4.0.10
 ```
 
 **Benefits of using published image:**
@@ -1009,13 +1021,6 @@ python tests/test_live_integration.py
 - **[Testing Strategy Guide](docs/contributing/testing.md)** - TDD methodology, test categories, quality gates
 - **[Test Structure Analysis](docs/contributing/test-structure.md)** - Detailed analysis of existing 17-file test suite
 - **[Development Workflows](docs/contributing/workflows.md)** - Testing integration with git processes
-
-# Run all unit tests
-python -m pytest tests/ -v
-
-# Run with coverage
-python -m pytest tests/ --cov=. --cov-report=html
-```
 
 ### Simulation Tests (API Key Required)
 To test the MCP server with comprehensive end-to-end simulation:
