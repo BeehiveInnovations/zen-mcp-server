@@ -60,3 +60,57 @@ jobs:
         subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
         subject-digest: ${{ steps.build.outputs.digest }}
         push-to-registry: true
+
+    - name: Generate usage instructions
+      run: |
+        echo "## 🐳 Docker Image Published Successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Image Registry:** GitHub Container Registry (GHCR)" >> $GITHUB_STEP_SUMMARY
+        echo "**Built Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Extract the first tag for the main pull command
+        MAIN_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+        
+        echo "### 📥 Pull the Image" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "docker pull $MAIN_TAG" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### ⚙️ Claude Desktop Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+        echo "{" >> $GITHUB_STEP_SUMMARY
+        echo "  \"mcpServers\": {" >> $GITHUB_STEP_SUMMARY
+        echo "    \"gemini\": {" >> $GITHUB_STEP_SUMMARY
+        echo "      \"command\": \"docker\"," >> $GITHUB_STEP_SUMMARY
+        echo "      \"args\": [" >> $GITHUB_STEP_SUMMARY
+        echo "        \"run\", \"--rm\", \"-i\"," >> $GITHUB_STEP_SUMMARY
+        echo "        \"-e\", \"GEMINI_API_KEY\"," >> $GITHUB_STEP_SUMMARY
+        echo "        \"$MAIN_TAG\"" >> $GITHUB_STEP_SUMMARY
+        echo "      ]," >> $GITHUB_STEP_SUMMARY
+        echo "      \"env\": {" >> $GITHUB_STEP_SUMMARY
+        echo "        \"GEMINI_API_KEY\": \"your-gemini-api-key-here\"" >> $GITHUB_STEP_SUMMARY
+        echo "      }" >> $GITHUB_STEP_SUMMARY
+        echo "    }" >> $GITHUB_STEP_SUMMARY
+        echo "  }" >> $GITHUB_STEP_SUMMARY
+        echo "}" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🏷️ All Available Tags" >> $GITHUB_STEP_SUMMARY
+        echo "Built and pushed the following tags:" >> $GITHUB_STEP_SUMMARY
+        echo "${{ steps.meta.outputs.tags }}" | sed 's/^/- `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
+          echo "**Note:** This is a development build triggered by PR #${{ github.event.client_payload.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "Use this image for testing the changes from that PR." >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+          echo "**Note:** This is a release build from tag ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "This image represents a stable release version." >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 View in GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
+        echo "[View all versions and tags →](https://github.com/${{ github.repository }}/pkgs/container/gemini-mcp-server)" >> $GITHUB_STEP_SUMMARY
