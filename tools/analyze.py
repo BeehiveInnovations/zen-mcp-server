@@ -18,7 +18,7 @@ class AnalyzeRequest(ToolRequest):
     """Request model for analyze tool"""
 
     files: list[str] = Field(..., description="Files or directories to analyze (must be absolute paths)")
-    question: str = Field(..., description="What to analyze or look for")
+    prompt: str = Field(..., description="What to analyze or look for")
     analysis_type: Optional[str] = Field(
         None,
         description="Type of analysis: architecture|performance|security|quality|general",
@@ -42,9 +42,9 @@ class AnalyzeTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import DEFAULT_MODEL
+        from config import IS_AUTO_MODE
 
-        return {
+        schema = {
             "type": "object",
             "properties": {
                 "files": {
@@ -52,11 +52,8 @@ class AnalyzeTool(BaseTool):
                     "items": {"type": "string"},
                     "description": "Files or directories to analyze (must be absolute paths)",
                 },
-                "model": {
-                    "type": "string",
-                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
-                },
-                "question": {
+                "model": self.get_model_field_schema(),
+                "prompt": {
                     "type": "string",
                     "description": "What to analyze or look for",
                 },
@@ -98,8 +95,10 @@ class AnalyzeTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["files", "question"],
+            "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
+
+        return schema
 
     def get_system_prompt(self) -> str:
         return ANALYZE_PROMPT
@@ -116,8 +115,8 @@ class AnalyzeTool(BaseTool):
         request_model = self.get_request_model()
         request = request_model(**arguments)
 
-        # Check question size
-        size_check = self.check_prompt_size(request.question)
+        # Check prompt size
+        size_check = self.check_prompt_size(request.prompt)
         if size_check:
             return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
@@ -129,9 +128,9 @@ class AnalyzeTool(BaseTool):
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
 
-        # If prompt.txt was found, use it as the question
+        # If prompt.txt was found, use it as the prompt
         if prompt_content:
-            request.question = prompt_content
+            request.prompt = prompt_content
 
         # Update request files list
         if updated_files is not None:
@@ -177,7 +176,7 @@ class AnalyzeTool(BaseTool):
 {focus_instruction}{websearch_instruction}
 
 === USER QUESTION ===
-{request.question}
+{request.prompt}
 === END QUESTION ===
 
 === FILES TO ANALYZE ===
@@ -188,12 +187,6 @@ Please analyze these files to answer the user's question."""
 
         return full_prompt
 
-    def format_response(self, response: str, request: AnalyzeRequest) -> str:
+    def format_response(self, response: str, request: AnalyzeRequest, model_info: Optional[dict] = None) -> str:
         """Format the analysis response"""
-        header = f"Analysis: {request.question[:50]}..."
-        if request.analysis_type:
-            header = f"{request.analysis_type.upper()} Analysis"
-
-        summary_text = f"Analyzed {len(request.files)} file(s)"
-
-        return f"{header}\n{summary_text}\n{'=' * 50}\n\n{response}\n\n---\n\n**Next Steps:** Consider if this analysis reveals areas needing deeper investigation, additional context, or specific implementation details."
+        return f"{response}\n\n---\n\n**Next Steps:** Use this analysis to actively continue your task. Investigate deeper into any findings, implement solutions based on these insights, and carry out the necessary work. Only pause to ask the user if you need their explicit approval for major changes or if critical decisions require their input."

@@ -39,12 +39,15 @@ class CodeReviewRequest(ToolRequest):
         ...,
         description="Code files or directories to review (must be absolute paths)",
     )
-    context: str = Field(
+    prompt: str = Field(
         ...,
         description="User's summary of what the code does, expected behavior, constraints, and review objectives",
     )
     review_type: str = Field("full", description="Type of review: full|security|performance|quick")
-    focus_on: Optional[str] = Field(None, description="Specific aspects to focus on during review")
+    focus_on: Optional[str] = Field(
+        None,
+        description="Specific aspects to focus on, or additional context that would help understand areas of concern",
+    )
     standards: Optional[str] = Field(None, description="Coding standards or guidelines to enforce")
     severity_filter: str = Field(
         "all",
@@ -79,9 +82,9 @@ class CodeReviewTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import DEFAULT_MODEL
+        from config import IS_AUTO_MODE
 
-        return {
+        schema = {
             "type": "object",
             "properties": {
                 "files": {
@@ -89,11 +92,8 @@ class CodeReviewTool(BaseTool):
                     "items": {"type": "string"},
                     "description": "Code files or directories to review (must be absolute paths)",
                 },
-                "model": {
-                    "type": "string",
-                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
-                },
-                "context": {
+                "model": self.get_model_field_schema(),
+                "prompt": {
                     "type": "string",
                     "description": "User's summary of what the code does, expected behavior, constraints, and review objectives",
                 },
@@ -105,7 +105,7 @@ class CodeReviewTool(BaseTool):
                 },
                 "focus_on": {
                     "type": "string",
-                    "description": "Specific aspects to focus on",
+                    "description": "Specific aspects to focus on, or additional context that would help understand areas of concern",
                 },
                 "standards": {
                     "type": "string",
@@ -138,8 +138,10 @@ class CodeReviewTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["files", "context"],
+            "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
+
+        return schema
 
     def get_system_prompt(self) -> str:
         return CODEREVIEW_PROMPT
@@ -184,9 +186,9 @@ class CodeReviewTool(BaseTool):
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
 
-        # If prompt.txt was found, use it as focus_on
+        # If prompt.txt was found, incorporate it into the prompt
         if prompt_content:
-            request.focus_on = prompt_content
+            request.prompt = prompt_content + "\n\n" + request.prompt
 
         # Update request files list
         if updated_files is not None:
@@ -234,7 +236,7 @@ class CodeReviewTool(BaseTool):
         full_prompt = f"""{self.get_system_prompt()}{websearch_instruction}
 
 === USER CONTEXT ===
-{request.context}
+{request.prompt}
 === END CONTEXT ===
 
 {focus_instruction}
@@ -247,27 +249,19 @@ Please provide a code review aligned with the user's context and expectations, f
 
         return full_prompt
 
-    def format_response(self, response: str, request: CodeReviewRequest) -> str:
+    def format_response(self, response: str, request: CodeReviewRequest, model_info: Optional[dict] = None) -> str:
         """
-        Format the review response with appropriate headers.
-
-        Adds context about the review type and focus area to help
-        users understand the scope of the review.
+        Format the review response.
 
         Args:
             response: The raw review from the model
             request: The original request for context
+            model_info: Optional dict with model metadata
 
         Returns:
-            str: Formatted response with headers
+            str: Formatted response with next steps
         """
-        header = f"Code Review ({request.review_type.upper()})"
-        if request.focus_on:
-            header += f" - Focus: {request.focus_on}"
-        return f"""{header}
-{"=" * 50}
-
-{response}
+        return f"""{response}
 
 ---
 

@@ -19,8 +19,8 @@ class BaseSimulatorTest:
         self.verbose = verbose
         self.test_files = {}
         self.test_dir = None
-        self.container_name = "gemini-mcp-server"
-        self.redis_container = "gemini-mcp-redis"
+        self.container_name = "zen-mcp-server"
+        self.redis_container = "zen-mcp-redis"
 
         # Configure logging
         log_level = logging.DEBUG if verbose else logging.INFO

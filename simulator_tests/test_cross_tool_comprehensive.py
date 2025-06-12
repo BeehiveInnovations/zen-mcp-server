@@ -33,13 +33,30 @@ class CrossToolComprehensiveTest(BaseSimulatorTest):
         try:
             # Check both main server and log monitor for comprehensive logs
             cmd_server = ["docker", "logs", "--since", since_time, self.container_name]
-            cmd_monitor = ["docker", "logs", "--since", since_time, "gemini-mcp-log-monitor"]
+            cmd_monitor = ["docker", "logs", "--since", since_time, "zen-mcp-log-monitor"]
 
             result_server = subprocess.run(cmd_server, capture_output=True, text=True)
             result_monitor = subprocess.run(cmd_monitor, capture_output=True, text=True)
 
-            # Combine logs from both containers
-            combined_logs = result_server.stdout + "\n" + result_monitor.stdout
+            # Get the internal log files which have more detailed logging
+            server_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_server.log"], capture_output=True, text=True
+            )
+
+            activity_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_activity.log"], capture_output=True, text=True
+            )
+
+            # Combine all logs
+            combined_logs = (
+                result_server.stdout
+                + "\n"
+                + result_monitor.stdout
+                + "\n"
+                + server_log_result.stdout
+                + "\n"
+                + activity_log_result.stdout
+            )
             return combined_logs
         except Exception as e:
             self.logger.error(f"Failed to get docker logs: {e}")
@@ -91,6 +108,7 @@ def hash_pwd(pwd):
                 "prompt": "Please give me a quick one line reply. I have an authentication module that needs review. Can you help me understand potential issues?",
                 "files": [auth_file],
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response1, continuation_id1 = self.call_mcp_tool("chat", chat_params)
@@ -106,8 +124,9 @@ def hash_pwd(pwd):
             self.logger.info("  Step 2: analyze tool - Deep code analysis (fresh)")
             analyze_params = {
                 "files": [auth_file],
-                "question": "Please give me a quick one line reply. What are the security vulnerabilities and architectural issues in this authentication code?",
+                "prompt": "Please give me a quick one line reply. What are the security vulnerabilities and architectural issues in this authentication code?",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response2, continuation_id2 = self.call_mcp_tool("analyze", analyze_params)
@@ -127,6 +146,7 @@ def hash_pwd(pwd):
                 "prompt": "Please give me a quick one line reply. I also have this configuration file. Can you analyze it alongside the authentication code?",
                 "files": [auth_file, config_file_path],  # Old + new file
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response3, _ = self.call_mcp_tool("chat", chat_continue_params)
@@ -141,8 +161,9 @@ def hash_pwd(pwd):
             self.logger.info("  Step 4: debug tool - Identify specific problems")
             debug_params = {
                 "files": [auth_file, config_file_path],
-                "error_description": "Please give me a quick one line reply. The authentication system has security vulnerabilities. Help me identify and fix the main issues.",
+                "prompt": "Please give me a quick one line reply. The authentication system has security vulnerabilities. Help me identify and fix the main issues.",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response4, continuation_id4 = self.call_mcp_tool("debug", debug_params)
@@ -161,8 +182,9 @@ def hash_pwd(pwd):
                 debug_continue_params = {
                     "continuation_id": continuation_id4,
                     "files": [auth_file, config_file_path],
-                    "error_description": "Please give me a quick one line reply. What specific code changes would you recommend to fix the password hashing vulnerability?",
+                    "prompt": "Please give me a quick one line reply. What specific code changes would you recommend to fix the password hashing vulnerability?",
                     "thinking_mode": "low",
+                    "model": "flash",
                 }
 
                 response5, _ = self.call_mcp_tool("debug", debug_continue_params)
@@ -174,8 +196,9 @@ def hash_pwd(pwd):
             self.logger.info("  Step 6: codereview tool - Comprehensive code review")
             codereview_params = {
                 "files": [auth_file, config_file_path],
-                "context": "Please give me a quick one line reply. Comprehensive security-focused code review for production readiness",
+                "prompt": "Please give me a quick one line reply. Comprehensive security-focused code review for production readiness",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response6, continuation_id6 = self.call_mcp_tool("codereview", codereview_params)
@@ -207,8 +230,9 @@ def secure_login(user, pwd):
             precommit_params = {
                 "path": self.test_dir,
                 "files": [auth_file, config_file_path, improved_file],
-                "original_request": "Please give me a quick one line reply. Ready to commit security improvements to authentication module",
+                "prompt": "Please give me a quick one line reply. Ready to commit security improvements to authentication module",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response7, continuation_id7 = self.call_mcp_tool("precommit", precommit_params)
@@ -253,15 +277,15 @@ def secure_login(user, pwd):
             improved_file_mentioned = any("auth_improved.py" in line for line in logs.split("\n"))
 
             # Print comprehensive diagnostics
-            self.logger.info(f"  📊 Tools used: {len(tools_used)} ({', '.join(tools_used)})")
-            self.logger.info(f"  📊 Continuation IDs created: {len(continuation_ids_created)}")
-            self.logger.info(f"  📊 Conversation logs found: {len(conversation_logs)}")
-            self.logger.info(f"  📊 File embedding logs found: {len(embedding_logs)}")
-            self.logger.info(f"  📊 Continuation logs found: {len(continuation_logs)}")
-            self.logger.info(f"  📊 Cross-tool activity logs: {len(cross_tool_logs)}")
-            self.logger.info(f"  📊 Auth file mentioned: {auth_file_mentioned}")
-            self.logger.info(f"  📊 Config file mentioned: {config_file_mentioned}")
-            self.logger.info(f"  📊 Improved file mentioned: {improved_file_mentioned}")
+            self.logger.info(f"   Tools used: {len(tools_used)} ({', '.join(tools_used)})")
+            self.logger.info(f"   Continuation IDs created: {len(continuation_ids_created)}")
+            self.logger.info(f"   Conversation logs found: {len(conversation_logs)}")
+            self.logger.info(f"   File embedding logs found: {len(embedding_logs)}")
+            self.logger.info(f"   Continuation logs found: {len(continuation_logs)}")
+            self.logger.info(f"   Cross-tool activity logs: {len(cross_tool_logs)}")
+            self.logger.info(f"   Auth file mentioned: {auth_file_mentioned}")
+            self.logger.info(f"   Config file mentioned: {config_file_mentioned}")
+            self.logger.info(f"   Improved file mentioned: {improved_file_mentioned}")
 
             if self.verbose:
                 self.logger.debug("  📋 Sample tool activity logs:")
@@ -289,9 +313,9 @@ def secure_login(user, pwd):
             passed_criteria = sum(success_criteria)
             total_criteria = len(success_criteria)
 
-            self.logger.info(f"  📊 Success criteria met: {passed_criteria}/{total_criteria}")
+            self.logger.info(f"   Success criteria met: {passed_criteria}/{total_criteria}")
 
-            if passed_criteria >= 6:  # At least 6 out of 8 criteria
+            if passed_criteria == total_criteria:  # All criteria must pass
                 self.logger.info("  ✅ Comprehensive cross-tool test: PASSED")
                 return True
             else:

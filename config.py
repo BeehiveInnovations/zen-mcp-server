@@ -1,7 +1,7 @@
 """
-Configuration and constants for Gemini MCP Server
+Configuration and constants for Zen MCP Server
 
-This module centralizes all configuration settings for the Gemini MCP Server.
+This module centralizes all configuration settings for the Zen MCP Server.
 It defines model configurations, token limits, temperature defaults, and other
 constants used throughout the application.
 
@@ -13,15 +13,43 @@ import os
 # Version and metadata
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
-__version__ = "3.3.0"  # Semantic versioning: MAJOR.MINOR.PATCH
-__updated__ = "2025-06-11"  # Last update date in ISO format
+__version__ = "4.0.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+__updated__ = "2025-06-12"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
 # Model configuration
 # DEFAULT_MODEL: The default model used for all AI operations
 # This should be a stable, high-performance model suitable for code analysis
 # Can be overridden by setting DEFAULT_MODEL environment variable
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-2.5-pro-preview-06-05")
+# Special value "auto" means Claude should pick the best model for each task
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "auto")
+
+# Validate DEFAULT_MODEL and set to "auto" if invalid
+# Only include actually supported models from providers
+VALID_MODELS = ["auto", "flash", "pro", "o3", "o3-mini", "gemini-2.0-flash", "gemini-2.5-pro-preview-06-05"]
+if DEFAULT_MODEL not in VALID_MODELS:
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        f"Invalid DEFAULT_MODEL '{DEFAULT_MODEL}'. Setting to 'auto'. Valid options: {', '.join(VALID_MODELS)}"
+    )
+    DEFAULT_MODEL = "auto"
+
+# Auto mode detection - when DEFAULT_MODEL is "auto", Claude picks the model
+IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
+
+# Model capabilities descriptions for auto mode
+# These help Claude choose the best model for each task
+MODEL_CAPABILITIES_DESC = {
+    "flash": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
+    "pro": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
+    "o3": "Strong reasoning (200K context) - Logical problems, code generation, systematic analysis",
+    "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
+    # Full model names also supported
+    "gemini-2.0-flash": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
+    "gemini-2.5-pro-preview-06-05": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
+}
 
 # Token allocation for Gemini Pro (1M total capacity)
 # MAX_CONTEXT_TOKENS: Total model capacity

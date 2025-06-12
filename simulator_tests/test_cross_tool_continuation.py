@@ -67,6 +67,7 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                 {
                     "prompt": "Please use low thinking mode. Look at this Python code and tell me what you think about it",
                     "files": [self.test_files["python"]],
+                    "model": "flash",
                 },
             )
 
@@ -81,6 +82,7 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                     "prompt": "Please use low thinking mode. Think deeply about potential performance issues in this code",
                     "files": [self.test_files["python"]],  # Same file should be deduplicated
                     "continuation_id": chat_id,
+                    "model": "flash",
                 },
             )
 
@@ -93,8 +95,9 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                 "codereview",
                 {
                     "files": [self.test_files["python"]],  # Same file should be deduplicated
-                    "context": "Building on our previous analysis, provide a comprehensive code review",
+                    "prompt": "Building on our previous analysis, provide a comprehensive code review",
                     "continuation_id": chat_id,
+                    "model": "flash",
                 },
             )
 
@@ -116,7 +119,7 @@ class CrossToolContinuationTest(BaseSimulatorTest):
 
             # Start with analyze
             analyze_response, analyze_id = self.call_mcp_tool(
-                "analyze", {"files": [self.test_files["python"]], "analysis_type": "code_quality"}
+                "analyze", {"files": [self.test_files["python"]], "analysis_type": "code_quality", "model": "flash"}
             )
 
             if not analyze_response or not analyze_id:
@@ -128,8 +131,9 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                 "debug",
                 {
                     "files": [self.test_files["python"]],  # Same file should be deduplicated
-                    "issue_description": "Based on our analysis, help debug the performance issue in fibonacci",
+                    "prompt": "Based on our analysis, help debug the performance issue in fibonacci",
                     "continuation_id": analyze_id,
+                    "model": "flash",
                 },
             )
 
@@ -144,6 +148,7 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                     "prompt": "Please use low thinking mode. Think deeply about the architectural implications of the issues we've found",
                     "files": [self.test_files["python"]],  # Same file should be deduplicated
                     "continuation_id": analyze_id,
+                    "model": "flash",
                 },
             )
 
@@ -169,6 +174,7 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                 {
                     "prompt": "Please use low thinking mode. Analyze both the Python code and configuration file",
                     "files": [self.test_files["python"], self.test_files["config"]],
+                    "model": "flash",
                 },
             )
 
@@ -181,8 +187,9 @@ class CrossToolContinuationTest(BaseSimulatorTest):
                 "codereview",
                 {
                     "files": [self.test_files["python"], self.test_files["config"]],  # Same files
-                    "context": "Review both files in the context of our previous discussion",
+                    "prompt": "Review both files in the context of our previous discussion",
                     "continuation_id": multi_id,
+                    "model": "flash",
                 },
             )
 

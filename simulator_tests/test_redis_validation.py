@@ -76,7 +76,7 @@ class RedisValidationTest(BaseSimulatorTest):
                 return True
             else:
                 # If no existing threads, create a test thread to validate Redis functionality
-                self.logger.info("📝 No existing threads found, creating test thread to validate Redis...")
+                self.logger.info(" No existing threads found, creating test thread to validate Redis...")
 
                 test_thread_id = "test_thread_validation"
                 test_data = {

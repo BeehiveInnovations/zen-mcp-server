@@ -1,5 +1,5 @@
 """
-Tool implementations for Gemini MCP Server
+Tool implementations for Zen MCP Server
 """
 
 from .analyze import AnalyzeTool

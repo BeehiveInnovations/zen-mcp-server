@@ -6,11 +6,13 @@ allowing multi-turn conversations to span multiple tool types.
 """
 
 import json
+import os
 from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import Field
 
+from tests.mock_helpers import create_mock_provider
 from tools.base import BaseTool, ToolRequest
 from utils.conversation_memory import ConversationTurn, ThreadContext
 
@@ -92,45 +94,36 @@ class TestCrossToolContinuation:
         self.review_tool = MockReviewTool()
 
     @patch("utils.conversation_memory.get_redis_client")
+    @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
     async def test_continuation_id_works_across_different_tools(self, mock_redis):
         """Test that a continuation_id from one tool can be used with another tool"""
         mock_client = Mock()
         mock_redis.return_value = mock_client
 
-        # Step 1: Analysis tool creates a conversation with follow-up
-        with patch.object(self.analysis_tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(
-                        parts=[
-                            Mock(
-                                text="""Found potential security issues in authentication logic.
+        # Step 1: Analysis tool creates a conversation with continuation offer
+        with patch.object(self.analysis_tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            # Simple content without JSON follow-up
+            content = """Found potential security issues in authentication logic.
 
-```json
-{
-  "follow_up_question": "Would you like me to review these security findings in detail?",
-  "suggested_params": {"findings": "Authentication bypass vulnerability detected"},
-  "ui_hint": "Security review recommended"
-}
-```"""
-                            )
-                        ]
-                    ),
-                    finish_reason="STOP",
-                )
-            ]
-            mock_model.generate_content.return_value = mock_response
-            mock_create_model.return_value = mock_model
+I'd be happy to review these security findings in detail if that would be helpful."""
+            mock_provider.generate_content.return_value = Mock(
+                content=content,
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash",
+                metadata={"finish_reason": "STOP"},
+            )
+            mock_get_provider.return_value = mock_provider
 
             # Execute analysis tool
             arguments = {"code": "function authenticate(user) { return true; }"}
             response = await self.analysis_tool.execute(arguments)
             response_data = json.loads(response[0].text)
 
-            assert response_data["status"] == "requires_continuation"
-            continuation_id = response_data["follow_up_request"]["continuation_id"]
+            assert response_data["status"] == "continuation_available"
+            continuation_id = response_data["continuation_offer"]["continuation_id"]
 
         # Step 2: Mock the existing thread context for the review tool
         # The thread was created by analysis_tool but will be continued by review_tool
@@ -142,10 +135,9 @@ class TestCrossToolContinuation:
             turns=[
                 ConversationTurn(
                     role="assistant",
-                    content="Found potential security issues in authentication logic.",
+                    content="Found potential security issues in authentication logic.\n\nI'd be happy to review these security findings in detail if that would be helpful.",
                     timestamp="2023-01-01T00:00:30Z",
                     tool_name="test_analysis",  # Original tool
-                    follow_up_question="Would you like me to review these security findings in detail?",
                 )
             ],
             initial_context={"code": "function authenticate(user) { return true; }"},
@@ -160,23 +152,17 @@ class TestCrossToolContinuation:
         mock_client.get.side_effect = mock_get_side_effect
 
         # Step 3: Review tool uses the same continuation_id
-        with patch.object(self.review_tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(
-                        parts=[
-                            Mock(
-                                text="Critical security vulnerability confirmed. The authentication function always returns true, bypassing all security checks."
-                            )
-                        ]
-                    ),
-                    finish_reason="STOP",
-                )
-            ]
-            mock_model.generate_content.return_value = mock_response
-            mock_create_model.return_value = mock_model
+        with patch.object(self.review_tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Critical security vulnerability confirmed. The authentication function always returns true, bypassing all security checks.",
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash",
+                metadata={"finish_reason": "STOP"},
+            )
+            mock_get_provider.return_value = mock_provider
 
             # Execute review tool with the continuation_id from analysis tool
             arguments = {
@@ -245,9 +231,13 @@ class TestCrossToolContinuation:
         )
 
         # Build conversation history
+        from providers.registry import ModelProviderRegistry
         from utils.conversation_memory import build_conversation_history
 
-        history, tokens = build_conversation_history(thread_context)
+        # Set up provider for this test
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False):
+            ModelProviderRegistry.clear_cache()
+            history, tokens = build_conversation_history(thread_context, model_context=None)
 
         # Verify tool names are included in the history
         assert "Turn 1 (Gemini using test_analysis)" in history
@@ -259,6 +249,7 @@ class TestCrossToolContinuation:
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch("utils.conversation_memory.get_thread")
+    @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
     async def test_cross_tool_conversation_with_files_context(self, mock_get_thread, mock_redis):
         """Test that file context is preserved across tool switches"""
         mock_client = Mock()
@@ -286,17 +277,17 @@ class TestCrossToolContinuation:
         mock_get_thread.return_value = existing_context
 
         # Mock review tool response
-        with patch.object(self.review_tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="Security review of auth.py shows vulnerabilities")]),
-                    finish_reason="STOP",
-                )
-            ]
-            mock_model.generate_content.return_value = mock_response
-            mock_create_model.return_value = mock_model
+        with patch.object(self.review_tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Security review of auth.py shows vulnerabilities",
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash",
+                metadata={"finish_reason": "STOP"},
+            )
+            mock_get_provider.return_value = mock_provider
 
             # Execute review tool with additional files
             arguments = {

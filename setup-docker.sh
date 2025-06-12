@@ -3,10 +3,10 @@
 # Exit on any error, undefined variables, and pipe failures
 set -euo pipefail
 
-# Modern Docker setup script for Gemini MCP Server with Redis
+# Modern Docker setup script for Zen MCP Server with Redis
 # This script sets up the complete Docker environment including Redis for conversation threading
 
-echo "🚀 Setting up Gemini MCP Server with Docker Compose..."
+echo "🚀 Setting up Zen MCP Server with Docker Compose..."
 echo ""
 
 # Get the current working directory (absolute path)
@@ -27,8 +27,8 @@ else
     cp .env.example .env
     echo "✅ Created .env from .env.example"
     
-    # Customize the API key if it's set in environment
-    if [ -n "$GEMINI_API_KEY" ]; then
+    # Customize the API keys if they're set in environment
+    if [ -n "${GEMINI_API_KEY:-}" ]; then
         # Replace the placeholder API key with the actual value
         if command -v sed >/dev/null 2>&1; then
             sed -i.bak "s/your_gemini_api_key_here/$GEMINI_API_KEY/" .env && rm .env.bak
@@ -38,6 +38,18 @@ else
         fi
     else
         echo "⚠️  GEMINI_API_KEY not found in environment. Please edit .env and add your API key."
+    fi
+    
+    if [ -n "${OPENAI_API_KEY:-}" ]; then
+        # Replace the placeholder API key with the actual value
+        if command -v sed >/dev/null 2>&1; then
+            sed -i.bak "s/your_openai_api_key_here/$OPENAI_API_KEY/" .env && rm .env.bak
+            echo "✅ Updated .env with existing OPENAI_API_KEY from environment"
+        else
+            echo "⚠️  Found OPENAI_API_KEY in environment, but sed not available. Please update .env manually."
+        fi
+    else
+        echo "⚠️  OPENAI_API_KEY not found in environment. Please edit .env and add your API key."
     fi
     
     # Update WORKSPACE_ROOT to use current user's home directory
@@ -74,6 +86,41 @@ if ! docker compose version &> /dev/null; then
     COMPOSE_CMD="docker-compose"
 fi
 
+# Check if at least one API key is properly configured
+echo "🔑 Checking API key configuration..."
+source .env 2>/dev/null || true
+
+VALID_GEMINI_KEY=false
+VALID_OPENAI_KEY=false
+
+# Check if GEMINI_API_KEY is set and not the placeholder
+if [ -n "${GEMINI_API_KEY:-}" ] && [ "$GEMINI_API_KEY" != "your_gemini_api_key_here" ]; then
+    VALID_GEMINI_KEY=true
+    echo "✅ Valid GEMINI_API_KEY found"
+fi
+
+# Check if OPENAI_API_KEY is set and not the placeholder
+if [ -n "${OPENAI_API_KEY:-}" ] && [ "$OPENAI_API_KEY" != "your_openai_api_key_here" ]; then
+    VALID_OPENAI_KEY=true
+    echo "✅ Valid OPENAI_API_KEY found"
+fi
+
+# Require at least one valid API key
+if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ]; then
+    echo ""
+    echo "❌ ERROR: At least one valid API key is required!"
+    echo ""
+    echo "Please edit the .env file and set at least one of:"
+    echo "  - GEMINI_API_KEY (get from https://makersuite.google.com/app/apikey)"
+    echo "  - OPENAI_API_KEY (get from https://platform.openai.com/api-keys)"
+    echo ""
+    echo "Example:"
+    echo "  GEMINI_API_KEY=your-actual-api-key-here"
+    echo "  OPENAI_API_KEY=sk-your-actual-openai-key-here"
+    echo ""
+    exit 1
+fi
+
 echo "🛠️  Building and starting services..."
 echo ""
 
@@ -84,12 +131,27 @@ $COMPOSE_CMD down --remove-orphans >/dev/null 2>&1 || true
 # Clean up any old containers with different naming patterns
 OLD_CONTAINERS_FOUND=false
 
-# Check for old Gemini MCP container
+# Check for old Gemini MCP containers (for migration)
 if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server-gemini-mcp-1$" 2>/dev/null || false; then
     OLD_CONTAINERS_FOUND=true
     echo "  - Cleaning up old container: gemini-mcp-server-gemini-mcp-1"
     docker stop gemini-mcp-server-gemini-mcp-1 >/dev/null 2>&1 || true
     docker rm gemini-mcp-server-gemini-mcp-1 >/dev/null 2>&1 || true
+fi
+
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-server"
+    docker stop gemini-mcp-server >/dev/null 2>&1 || true
+    docker rm gemini-mcp-server >/dev/null 2>&1 || true
+fi
+
+# Check for current old containers (from recent versions)
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-log-monitor$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-log-monitor"
+    docker stop gemini-mcp-log-monitor >/dev/null 2>&1 || true
+    docker rm gemini-mcp-log-monitor >/dev/null 2>&1 || true
 fi
 
 # Check for old Redis container
@@ -100,17 +162,37 @@ if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server-redis-1$" 2>
     docker rm gemini-mcp-server-redis-1 >/dev/null 2>&1 || true
 fi
 
-# Check for old image
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-redis$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-redis"
+    docker stop gemini-mcp-redis >/dev/null 2>&1 || true
+    docker rm gemini-mcp-redis >/dev/null 2>&1 || true
+fi
+
+# Check for old images
 if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^gemini-mcp-server-gemini-mcp:latest$" 2>/dev/null || false; then
     OLD_CONTAINERS_FOUND=true
     echo "  - Cleaning up old image: gemini-mcp-server-gemini-mcp:latest"
     docker rmi gemini-mcp-server-gemini-mcp:latest >/dev/null 2>&1 || true
 fi
 
+if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^gemini-mcp-server:latest$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old image: gemini-mcp-server:latest"
+    docker rmi gemini-mcp-server:latest >/dev/null 2>&1 || true
+fi
+
+# Check for current old network (if it exists)
+if docker network ls --format "{{.Name}}" | grep -q "^gemini-mcp-server_default$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old network: gemini-mcp-server_default"
+    docker network rm gemini-mcp-server_default >/dev/null 2>&1 || true
+fi
+
 # Only show cleanup messages if something was actually cleaned up
 
 # Build and start services
-echo "  - Building Gemini MCP Server image..."
+echo "  - Building Zen MCP Server image..."
 if $COMPOSE_CMD build --no-cache >/dev/null 2>&1; then
     echo "✅ Docker image built successfully!"
 else
@@ -143,8 +225,15 @@ $COMPOSE_CMD ps --format table
 
 echo ""
 echo "🔄 Next steps:"
-if grep -q "your-gemini-api-key-here" .env 2>/dev/null || false; then
-    echo "1. Edit .env and replace 'your-gemini-api-key-here' with your actual Gemini API key"
+NEEDS_KEY_UPDATE=false
+if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null; then
+    NEEDS_KEY_UPDATE=true
+fi
+
+if [ "$NEEDS_KEY_UPDATE" = true ]; then
+    echo "1. Edit .env and replace placeholder API keys with actual ones"
+    echo "   - GEMINI_API_KEY: your-gemini-api-key-here"
+    echo "   - OPENAI_API_KEY: your-openai-api-key-here"
     echo "2. Restart services: $COMPOSE_CMD restart"
     echo "3. Copy the configuration below to your Claude Desktop config:"
 else
@@ -155,12 +244,12 @@ echo ""
 echo "===== CLAUDE DESKTOP CONFIGURATION ====="
 echo "{"
 echo "  \"mcpServers\": {"
-echo "    \"gemini\": {"
+echo "    \"zen\": {"
 echo "      \"command\": \"docker\","
 echo "      \"args\": ["
 echo "        \"exec\","
 echo "        \"-i\","
-echo "        \"gemini-mcp-server\","
+echo "        \"zen-mcp-server\","
 echo "        \"python\","
 echo "        \"server.py\""
 echo "      ]"
@@ -171,13 +260,13 @@ echo "==========================================="
 echo ""
 echo "===== CLAUDE CODE CLI CONFIGURATION ====="
 echo "# Add the MCP server via Claude Code CLI:"
-echo "claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py"
+echo "claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
 echo ""
 echo "# List your MCP servers to verify:"
 echo "claude mcp list"
 echo ""
 echo "# Remove if needed:"
-echo "claude mcp remove gemini -s user"
+echo "claude mcp remove zen -s user"
 echo "==========================================="
 echo ""
 

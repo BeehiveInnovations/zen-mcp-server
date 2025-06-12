@@ -17,7 +17,7 @@ from .models import ToolOutput
 class ThinkDeepRequest(ToolRequest):
     """Request model for thinkdeep tool"""
 
-    current_analysis: str = Field(..., description="Claude's current thinking/analysis to extend")
+    prompt: str = Field(..., description="Your current thinking/analysis to extend and validate")
     problem_context: Optional[str] = Field(None, description="Additional context about the problem or goal")
     focus_areas: Optional[list[str]] = Field(
         None,
@@ -48,19 +48,16 @@ class ThinkDeepTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import DEFAULT_MODEL
+        from config import IS_AUTO_MODE
 
-        return {
+        schema = {
             "type": "object",
             "properties": {
-                "current_analysis": {
+                "prompt": {
                     "type": "string",
                     "description": "Your current thinking/analysis to extend and validate",
                 },
-                "model": {
-                    "type": "string",
-                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
-                },
+                "model": self.get_model_field_schema(),
                 "problem_context": {
                     "type": "string",
                     "description": "Additional context about the problem or goal",
@@ -96,8 +93,10 @@ class ThinkDeepTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["current_analysis"],
+            "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
+
+        return schema
 
     def get_system_prompt(self) -> str:
         return THINKDEEP_PROMPT
@@ -120,8 +119,8 @@ class ThinkDeepTool(BaseTool):
         request_model = self.get_request_model()
         request = request_model(**arguments)
 
-        # Check current_analysis size
-        size_check = self.check_prompt_size(request.current_analysis)
+        # Check prompt size
+        size_check = self.check_prompt_size(request.prompt)
         if size_check:
             return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
@@ -133,8 +132,8 @@ class ThinkDeepTool(BaseTool):
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
 
-        # Use prompt.txt content if available, otherwise use the current_analysis field
-        current_analysis = prompt_content if prompt_content else request.current_analysis
+        # Use prompt.txt content if available, otherwise use the prompt field
+        current_analysis = prompt_content if prompt_content else request.prompt
 
         # Update request files list
         if updated_files is not None:
@@ -190,21 +189,24 @@ Please provide deep analysis that extends Claude's thinking with:
 
         return full_prompt
 
-    def format_response(self, response: str, request: ThinkDeepRequest) -> str:
+    def format_response(self, response: str, request: ThinkDeepRequest, model_info: Optional[dict] = None) -> str:
         """Format the response with clear attribution and critical thinking prompt"""
-        return f"""## Extended Analysis by Gemini
+        # Get the friendly model name
+        model_name = "your fellow developer"
+        if model_info and model_info.get("model_response"):
+            model_name = model_info["model_response"].friendly_name or "your fellow developer"
 
-{response}
+        return f"""{response}
 
 ---
 
 ## Critical Evaluation Required
 
-Claude, please critically evaluate Gemini's analysis by considering:
+Claude, please critically evaluate {model_name}'s analysis by thinking hard about the following:
 
 1. **Technical merit** - Which suggestions are valuable vs. have limitations?
 2. **Constraints** - Fit with codebase patterns, performance, security, architecture
 3. **Risks** - Hidden complexities, edge cases, potential failure modes
 4. **Final recommendation** - Synthesize both perspectives, then think deeply further to explore additional considerations and arrive at the best technical solution
 
-Remember: Use Gemini's insights to enhance, not replace, your analysis."""
+Remember: Use {model_name}'s insights to enhance, not replace, your analysis."""

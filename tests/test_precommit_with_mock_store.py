@@ -124,7 +124,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
         temp_dir, config_path = temp_repo
 
         # Create request with files parameter
-        request = PrecommitRequest(path=temp_dir, files=[config_path], original_request="Test configuration changes")
+        request = PrecommitRequest(path=temp_dir, files=[config_path], prompt="Test configuration changes")
 
         # Generate the prompt
         prompt = await tool.prepare_prompt(request)
@@ -152,7 +152,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
         # Mock conversation memory functions to use our mock redis
         with patch("utils.conversation_memory.get_redis_client", return_value=mock_redis):
             # First request - should embed file content
-            PrecommitRequest(path=temp_dir, files=[config_path], original_request="First review")
+            PrecommitRequest(path=temp_dir, files=[config_path], prompt="First review")
 
             # Simulate conversation thread creation
             from utils.conversation_memory import add_turn, create_thread
@@ -167,9 +167,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
             add_turn(thread_id, "assistant", "First response", files=[config_path], tool_name="precommit")
 
             # Second request with continuation - should skip already embedded files
-            PrecommitRequest(
-                path=temp_dir, files=[config_path], continuation_id=thread_id, original_request="Follow-up review"
-            )
+            PrecommitRequest(path=temp_dir, files=[config_path], continuation_id=thread_id, prompt="Follow-up review")
 
             files_to_embed_2 = tool.filter_new_files([config_path], thread_id)
             assert len(files_to_embed_2) == 0, "Continuation should skip already embedded files"
@@ -182,7 +180,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
         request = PrecommitRequest(
             path=temp_dir,
             files=[config_path],
-            original_request="Validate prompt structure",
+            prompt="Validate prompt structure",
             review_type="full",
             severity_filter="high",
         )
@@ -191,7 +189,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
 
         # Split prompt into sections
         sections = {
-            "original_request": "## Original Request",
+            "prompt": "## Original Request",
             "review_parameters": "## Review Parameters",
             "repo_summary": "## Repository Changes Summary",
             "context_files_summary": "## Context Files Summary",
@@ -207,7 +205,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
                 section_indices[name] = index
 
         # Verify sections appear in logical order
-        assert section_indices["original_request"] < section_indices["review_parameters"]
+        assert section_indices["prompt"] < section_indices["review_parameters"]
         assert section_indices["review_parameters"] < section_indices["repo_summary"]
         assert section_indices["git_diffs"] < section_indices["additional_context"]
         assert section_indices["additional_context"] < section_indices["review_instructions"]

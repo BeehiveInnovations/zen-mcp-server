@@ -1,5 +1,5 @@
 """
-Utility functions for Gemini MCP Server
+Utility functions for Zen MCP Server
 """
 
 from .file_utils import CODE_EXTENSIONS, expand_paths, read_file_content, read_files

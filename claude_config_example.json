@@ -1,13 +1,17 @@
 {
-  "comment": "Example Claude Desktop configuration for Gemini MCP Server",
+  "comment": "Example Claude Desktop configuration for Zen MCP Server",
   "comment2": "For Docker setup, use examples/claude_config_docker_home.json",
   "comment3": "For platform-specific examples, see the examples/ directory",
   "mcpServers": {
-    "gemini": {
-      "command": "/path/to/gemini-mcp-server/run_gemini.sh",
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
+    "zen": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "zen-mcp-server",
+        "python",
+        "server.py"
+      ]
     }
   }
 }
