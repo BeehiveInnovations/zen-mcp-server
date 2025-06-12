@@ -31,7 +31,7 @@ class PrecommitRequest(ToolRequest):
         ...,
         description="Starting directory to search for git repositories (must be absolute path).",
     )
-    original_request: Optional[str] = Field(
+    prompt: Optional[str] = Field(
         None,
         description="The original user request description for the changes. Provides critical context for the review.",
     )
@@ -98,15 +98,17 @@ class Precommit(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import DEFAULT_MODEL
+        from config import IS_AUTO_MODE
 
         schema = self.get_request_model().model_json_schema()
         # Ensure model parameter has enhanced description
         if "properties" in schema and "model" in schema["properties"]:
-            schema["properties"]["model"] = {
-                "type": "string",
-                "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
-            }
+            schema["properties"]["model"] = self.get_model_field_schema()
+
+        # In auto mode, model is required
+        if IS_AUTO_MODE and "required" in schema:
+            if "model" not in schema["required"]:
+                schema["required"].append("model")
         # Ensure use_websearch is in the schema with proper description
         if "properties" in schema and "use_websearch" not in schema["properties"]:
             schema["properties"]["use_websearch"] = {
@@ -140,9 +142,9 @@ class Precommit(BaseTool):
         request_model = self.get_request_model()
         request = request_model(**arguments)
 
-        # Check original_request size if provided
-        if request.original_request:
-            size_check = self.check_prompt_size(request.original_request)
+        # Check prompt size if provided
+        if request.prompt:
+            size_check = self.check_prompt_size(request.prompt)
             if size_check:
                 return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
@@ -154,9 +156,9 @@ class Precommit(BaseTool):
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
 
-        # If prompt.txt was found, use it as original_request
+        # If prompt.txt was found, use it as prompt
         if prompt_content:
-            request.original_request = prompt_content
+            request.prompt = prompt_content
 
         # Update request files list
         if updated_files is not None:
@@ -330,7 +332,7 @@ class Precommit(BaseTool):
                 context_files_content = [file_content]
                 context_files_summary.append(f"✅ Included: {len(translated_files)} context files")
             else:
-                context_files_summary.append("⚠️ No context files could be read or files too large")
+                context_files_summary.append("WARNING: No context files could be read or files too large")
 
             total_tokens += context_tokens
 
@@ -338,8 +340,8 @@ class Precommit(BaseTool):
         prompt_parts = []
 
         # Add original request context if provided
-        if request.original_request:
-            prompt_parts.append(f"## Original Request\n\n{request.original_request}\n")
+        if request.prompt:
+            prompt_parts.append(f"## Original Request\n\n{request.prompt}\n")
 
         # Add review parameters
         prompt_parts.append("## Review Parameters\n")
@@ -366,7 +368,7 @@ class Precommit(BaseTool):
         for idx, summary in enumerate(repo_summaries, 1):
             prompt_parts.append(f"\n### Repository {idx}: {summary['path']}")
             if "error" in summary:
-                prompt_parts.append(f"⚠️ Error: {summary['error']}")
+                prompt_parts.append(f"ERROR: {summary['error']}")
             else:
                 prompt_parts.append(f"- Branch: {summary['branch']}")
                 if summary["ahead"] or summary["behind"]:
@@ -443,6 +445,6 @@ class Precommit(BaseTool):
 
         return full_prompt
 
-    def format_response(self, response: str, request: PrecommitRequest) -> str:
+    def format_response(self, response: str, request: PrecommitRequest, model_info: Optional[dict] = None) -> str:
         """Format the response with commit guidance"""
         return f"{response}\n\n---\n\n**Commit Status:** If no critical issues found, changes are ready for commit. Otherwise, address issues first and re-run review. Check with user before proceeding with any commit."

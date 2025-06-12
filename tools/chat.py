@@ -19,7 +19,7 @@ class ChatRequest(ToolRequest):
 
     prompt: str = Field(
         ...,
-        description="Your question, topic, or current thinking to discuss with Gemini",
+        description="Your question, topic, or current thinking to discuss",
     )
     files: Optional[list[str]] = Field(
         default_factory=list,
@@ -35,33 +35,30 @@ class ChatTool(BaseTool):
 
     def get_description(self) -> str:
         return (
-            "GENERAL CHAT & COLLABORATIVE THINKING - Use Gemini as your thinking partner! "
+            "GENERAL CHAT & COLLABORATIVE THINKING - Use the AI model as your thinking partner! "
             "Perfect for: bouncing ideas during your own analysis, getting second opinions on your plans, "
             "collaborative brainstorming, validating your checklists and approaches, exploring alternatives. "
             "Also great for: explanations, comparisons, general development questions. "
-            "Use this when you want to ask Gemini questions, brainstorm ideas, get opinions, discuss topics, "
+            "Use this when you want to ask questions, brainstorm ideas, get opinions, discuss topics, "
             "share your thinking, or need explanations about concepts and approaches."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import DEFAULT_MODEL
+        from config import IS_AUTO_MODE
 
-        return {
+        schema = {
             "type": "object",
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Your question, topic, or current thinking to discuss with Gemini",
+                    "description": "Your question, topic, or current thinking to discuss",
                 },
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Optional files for context (must be absolute paths)",
                 },
-                "model": {
-                    "type": "string",
-                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
-                },
+                "model": self.get_model_field_schema(),
                 "temperature": {
                     "type": "number",
                     "description": "Response creativity (0-1, default 0.5)",
@@ -83,8 +80,10 @@ class ChatTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["prompt"],
+            "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
+
+        return schema
 
     def get_system_prompt(self) -> str:
         return CHAT_PROMPT
@@ -153,6 +152,6 @@ Please provide a thoughtful, comprehensive response:"""
 
         return full_prompt
 
-    def format_response(self, response: str, request: ChatRequest) -> str:
-        """Format the chat response with actionable guidance"""
+    def format_response(self, response: str, request: ChatRequest, model_info: Optional[dict] = None) -> str:
+        """Format the chat response"""
         return f"{response}\n\n---\n\n**Claude's Turn:** Evaluate this perspective alongside your analysis to form a comprehensive solution and continue with the user's request and task at hand."

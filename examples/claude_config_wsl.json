@@ -1,14 +1,18 @@
 {
-  "comment": "Windows configuration using WSL (Windows Subsystem for Linux)",
-  "comment2": "Replace YOUR_WSL_USERNAME with your WSL username",
-  "comment3": "Make sure the server is installed in your WSL environment",
+  "comment": "Windows configuration using WSL with Docker",
+  "comment2": "Ensure Docker Desktop is running and WSL integration is enabled",
+  "comment3": "Run './setup-docker.sh' in WSL first to set up the environment",
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "wsl.exe",
-      "args": ["/home/YOUR_WSL_USERNAME/gemini-mcp-server/run_gemini.sh"],
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
+      "args": [
+        "docker",
+        "exec",
+        "-i",
+        "zen-mcp-server",
+        "python",
+        "server.py"
+      ]
     }
   }
 }

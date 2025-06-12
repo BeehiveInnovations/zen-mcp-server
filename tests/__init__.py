@@ -1,1 +1,1 @@
-# Tests for Gemini MCP Server
+# Tests for Zen MCP Server

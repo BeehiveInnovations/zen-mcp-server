@@ -28,7 +28,7 @@ class TestPrecommitTool:
         schema = tool.get_input_schema()
         assert schema["type"] == "object"
         assert "path" in schema["properties"]
-        assert "original_request" in schema["properties"]
+        assert "prompt" in schema["properties"]
         assert "compare_to" in schema["properties"]
         assert "review_type" in schema["properties"]
 
@@ -36,7 +36,7 @@ class TestPrecommitTool:
         """Test request model default values"""
         request = PrecommitRequest(path="/some/absolute/path")
         assert request.path == "/some/absolute/path"
-        assert request.original_request is None
+        assert request.prompt is None
         assert request.compare_to is None
         assert request.include_staged is True
         assert request.include_unstaged is True
@@ -48,7 +48,7 @@ class TestPrecommitTool:
     @pytest.mark.asyncio
     async def test_relative_path_rejected(self, tool):
         """Test that relative paths are rejected"""
-        result = await tool.execute({"path": "./relative/path", "original_request": "Test"})
+        result = await tool.execute({"path": "./relative/path", "prompt": "Test"})
         assert len(result) == 1
         response = json.loads(result[0].text)
         assert response["status"] == "error"
@@ -128,7 +128,7 @@ class TestPrecommitTool:
 
         request = PrecommitRequest(
             path="/absolute/repo/path",
-            original_request="Add hello message",
+            prompt="Add hello message",
             review_type="security",
         )
         result = await tool.prepare_prompt(request)

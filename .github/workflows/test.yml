@@ -28,12 +28,13 @@ jobs:
     
     - name: Run unit tests
       run: |
-        # Run all tests except live integration tests
+        # Run all unit tests
         # These tests use mocks and don't require API keys
-        python -m pytest tests/ --ignore=tests/test_live_integration.py -v
+        python -m pytest tests/ -v
       env:
         # Ensure no API key is accidentally used in CI
         GEMINI_API_KEY: ""
+        OPENAI_API_KEY: ""
 
   lint:
     runs-on: ubuntu-latest
@@ -56,9 +57,9 @@ jobs:
     - name: Run ruff linter
       run: ruff check .
 
-  live-tests:
+  simulation-tests:
     runs-on: ubuntu-latest
-    # Only run live tests on main branch pushes (requires manual API key setup)
+    # Only run simulation tests on main branch pushes (requires manual API key setup)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v4
@@ -76,24 +77,41 @@ jobs:
     - name: Check API key availability
       id: check-key
       run: |
-        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
-          echo "api_key_available=false" >> $GITHUB_OUTPUT
-          echo "⚠️ GEMINI_API_KEY secret not configured - skipping live tests"
+        has_key=false
+        if [ -n "${{ secrets.GEMINI_API_KEY }}" ] || [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+          has_key=true
+          echo "✅ API key(s) found - running simulation tests"
         else
-          echo "api_key_available=true" >> $GITHUB_OUTPUT
-          echo "✅ GEMINI_API_KEY found - running live tests"
+          echo "⚠️ No API keys configured - skipping simulation tests"
         fi
+        echo "api_key_available=$has_key" >> $GITHUB_OUTPUT
     
-    - name: Run live integration tests
+    - name: Set up Docker
+      if: steps.check-key.outputs.api_key_available == 'true'
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
       if: steps.check-key.outputs.api_key_available == 'true'
       run: |
-        # Run live tests that make actual API calls
-        python tests/test_live_integration.py
+        docker compose build
+    
+    - name: Run simulation tests
+      if: steps.check-key.outputs.api_key_available == 'true'
+      run: |
+        # Start services
+        docker compose up -d
+        
+        # Wait for services to be ready
+        sleep 10
+        
+        # Run communication simulator tests
+        python communication_simulator_test.py --skip-docker
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     
-    - name: Skip live tests
+    - name: Skip simulation tests
       if: steps.check-key.outputs.api_key_available == 'false'
       run: |
-        echo "🔒 Live integration tests skipped (no API key configured)"
-        echo "To enable live tests, add GEMINI_API_KEY as a repository secret"
+        echo "🔒 Simulation tests skipped (no API keys configured)"
+        echo "To enable simulation tests, add GEMINI_API_KEY and/or OPENAI_API_KEY as repository secrets"

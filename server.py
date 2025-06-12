@@ -1,8 +1,8 @@
 """
-Gemini MCP Server - Main server implementation
+Zen MCP Server - Main server implementation
 
 This module implements the core MCP (Model Context Protocol) server that provides
-AI-powered tools for code analysis, review, and assistance using Google's Gemini models.
+AI-powered tools for code analysis, review, and assistance using multiple AI models.
 
 The server follows the MCP specification to expose various AI tools as callable functions
 that can be used by MCP clients (like Claude). Each tool provides specialized functionality
@@ -102,7 +102,7 @@ logger = logging.getLogger(__name__)
 
 # Create the MCP server instance with a unique name identifier
 # This name is used by MCP clients to identify and connect to this specific server
-server: Server = Server("gemini-server")
+server: Server = Server("zen-server")
 
 # Initialize the tool registry with all available AI-powered tools
 # Each tool provides specialized functionality for different development tasks
@@ -117,23 +117,46 @@ TOOLS = {
 }
 
 
-def configure_gemini():
+def configure_providers():
     """
-    Configure Gemini API with the provided API key.
+    Configure and validate AI providers based on available API keys.
 
-    This function validates that the GEMINI_API_KEY environment variable is set.
-    The actual API key is used when creating Gemini clients within individual tools
-    to ensure proper isolation and error handling.
+    This function checks for API keys and registers the appropriate providers.
+    At least one valid API key (Gemini or OpenAI) is required.
 
     Raises:
-        ValueError: If GEMINI_API_KEY environment variable is not set
+        ValueError: If no valid API keys are found
     """
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is required. Please set it with your Gemini API key.")
-    # Note: We don't store the API key globally for security reasons
-    # Each tool creates its own Gemini client with the API key when needed
-    logger.info("Gemini API key found")
+    from providers import ModelProviderRegistry
+    from providers.base import ProviderType
+    from providers.gemini import GeminiModelProvider
+    from providers.openai import OpenAIModelProvider
+
+    valid_providers = []
+
+    # Check for Gemini API key
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key and gemini_key != "your_gemini_api_key_here":
+        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+        valid_providers.append("Gemini")
+        logger.info("Gemini API key found - Gemini models available")
+
+    # Check for OpenAI API key
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if openai_key and openai_key != "your_openai_api_key_here":
+        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+        valid_providers.append("OpenAI (o3)")
+        logger.info("OpenAI API key found - o3 model available")
+
+    # Require at least one valid provider
+    if not valid_providers:
+        raise ValueError(
+            "At least one API key is required. Please set either:\n"
+            "- GEMINI_API_KEY for Gemini models\n"
+            "- OPENAI_API_KEY for OpenAI o3 model"
+        )
+
+    logger.info(f"Available providers: {', '.join(valid_providers)}")
 
 
 @server.list_tools()
@@ -287,26 +310,26 @@ final analysis and recommendations."""
         remaining_turns = max_turns - current_turn_count - 1
         return f"""
 
-🤝 CONVERSATION THREADING: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
+CONVERSATION CONTINUATION: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
 
-If you'd like to ask a follow-up question, explore a specific aspect deeper, or need clarification,
-add this JSON block at the very end of your response:
+Feel free to ask clarifying questions or suggest areas for deeper exploration naturally within your response.
+If something needs clarification or you'd benefit from additional context, simply mention it conversationally.
 
-```json
-{{
-  "follow_up_question": "Would you like me to [specific action you could take]?",
-  "suggested_params": {{"files": ["relevant/files"], "focus_on": "specific area"}},
-  "ui_hint": "What this follow-up would accomplish"
-}}
-```
+IMPORTANT: When you suggest follow-ups or ask questions, you MUST explicitly instruct Claude to use the continuation_id
+to respond. Use clear, direct language based on urgency:
 
-💡 Good follow-up opportunities:
-- "Would you like me to examine the error handling in more detail?"
-- "Should I analyze the performance implications of this approach?"
-- "Would it be helpful to review the security aspects of this implementation?"
-- "Should I dive deeper into the architecture patterns used here?"
+For optional follow-ups: "Please continue this conversation using the continuation_id from this response if you'd like to explore this further."
 
-Only ask follow-ups when they would genuinely add value to the discussion."""
+For needed responses: "Please respond using the continuation_id from this response - your input is needed to proceed."
+
+For essential/critical responses: "RESPONSE REQUIRED: Please immediately continue using the continuation_id from this response. Cannot proceed without your clarification/input."
+
+This ensures Claude knows both HOW to maintain the conversation thread AND whether a response is optional, needed, or essential.
+
+The tool will automatically provide a continuation_id in the structured response that Claude can use in subsequent
+tool calls to maintain full conversation context across multiple exchanges.
+
+Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct Claude to use the continuation_id when you do."""
 
 
 async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -363,10 +386,16 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         else:
             logger.debug(f"[CONVERSATION_DEBUG] Successfully added user turn to thread {continuation_id}")
 
-    # Build conversation history and track token usage
+    # Create model context early to use for history building
+    from utils.model_context import ModelContext
+
+    model_context = ModelContext.from_arguments(arguments)
+
+    # Build conversation history with model-specific limits
     logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")
     logger.debug(f"[CONVERSATION_DEBUG] Thread has {len(context.turns)} turns, tool: {context.tool_name}")
-    conversation_history, conversation_tokens = build_conversation_history(context)
+    logger.debug(f"[CONVERSATION_DEBUG] Using model: {model_context.model_name}")
+    conversation_history, conversation_tokens = build_conversation_history(context, model_context)
     logger.debug(f"[CONVERSATION_DEBUG] Conversation history built: {conversation_tokens:,} tokens")
     logger.debug(f"[CONVERSATION_DEBUG] Conversation history length: {len(conversation_history)} chars")
 
@@ -374,8 +403,12 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     follow_up_instructions = get_follow_up_instructions(len(context.turns))
     logger.debug(f"[CONVERSATION_DEBUG] Follow-up instructions added for turn {len(context.turns)}")
 
-    # Merge original context with new prompt and follow-up instructions
+    # All tools now use standardized 'prompt' field
     original_prompt = arguments.get("prompt", "")
+    logger.debug("[CONVERSATION_DEBUG] Extracting user input from 'prompt' field")
+    logger.debug(f"[CONVERSATION_DEBUG] User input length: {len(original_prompt)} chars")
+
+    # Merge original context with new prompt and follow-up instructions
     if conversation_history:
         enhanced_prompt = (
             f"{conversation_history}\n\n=== NEW USER INPUT ===\n{original_prompt}\n\n{follow_up_instructions}"
@@ -385,15 +418,25 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     # Update arguments with enhanced context and remaining token budget
     enhanced_arguments = arguments.copy()
+
+    # Store the enhanced prompt in the prompt field
     enhanced_arguments["prompt"] = enhanced_prompt
+    logger.debug("[CONVERSATION_DEBUG] Storing enhanced prompt in 'prompt' field")
 
-    # Calculate remaining token budget for current request files/content
-    from config import MAX_CONTENT_TOKENS
+    # Calculate remaining token budget based on current model
+    # (model_context was already created above for history building)
+    token_allocation = model_context.calculate_token_allocation()
 
-    remaining_tokens = MAX_CONTENT_TOKENS - conversation_tokens
+    # Calculate remaining tokens for files/new content
+    # History has already consumed some of the content budget
+    remaining_tokens = token_allocation.content_tokens - conversation_tokens
     enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
+    enhanced_arguments["_model_context"] = model_context  # Pass context for use in tools
+
     logger.debug("[CONVERSATION_DEBUG] Token budget calculation:")
-    logger.debug(f"[CONVERSATION_DEBUG]   MAX_CONTENT_TOKENS: {MAX_CONTENT_TOKENS:,}")
+    logger.debug(f"[CONVERSATION_DEBUG]   Model: {model_context.model_name}")
+    logger.debug(f"[CONVERSATION_DEBUG]   Total capacity: {token_allocation.total_tokens:,}")
+    logger.debug(f"[CONVERSATION_DEBUG]   Content allocation: {token_allocation.content_tokens:,}")
     logger.debug(f"[CONVERSATION_DEBUG]   Conversation tokens: {conversation_tokens:,}")
     logger.debug(f"[CONVERSATION_DEBUG]   Remaining tokens: {remaining_tokens:,}")
 
@@ -416,7 +459,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(
-            f"CONVERSATION_CONTEXT: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
+            f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
         )
     except Exception:
         pass
@@ -452,7 +495,7 @@ async def handle_get_version() -> list[TextContent]:
     }
 
     # Format the information in a human-readable way
-    text = f"""Gemini MCP Server v{__version__}
+    text = f"""Zen MCP Server v{__version__}
 Updated: {__updated__}
 Author: {__author__}
 
@@ -466,7 +509,7 @@ Configuration:
 Available Tools:
 {chr(10).join(f"  - {tool}" for tool in version_info["available_tools"])}
 
-For updates, visit: https://github.com/BeehiveInnovations/gemini-mcp-server"""
+For updates, visit: https://github.com/BeehiveInnovations/zen-mcp-server"""
 
     # Create standardized tool output
     tool_output = ToolOutput(status="success", content=text, content_type="text", metadata={"tool_name": "get_version"})
@@ -485,13 +528,20 @@ async def main():
     The server communicates via standard input/output streams using the
     MCP protocol's JSON-RPC message format.
     """
-    # Validate that Gemini API key is available before starting
-    configure_gemini()
+    # Validate and configure providers based on available API keys
+    configure_providers()
 
     # Log startup message for Docker log monitoring
-    logger.info("Gemini MCP Server starting up...")
+    logger.info("Zen MCP Server starting up...")
     logger.info(f"Log level: {log_level}")
-    logger.info(f"Using default model: {DEFAULT_MODEL}")
+
+    # Log current model mode
+    from config import IS_AUTO_MODE
+
+    if IS_AUTO_MODE:
+        logger.info("Model mode: AUTO (Claude will select the best model for each task)")
+    else:
+        logger.info(f"Model mode: Fixed model '{DEFAULT_MODEL}'")
 
     # Import here to avoid circular imports
     from config import DEFAULT_THINKING_MODE_THINKDEEP
@@ -508,7 +558,7 @@ async def main():
             read_stream,
             write_stream,
             InitializationOptions(
-                server_name="gemini",
+                server_name="zen",
                 server_version=__version__,
                 capabilities=ServerCapabilities(tools=ToolsCapability()),  # Advertise tool support capability
             ),

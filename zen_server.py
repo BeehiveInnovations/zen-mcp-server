@@ -1,5 +1,5 @@
 """
-Gemini MCP Server - Entry point for backward compatibility
+Zen MCP Server - Entry point for backward compatibility
 This file exists to maintain compatibility with existing configurations.
 The main implementation is now in server.py
 """

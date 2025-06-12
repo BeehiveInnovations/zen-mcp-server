@@ -5,6 +5,7 @@ Tests the Redis-based conversation persistence needed for AI-to-AI multi-turn
 discussions in stateless MCP environments.
 """
 
+import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -136,8 +137,13 @@ class TestConversationMemory:
 
         assert success is False
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_build_conversation_history(self):
         """Test building conversation history format with files and speaker identification"""
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
+
         test_uuid = "12345678-1234-1234-1234-123456789012"
 
         turns = [
@@ -151,7 +157,6 @@ class TestConversationMemory:
                 role="assistant",
                 content="Python is a programming language",
                 timestamp="2023-01-01T00:01:00Z",
-                follow_up_question="Would you like examples?",
                 files=["/home/user/examples/"],
                 tool_name="chat",
             ),
@@ -166,7 +171,7 @@ class TestConversationMemory:
             initial_context={},
         )
 
-        history, tokens = build_conversation_history(context)
+        history, tokens = build_conversation_history(context, model_context=None)
 
         # Test basic structure
         assert "CONVERSATION HISTORY" in history
@@ -188,11 +193,8 @@ class TestConversationMemory:
         assert "The following files have been shared and analyzed during our conversation." in history
 
         # Check that file context from previous turns is included (now shows files used per turn)
-        assert "📁 Files used in this turn: /home/user/main.py, /home/user/docs/readme.md" in history
-        assert "📁 Files used in this turn: /home/user/examples/" in history
-
-        # Test follow-up attribution
-        assert "[Gemini's Follow-up: Would you like examples?]" in history
+        assert "Files used in this turn: /home/user/main.py, /home/user/docs/readme.md" in history
+        assert "Files used in this turn: /home/user/examples/" in history
 
     def test_build_conversation_history_empty(self):
         """Test building history with no turns"""
@@ -207,7 +209,7 @@ class TestConversationMemory:
             initial_context={},
         )
 
-        history, tokens = build_conversation_history(context)
+        history, tokens = build_conversation_history(context, model_context=None)
         assert history == ""
         assert tokens == 0
 
@@ -235,12 +237,11 @@ class TestConversationFlow:
         )
         mock_client.get.return_value = initial_context.model_dump_json()
 
-        # Add assistant response with follow-up
+        # Add assistant response
         success = add_turn(
             thread_id,
             "assistant",
             "Code analysis complete",
-            follow_up_question="Would you like me to check error handling?",
         )
         assert success is True
 
@@ -256,7 +257,6 @@ class TestConversationFlow:
                     role="assistant",
                     content="Code analysis complete",
                     timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Would you like me to check error handling?",
                 )
             ],
             initial_context={"prompt": "Analyze this code"},
@@ -266,9 +266,7 @@ class TestConversationFlow:
         success = add_turn(thread_id, "user", "Yes, check error handling")
         assert success is True
 
-        success = add_turn(
-            thread_id, "assistant", "Error handling reviewed", follow_up_question="Should I examine the test coverage?"
-        )
+        success = add_turn(thread_id, "assistant", "Error handling reviewed")
         assert success is True
 
         # REQUEST 3-5: Continue conversation (simulating independent cycles)
@@ -283,14 +281,12 @@ class TestConversationFlow:
                     role="assistant",
                     content="Code analysis complete",
                     timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Would you like me to check error handling?",
                 ),
                 ConversationTurn(role="user", content="Yes, check error handling", timestamp="2023-01-01T00:01:30Z"),
                 ConversationTurn(
                     role="assistant",
                     content="Error handling reviewed",
                     timestamp="2023-01-01T00:02:30Z",
-                    follow_up_question="Should I examine the test coverage?",
                 ),
             ],
             initial_context={"prompt": "Analyze this code"},
@@ -349,8 +345,13 @@ class TestConversationFlow:
             in error_msg
         )
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_dynamic_max_turns_configuration(self):
         """Test that all functions respect MAX_CONVERSATION_TURNS configuration"""
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
+
         # This test ensures if we change MAX_CONVERSATION_TURNS, everything updates
 
         # Test with different max values by patching the constant
@@ -374,7 +375,7 @@ class TestConversationFlow:
                 initial_context={},
             )
 
-            history, tokens = build_conversation_history(context)
+            history, tokens = build_conversation_history(context, model_context=None)
             expected_turn_text = f"Turn {test_max}/{MAX_CONVERSATION_TURNS}"
             assert expected_turn_text in history
 
@@ -385,18 +386,20 @@ class TestConversationFlow:
 
         # Test early conversation (should allow follow-ups)
         early_instructions = get_follow_up_instructions(0, max_turns)
-        assert "CONVERSATION THREADING" in early_instructions
+        assert "CONVERSATION CONTINUATION" in early_instructions
         assert f"({max_turns - 1} exchanges remaining)" in early_instructions
+        assert "Feel free to ask clarifying questions" in early_instructions
 
         # Test mid conversation
         mid_instructions = get_follow_up_instructions(2, max_turns)
-        assert "CONVERSATION THREADING" in mid_instructions
+        assert "CONVERSATION CONTINUATION" in mid_instructions
         assert f"({max_turns - 3} exchanges remaining)" in mid_instructions
+        assert "Feel free to ask clarifying questions" in mid_instructions
 
         # Test approaching limit (should stop follow-ups)
         limit_instructions = get_follow_up_instructions(max_turns - 1, max_turns)
         assert "Do NOT include any follow-up questions" in limit_instructions
-        assert "FOLLOW-UP CONVERSATIONS" not in limit_instructions
+        assert "final exchange" in limit_instructions
 
         # Test at limit
         at_limit_instructions = get_follow_up_instructions(max_turns, max_turns)
@@ -473,8 +476,13 @@ class TestConversationFlow:
         assert success is False, f"Turn {MAX_CONVERSATION_TURNS + 1} should fail"
 
     @patch("utils.conversation_memory.get_redis_client")
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_conversation_with_files_and_context_preservation(self, mock_redis):
         """Test complete conversation flow with file tracking and context preservation"""
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
+
         mock_client = Mock()
         mock_redis.return_value = mock_client
 
@@ -492,12 +500,11 @@ class TestConversationFlow:
         )
         mock_client.get.return_value = initial_context.model_dump_json()
 
-        # Add Gemini's response with follow-up
+        # Add Gemini's response
         success = add_turn(
             thread_id,
             "assistant",
             "I've analyzed your codebase structure.",
-            follow_up_question="Would you like me to examine the test coverage?",
             files=["/project/src/main.py", "/project/src/utils.py"],
             tool_name="analyze",
         )
@@ -514,7 +521,6 @@ class TestConversationFlow:
                     role="assistant",
                     content="I've analyzed your codebase structure.",
                     timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Would you like me to examine the test coverage?",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
                 )
@@ -540,7 +546,6 @@ class TestConversationFlow:
                     role="assistant",
                     content="I've analyzed your codebase structure.",
                     timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Would you like me to examine the test coverage?",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
                 ),
@@ -575,7 +580,6 @@ class TestConversationFlow:
                     role="assistant",
                     content="I've analyzed your codebase structure.",
                     timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Would you like me to examine the test coverage?",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
                 ),
@@ -604,19 +608,18 @@ class TestConversationFlow:
         assert "--- Turn 3 (Gemini using analyze) ---" in history
 
         # Verify all files are preserved in chronological order
-        turn_1_files = "📁 Files used in this turn: /project/src/main.py, /project/src/utils.py"
-        turn_2_files = "📁 Files used in this turn: /project/tests/, /project/test_main.py"
-        turn_3_files = "📁 Files used in this turn: /project/tests/test_utils.py, /project/coverage.html"
+        turn_1_files = "Files used in this turn: /project/src/main.py, /project/src/utils.py"
+        turn_2_files = "Files used in this turn: /project/tests/, /project/test_main.py"
+        turn_3_files = "Files used in this turn: /project/tests/test_utils.py, /project/coverage.html"
 
         assert turn_1_files in history
         assert turn_2_files in history
         assert turn_3_files in history
 
-        # Verify content and follow-ups
+        # Verify content
         assert "I've analyzed your codebase structure." in history
         assert "Yes, check the test coverage" in history
         assert "Test coverage analysis complete. Coverage is 85%." in history
-        assert "[Gemini's Follow-up: Would you like me to examine the test coverage?]" in history
 
         # Verify chronological ordering (turn 1 appears before turn 2, etc.)
         turn_1_pos = history.find("--- Turn 1 (Gemini using analyze) ---")
@@ -624,56 +627,6 @@ class TestConversationFlow:
         turn_3_pos = history.find("--- Turn 3 (Gemini using analyze) ---")
 
         assert turn_1_pos < turn_2_pos < turn_3_pos
-
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_follow_up_question_parsing_cycle(self, mock_redis):
-        """Test follow-up question persistence across request cycles"""
-        mock_client = Mock()
-        mock_redis.return_value = mock_client
-
-        thread_id = "12345678-1234-1234-1234-123456789012"
-
-        # First cycle: Assistant generates follow-up
-        context = ThreadContext(
-            thread_id=thread_id,
-            created_at="2023-01-01T00:00:00Z",
-            last_updated_at="2023-01-01T00:00:00Z",
-            tool_name="debug",
-            turns=[],
-            initial_context={"prompt": "Debug this error"},
-        )
-        mock_client.get.return_value = context.model_dump_json()
-
-        success = add_turn(
-            thread_id,
-            "assistant",
-            "Found potential issue in authentication",
-            follow_up_question="Should I examine the authentication middleware?",
-        )
-        assert success is True
-
-        # Second cycle: Retrieve conversation history
-        context_with_followup = ThreadContext(
-            thread_id=thread_id,
-            created_at="2023-01-01T00:00:00Z",
-            last_updated_at="2023-01-01T00:01:00Z",
-            tool_name="debug",
-            turns=[
-                ConversationTurn(
-                    role="assistant",
-                    content="Found potential issue in authentication",
-                    timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Should I examine the authentication middleware?",
-                )
-            ],
-            initial_context={"prompt": "Debug this error"},
-        )
-        mock_client.get.return_value = context_with_followup.model_dump_json()
-
-        # Build history to verify follow-up is preserved
-        history, tokens = build_conversation_history(context_with_followup)
-        assert "Found potential issue in authentication" in history
-        assert "[Gemini's Follow-up: Should I examine the authentication middleware?]" in history
 
     @patch("utils.conversation_memory.get_redis_client")
     def test_stateless_request_isolation(self, mock_redis):
@@ -695,9 +648,7 @@ class TestConversationFlow:
         )
         mock_client.get.return_value = initial_context.model_dump_json()
 
-        success = add_turn(
-            thread_id, "assistant", "Architecture analysis", follow_up_question="Want to explore scalability?"
-        )
+        success = add_turn(thread_id, "assistant", "Architecture analysis")
         assert success is True
 
         # Process 2: Different "request cycle" accesses same thread
@@ -711,7 +662,6 @@ class TestConversationFlow:
                     role="assistant",
                     content="Architecture analysis",
                     timestamp="2023-01-01T00:00:30Z",
-                    follow_up_question="Want to explore scalability?",
                 )
             ],
             initial_context={"prompt": "Think about architecture"},
@@ -722,12 +672,16 @@ class TestConversationFlow:
         retrieved_context = get_thread(thread_id)
         assert retrieved_context is not None
         assert len(retrieved_context.turns) == 1
-        assert retrieved_context.turns[0].follow_up_question == "Want to explore scalability?"
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
     def test_token_limit_optimization_in_conversation_history(self):
         """Test that build_conversation_history efficiently handles token limits"""
         import os
         import tempfile
+
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry.clear_cache()
 
         from utils.conversation_memory import build_conversation_history
 
@@ -763,10 +717,10 @@ class TestConversationFlow:
             )
 
             # Build conversation history (should handle token limits gracefully)
-            history, tokens = build_conversation_history(context)
+            history, tokens = build_conversation_history(context, model_context=None)
 
             # Verify the history was built successfully
-            assert "=== CONVERSATION HISTORY ===" in history
+            assert "=== CONVERSATION HISTORY" in history
             assert "=== FILES REFERENCED IN THIS CONVERSATION ===" in history
 
             # The small file should be included, but large file might be truncated

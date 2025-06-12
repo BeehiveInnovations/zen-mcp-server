@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from tests.mock_helpers import create_mock_provider
 from tools import AnalyzeTool, ChatTool, CodeReviewTool, DebugIssueTool, ThinkDeepTool
 
 
@@ -24,23 +25,25 @@ class TestThinkDeepTool:
         assert tool.get_default_temperature() == 0.7
 
         schema = tool.get_input_schema()
-        assert "current_analysis" in schema["properties"]
-        assert schema["required"] == ["current_analysis"]
+        assert "prompt" in schema["properties"]
+        assert schema["required"] == ["prompt"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_execute_success(self, mock_create_model, tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_execute_success(self, mock_get_provider, tool):
         """Test successful execution"""
-        # Mock model
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text="Extended analysis")]))]
+        # Mock provider
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = True
+        mock_provider.generate_content.return_value = Mock(
+            content="Extended analysis", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         result = await tool.execute(
             {
-                "current_analysis": "Initial analysis",
+                "prompt": "Initial analysis",
                 "problem_context": "Building a cache",
                 "focus_areas": ["performance", "scalability"],
             }
@@ -50,7 +53,7 @@ class TestThinkDeepTool:
         # Parse the JSON response
         output = json.loads(result[0].text)
         assert output["status"] == "success"
-        assert "Extended Analysis by Gemini" in output["content"]
+        assert "Critical Evaluation Required" in output["content"]
         assert "Extended analysis" in output["content"]
 
 
@@ -69,36 +72,38 @@ class TestCodeReviewTool:
 
         schema = tool.get_input_schema()
         assert "files" in schema["properties"]
-        assert "context" in schema["properties"]
-        assert schema["required"] == ["files", "context"]
+        assert "prompt" in schema["properties"]
+        assert schema["required"] == ["files", "prompt"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_execute_with_review_type(self, mock_create_model, tool, tmp_path):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_execute_with_review_type(self, mock_get_provider, tool, tmp_path):
         """Test execution with specific review type"""
         # Create test file
         test_file = tmp_path / "test.py"
         test_file.write_text("def insecure(): pass", encoding="utf-8")
 
-        # Mock model
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text="Security issues found")]))]
+        # Mock provider
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content="Security issues found", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         result = await tool.execute(
             {
                 "files": [str(test_file)],
                 "review_type": "security",
                 "focus_on": "authentication",
-                "context": "Test code review for validation purposes",
+                "prompt": "Test code review for validation purposes",
             }
         )
 
         assert len(result) == 1
-        assert "Code Review (SECURITY)" in result[0].text
-        assert "Focus: authentication" in result[0].text
+        assert "Security issues found" in result[0].text
+        assert "Claude's Next Steps:" in result[0].text
         assert "Security issues found" in result[0].text
 
 
@@ -116,30 +121,32 @@ class TestDebugIssueTool:
         assert tool.get_default_temperature() == 0.2
 
         schema = tool.get_input_schema()
-        assert "error_description" in schema["properties"]
-        assert schema["required"] == ["error_description"]
+        assert "prompt" in schema["properties"]
+        assert schema["required"] == ["prompt"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_execute_with_context(self, mock_create_model, tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_execute_with_context(self, mock_get_provider, tool):
         """Test execution with error context"""
-        # Mock model
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text="Root cause: race condition")]))]
+        # Mock provider
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content="Root cause: race condition", usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         result = await tool.execute(
             {
-                "error_description": "Test fails intermittently",
+                "prompt": "Test fails intermittently",
                 "error_context": "AssertionError in test_async",
                 "previous_attempts": "Added sleep, still fails",
             }
         )
 
         assert len(result) == 1
-        assert "Debug Analysis" in result[0].text
+        assert "Next Steps:" in result[0].text
         assert "Root cause: race condition" in result[0].text
 
 
@@ -158,38 +165,38 @@ class TestAnalyzeTool:
 
         schema = tool.get_input_schema()
         assert "files" in schema["properties"]
-        assert "question" in schema["properties"]
-        assert set(schema["required"]) == {"files", "question"}
+        assert "prompt" in schema["properties"]
+        assert set(schema["required"]) == {"files", "prompt"}
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_execute_with_analysis_type(self, mock_model, tool, tmp_path):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_execute_with_analysis_type(self, mock_get_provider, tool, tmp_path):
         """Test execution with specific analysis type"""
         # Create test file
         test_file = tmp_path / "module.py"
         test_file.write_text("class Service: pass", encoding="utf-8")
 
-        # Mock response
-        mock_response = Mock()
-        mock_response.candidates = [Mock()]
-        mock_response.candidates[0].content.parts = [Mock(text="Architecture analysis")]
-
-        mock_instance = Mock()
-        mock_instance.generate_content.return_value = mock_response
-        mock_model.return_value = mock_instance
+        # Mock provider
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content="Architecture analysis", usage={}, model_name="gemini-2.0-flash", metadata={}
+        )
+        mock_get_provider.return_value = mock_provider
 
         result = await tool.execute(
             {
                 "files": [str(test_file)],
-                "question": "What's the structure?",
+                "prompt": "What's the structure?",
                 "analysis_type": "architecture",
                 "output_format": "summary",
             }
         )
 
         assert len(result) == 1
-        assert "ARCHITECTURE Analysis" in result[0].text
-        assert "Analyzed 1 file(s)" in result[0].text
+        assert "Architecture analysis" in result[0].text
+        assert "Next Steps:" in result[0].text
         assert "Architecture analysis" in result[0].text
 
 
@@ -203,7 +210,7 @@ class TestAbsolutePathValidation:
         result = await tool.execute(
             {
                 "files": ["./relative/path.py", "/absolute/path.py"],
-                "question": "What does this do?",
+                "prompt": "What does this do?",
             }
         )
 
@@ -221,7 +228,7 @@ class TestAbsolutePathValidation:
             {
                 "files": ["../parent/file.py"],
                 "review_type": "full",
-                "context": "Test code review for validation purposes",
+                "prompt": "Test code review for validation purposes",
             }
         )
 
@@ -237,7 +244,7 @@ class TestAbsolutePathValidation:
         tool = DebugIssueTool()
         result = await tool.execute(
             {
-                "error_description": "Something broke",
+                "prompt": "Something broke",
                 "files": ["src/main.py"],  # relative path
             }
         )
@@ -252,7 +259,7 @@ class TestAbsolutePathValidation:
     async def test_thinkdeep_tool_relative_path_rejected(self):
         """Test that thinkdeep tool rejects relative paths"""
         tool = ThinkDeepTool()
-        result = await tool.execute({"current_analysis": "My analysis", "files": ["./local/file.py"]})
+        result = await tool.execute({"prompt": "My analysis", "files": ["./local/file.py"]})
 
         assert len(result) == 1
         response = json.loads(result[0].text)
@@ -278,21 +285,21 @@ class TestAbsolutePathValidation:
         assert "code.py" in response["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.AnalyzeTool.create_model")
-    async def test_analyze_tool_accepts_absolute_paths(self, mock_model):
+    @patch("tools.AnalyzeTool.get_model_provider")
+    async def test_analyze_tool_accepts_absolute_paths(self, mock_get_provider):
         """Test that analyze tool accepts absolute paths"""
         tool = AnalyzeTool()
 
-        # Mock the model response
-        mock_response = Mock()
-        mock_response.candidates = [Mock()]
-        mock_response.candidates[0].content.parts = [Mock(text="Analysis complete")]
+        # Mock provider
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content="Analysis complete", usage={}, model_name="gemini-2.0-flash", metadata={}
+        )
+        mock_get_provider.return_value = mock_provider
 
-        mock_instance = Mock()
-        mock_instance.generate_content.return_value = mock_response
-        mock_model.return_value = mock_instance
-
-        result = await tool.execute({"files": ["/absolute/path/file.py"], "question": "What does this do?"})
+        result = await tool.execute({"files": ["/absolute/path/file.py"], "prompt": "What does this do?"})
 
         assert len(result) == 1
         response = json.loads(result[0].text)

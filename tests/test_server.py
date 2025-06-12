@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from server import handle_call_tool, handle_list_tools
+from tests.mock_helpers import create_mock_provider
 
 
 class TestServerTools:
@@ -42,31 +43,33 @@ class TestServerTools:
         assert "Unknown tool: unknown_tool" in result[0].text
 
     @pytest.mark.asyncio
-    async def test_handle_chat(self):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_handle_chat(self, mock_get_provider):
         """Test chat functionality"""
         # Set test environment
         import os
 
         os.environ["PYTEST_CURRENT_TEST"] = "test"
 
-        # Create a mock for the model
-        with patch("tools.base.BaseTool.create_model") as mock_create:
-            mock_model = Mock()
-            mock_model.generate_content.return_value = Mock(
-                candidates=[Mock(content=Mock(parts=[Mock(text="Chat response")]))]
-            )
-            mock_create.return_value = mock_model
+        # Create a mock for the provider
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content="Chat response", usage={}, model_name="gemini-2.0-flash", metadata={}
+        )
+        mock_get_provider.return_value = mock_provider
 
-            result = await handle_call_tool("chat", {"prompt": "Hello Gemini"})
+        result = await handle_call_tool("chat", {"prompt": "Hello Gemini"})
 
-            assert len(result) == 1
-            # Parse JSON response
-            import json
+        assert len(result) == 1
+        # Parse JSON response
+        import json
 
-            response_data = json.loads(result[0].text)
-            assert response_data["status"] == "success"
-            assert "Chat response" in response_data["content"]
-            assert "Claude's Turn" in response_data["content"]
+        response_data = json.loads(result[0].text)
+        assert response_data["status"] == "success"
+        assert "Chat response" in response_data["content"]
+        assert "Claude's Turn" in response_data["content"]
 
     @pytest.mark.asyncio
     async def test_handle_get_version(self):
@@ -75,6 +78,6 @@ class TestServerTools:
         assert len(result) == 1
 
         response = result[0].text
-        assert "Gemini MCP Server v" in response  # Version agnostic check
+        assert "Zen MCP Server v" in response  # Version agnostic check
         assert "Available Tools:" in response
         assert "thinkdeep" in response

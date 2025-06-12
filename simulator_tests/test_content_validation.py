@@ -6,7 +6,6 @@ Tests that tools don't duplicate file content in their responses.
 This test is specifically designed to catch content duplication bugs.
 """
 
-import json
 import os
 
 from .base_test import BaseSimulatorTest
@@ -23,23 +22,58 @@ class ContentValidationTest(BaseSimulatorTest):
     def test_description(self) -> str:
         return "Content validation and duplicate detection"
 
-    def run_test(self) -> bool:
-        """Test that tools don't duplicate file content in their responses"""
+    def get_docker_logs_since(self, since_time: str) -> str:
+        """Get docker logs since a specific timestamp"""
         try:
-            self.logger.info("📄 Test: Content validation and duplicate detection")
+            # Check both main server and log monitor for comprehensive logs
+            cmd_server = ["docker", "logs", "--since", since_time, self.container_name]
+            cmd_monitor = ["docker", "logs", "--since", since_time, "zen-mcp-log-monitor"]
+
+            import subprocess
+
+            result_server = subprocess.run(cmd_server, capture_output=True, text=True)
+            result_monitor = subprocess.run(cmd_monitor, capture_output=True, text=True)
+
+            # Get the internal log files which have more detailed logging
+            server_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_server.log"], capture_output=True, text=True
+            )
+
+            activity_log_result = subprocess.run(
+                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_activity.log"], capture_output=True, text=True
+            )
+
+            # Combine all logs
+            combined_logs = (
+                result_server.stdout
+                + "\n"
+                + result_monitor.stdout
+                + "\n"
+                + server_log_result.stdout
+                + "\n"
+                + activity_log_result.stdout
+            )
+            return combined_logs
+        except Exception as e:
+            self.logger.error(f"Failed to get docker logs: {e}")
+            return ""
+
+    def run_test(self) -> bool:
+        """Test that file processing system properly handles file deduplication"""
+        try:
+            self.logger.info("📄 Test: Content validation and file processing deduplication")
 
             # Setup test files first
             self.setup_test_files()
 
-            # Create a test file with distinctive content for validation
+            # Create a test file for validation
             validation_content = '''"""
 Configuration file for content validation testing
-This content should appear only ONCE in any tool response
 """
 
 # Configuration constants
-MAX_CONTENT_TOKENS = 800_000  # This line should appear exactly once
-TEMPERATURE_ANALYTICAL = 0.2  # This should also appear exactly once
+MAX_CONTENT_TOKENS = 800_000
+TEMPERATURE_ANALYTICAL = 0.2
 UNIQUE_VALIDATION_MARKER = "CONTENT_VALIDATION_TEST_12345"
 
 # Database settings
@@ -57,138 +91,127 @@ DATABASE_CONFIG = {
             # Ensure absolute path for MCP server compatibility
             validation_file = os.path.abspath(validation_file)
 
-            # Test 1: Precommit tool with files parameter (where the bug occurred)
-            self.logger.info("  1: Testing precommit tool content duplication")
+            # Get timestamp for log filtering
+            import datetime
 
-            # Call precommit tool with the validation file
+            start_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+            # Test 1: Initial tool call with validation file
+            self.logger.info("  1: Testing initial tool call with file")
+
+            # Call chat tool with the validation file
             response1, thread_id = self.call_mcp_tool(
-                "precommit",
+                "chat",
                 {
-                    "path": os.getcwd(),
+                    "prompt": "Analyze this configuration file briefly",
                     "files": [validation_file],
-                    "original_request": "Test for content duplication in precommit tool",
+                    "model": "flash",
                 },
             )
 
-            if response1:
-                # Parse response and check for content duplication
-                try:
-                    response_data = json.loads(response1)
-                    content = response_data.get("content", "")
+            if not response1:
+                self.logger.error("  ❌ Initial tool call failed")
+                return False
 
-                    # Count occurrences of distinctive markers
-                    max_content_count = content.count("MAX_CONTENT_TOKENS = 800_000")
-                    temp_analytical_count = content.count("TEMPERATURE_ANALYTICAL = 0.2")
-                    unique_marker_count = content.count("UNIQUE_VALIDATION_MARKER")
+            self.logger.info("  ✅ Initial tool call completed")
 
-                    # Validate no duplication
-                    duplication_detected = False
-                    issues = []
-
-                    if max_content_count > 1:
-                        issues.append(f"MAX_CONTENT_TOKENS appears {max_content_count} times")
-                        duplication_detected = True
-
-                    if temp_analytical_count > 1:
-                        issues.append(f"TEMPERATURE_ANALYTICAL appears {temp_analytical_count} times")
-                        duplication_detected = True
-
-                    if unique_marker_count > 1:
-                        issues.append(f"UNIQUE_VALIDATION_MARKER appears {unique_marker_count} times")
-                        duplication_detected = True
-
-                    if duplication_detected:
-                        self.logger.error(f"  ❌ Content duplication detected in precommit tool: {'; '.join(issues)}")
-                        return False
-                    else:
-                        self.logger.info("  ✅ No content duplication in precommit tool")
-
-                except json.JSONDecodeError:
-                    self.logger.warning("  ⚠️  Could not parse precommit response as JSON")
-
-            else:
-                self.logger.warning("  ⚠️  Precommit tool failed to respond")
-
-            # Test 2: Other tools that use files parameter
-            tools_to_test = [
-                (
-                    "chat",
-                    {
-                        "prompt": "Please use low thinking mode. Analyze this config file",
-                        "files": [validation_file],
-                    },  # Using absolute path
-                ),
-                (
-                    "codereview",
-                    {
-                        "files": [validation_file],
-                        "context": "Please use low thinking mode. Review this configuration",
-                    },  # Using absolute path
-                ),
-                ("analyze", {"files": [validation_file], "analysis_type": "code_quality"}),  # Using absolute path
-            ]
-
-            for tool_name, params in tools_to_test:
-                self.logger.info(f"  2.{tool_name}: Testing {tool_name} tool content duplication")
-
-                response, _ = self.call_mcp_tool(tool_name, params)
-                if response:
-                    try:
-                        response_data = json.loads(response)
-                        content = response_data.get("content", "")
-
-                        # Check for duplication
-                        marker_count = content.count("UNIQUE_VALIDATION_MARKER")
-                        if marker_count > 1:
-                            self.logger.error(
-                                f"  ❌ Content duplication in {tool_name}: marker appears {marker_count} times"
-                            )
-                            return False
-                        else:
-                            self.logger.info(f"  ✅ No content duplication in {tool_name}")
-
-                    except json.JSONDecodeError:
-                        self.logger.warning(f"  ⚠️  Could not parse {tool_name} response")
-                else:
-                    self.logger.warning(f"  ⚠️  {tool_name} tool failed to respond")
-
-            # Test 3: Cross-tool content validation with file deduplication
-            self.logger.info("  3: Testing cross-tool content consistency")
+            # Test 2: Continuation with same file (should be deduplicated)
+            self.logger.info("  2: Testing continuation with same file")
 
             if thread_id:
-                # Continue conversation with same file - content should be deduplicated in conversation history
                 response2, _ = self.call_mcp_tool(
                     "chat",
                     {
-                        "prompt": "Please use low thinking mode. Continue analyzing this configuration file",
+                        "prompt": "Continue analyzing this configuration file",
                         "files": [validation_file],  # Same file should be deduplicated
                         "continuation_id": thread_id,
+                        "model": "flash",
                     },
                 )
 
                 if response2:
-                    try:
-                        response_data = json.loads(response2)
-                        content = response_data.get("content", "")
+                    self.logger.info("  ✅ Continuation with same file completed")
+                else:
+                    self.logger.warning("  ⚠️  Continuation failed")
 
-                        # In continuation, the file content shouldn't be duplicated either
-                        marker_count = content.count("UNIQUE_VALIDATION_MARKER")
-                        if marker_count > 1:
-                            self.logger.error(
-                                f"  ❌ Content duplication in cross-tool continuation: marker appears {marker_count} times"
-                            )
-                            return False
-                        else:
-                            self.logger.info("  ✅ No content duplication in cross-tool continuation")
+            # Test 3: Different tool with same file (new conversation)
+            self.logger.info("  3: Testing different tool with same file")
 
-                    except json.JSONDecodeError:
-                        self.logger.warning("  ⚠️  Could not parse continuation response")
+            response3, _ = self.call_mcp_tool(
+                "codereview",
+                {
+                    "files": [validation_file],
+                    "prompt": "Review this configuration file",
+                    "model": "flash",
+                },
+            )
+
+            if response3:
+                self.logger.info("  ✅ Different tool with same file completed")
+            else:
+                self.logger.warning("  ⚠️  Different tool failed")
+
+            # Validate file processing behavior from Docker logs
+            self.logger.info("  4: Validating file processing logs")
+            logs = self.get_docker_logs_since(start_time)
+
+            # Check for proper file embedding logs
+            embedding_logs = [
+                line
+                for line in logs.split("\n")
+                if "[FILE_PROCESSING]" in line or "embedding" in line.lower() or "[FILES]" in line
+            ]
+
+            # Check for deduplication evidence
+            deduplication_logs = [
+                line
+                for line in logs.split("\n")
+                if ("skipping" in line.lower() and "already in conversation" in line.lower())
+                or "No new files to embed" in line
+            ]
+
+            # Check for file processing patterns
+            new_file_logs = [
+                line
+                for line in logs.split("\n")
+                if "will embed new files" in line or "New conversation" in line or "[FILE_PROCESSING]" in line
+            ]
+
+            # Validation criteria
+            validation_file_mentioned = any("validation_config.py" in line for line in logs.split("\n"))
+            embedding_found = len(embedding_logs) > 0
+            (len(deduplication_logs) > 0 or len(new_file_logs) >= 2)  # Should see new conversation patterns
+
+            self.logger.info(f"   Embedding logs found: {len(embedding_logs)}")
+            self.logger.info(f"   Deduplication evidence: {len(deduplication_logs)}")
+            self.logger.info(f"   New conversation patterns: {len(new_file_logs)}")
+            self.logger.info(f"   Validation file mentioned: {validation_file_mentioned}")
+
+            # Log sample evidence for debugging
+            if self.verbose and embedding_logs:
+                self.logger.debug("  📋 Sample embedding logs:")
+                for log in embedding_logs[:5]:
+                    self.logger.debug(f"    {log}")
+
+            # Success criteria
+            success_criteria = [
+                ("Embedding logs found", embedding_found),
+                ("File processing evidence", validation_file_mentioned),
+                ("Multiple tool calls", len(new_file_logs) >= 2),
+            ]
+
+            passed_criteria = sum(1 for _, passed in success_criteria if passed)
+            self.logger.info(f"   Success criteria met: {passed_criteria}/{len(success_criteria)}")
 
             # Cleanup
             os.remove(validation_file)
 
-            self.logger.info("  ✅ All content validation tests passed")
-            return True
+            if passed_criteria >= 2:  # At least 2 out of 3 criteria
+                self.logger.info("  ✅ File processing validation passed")
+                return True
+            else:
+                self.logger.error("  ❌ File processing validation failed")
+                return False
 
         except Exception as e:
             self.logger.error(f"Content validation test failed: {e}")

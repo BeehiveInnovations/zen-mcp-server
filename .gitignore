@@ -173,3 +173,9 @@ memory-bank/
 @.claude/
 @memory-bank/
 CLAUDE.md
+# Test simulation artifacts (dynamically created during testing)
+test_simulation_files/.claude/
+
+# Temporary test directories
+test-setup/
+/test_simulation_files/**

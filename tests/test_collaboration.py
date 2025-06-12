@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from tests.mock_helpers import create_mock_provider
 from tools.analyze import AnalyzeTool
 from tools.debug import DebugIssueTool
 from tools.models import ClarificationRequest, ToolOutput
@@ -24,8 +25,8 @@ class TestDynamicContextRequests:
         return DebugIssueTool()
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_clarification_request_parsing(self, mock_create_model, analyze_tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_clarification_request_parsing(self, mock_get_provider, analyze_tool):
         """Test that tools correctly parse clarification requests"""
         # Mock model to return a clarification request
         clarification_json = json.dumps(
@@ -36,16 +37,18 @@ class TestDynamicContextRequests:
             }
         )
 
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=clarification_json)]))]
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         result = await analyze_tool.execute(
             {
                 "files": ["/absolute/path/src/index.js"],
-                "question": "Analyze the dependencies used in this project",
+                "prompt": "Analyze the dependencies used in this project",
             }
         )
 
@@ -62,8 +65,8 @@ class TestDynamicContextRequests:
         assert clarification["files_needed"] == ["package.json", "package-lock.json"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_normal_response_not_parsed_as_clarification(self, mock_create_model, debug_tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_normal_response_not_parsed_as_clarification(self, mock_get_provider, debug_tool):
         """Test that normal responses are not mistaken for clarification requests"""
         normal_response = """
         ## Summary
@@ -75,13 +78,15 @@ class TestDynamicContextRequests:
         **Root Cause:** The module 'utils' is not imported
         """
 
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=normal_response)]))]
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content=normal_response, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
-        result = await debug_tool.execute({"error_description": "NameError: name 'utils' is not defined"})
+        result = await debug_tool.execute({"prompt": "NameError: name 'utils' is not defined"})
 
         assert len(result) == 1
 
@@ -92,18 +97,20 @@ class TestDynamicContextRequests:
         assert "Summary" in response_data["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_malformed_clarification_request_treated_as_normal(self, mock_create_model, analyze_tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_malformed_clarification_request_treated_as_normal(self, mock_get_provider, analyze_tool):
         """Test that malformed JSON clarification requests are treated as normal responses"""
-        malformed_json = '{"status": "requires_clarification", "question": "Missing closing brace"'
+        malformed_json = '{"status": "requires_clarification", "prompt": "Missing closing brace"'
 
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=malformed_json)]))]
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content=malformed_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
-        result = await analyze_tool.execute({"files": ["/absolute/path/test.py"], "question": "What does this do?"})
+        result = await analyze_tool.execute({"files": ["/absolute/path/test.py"], "prompt": "What does this do?"})
 
         assert len(result) == 1
 
@@ -113,8 +120,8 @@ class TestDynamicContextRequests:
         assert malformed_json in response_data["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_clarification_with_suggested_action(self, mock_create_model, debug_tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_clarification_with_suggested_action(self, mock_get_provider, debug_tool):
         """Test clarification request with suggested next action"""
         clarification_json = json.dumps(
             {
@@ -124,7 +131,7 @@ class TestDynamicContextRequests:
                 "suggested_next_action": {
                     "tool": "debug",
                     "args": {
-                        "error_description": "Connection timeout to database",
+                        "prompt": "Connection timeout to database",
                         "files": [
                             "/config/database.yml",
                             "/src/db.py",
@@ -135,15 +142,17 @@ class TestDynamicContextRequests:
             }
         )
 
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=clarification_json)]))]
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         result = await debug_tool.execute(
             {
-                "error_description": "Connection timeout to database",
+                "prompt": "Connection timeout to database",
                 "files": ["/absolute/logs/error.log"],
             }
         )
@@ -187,12 +196,12 @@ class TestDynamicContextRequests:
         assert request.suggested_next_action["tool"] == "analyze"
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_error_response_format(self, mock_create_model, analyze_tool):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_error_response_format(self, mock_get_provider, analyze_tool):
         """Test error response format"""
-        mock_create_model.side_effect = Exception("API connection failed")
+        mock_get_provider.side_effect = Exception("API connection failed")
 
-        result = await analyze_tool.execute({"files": ["/absolute/path/test.py"], "question": "Analyze this"})
+        result = await analyze_tool.execute({"files": ["/absolute/path/test.py"], "prompt": "Analyze this"})
 
         assert len(result) == 1
 
@@ -206,8 +215,8 @@ class TestCollaborationWorkflow:
     """Test complete collaboration workflows"""
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_dependency_analysis_triggers_clarification(self, mock_create_model):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_dependency_analysis_triggers_clarification(self, mock_get_provider):
         """Test that asking about dependencies without package files triggers clarification"""
         tool = AnalyzeTool()
 
@@ -220,17 +229,19 @@ class TestCollaborationWorkflow:
             }
         )
 
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=clarification_json)]))]
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         # Ask about dependencies with only source files
         result = await tool.execute(
             {
                 "files": ["/absolute/path/src/index.js"],
-                "question": "What npm packages and versions does this project use?",
+                "prompt": "What npm packages and versions does this project use?",
             }
         )
 
@@ -243,8 +254,8 @@ class TestCollaborationWorkflow:
         assert "package.json" in str(clarification["files_needed"]), "Should specifically request package.json"
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.create_model")
-    async def test_multi_step_collaboration(self, mock_create_model):
+    @patch("tools.base.BaseTool.get_model_provider")
+    async def test_multi_step_collaboration(self, mock_get_provider):
         """Test a multi-step collaboration workflow"""
         tool = DebugIssueTool()
 
@@ -257,15 +268,17 @@ class TestCollaborationWorkflow:
             }
         )
 
-        mock_model = Mock()
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=clarification_json)]))]
+        mock_provider = create_mock_provider()
+        mock_provider.get_provider_type.return_value = Mock(value="google")
+        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.generate_content.return_value = Mock(
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
-        mock_create_model.return_value = mock_model
+        mock_get_provider.return_value = mock_provider
 
         result1 = await tool.execute(
             {
-                "error_description": "Database connection timeout",
+                "prompt": "Database connection timeout",
                 "error_context": "Timeout after 30s",
             }
         )
@@ -285,13 +298,13 @@ class TestCollaborationWorkflow:
         **Root Cause:** The config.py file shows the database host is set to 'localhost' but the database is running on a different server.
         """
 
-        mock_model.generate_content.return_value = Mock(
-            candidates=[Mock(content=Mock(parts=[Mock(text=final_response)]))]
+        mock_provider.generate_content.return_value = Mock(
+            content=final_response, usage={}, model_name="gemini-2.0-flash", metadata={}
         )
 
         result2 = await tool.execute(
             {
-                "error_description": "Database connection timeout",
+                "prompt": "Database connection timeout",
                 "error_context": "Timeout after 30s",
                 "files": ["/absolute/path/config.py"],  # Additional context provided
             }

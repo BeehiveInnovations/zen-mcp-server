@@ -16,6 +16,7 @@ from unittest.mock import Mock, patch
 import pytest
 from pydantic import Field
 
+from tests.mock_helpers import create_mock_provider
 from tools.base import BaseTool, ToolRequest
 from utils.conversation_memory import ConversationTurn, ThreadContext
 
@@ -72,30 +73,10 @@ class TestConversationHistoryBugFix:
     async def test_conversation_history_included_with_continuation_id(self, mock_add_turn):
         """Test that conversation history (including file context) is included when using continuation_id"""
 
-        # Create a thread context with previous turns including files
-        _thread_context = ThreadContext(
-            thread_id="test-history-id",
-            created_at="2023-01-01T00:00:00Z",
-            last_updated_at="2023-01-01T00:02:00Z",
-            tool_name="analyze",  # Started with analyze tool
-            turns=[
-                ConversationTurn(
-                    role="assistant",
-                    content="I've analyzed the authentication module and found several security issues.",
-                    timestamp="2023-01-01T00:01:00Z",
-                    tool_name="analyze",
-                    files=["/src/auth.py", "/src/security.py"],  # Files from analyze tool
-                ),
-                ConversationTurn(
-                    role="assistant",
-                    content="The code review shows these files have critical vulnerabilities.",
-                    timestamp="2023-01-01T00:02:00Z",
-                    tool_name="codereview",
-                    files=["/src/auth.py", "/tests/test_auth.py"],  # Files from codereview tool
-                ),
-            ],
-            initial_context={"question": "Analyze authentication security"},
-        )
+        # Test setup note: This test simulates a conversation thread with previous turns
+        # containing files from different tools (analyze -> codereview)
+        # The continuation_id "test-history-id" references this implicit thread context
+        # In the real flow, server.py would reconstruct this context and add it to the prompt
 
         # Mock add_turn to return success
         mock_add_turn.return_value = True
@@ -103,23 +84,23 @@ class TestConversationHistoryBugFix:
         # Mock the model to capture what prompt it receives
         captured_prompt = None
 
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="Response with conversation context")]),
-                    finish_reason="STOP",
-                )
-            ]
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
 
-            def capture_prompt(prompt):
+            def capture_prompt(prompt, **kwargs):
                 nonlocal captured_prompt
                 captured_prompt = prompt
-                return mock_response
+                return Mock(
+                    content="Response with conversation context",
+                    usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                    model_name="gemini-2.0-flash",
+                    metadata={"finish_reason": "STOP"},
+                )
 
-            mock_model.generate_content.side_effect = capture_prompt
-            mock_create_model.return_value = mock_model
+            mock_provider.generate_content.side_effect = capture_prompt
+            mock_get_provider.return_value = mock_provider
 
             # Execute tool with continuation_id
             # In the corrected flow, server.py:reconstruct_thread_context
@@ -163,23 +144,23 @@ class TestConversationHistoryBugFix:
 
         captured_prompt = None
 
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="Response without history")]),
-                    finish_reason="STOP",
-                )
-            ]
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
 
-            def capture_prompt(prompt):
+            def capture_prompt(prompt, **kwargs):
                 nonlocal captured_prompt
                 captured_prompt = prompt
-                return mock_response
+                return Mock(
+                    content="Response without history",
+                    usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                    model_name="gemini-2.0-flash",
+                    metadata={"finish_reason": "STOP"},
+                )
 
-            mock_model.generate_content.side_effect = capture_prompt
-            mock_create_model.return_value = mock_model
+            mock_provider.generate_content.side_effect = capture_prompt
+            mock_get_provider.return_value = mock_provider
 
             # Execute tool with continuation_id for non-existent thread
             # In the real flow, server.py would have already handled the missing thread
@@ -201,23 +182,23 @@ class TestConversationHistoryBugFix:
 
         captured_prompt = None
 
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="New conversation response")]),
-                    finish_reason="STOP",
-                )
-            ]
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
 
-            def capture_prompt(prompt):
+            def capture_prompt(prompt, **kwargs):
                 nonlocal captured_prompt
                 captured_prompt = prompt
-                return mock_response
+                return Mock(
+                    content="New conversation response",
+                    usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                    model_name="gemini-2.0-flash",
+                    metadata={"finish_reason": "STOP"},
+                )
 
-            mock_model.generate_content.side_effect = capture_prompt
-            mock_create_model.return_value = mock_model
+            mock_provider.generate_content.side_effect = capture_prompt
+            mock_get_provider.return_value = mock_provider
 
             # Execute tool without continuation_id (new conversation)
             arguments = {"prompt": "Start new conversation", "files": ["/src/new_file.py"]}
@@ -235,7 +216,7 @@ class TestConversationHistoryBugFix:
 
             # Should include follow-up instructions for new conversation
             # (This is the existing behavior for new conversations)
-            assert "If you'd like to ask a follow-up question" in captured_prompt
+            assert "CONVERSATION CONTINUATION" in captured_prompt
 
     @patch("tools.base.get_thread")
     @patch("tools.base.add_turn")
@@ -275,7 +256,7 @@ class TestConversationHistoryBugFix:
                     files=["/src/auth.py", "/tests/test_auth.py"],  # auth.py referenced again + new file
                 ),
             ],
-            initial_context={"question": "Analyze authentication security"},
+            initial_context={"prompt": "Analyze authentication security"},
         )
 
         # Mock get_thread to return our test context
@@ -285,23 +266,23 @@ class TestConversationHistoryBugFix:
         # Mock the model to capture what prompt it receives
         captured_prompt = None
 
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="Analysis of new files complete")]),
-                    finish_reason="STOP",
-                )
-            ]
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
 
-            def capture_prompt(prompt):
+            def capture_prompt(prompt, **kwargs):
                 nonlocal captured_prompt
                 captured_prompt = prompt
-                return mock_response
+                return Mock(
+                    content="Analysis of new files complete",
+                    usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                    model_name="gemini-2.0-flash",
+                    metadata={"finish_reason": "STOP"},
+                )
 
-            mock_model.generate_content.side_effect = capture_prompt
-            mock_create_model.return_value = mock_model
+            mock_provider.generate_content.side_effect = capture_prompt
+            mock_get_provider.return_value = mock_provider
 
             # Mock read_files to simulate file existence and capture its calls
             with patch("tools.base.read_files") as mock_read_files:

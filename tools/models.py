@@ -7,21 +7,6 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-class FollowUpRequest(BaseModel):
-    """Request for follow-up conversation turn"""
-
-    continuation_id: str = Field(
-        ..., description="Thread continuation ID for multi-turn conversations across different tools"
-    )
-    question_to_user: str = Field(..., description="Follow-up question to ask Claude")
-    suggested_tool_params: Optional[dict[str, Any]] = Field(
-        None, description="Suggested parameters for the next tool call"
-    )
-    ui_hint: Optional[str] = Field(
-        None, description="UI hint for Claude (e.g., 'text_input', 'file_select', 'multi_choice')"
-    )
-
-
 class ContinuationOffer(BaseModel):
     """Offer for Claude to continue conversation when Gemini doesn't ask follow-up"""
 
@@ -43,15 +28,11 @@ class ToolOutput(BaseModel):
         "error",
         "requires_clarification",
         "requires_file_prompt",
-        "requires_continuation",
         "continuation_available",
     ] = "success"
     content: Optional[str] = Field(None, description="The main content/response from the tool")
     content_type: Literal["text", "markdown", "json"] = "text"
     metadata: Optional[dict[str, Any]] = Field(default_factory=dict)
-    follow_up_request: Optional[FollowUpRequest] = Field(
-        None, description="Optional follow-up request for continued conversation"
-    )
     continuation_offer: Optional[ContinuationOffer] = Field(
         None, description="Optional offer for Claude to continue conversation"
     )

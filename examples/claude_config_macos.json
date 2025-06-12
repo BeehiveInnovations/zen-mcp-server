@@ -1,13 +1,17 @@
 {
-  "comment": "Traditional macOS/Linux configuration (non-Docker)",
-  "comment2": "Replace YOUR_USERNAME with your actual username",
-  "comment3": "This gives access to all files under your home directory",
+  "comment": "macOS configuration using Docker",
+  "comment2": "Ensure Docker is running and containers are started",
+  "comment3": "Run './setup-docker.sh' first to set up the environment",
   "mcpServers": {
-    "gemini": {
-      "command": "/Users/YOUR_USERNAME/gemini-mcp-server/run_gemini.sh",
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      }
+    "zen": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "zen-mcp-server",
+        "python",
+        "server.py"
+      ]
     }
   }
 }

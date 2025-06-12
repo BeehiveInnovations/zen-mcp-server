@@ -35,7 +35,7 @@ class LogsValidationTest(BaseSimulatorTest):
             main_logs = result.stdout.decode() + result.stderr.decode()
 
             # Get logs from log monitor container (where detailed activity is logged)
-            monitor_result = self.run_command(["docker", "logs", "gemini-mcp-log-monitor"], capture_output=True)
+            monitor_result = self.run_command(["docker", "logs", "zen-mcp-log-monitor"], capture_output=True)
             monitor_logs = ""
             if monitor_result.returncode == 0:
                 monitor_logs = monitor_result.stdout.decode() + monitor_result.stderr.decode()
