@@ -564,7 +564,7 @@ These only apply to models that support customizing token usage for extended thi
 
 ### AI-to-AI Conversation Threading
 
-This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3, GPT-4o), where they can coordinate and question each other's approaches:
+This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3), where they can coordinate and question each other's approaches:
 
 **How it works:**
 - **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
@@ -946,4 +946,4 @@ Built with the power of **Multi-Model AI** collaboration 🤝
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
 - [Claude Code](https://claude.ai/code) - Your AI coding assistant & orchestrator
 - [Gemini 2.5 Pro & 2.0 Flash](https://ai.google.dev/) - Extended thinking & fast analysis
-- [OpenAI O3 & GPT-4o](https://openai.com/) - Strong reasoning & general intelligence
+- [OpenAI O3](https://openai.com/) - Strong reasoning & general intelligence
