@@ -167,9 +167,7 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
             add_turn(thread_id, "assistant", "First response", files=[config_path], tool_name="precommit")
 
             # Second request with continuation - should skip already embedded files
-            PrecommitRequest(
-                path=temp_dir, files=[config_path], continuation_id=thread_id, prompt="Follow-up review"
-            )
+            PrecommitRequest(path=temp_dir, files=[config_path], continuation_id=thread_id, prompt="Follow-up review")
 
             files_to_embed_2 = tool.filter_new_files([config_path], thread_id)
             assert len(files_to_embed_2) == 0, "Continuation should skip already embedded files"

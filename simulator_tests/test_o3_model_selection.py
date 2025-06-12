@@ -30,7 +30,7 @@ class O3ModelSelectionTest(BaseSimulatorTest):
             # Read logs directly from the log file - more reliable than docker logs --since
             cmd = ["docker", "exec", self.container_name, "tail", "-n", "200", "/tmp/mcp_server.log"]
             result = subprocess.run(cmd, capture_output=True, text=True)
-            
+
             if result.returncode == 0:
                 return result.stdout
             else:
@@ -49,7 +49,7 @@ class O3ModelSelectionTest(BaseSimulatorTest):
             self.setup_test_files()
 
             # Get timestamp for log filtering
-            start_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
             # Test 1: Explicit O3 model selection
             self.logger.info("  1: Testing explicit O3 model selection")
@@ -115,37 +115,26 @@ def multiply(x, y):
 
             self.logger.info("  ✅ O3 with codereview tool completed")
 
-            # Validate model usage from server logs  
+            # Validate model usage from server logs
             self.logger.info("  4: Validating model usage in logs")
             logs = self.get_recent_server_logs()
 
             # Check for OpenAI API calls (this proves O3 models are being used)
-            openai_api_logs = [
-                line for line in logs.split("\n")
-                if "Sending request to openai API" in line
-            ]
+            openai_api_logs = [line for line in logs.split("\n") if "Sending request to openai API" in line]
 
             # Check for OpenAI HTTP responses (confirms successful O3 calls)
             openai_http_logs = [
-                line for line in logs.split("\n")
-                if "HTTP Request: POST https://api.openai.com" in line
+                line for line in logs.split("\n") if "HTTP Request: POST https://api.openai.com" in line
             ]
 
             # Check for received responses from OpenAI
-            openai_response_logs = [
-                line for line in logs.split("\n")
-                if "Received response from openai API" in line
-            ]
+            openai_response_logs = [line for line in logs.split("\n") if "Received response from openai API" in line]
 
             # Check that we have both chat and codereview tool calls to OpenAI
-            chat_openai_logs = [
-                line for line in logs.split("\n")
-                if "Sending request to openai API for chat" in line
-            ]
+            chat_openai_logs = [line for line in logs.split("\n") if "Sending request to openai API for chat" in line]
 
             codereview_openai_logs = [
-                line for line in logs.split("\n")
-                if "Sending request to openai API for codereview" in line
+                line for line in logs.split("\n") if "Sending request to openai API for codereview" in line
             ]
 
             # Validation criteria - we expect 3 OpenAI calls (2 chat + 1 codereview)
@@ -178,7 +167,7 @@ def multiply(x, y):
                 ("OpenAI HTTP requests successful", openai_http_success),
                 ("OpenAI responses received", openai_responses_received),
                 ("Chat tool used OpenAI", chat_calls_to_openai),
-                ("Codereview tool used OpenAI", codereview_calls_to_openai)
+                ("Codereview tool used OpenAI", codereview_calls_to_openai),
             ]
 
             passed_criteria = sum(1 for _, passed in success_criteria if passed)

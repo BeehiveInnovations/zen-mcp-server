@@ -3,10 +3,10 @@ Tests for thinking_mode functionality across all tools
 """
 
 from unittest.mock import Mock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 
+from tests.mock_helpers import create_mock_provider
 from tools.analyze import AnalyzeTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
@@ -45,10 +45,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Minimal thinking response",
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content="Minimal thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -66,7 +63,9 @@ class TestThinkingModes:
         # Verify generate_content was called with thinking_mode
         mock_provider.generate_content.assert_called_once()
         call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "minimal" or (not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None)  # thinking_mode parameter
+        assert call_kwargs.get("thinking_mode") == "minimal" or (
+            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+        )  # thinking_mode parameter
 
         # Parse JSON response
         import json
@@ -83,10 +82,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Low thinking response",
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content="Low thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -104,7 +100,9 @@ class TestThinkingModes:
         # Verify generate_content was called with thinking_mode
         mock_provider.generate_content.assert_called_once()
         call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "low" or (not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None)
+        assert call_kwargs.get("thinking_mode") == "low" or (
+            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+        )
 
         assert "Code Review" in result[0].text
 
@@ -116,10 +114,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Medium thinking response",
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content="Medium thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -136,7 +131,9 @@ class TestThinkingModes:
         # Verify generate_content was called with thinking_mode
         mock_provider.generate_content.assert_called_once()
         call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "medium" or (not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None)
+        assert call_kwargs.get("thinking_mode") == "medium" or (
+            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+        )
 
         assert "Debug Analysis" in result[0].text
 
@@ -148,10 +145,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="High thinking response",
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content="High thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -169,7 +163,9 @@ class TestThinkingModes:
         # Verify generate_content was called with thinking_mode
         mock_provider.generate_content.assert_called_once()
         call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "high" or (not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None)
+        assert call_kwargs.get("thinking_mode") == "high" or (
+            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+        )
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
@@ -179,10 +175,7 @@ class TestThinkingModes:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = True
         mock_provider.generate_content.return_value = Mock(
-            content="Max thinking response",
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content="Max thinking response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -199,7 +192,9 @@ class TestThinkingModes:
         # Verify generate_content was called with thinking_mode
         mock_provider.generate_content.assert_called_once()
         call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "high" or (not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None)
+        assert call_kwargs.get("thinking_mode") == "high" or (
+            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+        )
 
         assert "Extended Analysis by Gemini" in result[0].text
 

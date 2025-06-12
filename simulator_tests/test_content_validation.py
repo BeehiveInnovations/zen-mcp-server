@@ -6,7 +6,6 @@ Tests that tools don't duplicate file content in their responses.
 This test is specifically designed to catch content duplication bugs.
 """
 
-import json
 import os
 
 from .base_test import BaseSimulatorTest
@@ -31,6 +30,7 @@ class ContentValidationTest(BaseSimulatorTest):
             cmd_monitor = ["docker", "logs", "--since", since_time, "gemini-mcp-log-monitor"]
 
             import subprocess
+
             result_server = subprocess.run(cmd_server, capture_output=True, text=True)
             result_monitor = subprocess.run(cmd_monitor, capture_output=True, text=True)
 
@@ -76,6 +76,7 @@ DATABASE_CONFIG = {
 
             # Get timestamp for log filtering
             import datetime
+
             start_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
             # Test 1: Initial tool call with validation file
@@ -139,26 +140,25 @@ DATABASE_CONFIG = {
 
             # Check for proper file embedding logs
             embedding_logs = [
-                line for line in logs.split("\n")
-                if "📁" in line or "embedding" in line.lower() or "[FILES]" in line
+                line for line in logs.split("\n") if "📁" in line or "embedding" in line.lower() or "[FILES]" in line
             ]
 
             # Check for deduplication evidence
             deduplication_logs = [
-                line for line in logs.split("\n")
+                line
+                for line in logs.split("\n")
                 if "skipping" in line.lower() and "already in conversation" in line.lower()
             ]
 
             # Check for file processing patterns
             new_file_logs = [
-                line for line in logs.split("\n")
-                if "all 1 files are new" in line or "New conversation" in line
+                line for line in logs.split("\n") if "all 1 files are new" in line or "New conversation" in line
             ]
 
             # Validation criteria
             validation_file_mentioned = any("validation_config.py" in line for line in logs.split("\n"))
             embedding_found = len(embedding_logs) > 0
-            proper_deduplication = len(deduplication_logs) > 0 or len(new_file_logs) >= 2  # Should see new conversation patterns
+            (len(deduplication_logs) > 0 or len(new_file_logs) >= 2)  # Should see new conversation patterns
 
             self.logger.info(f"  📊 Embedding logs found: {len(embedding_logs)}")
             self.logger.info(f"  📊 Deduplication evidence: {len(deduplication_logs)}")
@@ -175,7 +175,7 @@ DATABASE_CONFIG = {
             success_criteria = [
                 ("Embedding logs found", embedding_found),
                 ("File processing evidence", validation_file_mentioned),
-                ("Multiple tool calls", len(new_file_logs) >= 2)
+                ("Multiple tool calls", len(new_file_logs) >= 2),
             ]
 
             passed_criteria = sum(1 for _, passed in success_criteria if passed)

@@ -7,11 +7,11 @@ when Gemini doesn't explicitly ask a follow-up question.
 
 import json
 from unittest.mock import Mock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 from pydantic import Field
 
+from tests.mock_helpers import create_mock_provider
 from tools.base import BaseTool, ToolRequest
 from tools.models import ContinuationOffer, ToolOutput
 from utils.conversation_memory import MAX_CONVERSATION_TURNS
@@ -125,7 +125,7 @@ class TestClaudeContinuationOffers:
                 content="Analysis complete. The code looks good.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -176,7 +176,7 @@ class TestClaudeContinuationOffers:
                 content=content_with_followup,
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -220,7 +220,7 @@ class TestClaudeContinuationOffers:
                 content="Continued analysis complete.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 

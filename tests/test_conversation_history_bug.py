@@ -12,11 +12,11 @@ Claude had shared in earlier turns.
 
 import json
 from unittest.mock import Mock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 from pydantic import Field
 
+from tests.mock_helpers import create_mock_provider
 from tools.base import BaseTool, ToolRequest
 from utils.conversation_memory import ConversationTurn, ThreadContext
 
@@ -116,7 +116,7 @@ class TestConversationHistoryBugFix:
                     content="Response with conversation context",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                     model_name="gemini-2.0-flash-exp",
-                    metadata={"finish_reason": "STOP"}
+                    metadata={"finish_reason": "STOP"},
                 )
 
             mock_provider.generate_content.side_effect = capture_prompt
@@ -176,7 +176,7 @@ class TestConversationHistoryBugFix:
                     content="Response without history",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                     model_name="gemini-2.0-flash-exp",
-                    metadata={"finish_reason": "STOP"}
+                    metadata={"finish_reason": "STOP"},
                 )
 
             mock_provider.generate_content.side_effect = capture_prompt
@@ -214,7 +214,7 @@ class TestConversationHistoryBugFix:
                     content="New conversation response",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                     model_name="gemini-2.0-flash-exp",
-                    metadata={"finish_reason": "STOP"}
+                    metadata={"finish_reason": "STOP"},
                 )
 
             mock_provider.generate_content.side_effect = capture_prompt
@@ -298,7 +298,7 @@ class TestConversationHistoryBugFix:
                     content="Analysis of new files complete",
                     usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                     model_name="gemini-2.0-flash-exp",
-                    metadata={"finish_reason": "STOP"}
+                    metadata={"finish_reason": "STOP"},
                 )
 
             mock_provider.generate_content.side_effect = capture_prompt

@@ -3,47 +3,30 @@
   https://github.com/user-attachments/assets/a67099df-9387-4720-9b41-c986243ac11b
 
 <div align="center">  
-  <b>🤖 Claude + [Gemini / O3 / Both] = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + [Gemini / O3 / or Both] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
 
-The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to multiple AI models for enhanced code analysis, problem-solving, and collaborative development.
+The ultimate development partners for Claude - a Model Context Protocol server that gives Claude access to multiple AI models for enhanced code analysis, 
+problem-solving, and collaborative development.
 
-**🎯 Auto Mode (NEW):** Set `DEFAULT_MODEL=auto` and Claude will intelligently select the best model for each task:
-- **Complex architecture review?** → Claude picks Gemini Pro with extended thinking
-- **Quick code formatting?** → Claude picks Gemini Flash for speed
-- **Logical debugging?** → Claude picks O3 for reasoning
-- **Or specify your preference:** "Use flash to quickly analyze this" or "Use o3 for debugging"
-
-**📚 Supported Models:**
-- **Google Gemini**: 2.5 Pro (extended thinking, 1M tokens) & 2.0 Flash (ultra-fast, 1M tokens)
-- **OpenAI**: O3 (strong reasoning, 200K tokens), O3-mini (faster variant), GPT-4o (128K tokens)
-- **More providers coming soon!**
-
-**Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex task and let it orchestrate between models automatically. Claude stays in control, performs the actual work, but gets perspectives from the best AI for each subtask. Claude can switch between different tools AND models mid-conversation, with context carrying forward seamlessly.
+**Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex
+task and let it orchestrate between models automatically. Claude stays in control, performs the actual work, 
+but gets perspectives from the best AI for each subtask. Claude can switch between different tools _and_ models mid-conversation, 
+with context carrying forward seamlessly.
 
 **Example Workflow:**
-1. Claude uses Gemini Pro to deeply analyze your architecture
-2. Switches to O3 for logical debugging of a specific issue
-3. Uses Flash for quick code formatting
-4. Returns to Pro for security review
+1. Claude uses Gemini Pro to deeply [`analyze`](#6-analyze---smart-file-analysis) the code in question
+2. Switches to O3 to continue [`chatting`](#1-chat---general-development-chat--collaborative-thinking) about its findings 
+3. Uses Flash to validate formatting suggestions from O3
+4. Performs the actual work after taking in feedback from all three
+5. Returns to Pro for a [`precommit`](#4-precommit---pre-commit-validation) review
 
-All within a single conversation thread!
+All within a single conversation thread! Gemini Pro in step 5 _knows_ what was recommended by O3 in step 2! Taking that context
+and review into consideration to aid with its pre-commit review.
 
 **Think of it as Claude Code _for_ Claude Code.**
-
----
-
-> 🚀 **Multi-Provider Support with Auto Mode!**  
-> Claude automatically selects the best model for each task when using `DEFAULT_MODEL=auto`:
-> - **Gemini Pro**: Extended thinking (up to 32K tokens), best for complex problems
-> - **Gemini Flash**: Ultra-fast responses, best for quick tasks
-> - **O3**: Strong reasoning, best for logical problems and debugging
-> - **O3-mini**: Balanced performance, good for moderate complexity
-> - **GPT-4o**: General-purpose, good for explanations and chat
-> 
-> Or manually specify: "Use pro for deep analysis" or "Use o3 to debug this"
 
 ## Quick Navigation
 
@@ -72,7 +55,6 @@ All within a single conversation thread!
 - **Resources**
   - [Windows Setup](#windows-setup-guide) - WSL setup instructions for Windows
   - [Troubleshooting](#troubleshooting) - Common issues and solutions
-  - [Contributing](#contributing) - How to contribute
   - [Testing](#testing) - Running tests
 
 ## Why This Server?
@@ -85,9 +67,9 @@ Claude is brilliant, but sometimes you need:
 - **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
 - **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#4-precommit---pre-commit-validation))
 - **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#5-debug---expert-debugging-assistant))
-- **Massive context windows** - Gemini (1M tokens), O3 (200K tokens), GPT-4o (128K tokens)
+- **Extended context windows beyond Claude's limits** - Delegate analysis to Gemini (1M tokens) or O3 (200K tokens) for entire codebases, large datasets, or comprehensive documentation
 - **Model-specific strengths** - Extended thinking with Gemini Pro, fast iteration with Flash, strong reasoning with O3
-- **Dynamic collaboration** - Models can request additional context from Claude mid-analysis
+- **Dynamic collaboration** - Models can request additional context and follow-up replies from Claude mid-analysis
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
 - **[Bypass MCP's token limits](#working-with-large-prompts)** - Work around MCP's 25K limit automatically
 
@@ -123,8 +105,8 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ```bash
 # Clone to your preferred location
-git clone https://github.com/BeehiveInnovations/gemini-mcp-server.git
-cd gemini-mcp-server
+git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
+cd zen-mcp-server
 
 # One-command setup (includes Redis for AI conversations)
 ./setup-docker.sh
@@ -147,7 +129,7 @@ nano .env
 # The file will contain:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
-# WORKSPACE_ROOT=/workspace  (automatically configured)
+# WORKSPACE_ROOT=/Users/your-username  (automatically configured)
 
 # Note: At least one API key is required (Gemini or OpenAI)
 ```
@@ -158,13 +140,13 @@ nano .env
 Run the following commands on the terminal to add the MCP directly to Claude Code
 ```bash
 # Add the MCP server directly via Claude Code CLI
-claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py
+claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py
 
 # List your MCP servers to verify
 claude mcp list
 
 # Remove when needed
-claude mcp remove gemini
+claude mcp remove zen
 ```
 
 #### Claude Desktop
@@ -184,12 +166,12 @@ The setup script shows you the exact configuration. It looks like this:
 ```json
 {
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "exec",
         "-i",
-        "gemini-mcp-server",
+        "zen-mcp-server",
         "python",
         "server.py"
       ]
@@ -289,7 +271,7 @@ This server enables **true AI collaboration** between Claude and multiple AI mod
 - Complex architecture review → Claude picks Gemini Pro
 - Quick formatting check → Claude picks Flash
 - Logical debugging → Claude picks O3
-- General explanations → Claude picks GPT-4o
+- General explanations → Claude picks Flash for speed
 
 **Pro Tip:** Thinking modes (for Gemini models) control depth vs token cost. Use "minimal" or "low" for quick tasks, "high" or "max" for complex problems. [Learn more](#thinking-modes---managing-token-costs--quality)
 
@@ -307,37 +289,12 @@ This server enables **true AI collaboration** between Claude and multiple AI mod
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `low` for quick questions to save tokens, or `high` for complex discussions when thoroughness matters.
 
-#### Example Prompts:
+#### Example Prompt:
 
-**Basic Usage:**
 ```
-"Use gemini to explain how async/await works in Python"
-"Get gemini to compare Redis vs Memcached for session storage"
-"Share my authentication design with gemini and get their opinion"
-"Brainstorm with gemini about scaling strategies for our API"
-```
-
-**Managing Token Costs:**
-```
-# Save tokens (~6k) for simple questions
-"Use gemini with minimal thinking to explain what a REST API is"
-"Chat with gemini using low thinking mode about Python naming conventions"
-
-# Use default for balanced analysis
-"Get gemini to review my database schema design" (uses default medium)
-
-# Invest tokens for complex discussions
-"Use gemini with high thinking to brainstorm distributed system architecture"
-```
-
-**Collaborative Workflow:**
-```
-"Research the best message queue for our use case (high throughput, exactly-once delivery).
-Use gemini to compare RabbitMQ, Kafka, and AWS SQS. Based on gemini's analysis and your research,
-recommend the best option with implementation plan."
-
-"Design a caching strategy for our API. Get gemini's input on Redis vs Memcached vs in-memory caching.
-Combine both perspectives to create a comprehensive caching implementation guide."
+Chat with zen and pick the best model for this job. I need to pick between Redis and Memcached for session storage 
+and I need an expert opinion for the project I'm working on. Get a good idea of what the project does, pick one of the two options
+and then debate with the other models to give me a final verdict
 ```
 
 **Key Features:**
@@ -351,47 +308,18 @@ Combine both perspectives to create a comprehensive caching implementation guide
 - Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
 - **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
 - **Web search capability**: Analyzes when web searches would be helpful and recommends specific searches for Claude to perform, ensuring access to current documentation and best practices
+
 ### 2. `thinkdeep` - Extended Reasoning Partner
 
 **Get a second opinion to augment Claude's own extended thinking**
 
 **Thinking Mode:** Default is `high` (16,384 tokens) for deep analysis. Claude will automatically choose the best mode based on complexity - use `low` for quick validations, `medium` for standard problems, `high` for complex issues (default), or `max` for extremely complex challenges requiring deepest analysis.
 
-#### Example Prompts:
+#### Example Prompt:
 
-**Basic Usage:**
 ```
-"Use gemini to think deeper about my authentication design"
-"Use gemini to extend my analysis of this distributed system architecture"
-```
-
-**With Web Search (for exploring new technologies):**
-```
-"Use gemini to think deeper about using HTMX vs React for this project - enable web search to explore current best practices"
-"Get gemini to think deeper about implementing WebAuthn authentication with web search enabled for latest standards"
-```
-
-**Managing Token Costs:**
-```
-# Claude will intelligently select the right mode, but you can override:
-"Use gemini to think deeper with medium thinking about this refactoring approach" (saves ~8k tokens vs default)
-"Get gemini to think deeper using low thinking to validate my basic approach" (saves ~14k tokens vs default)
-
-# Use default high for most complex problems
-"Use gemini to think deeper about this security architecture" (uses default high - 16k tokens)
-
-# For extremely complex challenges requiring maximum depth
-"Use gemini with max thinking to solve this distributed consensus problem" (adds ~16k tokens vs default)
-```
-
-**Collaborative Workflow:**
-```
-"Design an authentication system for our SaaS platform. Then use gemini to review your design
- for security vulnerabilities. After getting gemini's feedback, incorporate the suggestions and
-show me the final improved design."
-
-"Create an event-driven architecture for our order processing system. Use gemini to think deeper
-about event ordering and failure scenarios. Then integrate gemini's insights and present the enhanced architecture."
+Think deeper about my authentication design with zen using max thinking mode and brainstorm to come up 
+with the best architecture for my project
 ```
 
 **Key Features:**
@@ -403,6 +331,7 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 - Can reference specific files for context: `"Use gemini to think deeper about my API design with reference to api/routes.py"`
 - **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
 - **Web search capability**: When enabled (default: true), identifies areas where current documentation or community solutions would strengthen the analysis and suggests specific searches for Claude
+
 ### 3. `codereview` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
 
@@ -410,34 +339,9 @@ about event ordering and failure scenarios. Then integrate gemini's insights and
 
 #### Example Prompts:
 
-**Basic Usage:**
 ```
-"Use gemini to review auth.py for issues"
-"Use gemini to do a security review of auth/ focusing on authentication"
-```
-
-**Managing Token Costs:**
-```
-# Save tokens for style/formatting reviews
-"Use gemini with minimal thinking to check code style in utils.py" (saves ~8k tokens)
-"Review this file with gemini using low thinking for basic issues" (saves ~6k tokens)
-
-# Default for standard reviews
-"Use gemini to review the API endpoints" (uses default medium)
-
-# Invest tokens for critical code
-"Get gemini to review auth.py with high thinking mode for security issues" (adds ~8k tokens)
-"Use gemini with max thinking to audit our encryption module" (adds ~24k tokens - justified for security)
-```
-
-**Collaborative Workflow:**
-```
-"Refactor the authentication module to use dependency injection. Then use gemini to
-review your refactoring for any security vulnerabilities. Based on gemini's feedback,
-make any necessary adjustments and show me the final secure implementation."
-
-"Optimize the slow database queries in user_service.py. Get gemini to review your optimizations
- for potential regressions or edge cases. Incorporate gemini's suggestions and present the final optimized queries."
+Perform a codereview with zen using gemini pro and review auth.py for security issues and potential vulnerabilities.
+I need an actionable plan but break it down into smaller quick-wins that we can implement and test rapidly 
 ```
 
 **Key Features:**
@@ -445,6 +349,7 @@ make any necessary adjustments and show me the final secure implementation."
 - Supports specialized reviews: security, performance, quick
 - Can enforce coding standards: `"Use gemini to review src/ against PEP8 standards"`
 - Filters by severity: `"Get gemini to review auth/ - only report critical vulnerabilities"`
+
 ### 4. `precommit` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
@@ -454,7 +359,7 @@ make any necessary adjustments and show me the final secure implementation."
   <img src="https://github.com/user-attachments/assets/584adfa6-d252-49b4-b5b0-0cd6e97fb2c6" width="950">
 </div>
 
-**Prompt:**
+**Prompt Used:**
 ```
 Now use gemini and perform a review and precommit and ensure original requirements are met, no duplication of code or
 logic, everything should work as expected
@@ -464,35 +369,8 @@ How beautiful is that? Claude used `precommit` twice and `codereview` once and a
 
 #### Example Prompts:
 
-**Basic Usage:**
 ```
-"Use gemini to review my pending changes before I commit"
-"Get gemini to validate all my git changes match the original requirements"
-"Review pending changes in the frontend/ directory"
-```
-
-**Managing Token Costs:**
-```
-# Save tokens for small changes
-"Use gemini with low thinking to review my README updates" (saves ~6k tokens)
-"Review my config changes with gemini using minimal thinking" (saves ~8k tokens)
-
-# Default for regular commits
-"Use gemini to review my feature changes" (uses default medium)
-
-# Invest tokens for critical releases
-"Use gemini with high thinking to review changes before production release" (adds ~8k tokens)
-"Get gemini to validate all changes with max thinking for this security patch" (adds ~24k tokens - worth it!)
-```
-
-**Collaborative Workflow:**
-```
-"I've implemented the user authentication feature. Use gemini to review all pending changes
-across the codebase to ensure they align with the security requirements. Fix any issues
-gemini identifies before committing."
-
-"Review all my changes for the API refactoring task. Get gemini to check for incomplete
-implementations or missing test coverage. Update the code based on gemini's findings."
+Use zen and perform a thorough precommit ensuring there aren't any new regressions or bugs introduced
 ```
 
 **Key Features:**
@@ -524,37 +402,6 @@ implementations or missing test coverage. Update the code based on gemini's find
 "Get gemini to debug why my API returns 500 errors with the full stack trace: [paste traceback]"
 ```
 
-**With Web Search (for unfamiliar errors):**
-```
-"Use gemini to debug this cryptic Kubernetes error with web search enabled to find similar issues"
-"Debug this React hydration error with gemini - enable web search to check for known solutions"
-```
-
-**Managing Token Costs:**
-```
-# Save tokens for simple errors
-"Use gemini with minimal thinking to debug this syntax error" (saves ~8k tokens)
-"Debug this import error with gemini using low thinking" (saves ~6k tokens)
-
-# Default for standard debugging
-"Use gemini to debug why this function returns null" (uses default medium)
-
-# Invest tokens for complex bugs
-"Use gemini with high thinking to debug this race condition" (adds ~8k tokens)
-"Get gemini to debug this memory leak with max thinking mode" (adds ~24k tokens - find that leak!)
-```
-
-**Collaborative Workflow:**
-```
-"I'm getting 'ConnectionPool limit exceeded' errors under load. Debug the issue and use
-gemini to analyze it deeper with context from db/pool.py. Based on gemini's root cause analysis,
-implement a fix and get gemini to validate the solution will scale."
-
-"Debug why tests fail randomly on CI. Once you identify potential causes, share with gemini along
-with test logs and CI configuration. Apply gemini's debugging strategy, then use gemini to
-suggest preventive measures."
-```
-
 **Key Features:**
 - Generates multiple ranked hypotheses for systematic debugging
 - Accepts error context, stack traces, and logs
@@ -574,36 +421,6 @@ suggest preventive measures."
 ```
 "Use gemini to analyze main.py to understand how it works"
 "Get gemini to do an architecture analysis of the src/ directory"
-```
-
-**With Web Search (for unfamiliar code):**
-```
-"Use gemini to analyze this GraphQL schema with web search enabled to understand best practices"
-"Analyze this Rust code with gemini - enable web search to look up unfamiliar patterns and idioms"
-```
-
-**Managing Token Costs:**
-```
-# Save tokens for quick overviews
-"Use gemini with minimal thinking to analyze what config.py does" (saves ~8k tokens)
-"Analyze this utility file with gemini using low thinking" (saves ~6k tokens)
-
-# Default for standard analysis
-"Use gemini to analyze the API structure" (uses default medium)
-
-# Invest tokens for deep analysis
-"Use gemini with high thinking to analyze the entire codebase architecture" (adds ~8k tokens)
-"Get gemini to analyze system design with max thinking for refactoring plan" (adds ~24k tokens)
-```
-
-**Collaborative Workflow:**
-```
-"Analyze our project structure in src/ and identify architectural improvements. Share your
-analysis with gemini for a deeper review of design patterns and anti-patterns. Based on both
-analyses, create a refactoring roadmap."
-
-"Perform a security analysis of our authentication system. Use gemini to analyze auth/, middleware/, and api/ for vulnerabilities.
-Combine your findings with gemini's to create a comprehensive security report."
 ```
 
 **Key Features:**
@@ -627,7 +444,7 @@ All tools that work with files support **both individual files and entire direct
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
 - `question`: What to analyze (required)  
-- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
@@ -642,7 +459,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
-- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini (default: server default)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
@@ -658,7 +475,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
-- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini (default: server default)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
@@ -674,7 +491,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
-- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini (default: server default)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
@@ -800,16 +617,16 @@ To help choose the right tool for your needs:
 **Examples by scenario:**
 ```
 # Quick style check
-"Use gemini to review formatting in utils.py with minimal thinking"
+"Use o3 to review formatting in utils.py with minimal thinking"
 
 # Security audit
-"Get gemini to do a security review of auth/ with thinking mode high"
+"Get o3 to do a security review of auth/ with thinking mode high"
 
 # Complex debugging
-"Use gemini to debug this race condition with max thinking mode"
+"Use zen to debug this race condition with max thinking mode"
 
 # Architecture analysis
-"Analyze the entire src/ directory architecture with high thinking"
+"Analyze the entire src/ directory architecture with high thinking using zen"
 ```
 
 ## Advanced Features
@@ -831,7 +648,7 @@ The MCP protocol has a combined request+response limit of approximately 25K toke
 User: "Use gemini to review this code: [50,000+ character detailed analysis]"
 
 # Server detects the large prompt and responds:
-Gemini MCP: "The prompt is too large for MCP's token limits (>50,000 characters). 
+Zen MCP: "The prompt is too large for MCP's token limits (>50,000 characters). 
 Please save the prompt text to a temporary file named 'prompt.txt' and resend 
 the request with an empty prompt string and the absolute file path included 
 in the files parameter, along with any other files you wish to share as context."
@@ -928,7 +745,7 @@ DEFAULT_MODEL=auto  # Claude picks the best model automatically
 
 # API Keys (at least one required)
 GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, GPT-4o
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
 ```
 
 **How Auto Mode Works:**
@@ -944,7 +761,6 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, GPT-4o
 | **`flash`** (Gemini 2.0 Flash) | Google | 1M tokens | Ultra-fast responses | Quick checks, formatting, simple analysis |
 | **`o3`** | OpenAI | 200K tokens | Strong logical reasoning | Debugging logic errors, systematic analysis |
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
-| **`gpt-4o`** | OpenAI | 128K tokens | General purpose | Explanations, documentation, chat |
 
 **Manual Model Selection:**
 You can specify a default model instead of auto mode:
@@ -966,7 +782,6 @@ Regardless of your default setting, you can specify models per request:
 **Model Capabilities:**
 - **Gemini Models**: Support thinking modes (minimal to max), web search, 1M context
 - **O3 Models**: Excellent reasoning, systematic analysis, 200K context
-- **GPT-4o**: Balanced general-purpose model, 128K context
 
 ### Temperature Defaults
 Different tools use optimized temperature settings:
@@ -1011,15 +826,16 @@ When using any Gemini tool, always provide absolute paths:
 
 By default, the server allows access to files within your home directory. This is necessary for the server to work with any file you might want to analyze from Claude.
 
-**To restrict access to a specific project directory**, set the `MCP_PROJECT_ROOT` environment variable:
+**For Docker environments**, the `WORKSPACE_ROOT` environment variable is used to map your local directory to the internal `/workspace` directory, enabling the MCP to translate absolute file references correctly:
+
 ```json
 "env": {
   "GEMINI_API_KEY": "your-key",
-  "MCP_PROJECT_ROOT": "/Users/you/specific-project"
+  "WORKSPACE_ROOT": "/Users/you/project"  // Maps to /workspace inside Docker
 }
 ```
 
-This creates a sandbox limiting file access to only that directory and its subdirectories.
+This allows Claude to use absolute paths that will be correctly translated between your local filesystem and the Docker container.
 
 
 ## How System Prompts Work
@@ -1044,18 +860,6 @@ To modify tool behavior, you can:
 2. Override `get_system_prompt()` in a tool class for tool-specific changes
 3. Use the `temperature` parameter to adjust response style (0.2 for focused, 0.7 for creative)
 
-## Contributing
-
-We welcome contributions! The modular architecture makes it easy to add new tools:
-
-1. Create a new tool in `tools/`
-2. Inherit from `BaseTool`
-3. Implement required methods (including `get_system_prompt()`)
-4. Add your system prompt to `prompts/tool_prompts.py`
-5. Register your tool in `TOOLS` dict in `server.py`
-
-See existing tools for examples.
-
 ## Testing
 
 ### Unit Tests (No API Key Required)
@@ -1063,32 +867,48 @@ The project includes comprehensive unit tests that use mocks and don't require a
 
 ```bash
 # Run all unit tests
-python -m pytest tests/ --ignore=tests/test_live_integration.py -v
+python -m pytest tests/ -v
 
 # Run with coverage
-python -m pytest tests/ --ignore=tests/test_live_integration.py --cov=. --cov-report=html
+python -m pytest tests/ --cov=. --cov-report=html
 ```
 
-### Live Integration Tests (API Key Required)
-To test actual API integration:
+### Simulation Tests (API Key Required)
+To test the MCP server with comprehensive end-to-end simulation:
 
 ```bash
-# Set your API key
-export GEMINI_API_KEY=your-api-key-here
+# Set your API keys (at least one required)
+export GEMINI_API_KEY=your-gemini-api-key-here
+export OPENAI_API_KEY=your-openai-api-key-here
 
-# Run live integration tests
-python tests/test_live_integration.py
+# Run all simulation tests (default: uses existing Docker containers)
+python communication_simulator_test.py
+
+# Run specific tests only
+python communication_simulator_test.py --tests basic_conversation content_validation
+
+# Run with Docker rebuild (if needed)
+python communication_simulator_test.py --rebuild-docker
+
+# List available tests
+python communication_simulator_test.py --list-tests
 ```
+
+The simulation tests validate:
+- Basic conversation flow with continuation
+- File handling and deduplication
+- Cross-tool conversation threading
+- Redis memory persistence
+- Docker container integration
 
 ### GitHub Actions CI/CD
 The project includes GitHub Actions workflows that:
 
 - **✅ Run unit tests automatically** - No API key needed, uses mocks
 - **✅ Test on Python 3.10, 3.11, 3.12** - Ensures compatibility
-- **✅ Run linting and formatting checks** - Maintains code quality  
-- **🔒 Run live tests only if API key is available** - Optional live verification
+- **✅ Run linting and formatting checks** - Maintains code quality
 
-The CI pipeline works without any secrets and will pass all tests using mocked responses. Live integration tests only run if a `GEMINI_API_KEY` secret is configured in the repository.
+The CI pipeline works without any secrets and will pass all tests using mocked responses. Simulation tests require API key secrets (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`) to run the communication simulator.
 
 ## Troubleshooting
 
@@ -1097,14 +917,14 @@ The CI pipeline works without any secrets and will pass all tests using mocked r
 **"Connection failed" in Claude Desktop**
 - Ensure Docker services are running: `docker compose ps`
 - Check if the container name is correct: `docker ps` to see actual container names
-- Verify your .env file has the correct GEMINI_API_KEY
+- Verify your .env file has at least one valid API key (GEMINI_API_KEY or OPENAI_API_KEY)
 
-**"GEMINI_API_KEY environment variable is required"**
-- Edit your .env file and add your API key
+**"API key environment variable is required"**
+- Edit your .env file and add at least one API key (Gemini or OpenAI)
 - Restart services: `docker compose restart`
 
 **Container fails to start**
-- Check logs: `docker compose logs gemini-mcp`
+- Check logs: `docker compose logs zen-mcp`
 - Ensure Docker has enough resources (memory/disk space)
 - Try rebuilding: `docker compose build --no-cache`
 
@@ -1119,23 +939,10 @@ The CI pipeline works without any secrets and will pass all tests using mocked r
 docker compose ps
 
 # Test manual connection
-docker exec -i gemini-mcp-server-gemini-mcp-1 echo "Connection test"
+docker exec -i zen-mcp-server echo "Connection test"
 
 # View logs
 docker compose logs -f
-```
-
-**Conversation threading not working?**
-If you're not seeing follow-up questions from Gemini:
-```bash
-# Check if Redis is running
-docker compose logs redis
-
-# Test conversation memory system
-docker exec -i gemini-mcp-server-gemini-mcp-1 python debug_conversation.py
-
-# Check for threading errors in logs
-docker compose logs gemini-mcp | grep "threading failed"
 ```
 
 ## License

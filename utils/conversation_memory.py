@@ -312,41 +312,41 @@ def add_turn(
 def get_thread_chain(thread_id: str, max_depth: int = 20) -> list[ThreadContext]:
     """
     Traverse the parent chain to get all threads in conversation sequence.
-    
+
     Retrieves the complete conversation chain by following parent_thread_id
     links. Returns threads in chronological order (oldest first).
-    
+
     Args:
         thread_id: Starting thread ID
         max_depth: Maximum chain depth to prevent infinite loops
-        
+
     Returns:
         list[ThreadContext]: All threads in chain, oldest first
     """
     chain = []
     current_id = thread_id
     seen_ids = set()
-    
+
     # Build chain from current to oldest
     while current_id and len(chain) < max_depth:
         # Prevent circular references
         if current_id in seen_ids:
             logger.warning(f"[THREAD] Circular reference detected in thread chain at {current_id}")
             break
-            
+
         seen_ids.add(current_id)
-        
+
         context = get_thread(current_id)
         if not context:
             logger.debug(f"[THREAD] Thread {current_id} not found in chain traversal")
             break
-            
+
         chain.append(context)
         current_id = context.parent_thread_id
-        
+
     # Reverse to get chronological order (oldest first)
     chain.reverse()
-    
+
     logger.debug(f"[THREAD] Retrieved chain of {len(chain)} threads for {thread_id}")
     return chain
 
@@ -400,7 +400,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     full file contents from all referenced files. Files are embedded only ONCE at the
     start, even if referenced in multiple turns, to prevent duplication and optimize
     token usage.
-    
+
     If the thread has a parent chain, this function traverses the entire chain to
     include the complete conversation history.
 
@@ -429,21 +429,21 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     if context.parent_thread_id:
         # This thread has a parent, get the full chain
         chain = get_thread_chain(context.thread_id)
-        
+
         # Collect all turns from all threads in chain
         all_turns = []
         all_files_set = set()
         total_turns = 0
-        
+
         for thread in chain:
             all_turns.extend(thread.turns)
             total_turns += len(thread.turns)
-            
+
             # Collect files from this thread
             for turn in thread.turns:
                 if turn.files:
                     all_files_set.update(turn.files)
-                    
+
         all_files = list(all_files_set)
         logger.debug(f"[THREAD] Built history from {len(chain)} threads with {total_turns} total turns")
     else:
@@ -451,7 +451,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         all_turns = context.turns
         total_turns = len(context.turns)
         all_files = get_conversation_file_list(context)
-        
+
     if not all_turns:
         return "", 0
 
@@ -459,18 +459,19 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
     # Get model-specific token allocation early (needed for both files and turns)
     if model_context is None:
-        from utils.model_context import ModelContext
         from config import DEFAULT_MODEL
+        from utils.model_context import ModelContext
+
         model_context = ModelContext(DEFAULT_MODEL)
-    
+
     token_allocation = model_context.calculate_token_allocation()
     max_file_tokens = token_allocation.file_tokens
     max_history_tokens = token_allocation.history_tokens
-    
+
     logger.debug(f"[HISTORY] Using model-specific limits for {model_context.model_name}:")
     logger.debug(f"[HISTORY]   Max file tokens: {max_file_tokens:,}")
     logger.debug(f"[HISTORY]   Max history tokens: {max_history_tokens:,}")
-    
+
     history_parts = [
         "=== CONVERSATION HISTORY ===",
         f"Thread: {context.thread_id}",
@@ -584,13 +585,13 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         )
 
     history_parts.append("Previous conversation turns:")
-    
+
     # Build conversation turns bottom-up (most recent first) but present chronologically
     # This ensures we include as many recent turns as possible within the token budget
     turn_entries = []  # Will store (index, formatted_turn_content) for chronological ordering
     total_turn_tokens = 0
     file_embedding_tokens = sum(model_context.estimate_tokens(part) for part in history_parts)
-    
+
     # Process turns in reverse order (most recent first) to prioritize recent context
     for idx in range(len(all_turns) - 1, -1, -1):
         turn = all_turns[idx]
@@ -599,16 +600,16 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
         # Build the complete turn content
         turn_parts = []
-        
+
         # Add turn header with tool attribution for cross-tool tracking
         turn_header = f"\n--- Turn {turn_num} ({role_label}"
         if turn.tool_name:
             turn_header += f" using {turn.tool_name}"
-        
+
         # Add model info if available
         if turn.model_provider and turn.model_name:
             turn_header += f" via {turn.model_provider}/{turn.model_name}"
-            
+
         turn_header += ") ---"
         turn_parts.append(turn_header)
 
@@ -624,11 +625,11 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         # Add follow-up question if present
         if turn.follow_up_question:
             turn_parts.append(f"\n[Gemini's Follow-up: {turn.follow_up_question}]")
-            
+
         # Calculate tokens for this turn
         turn_content = "\n".join(turn_parts)
         turn_tokens = model_context.estimate_tokens(turn_content)
-        
+
         # Check if adding this turn would exceed history budget
         if file_embedding_tokens + total_turn_tokens + turn_tokens > max_history_tokens:
             # Stop adding turns - we've reached the limit
@@ -639,18 +640,18 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
             logger.debug(f"[HISTORY]   Would total: {file_embedding_tokens + total_turn_tokens + turn_tokens:,}")
             logger.debug(f"[HISTORY]   Budget: {max_history_tokens:,}")
             break
-            
+
         # Add this turn to our list (we'll reverse it later for chronological order)
         turn_entries.append((idx, turn_content))
         total_turn_tokens += turn_tokens
-        
+
     # Reverse to get chronological order (oldest first)
     turn_entries.reverse()
-    
+
     # Add the turns in chronological order
     for _, turn_content in turn_entries:
         history_parts.append(turn_content)
-        
+
     # Log what we included
     included_turns = len(turn_entries)
     total_turns = len(all_turns)

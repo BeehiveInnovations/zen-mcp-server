@@ -1,7 +1,7 @@
 """
-Configuration and constants for Gemini MCP Server
+Configuration and constants for Zen MCP Server
 
-This module centralizes all configuration settings for the Gemini MCP Server.
+This module centralizes all configuration settings for the Zen MCP Server.
 It defines model configurations, token limits, temperature defaults, and other
 constants used throughout the application.
 
@@ -29,8 +29,11 @@ DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "auto")
 VALID_MODELS = ["auto", "flash", "pro", "o3", "o3-mini", "gemini-2.0-flash-exp", "gemini-2.5-pro-preview-06-05"]
 if DEFAULT_MODEL not in VALID_MODELS:
     import logging
+
     logger = logging.getLogger(__name__)
-    logger.warning(f"Invalid DEFAULT_MODEL '{DEFAULT_MODEL}'. Setting to 'auto'. Valid options: {', '.join(VALID_MODELS)}")
+    logger.warning(
+        f"Invalid DEFAULT_MODEL '{DEFAULT_MODEL}'. Setting to 'auto'. Valid options: {', '.join(VALID_MODELS)}"
+    )
     DEFAULT_MODEL = "auto"
 
 # Auto mode detection - when DEFAULT_MODEL is "auto", Claude picks the model
@@ -45,7 +48,7 @@ MODEL_CAPABILITIES_DESC = {
     "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
     # Full model names also supported
     "gemini-2.0-flash-exp": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
-    "gemini-2.5-pro-preview-06-05": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"
+    "gemini-2.5-pro-preview-06-05": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
 }
 
 # Token allocation for Gemini Pro (1M total capacity)

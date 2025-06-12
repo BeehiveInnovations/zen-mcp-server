@@ -3,11 +3,11 @@ Tests for the main server functionality
 """
 
 from unittest.mock import Mock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 
 from server import handle_call_tool, handle_list_tools
+from tests.mock_helpers import create_mock_provider
 
 
 class TestServerTools:
@@ -56,10 +56,7 @@ class TestServerTools:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content="Chat response",
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content="Chat response", usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -81,6 +78,6 @@ class TestServerTools:
         assert len(result) == 1
 
         response = result[0].text
-        assert "Gemini MCP Server v" in response  # Version agnostic check
+        assert "Zen MCP Server v" in response  # Version agnostic check
         assert "Available Tools:" in response
         assert "thinkdeep" in response

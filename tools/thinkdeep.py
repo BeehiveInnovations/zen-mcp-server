@@ -95,7 +95,7 @@ class ThinkDeepTool(BaseTool):
             },
             "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
-        
+
         return schema
 
     def get_system_prompt(self) -> str:
@@ -195,7 +195,7 @@ Please provide deep analysis that extends Claude's thinking with:
         model_name = "your fellow developer"
         if model_info and model_info.get("model_response"):
             model_name = model_info["model_response"].friendly_name or "your fellow developer"
-        
+
         return f"""{response}
 
 ---

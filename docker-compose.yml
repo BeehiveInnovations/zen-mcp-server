@@ -1,7 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: gemini-mcp-redis
+    container_name: zen-mcp-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -20,10 +20,10 @@ services:
         reservations:
           memory: 256M
 
-  gemini-mcp:
+  zen-mcp:
     build: .
-    image: gemini-mcp-server:latest
-    container_name: gemini-mcp-server
+    image: zen-mcp-server:latest
+    container_name: zen-mcp-server
     restart: unless-stopped
     depends_on:
       redis:
@@ -50,11 +50,11 @@ services:
 
   log-monitor:
     build: .
-    image: gemini-mcp-server:latest
-    container_name: gemini-mcp-log-monitor
+    image: zen-mcp-server:latest
+    container_name: zen-mcp-log-monitor
     restart: unless-stopped
     depends_on:
-      - gemini-mcp
+      - zen-mcp
     environment:
       - PYTHONUNBUFFERED=1
     volumes:

@@ -1,5 +1,5 @@
 """
-Pytest configuration for Gemini MCP Server tests
+Pytest configuration for Zen MCP Server tests
 """
 
 import asyncio
@@ -27,13 +27,15 @@ os.environ["DEFAULT_MODEL"] = "gemini-2.0-flash-exp"
 
 # Force reload of config module to pick up the env var
 import importlib
+
 import config
+
 importlib.reload(config)
 
 # Set MCP_PROJECT_ROOT to a temporary directory for tests
 # This provides a safe sandbox for file operations during testing
 # Create a temporary directory that will be used as the project root for all tests
-test_root = tempfile.mkdtemp(prefix="gemini_mcp_test_")
+test_root = tempfile.mkdtemp(prefix="zen_mcp_test_")
 os.environ["MCP_PROJECT_ROOT"] = test_root
 
 # Configure asyncio for Windows compatibility
@@ -42,9 +44,9 @@ if sys.platform == "win32":
 
 # Register providers for all tests
 from providers import ModelProviderRegistry
+from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
 from providers.openai import OpenAIModelProvider
-from providers.base import ProviderType
 
 # Register providers at test startup
 ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)

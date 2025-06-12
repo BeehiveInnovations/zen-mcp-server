@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Communication Simulator Test for Gemini MCP Server
+Communication Simulator Test for Zen MCP Server
 
-This script provides comprehensive end-to-end testing of the Gemini MCP server
+This script provides comprehensive end-to-end testing of the Zen MCP server
 by simulating real Claude CLI communications and validating conversation
 continuity, file handling, deduplication features, and clarification scenarios.
 
@@ -63,8 +63,8 @@ class CommunicationSimulator:
         self.keep_logs = keep_logs
         self.selected_tests = selected_tests or []
         self.temp_dir = None
-        self.container_name = "gemini-mcp-server"
-        self.redis_container = "gemini-mcp-redis"
+        self.container_name = "zen-mcp-server"
+        self.redis_container = "zen-mcp-redis"
 
         # Import test registry
         from simulator_tests import TEST_REGISTRY
@@ -282,7 +282,7 @@ class CommunicationSimulator:
     def print_test_summary(self):
         """Print comprehensive test results summary"""
         print("\\n" + "=" * 70)
-        print("🧪 GEMINI MCP COMMUNICATION SIMULATOR - TEST RESULTS SUMMARY")
+        print("🧪 ZEN MCP COMMUNICATION SIMULATOR - TEST RESULTS SUMMARY")
         print("=" * 70)
 
         passed_count = sum(1 for result in self.test_results.values() if result)
@@ -303,7 +303,7 @@ class CommunicationSimulator:
     def run_full_test_suite(self, skip_docker_setup: bool = False) -> bool:
         """Run the complete test suite"""
         try:
-            self.logger.info("🚀 Starting Gemini MCP Communication Simulator Test Suite")
+            self.logger.info("🚀 Starting Zen MCP Communication Simulator Test Suite")
 
             # Setup
             if not skip_docker_setup:
@@ -359,7 +359,7 @@ class CommunicationSimulator:
 
 def parse_arguments():
     """Parse and validate command line arguments"""
-    parser = argparse.ArgumentParser(description="Gemini MCP Communication Simulator Test")
+    parser = argparse.ArgumentParser(description="Zen MCP Communication Simulator Test")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     parser.add_argument("--keep-logs", action="store_true", help="Keep Docker services running for log inspection")
     parser.add_argument("--tests", "-t", nargs="+", help="Specific tests to run (space-separated)")

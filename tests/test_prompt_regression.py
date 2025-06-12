@@ -7,7 +7,6 @@ normal-sized prompts after implementing the large prompt handling feature.
 
 import json
 from unittest.mock import MagicMock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 
@@ -33,7 +32,7 @@ class TestPromptRegression:
                 content=text,
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
 
         return _create_response
@@ -47,7 +46,9 @@ class TestPromptRegression:
             mock_provider = MagicMock()
             mock_provider.get_provider_type.return_value = MagicMock(value="google")
             mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = mock_model_response("This is a helpful response about Python.")
+            mock_provider.generate_content.return_value = mock_model_response(
+                "This is a helpful response about Python."
+            )
             mock_get_provider.return_value = mock_provider
 
             result = await tool.execute({"prompt": "Explain Python decorators"})

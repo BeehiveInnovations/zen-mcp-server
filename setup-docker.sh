@@ -3,10 +3,10 @@
 # Exit on any error, undefined variables, and pipe failures
 set -euo pipefail
 
-# Modern Docker setup script for Gemini MCP Server with Redis
+# Modern Docker setup script for Zen MCP Server with Redis
 # This script sets up the complete Docker environment including Redis for conversation threading
 
-echo "🚀 Setting up Gemini MCP Server with Docker Compose..."
+echo "🚀 Setting up Zen MCP Server with Docker Compose..."
 echo ""
 
 # Get the current working directory (absolute path)
@@ -131,12 +131,27 @@ $COMPOSE_CMD down --remove-orphans >/dev/null 2>&1 || true
 # Clean up any old containers with different naming patterns
 OLD_CONTAINERS_FOUND=false
 
-# Check for old Gemini MCP container
+# Check for old Gemini MCP containers (for migration)
 if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server-gemini-mcp-1$" 2>/dev/null || false; then
     OLD_CONTAINERS_FOUND=true
     echo "  - Cleaning up old container: gemini-mcp-server-gemini-mcp-1"
     docker stop gemini-mcp-server-gemini-mcp-1 >/dev/null 2>&1 || true
     docker rm gemini-mcp-server-gemini-mcp-1 >/dev/null 2>&1 || true
+fi
+
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-server"
+    docker stop gemini-mcp-server >/dev/null 2>&1 || true
+    docker rm gemini-mcp-server >/dev/null 2>&1 || true
+fi
+
+# Check for current old containers (from recent versions)
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-log-monitor$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-log-monitor"
+    docker stop gemini-mcp-log-monitor >/dev/null 2>&1 || true
+    docker rm gemini-mcp-log-monitor >/dev/null 2>&1 || true
 fi
 
 # Check for old Redis container
@@ -147,17 +162,37 @@ if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-server-redis-1$" 2>
     docker rm gemini-mcp-server-redis-1 >/dev/null 2>&1 || true
 fi
 
-# Check for old image
+if docker ps -a --format "{{.Names}}" | grep -q "^gemini-mcp-redis$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old container: gemini-mcp-redis"
+    docker stop gemini-mcp-redis >/dev/null 2>&1 || true
+    docker rm gemini-mcp-redis >/dev/null 2>&1 || true
+fi
+
+# Check for old images
 if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^gemini-mcp-server-gemini-mcp:latest$" 2>/dev/null || false; then
     OLD_CONTAINERS_FOUND=true
     echo "  - Cleaning up old image: gemini-mcp-server-gemini-mcp:latest"
     docker rmi gemini-mcp-server-gemini-mcp:latest >/dev/null 2>&1 || true
 fi
 
+if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^gemini-mcp-server:latest$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old image: gemini-mcp-server:latest"
+    docker rmi gemini-mcp-server:latest >/dev/null 2>&1 || true
+fi
+
+# Check for current old network (if it exists)
+if docker network ls --format "{{.Name}}" | grep -q "^gemini-mcp-server_default$" 2>/dev/null || false; then
+    OLD_CONTAINERS_FOUND=true
+    echo "  - Cleaning up old network: gemini-mcp-server_default"
+    docker network rm gemini-mcp-server_default >/dev/null 2>&1 || true
+fi
+
 # Only show cleanup messages if something was actually cleaned up
 
 # Build and start services
-echo "  - Building Gemini MCP Server image..."
+echo "  - Building Zen MCP Server image..."
 if $COMPOSE_CMD build --no-cache >/dev/null 2>&1; then
     echo "✅ Docker image built successfully!"
 else
@@ -209,12 +244,12 @@ echo ""
 echo "===== CLAUDE DESKTOP CONFIGURATION ====="
 echo "{"
 echo "  \"mcpServers\": {"
-echo "    \"gemini\": {"
+echo "    \"zen\": {"
 echo "      \"command\": \"docker\","
 echo "      \"args\": ["
 echo "        \"exec\","
 echo "        \"-i\","
-echo "        \"gemini-mcp-server\","
+echo "        \"zen-mcp-server\","
 echo "        \"python\","
 echo "        \"server.py\""
 echo "      ]"
@@ -225,13 +260,13 @@ echo "==========================================="
 echo ""
 echo "===== CLAUDE CODE CLI CONFIGURATION ====="
 echo "# Add the MCP server via Claude Code CLI:"
-echo "claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py"
+echo "claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
 echo ""
 echo "# List your MCP servers to verify:"
 echo "claude mcp list"
 echo ""
 echo "# Remove if needed:"
-echo "claude mcp remove gemini -s user"
+echo "claude mcp remove zen -s user"
 echo "==========================================="
 echo ""
 

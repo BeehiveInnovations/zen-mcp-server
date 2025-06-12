@@ -4,10 +4,10 @@ Tests for dynamic context request and collaboration features
 
 import json
 from unittest.mock import Mock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 
+from tests.mock_helpers import create_mock_provider
 from tools.analyze import AnalyzeTool
 from tools.debug import DebugIssueTool
 from tools.models import ClarificationRequest, ToolOutput
@@ -41,10 +41,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -85,10 +82,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=normal_response,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=normal_response, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -112,10 +106,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=malformed_json,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=malformed_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -155,10 +146,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -245,10 +233,7 @@ class TestCollaborationWorkflow:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -287,10 +272,7 @@ class TestCollaborationWorkflow:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -317,10 +299,7 @@ class TestCollaborationWorkflow:
         """
 
         mock_provider.generate_content.return_value = Mock(
-            content=final_response,
-            usage={},
-            model_name="gemini-2.0-flash-exp",
-            metadata={}
+            content=final_response, usage={}, model_name="gemini-2.0-flash-exp", metadata={}
         )
 
         result2 = await tool.execute(

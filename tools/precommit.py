@@ -104,7 +104,7 @@ class Precommit(BaseTool):
         # Ensure model parameter has enhanced description
         if "properties" in schema and "model" in schema["properties"]:
             schema["properties"]["model"] = self.get_model_field_schema()
-        
+
         # In auto mode, model is required
         if IS_AUTO_MODE and "required" in schema:
             if "model" not in schema["required"]:

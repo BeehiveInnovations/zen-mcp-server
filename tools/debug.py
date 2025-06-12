@@ -100,7 +100,7 @@ class DebugIssueTool(BaseTool):
             },
             "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
-        
+
         return schema
 
     def get_system_prompt(self) -> str:
@@ -201,7 +201,7 @@ Focus on finding the root cause and providing actionable solutions."""
         model_name = "the model"
         if model_info and model_info.get("model_response"):
             model_name = model_info["model_response"].friendly_name or "the model"
-        
+
         return f"""{response}
 
 ---

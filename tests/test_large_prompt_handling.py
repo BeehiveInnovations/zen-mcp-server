@@ -11,7 +11,6 @@ import os
 import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
-from tests.mock_helpers import create_mock_provider
 
 import pytest
 from mcp.types import TextContent
@@ -77,7 +76,7 @@ class TestLargePromptHandling:
                 content="This is a test response",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -102,7 +101,7 @@ class TestLargePromptHandling:
                 content="Processed large prompt",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -214,7 +213,7 @@ class TestLargePromptHandling:
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -247,7 +246,7 @@ class TestLargePromptHandling:
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -278,7 +277,7 @@ class TestLargePromptHandling:
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
@@ -300,7 +299,7 @@ class TestLargePromptHandling:
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                 model_name="gemini-2.0-flash-exp",
-                metadata={"finish_reason": "STOP"}
+                metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 

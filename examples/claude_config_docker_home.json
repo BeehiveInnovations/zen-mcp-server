@@ -1,18 +1,18 @@
 {
   "comment": "Docker configuration that mounts your home directory",
-  "comment2": "Update paths: /path/to/gemini-mcp-server/.env and /Users/your-username",
+  "comment2": "Update paths: /path/to/zen-mcp-server/.env and /Users/your-username",
   "comment3": "The container auto-detects /workspace as sandbox from WORKSPACE_ROOT",
   "mcpServers": {
-    "gemini": {
+    "zen": {
       "command": "docker",
       "args": [
         "run",
         "--rm",
         "-i",
-        "--env-file", "/path/to/gemini-mcp-server/.env",
+        "--env-file", "/path/to/zen-mcp-server/.env",
         "-e", "WORKSPACE_ROOT=/Users/your-username",
         "-v", "/Users/your-username:/workspace:ro",
-        "gemini-mcp-server:latest"
+        "zen-mcp-server:latest"
       ]
     }
   }

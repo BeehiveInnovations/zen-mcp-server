@@ -1,8 +1,8 @@
 """
-Gemini MCP Server - Main server implementation
+Zen MCP Server - Main server implementation
 
 This module implements the core MCP (Model Context Protocol) server that provides
-AI-powered tools for code analysis, review, and assistance using Google's Gemini models.
+AI-powered tools for code analysis, review, and assistance using multiple AI models.
 
 The server follows the MCP specification to expose various AI tools as callable functions
 that can be used by MCP clients (like Claude). Each tool provides specialized functionality
@@ -102,7 +102,7 @@ logger = logging.getLogger(__name__)
 
 # Create the MCP server instance with a unique name identifier
 # This name is used by MCP clients to identify and connect to this specific server
-server: Server = Server("gemini-server")
+server: Server = Server("zen-server")
 
 # Initialize the tool registry with all available AI-powered tools
 # Each tool provides specialized functionality for different development tasks
@@ -131,23 +131,23 @@ def configure_providers():
     from providers.base import ProviderType
     from providers.gemini import GeminiModelProvider
     from providers.openai import OpenAIModelProvider
-    
+
     valid_providers = []
-    
+
     # Check for Gemini API key
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key and gemini_key != "your_gemini_api_key_here":
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
         valid_providers.append("Gemini")
         logger.info("Gemini API key found - Gemini models available")
-    
+
     # Check for OpenAI API key
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key and openai_key != "your_openai_api_key_here":
         ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         valid_providers.append("OpenAI (o3)")
         logger.info("OpenAI API key found - o3 model available")
-    
+
     # Require at least one valid provider
     if not valid_providers:
         raise ValueError(
@@ -155,7 +155,7 @@ def configure_providers():
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI o3 model"
         )
-    
+
     logger.info(f"Available providers: {', '.join(valid_providers)}")
 
 
@@ -388,8 +388,9 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     # Create model context early to use for history building
     from utils.model_context import ModelContext
+
     model_context = ModelContext.from_arguments(arguments)
-    
+
     # Build conversation history with model-specific limits
     logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")
     logger.debug(f"[CONVERSATION_DEBUG] Thread has {len(context.turns)} turns, tool: {context.tool_name}")
@@ -404,9 +405,9 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     # All tools now use standardized 'prompt' field
     original_prompt = arguments.get("prompt", "")
-    logger.debug(f"[CONVERSATION_DEBUG] Extracting user input from 'prompt' field")
+    logger.debug("[CONVERSATION_DEBUG] Extracting user input from 'prompt' field")
     logger.debug(f"[CONVERSATION_DEBUG] User input length: {len(original_prompt)} chars")
-    
+
     # Merge original context with new prompt and follow-up instructions
     if conversation_history:
         enhanced_prompt = (
@@ -417,25 +418,25 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     # Update arguments with enhanced context and remaining token budget
     enhanced_arguments = arguments.copy()
-    
+
     # Store the enhanced prompt in the prompt field
     enhanced_arguments["prompt"] = enhanced_prompt
-    logger.debug(f"[CONVERSATION_DEBUG] Storing enhanced prompt in 'prompt' field")
+    logger.debug("[CONVERSATION_DEBUG] Storing enhanced prompt in 'prompt' field")
 
     # Calculate remaining token budget based on current model
     # (model_context was already created above for history building)
     token_allocation = model_context.calculate_token_allocation()
-    
+
     # Calculate remaining tokens for files/new content
     # History has already consumed some of the content budget
     remaining_tokens = token_allocation.content_tokens - conversation_tokens
     enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
     enhanced_arguments["_model_context"] = model_context  # Pass context for use in tools
-    
+
     logger.debug("[CONVERSATION_DEBUG] Token budget calculation:")
     logger.debug(f"[CONVERSATION_DEBUG]   Model: {model_context.model_name}")
     logger.debug(f"[CONVERSATION_DEBUG]   Total capacity: {token_allocation.total_tokens:,}")
-    logger.debug(f"[CONVERSATION_DEBUG]   Content allocation: {token_allocation.content_tokens:,}") 
+    logger.debug(f"[CONVERSATION_DEBUG]   Content allocation: {token_allocation.content_tokens:,}")
     logger.debug(f"[CONVERSATION_DEBUG]   Conversation tokens: {conversation_tokens:,}")
     logger.debug(f"[CONVERSATION_DEBUG]   Remaining tokens: {remaining_tokens:,}")
 
@@ -494,7 +495,7 @@ async def handle_get_version() -> list[TextContent]:
     }
 
     # Format the information in a human-readable way
-    text = f"""Gemini MCP Server v{__version__}
+    text = f"""Zen MCP Server v{__version__}
 Updated: {__updated__}
 Author: {__author__}
 
@@ -508,7 +509,7 @@ Configuration:
 Available Tools:
 {chr(10).join(f"  - {tool}" for tool in version_info["available_tools"])}
 
-For updates, visit: https://github.com/BeehiveInnovations/gemini-mcp-server"""
+For updates, visit: https://github.com/BeehiveInnovations/zen-mcp-server"""
 
     # Create standardized tool output
     tool_output = ToolOutput(status="success", content=text, content_type="text", metadata={"tool_name": "get_version"})
@@ -531,11 +532,12 @@ async def main():
     configure_providers()
 
     # Log startup message for Docker log monitoring
-    logger.info("Gemini MCP Server starting up...")
+    logger.info("Zen MCP Server starting up...")
     logger.info(f"Log level: {log_level}")
-    
+
     # Log current model mode
     from config import IS_AUTO_MODE
+
     if IS_AUTO_MODE:
         logger.info("Model mode: AUTO (Claude will select the best model for each task)")
     else:
@@ -556,7 +558,7 @@ async def main():
             read_stream,
             write_stream,
             InitializationOptions(
-                server_name="gemini",
+                server_name="zen",
                 server_version=__version__,
                 capabilities=ServerCapabilities(tools=ToolsCapability()),  # Advertise tool support capability
             ),

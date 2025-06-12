@@ -44,7 +44,10 @@ class CodeReviewRequest(ToolRequest):
         description="User's summary of what the code does, expected behavior, constraints, and review objectives",
     )
     review_type: str = Field("full", description="Type of review: full|security|performance|quick")
-    focus_on: Optional[str] = Field(None, description="Specific aspects to focus on, or additional context that would help understand areas of concern")
+    focus_on: Optional[str] = Field(
+        None,
+        description="Specific aspects to focus on, or additional context that would help understand areas of concern",
+    )
     standards: Optional[str] = Field(None, description="Coding standards or guidelines to enforce")
     severity_filter: str = Field(
         "all",
@@ -137,7 +140,7 @@ class CodeReviewTool(BaseTool):
             },
             "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
-        
+
         return schema
 
     def get_system_prompt(self) -> str:

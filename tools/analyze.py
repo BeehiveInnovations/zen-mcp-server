@@ -97,7 +97,7 @@ class AnalyzeTool(BaseTool):
             },
             "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
-        
+
         return schema
 
     def get_system_prompt(self) -> str:
