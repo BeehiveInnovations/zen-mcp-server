@@ -104,7 +104,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 - Docker Desktop installed ([Download here](https://www.docker.com/products/docker-desktop/))
 - Git
-- **Windows users**: WSL2 is required for Claude Code CLI
+- **Windows users**: WSL2 + Docker Desktop required for Docker images
 
 ### 1. Get API Keys (at least one required)
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
@@ -1050,6 +1050,95 @@ The project includes GitHub Actions workflows that:
 - **✅ Run linting and formatting checks** - Maintains code quality
 
 The CI pipeline works without any secrets and will pass all tests using mocked responses. Simulation tests require API key secrets (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`) to run the communication simulator.
+
+## Windows Setup Guide
+
+**Windows users need WSL2 + Docker Desktop to run Linux-based Docker containers.**
+
+### Why WSL2 is Required
+
+Our Docker images use `python:3.11-slim` (Linux-based), which cannot run natively on Windows. Docker Desktop solves this by running containers in WSL2's Linux environment.
+
+### Complete Windows Setup
+
+1. **Install WSL2**
+   ```powershell
+   # Run in PowerShell as Administrator
+   wsl --install
+   # Restart computer when prompted
+   ```
+
+2. **Install Docker Desktop for Windows**
+   - Download: [Docker Desktop for Windows](https://docs.docker.com/desktop/windows/install/)
+   - During installation, ensure "Use WSL 2 instead of Hyper-V" is selected
+
+3. **Configure Docker Desktop**
+   - Open Docker Desktop settings
+   - Go to "Resources" → "WSL Integration" 
+   - Enable integration with your default WSL distro (usually Ubuntu)
+
+4. **Verify Setup**
+   ```bash
+   # In WSL2 terminal (Ubuntu)
+   docker --version
+   docker pull hello-world
+   docker run hello-world
+   ```
+
+5. **Install Claude Desktop in Windows**
+   - Download and install Claude Desktop for Windows normally
+   - Docker commands will automatically route to WSL2
+
+### Usage on Windows
+
+Once set up, everything works normally:
+
+```bash
+# Pull the image (runs in WSL2 automatically)
+docker pull ghcr.io/patrykiti/zen-mcp-server:latest
+
+# Configure Claude Desktop normally in Windows
+# Docker Desktop handles WSL2 routing automatically
+```
+
+**Claude Desktop Config Location (Windows):**
+```
+C:\Users\[USERNAME]\AppData\Roaming\Claude\claude_desktop_config.json
+```
+
+### Alternative: Direct Python Installation
+
+If you prefer not to use Docker:
+
+```powershell
+# In PowerShell or Command Prompt
+git clone https://github.com/PatrykIti/zen-mcp-server.git
+cd zen-mcp-server
+pip install -r requirements.txt
+
+# Set your API key
+set GEMINI_API_KEY=your-api-key-here
+# or create .env file
+
+# Run server directly
+python server.py
+```
+
+Then configure Claude Desktop to use Python directly instead of Docker.
+
+### Windows Troubleshooting
+
+**"Docker command not found"**
+- Ensure Docker Desktop is running
+- Restart WSL2: `wsl --shutdown` then reopen terminal
+
+**"No matching manifest for linux/arm64"**
+- Our images support both AMD64 and ARM64
+- If you see this error, your Docker setup may need reconfiguring
+
+**WSL2 not working**
+- Enable virtualization in BIOS
+- Run `wsl --update` in PowerShell as Administrator
 
 ## Troubleshooting
 

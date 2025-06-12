@@ -19,9 +19,23 @@ After following this guide, you'll have:
 4. **Git** - For cloning the repository
 
 ### Platform Support
-- ✅ **macOS** (Intel and Apple Silicon)
-- ✅ **Linux** 
-- ✅ **Windows** (requires WSL2 for Claude Desktop)
+- ✅ **macOS** (Intel and Apple Silicon M1/M2/M3)
+- ✅ **Linux** (AMD64 and ARM64)
+- ✅ **Windows** (requires WSL2 + Docker Desktop for Claude Desktop)
+
+### Windows Setup Requirements
+**Windows users must use WSL2 + Docker Desktop:**
+1. **Install WSL2** - [Microsoft WSL Guide](https://docs.microsoft.com/en-us/windows/wsl/install)
+2. **Install Docker Desktop** - [Docker for Windows](https://docs.docker.com/desktop/windows/install/)
+3. **Enable WSL2 integration** in Docker Desktop settings
+4. **Run Claude Desktop** in Windows (Docker containers run in WSL2)
+
+**Why WSL2 is required:**
+- Docker images are Linux-based (python:3.11-slim)
+- Docker Desktop automatically runs containers in WSL2 Linux environment
+- Provides full compatibility with Linux containers on Windows
+
+**Alternative for Windows:** Install Python directly and run server with `pip install -r requirements.txt && python server.py`
 
 ## 🚀 Setup Option 1: Published Docker Image (Fastest)
 
