@@ -117,7 +117,7 @@ cd zen-mcp-server
 - **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
 - **Starts Redis service** for AI-to-AI conversation memory
 - **Starts MCP server** with providers based on available API keys
-- **Shows exact Claude Desktop configuration** to copy (optional when only using claude code)
+- **Adds Zen to Claude Code automatically**
 
 ### 3. Add Your API Keys
 
