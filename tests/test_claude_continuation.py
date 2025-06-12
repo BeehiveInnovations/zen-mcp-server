@@ -7,6 +7,7 @@ when Gemini doesn't explicitly ask a follow-up question.
 
 import json
 from unittest.mock import Mock, patch
+from tests.mock_helpers import create_mock_provider
 
 import pytest
 from pydantic import Field
@@ -116,20 +117,20 @@ class TestClaudeContinuationOffers:
         mock_redis.return_value = mock_client
 
         # Mock the model to return a response without follow-up question
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="Analysis complete. The code looks good.")]),
-                    finish_reason="STOP",
-                )
-            ]
-            mock_model.generate_content.return_value = mock_response
-            mock_create_model.return_value = mock_model
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Analysis complete. The code looks good.",
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash-exp",
+                metadata={"finish_reason": "STOP"}
+            )
+            mock_get_provider.return_value = mock_provider
 
             # Execute tool with new conversation
-            arguments = {"prompt": "Analyze this code"}
+            arguments = {"prompt": "Analyze this code", "model": "flash"}
             response = await self.tool.execute(arguments)
 
             # Parse response
@@ -157,15 +158,12 @@ class TestClaudeContinuationOffers:
         mock_redis.return_value = mock_client
 
         # Mock the model to return a response WITH follow-up question
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(
-                        parts=[
-                            Mock(
-                                text="""Analysis complete. The code looks good.
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            # Include follow-up JSON in the content
+            content_with_followup = """Analysis complete. The code looks good.
 
 ```json
 {
@@ -174,14 +172,13 @@ class TestClaudeContinuationOffers:
   "ui_hint": "Examining error handling would help ensure robustness"
 }
 ```"""
-                            )
-                        ]
-                    ),
-                    finish_reason="STOP",
-                )
-            ]
-            mock_model.generate_content.return_value = mock_response
-            mock_create_model.return_value = mock_model
+            mock_provider.generate_content.return_value = Mock(
+                content=content_with_followup,
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash-exp",
+                metadata={"finish_reason": "STOP"}
+            )
+            mock_get_provider.return_value = mock_provider
 
             # Execute tool
             arguments = {"prompt": "Analyze this code"}
@@ -215,17 +212,17 @@ class TestClaudeContinuationOffers:
         mock_client.get.return_value = thread_context.model_dump_json()
 
         # Mock the model
-        with patch.object(self.tool, "create_model") as mock_create_model:
-            mock_model = Mock()
-            mock_response = Mock()
-            mock_response.candidates = [
-                Mock(
-                    content=Mock(parts=[Mock(text="Continued analysis complete.")]),
-                    finish_reason="STOP",
-                )
-            ]
-            mock_model.generate_content.return_value = mock_response
-            mock_create_model.return_value = mock_model
+        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Continued analysis complete.",
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash-exp",
+                metadata={"finish_reason": "STOP"}
+            )
+            mock_get_provider.return_value = mock_provider
 
             # Execute tool with continuation_id
             arguments = {"prompt": "Continue the analysis", "continuation_id": "12345678-1234-1234-1234-123456789012"}

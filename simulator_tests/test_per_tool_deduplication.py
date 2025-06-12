@@ -100,8 +100,9 @@ def divide(x, y):
             precommit_params = {
                 "path": self.test_dir,  # Required path parameter
                 "files": [dummy_file_path],
-                "original_request": "Please give me a quick one line reply. Review this code for commit readiness",
+                "prompt": "Please give me a quick one line reply. Review this code for commit readiness",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response1, continuation_id = self.call_mcp_tool("precommit", precommit_params)
@@ -124,8 +125,9 @@ def divide(x, y):
             self.logger.info("  Step 2: codereview tool with same file (fresh conversation)")
             codereview_params = {
                 "files": [dummy_file_path],
-                "context": "Please give me a quick one line reply. General code review for quality and best practices",
+                "prompt": "Please give me a quick one line reply. General code review for quality and best practices",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response2, _ = self.call_mcp_tool("codereview", codereview_params)
@@ -150,8 +152,9 @@ def subtract(a, b):
                 "continuation_id": continuation_id,
                 "path": self.test_dir,  # Required path parameter
                 "files": [dummy_file_path, new_file_path],  # Old + new file
-                "original_request": "Please give me a quick one line reply. Now also review the new feature file along with the previous one",
+                "prompt": "Please give me a quick one line reply. Now also review the new feature file along with the previous one",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response3, _ = self.call_mcp_tool("precommit", continue_params)

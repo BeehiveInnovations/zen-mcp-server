@@ -49,7 +49,7 @@ async def run_manual_live_tests():
             result = await tool.execute(
                 {
                     "files": [temp_path],
-                    "question": "What does this code do?",
+                    "prompt": "What does this code do?",
                     "thinking_mode": "low",
                 }
             )
@@ -64,7 +64,7 @@ async def run_manual_live_tests():
             think_tool = ThinkDeepTool()
             result = await think_tool.execute(
                 {
-                    "current_analysis": "Testing live integration",
+                    "prompt": "Testing live integration",
                     "thinking_mode": "minimal",  # Fast test
                 }
             )
@@ -86,7 +86,7 @@ async def run_manual_live_tests():
             result = await analyze_tool.execute(
                 {
                     "files": [temp_path],  # Only Python file, no package.json
-                    "question": "What npm packages and their versions does this project depend on? List all dependencies.",
+                    "prompt": "What npm packages and their versions does this project depend on? List all dependencies.",
                     "thinking_mode": "minimal",  # Fast test
                 }
             )

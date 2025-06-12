@@ -17,7 +17,7 @@ from .models import ToolOutput
 class DebugIssueRequest(ToolRequest):
     """Request model for debug tool"""
 
-    error_description: str = Field(..., description="Error message, symptoms, or issue description")
+    prompt: str = Field(..., description="Error message, symptoms, or issue description")
     error_context: Optional[str] = Field(None, description="Stack trace, logs, or additional error context")
     files: Optional[list[str]] = Field(
         None,
@@ -38,7 +38,7 @@ class DebugIssueTool(BaseTool):
             "DEBUG & ROOT CAUSE ANALYSIS - Expert debugging for complex issues with 1M token capacity. "
             "Use this when you need to debug code, find out why something is failing, identify root causes, "
             "trace errors, or diagnose issues. "
-            "IMPORTANT: Share diagnostic files liberally! Gemini can handle up to 1M tokens, so include: "
+            "IMPORTANT: Share diagnostic files liberally! The model can handle up to 1M tokens, so include: "
             "large log files, full stack traces, memory dumps, diagnostic outputs, multiple related files, "
             "entire modules, test results, configuration files - anything that might help debug the issue. "
             "Claude should proactively use this tool whenever debugging is needed and share comprehensive "
@@ -50,19 +50,16 @@ class DebugIssueTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import DEFAULT_MODEL
+        from config import IS_AUTO_MODE
 
-        return {
+        schema = {
             "type": "object",
             "properties": {
-                "error_description": {
+                "prompt": {
                     "type": "string",
                     "description": "Error message, symptoms, or issue description",
                 },
-                "model": {
-                    "type": "string",
-                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
-                },
+                "model": self.get_model_field_schema(),
                 "error_context": {
                     "type": "string",
                     "description": "Stack trace, logs, or additional error context",
@@ -101,8 +98,10 @@ class DebugIssueTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["error_description"],
+            "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
         }
+        
+        return schema
 
     def get_system_prompt(self) -> str:
         return DEBUG_ISSUE_PROMPT
@@ -119,8 +118,8 @@ class DebugIssueTool(BaseTool):
         request_model = self.get_request_model()
         request = request_model(**arguments)
 
-        # Check error_description size
-        size_check = self.check_prompt_size(request.error_description)
+        # Check prompt size
+        size_check = self.check_prompt_size(request.prompt)
         if size_check:
             return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
@@ -138,11 +137,10 @@ class DebugIssueTool(BaseTool):
         # Check for prompt.txt in files
         prompt_content, updated_files = self.handle_prompt_file(request.files)
 
-        # If prompt.txt was found, use it as error_description or error_context
-        # Priority: if error_description is empty, use it there, otherwise use as error_context
+        # If prompt.txt was found, use it as prompt or error_context
         if prompt_content:
-            if not request.error_description or request.error_description == "":
-                request.error_description = prompt_content
+            if not request.prompt or request.prompt == "":
+                request.prompt = prompt_content
             else:
                 request.error_context = prompt_content
 
@@ -151,7 +149,7 @@ class DebugIssueTool(BaseTool):
             request.files = updated_files
 
         # Build context sections
-        context_parts = [f"=== ISSUE DESCRIPTION ===\n{request.error_description}\n=== END DESCRIPTION ==="]
+        context_parts = [f"=== ISSUE DESCRIPTION ===\n{request.prompt}\n=== END DESCRIPTION ==="]
 
         if request.error_context:
             context_parts.append(f"\n=== ERROR CONTEXT/STACK TRACE ===\n{request.error_context}\n=== END CONTEXT ===")
@@ -197,11 +195,15 @@ Focus on finding the root cause and providing actionable solutions."""
 
         return full_prompt
 
-    def format_response(self, response: str, request: DebugIssueRequest) -> str:
+    def format_response(self, response: str, request: DebugIssueRequest, model_info: Optional[dict] = None) -> str:
         """Format the debugging response"""
-        return (
-            f"Debug Analysis\n{'=' * 50}\n\n{response}\n\n---\n\n"
-            "**Next Steps:** Evaluate Gemini's recommendations, synthesize the best fix considering potential "
-            "regressions, and if the root cause has been clearly identified, proceed with implementing the "
-            "potential fixes."
-        )
+        # Get the friendly model name
+        model_name = "the model"
+        if model_info and model_info.get("model_response"):
+            model_name = model_info["model_response"].friendly_name or "the model"
+        
+        return f"""{response}
+
+---
+
+**Next Steps:** Evaluate {model_name}'s recommendations, synthesize the best fix considering potential regressions, and if the root cause has been clearly identified, proceed with implementing the potential fixes."""

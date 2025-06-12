@@ -29,8 +29,9 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY:?GEMINI_API_KEY is required. Please set it in your .env file or environment.}
-      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-2.5-pro-preview-06-05}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-auto}
       - DEFAULT_THINKING_MODE_THINKDEEP=${DEFAULT_THINKING_MODE_THINKDEEP:-high}
       - REDIS_URL=redis://redis:6379/0
       # Use HOME not PWD: Claude needs access to any absolute file path, not just current project,
@@ -42,7 +43,6 @@ services:
       - ${HOME:-/tmp}:/workspace:ro
       - mcp_logs:/tmp  # Shared volume for logs
       - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
     stdin_open: true
     tty: true
     entrypoint: ["python"]
@@ -60,7 +60,6 @@ services:
     volumes:
       - mcp_logs:/tmp  # Shared volume for logs
       - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
     entrypoint: ["python"]
     command: ["log_monitor.py"]
 

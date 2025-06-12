@@ -1,29 +1,49 @@
-# Claude Code + Gemini: Working Together as One
+# Claude Code + Multi-Model AI: Your Ultimate Development Team
 
   https://github.com/user-attachments/assets/a67099df-9387-4720-9b41-c986243ac11b
 
 <div align="center">  
-  <b>🤖 Claude + Gemini = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + Gemini / O3 / GPT-4o = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
 
-The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to Google's Gemini models (2.5 Pro for extended thinking, 2.0 Flash for speed) for code analysis, problem-solving, and collaborative development. **Automatically reads files and directories, passing their contents to Gemini for analysis within its 1M token context.**
+The ultimate development partner for Claude - a Model Context Protocol server that gives Claude access to multiple AI models for enhanced code analysis, problem-solving, and collaborative development.
 
-**Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex task and ask it to collaborate with Gemini. 
-Claude stays in control, performs the actual work, but gets a second perspective from Gemini. Claude will talk to Gemini, work on implementation, then automatically resume the 
-conversation with Gemini while maintaining the full thread. 
-Claude can switch between different Gemini tools ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) → [`chat`](#1-chat---general-development-chat--collaborative-thinking) → [`precommit`](#4-precommit---pre-commit-validation) → [`codereview`](#3-codereview---professional-code-review)) and the conversation context carries forward seamlessly. 
-For example, in the video above, Claude was asked to debate SwiftUI vs UIKit with Gemini, resulting in a back-and-forth discussion rather than a simple one-shot query and response.
+**🎯 Auto Mode (NEW):** Set `DEFAULT_MODEL=auto` and Claude will intelligently select the best model for each task:
+- **Complex architecture review?** → Claude picks Gemini Pro with extended thinking
+- **Quick code formatting?** → Claude picks Gemini Flash for speed
+- **Logical debugging?** → Claude picks O3 for reasoning
+- **Or specify your preference:** "Use flash to quickly analyze this" or "Use o3 for debugging"
+
+**📚 Supported Models:**
+- **Google Gemini**: 2.5 Pro (extended thinking, 1M tokens) & 2.0 Flash (ultra-fast, 1M tokens)
+- **OpenAI**: O3 (strong reasoning, 200K tokens), O3-mini (faster variant), GPT-4o (128K tokens)
+- **More providers coming soon!**
+
+**Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex task and let it orchestrate between models automatically. Claude stays in control, performs the actual work, but gets perspectives from the best AI for each subtask. Claude can switch between different tools AND models mid-conversation, with context carrying forward seamlessly.
+
+**Example Workflow:**
+1. Claude uses Gemini Pro to deeply analyze your architecture
+2. Switches to O3 for logical debugging of a specific issue
+3. Uses Flash for quick code formatting
+4. Returns to Pro for security review
+
+All within a single conversation thread!
 
 **Think of it as Claude Code _for_ Claude Code.**
 
 ---
 
-> ⚠️ **Active Development Notice**  
-> This project is under rapid development with frequent commits and changes over the past few days. 
-> The goal is to expand support beyond Gemini to include additional AI models and providers. 
-> **Watch this space** for new capabilities and potentially breaking changes in between updates!
+> 🚀 **Multi-Provider Support with Auto Mode!**  
+> Claude automatically selects the best model for each task when using `DEFAULT_MODEL=auto`:
+> - **Gemini Pro**: Extended thinking (up to 32K tokens), best for complex problems
+> - **Gemini Flash**: Ultra-fast responses, best for quick tasks
+> - **O3**: Strong reasoning, best for logical problems and debugging
+> - **O3-mini**: Balanced performance, good for moderate complexity
+> - **GPT-4o**: General-purpose, good for explanations and chat
+> 
+> Or manually specify: "Use pro for deep analysis" or "Use o3 to debug this"
 
 ## Quick Navigation
 
@@ -58,18 +78,20 @@ For example, in the video above, Claude was asked to debate SwiftUI vs UIKit wit
 ## Why This Server?
 
 Claude is brilliant, but sometimes you need:
+- **Multiple AI perspectives** - Let Claude orchestrate between different models to get the best analysis
+- **Automatic model selection** - Claude picks the right model for each task (or you can specify)
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
-- **A second opinion** on complex architectural decisions - augment Claude's extended thinking with Gemini's perspective ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
+- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or others ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
-- **Pre-commit validation** with deep analysis that finds edge cases, validates your implementation against original requirements, and catches subtle bugs Claude might miss ([`precommit`](#4-precommit---pre-commit-validation))
-- **Expert debugging** for tricky issues with full system context ([`debug`](#5-debug---expert-debugging-assistant))
-- **Massive context window** (1M tokens) - Gemini 2.5 Pro can analyze entire codebases, read hundreds of files at once, and provide comprehensive insights ([`analyze`](#6-analyze---smart-file-analysis))
-- **Deep code analysis** across massive codebases that exceed Claude's context limits ([`analyze`](#6-analyze---smart-file-analysis))
-- **Dynamic collaboration** - Gemini can request additional context from Claude mid-analysis for more thorough insights
-- **Smart file handling** - Automatically expands directories, filters irrelevant files, and manages token limits when analyzing `"main.py, src/, tests/"`
-- **[Bypass MCP's token limits](#working-with-large-prompts)** - Work around MCP's 25K combined token limit by automatically handling large prompts as files, preserving the full capacity for responses
+- **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#4-precommit---pre-commit-validation))
+- **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#5-debug---expert-debugging-assistant))
+- **Massive context windows** - Gemini (1M tokens), O3 (200K tokens), GPT-4o (128K tokens)
+- **Model-specific strengths** - Extended thinking with Gemini Pro, fast iteration with Flash, strong reasoning with O3
+- **Dynamic collaboration** - Models can request additional context from Claude mid-analysis
+- **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
+- **[Bypass MCP's token limits](#working-with-large-prompts)** - Work around MCP's 25K limit automatically
 
-This server makes Gemini your development sidekick, handling what Claude can't or extending what Claude starts.
+This server orchestrates multiple AI models as your development team, with Claude automatically selecting the best model for each task or allowing you to choose specific models for different strengths.
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/0f3c8e2d-a236-4068-a80e-46f37b0c9d35" width="600">
@@ -93,8 +115,9 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - Git
 - **Windows users**: WSL2 is required for Claude Code CLI
 
-### 1. Get a Gemini API Key
-Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
+### 1. Get API Keys (at least one required)
+- **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
+- **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 
 ### 2. Clone and Set Up
 
@@ -109,22 +132,25 @@ cd gemini-mcp-server
 
 **What this does:**
 - **Builds Docker images** with all dependencies (including Redis for conversation threading)
-- **Creates .env file** (automatically uses `$GEMINI_API_KEY` if set in environment)
+- **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
 - **Starts Redis service** for AI-to-AI conversation memory
-- **Starts MCP server** ready to connect
+- **Starts MCP server** with providers based on available API keys
 - **Shows exact Claude Desktop configuration** to copy
-- **Multi-turn AI conversations** - Gemini can ask follow-up questions that persist across requests
+- **Multi-turn AI conversations** - Models can ask follow-up questions that persist across requests
 
-### 3. Add Your API Key
+### 3. Add Your API Keys
 
 ```bash
-# Edit .env to add your Gemini API key (if not already set in environment)
+# Edit .env to add your API keys (if not already set in environment)
 nano .env
 
 # The file will contain:
-# GEMINI_API_KEY=your-gemini-api-key-here
+# GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
+# OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
 # REDIS_URL=redis://redis:6379/0  (automatically configured)
 # WORKSPACE_ROOT=/workspace  (automatically configured)
+
+# Note: At least one API key is required (Gemini or OpenAI)
 ```
 
 ### 4. Configure Claude Desktop
@@ -184,17 +210,17 @@ Completely quit and restart Claude Desktop for the changes to take effect.
 ### 6. Start Using It!
 
 Just ask Claude naturally:
-- "Use gemini to think deeper about this architecture design" → `thinkdeep`
-- "Get gemini to review this code for security issues" → `codereview`
-- "Get gemini to debug why this test is failing" → `debug`
-- "Use gemini to analyze these files to understand the data flow" → `analyze`
-- "Brainstorm with gemini about scaling strategies" → `chat`
-- "Share my implementation plan with gemini for feedback" → `chat`
-- "Get gemini's opinion on my authentication design" → `chat`
+- "Think deeper about this architecture design" → Claude picks best model + `thinkdeep`
+- "Review this code for security issues" → Claude might pick Gemini Pro + `codereview`
+- "Debug why this test is failing" → Claude might pick O3 + `debug`
+- "Analyze these files to understand the data flow" → Claude picks appropriate model + `analyze`
+- "Use flash to quickly format this code" → Uses Gemini Flash specifically
+- "Get o3 to debug this logic error" → Uses O3 specifically
+- "Brainstorm scaling strategies with pro" → Uses Gemini Pro specifically
 
 ## AI-to-AI Conversation Threading
 
-This server enables **true AI collaboration** between Claude and Gemini, where they can coordinate and question each other's approaches:
+This server enables **true AI collaboration** between Claude and multiple AI models (Gemini, O3, GPT-4o), where they can coordinate and question each other's approaches:
 
 **How it works:**
 - **Gemini can ask Claude follow-up questions** to clarify requirements or gather more context
@@ -206,12 +232,14 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 - Each conversation maintains full context while only sending incremental updates
 - Conversations are automatically managed with Redis for persistence
 
-**Example of AI-to-AI coordination:**
-1. You: "Chat with gemini to debate SwiftUI vs UIKit - which is better for iOS development?"
-2. Claude: "I'll present SwiftUI's case: Modern declarative syntax, automatic state management, cross-platform compatibility, and Apple's clear future direction make SwiftUI the superior choice for new projects."
-3. Gemini: "I disagree. UIKit remains superior for production apps: mature ecosystem, granular control, extensive third-party support, proven performance in complex UIs, and better debugging tools. SwiftUI still has too many limitations."
-4. Claude: "While UIKit has maturity advantages, SwiftUI's rapid evolution, simplified development workflow, and Apple's investment make it the strategic choice. The learning curve pays off with faster development and maintainable code."
-5. **Final recommendation**: After this AI debate, Claude concludes: "Based on our discussion, SwiftUI is recommended for new projects despite Gemini's valid UIKit points."
+**Example of Multi-Model AI Coordination:**
+1. You: "Debate SwiftUI vs UIKit - which is better for iOS development?"
+2. Claude (auto mode): "I'll orchestrate a debate between different models for diverse perspectives."
+3. Gemini Pro: "From an architectural standpoint, SwiftUI's declarative paradigm and state management make it superior for maintainable, modern apps."
+4. O3: "Logically analyzing the trade-offs: UIKit offers 15+ years of stability, complete control, and proven scalability. SwiftUI has <5 years maturity with ongoing breaking changes."
+5. Claude: "Let me get Flash's quick take on developer experience..."
+6. Gemini Flash: "SwiftUI = faster development, less code, better previews. UIKit = more control, better debugging, stable APIs."
+7. **Claude's synthesis**: "Based on the multi-model analysis: Use SwiftUI for new projects prioritizing development speed, UIKit for apps requiring fine control or supporting older iOS versions."
 
 **Asynchronous workflow example:**
 - Claude can work independently between exchanges (analyzing code, implementing fixes, gathering data)
@@ -231,32 +259,45 @@ This server enables **true AI collaboration** between Claude and Gemini, where t
 - Up to 5 exchanges per conversation with 1-hour expiry
 - Thread-safe with Redis persistence across all tools
 
-**Cross-tool continuation example:**
+**Cross-tool & Cross-Model Continuation Example:**
 ```
-1. Claude: "Use gemini to analyze /src/auth.py for security issues"
-   → Gemini analyzes and finds vulnerabilities, provides continuation_id
+1. Claude: "Analyze /src/auth.py for security issues"
+   → Auto mode: Claude picks Gemini Pro for deep security analysis
+   → Pro analyzes and finds vulnerabilities, provides continuation_id
 
-2. Claude: "Use gemini to review the authentication logic thoroughly"
-   → Uses same continuation_id, Gemini sees previous analysis and files
-   → Provides detailed code review building on previous findings  
+2. Claude: "Review the authentication logic thoroughly"
+   → Uses same continuation_id, but Claude picks O3 for logical analysis
+   → O3 sees previous Pro analysis and provides logic-focused review
 
-3. Claude: "Use gemini to help debug the auth test failures"
-   → Same continuation_id, full context from analysis + review
-   → Gemini provides targeted debugging with complete understanding
+3. Claude: "Debug the auth test failures"
+   → Same continuation_id, Claude keeps O3 for debugging
+   → O3 provides targeted debugging with full context from both previous analyses
+
+4. Claude: "Quick style check before committing"
+   → Same thread, but Claude switches to Flash for speed
+   → Flash quickly validates formatting with awareness of all previous fixes
 ```
 
 ## Available Tools
 
 **Quick Tool Selection Guide:**
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
-- **Need deeper thinking?** → `thinkdeep` (extends Claude's analysis, finds edge cases)
+- **Need deeper thinking?** → `thinkdeep` (extends analysis, finds edge cases)
 - **Code needs review?** → `codereview` (bugs, security, performance issues)
 - **Pre-commit validation?** → `precommit` (validate git changes before committing)
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Server info?** → `get_version` (version and configuration details)
 
-**Pro Tip:** You can control the depth of Gemini's analysis with thinking modes to manage token costs. For quick tasks use "minimal" or "low" to save tokens, for complex problems use "high" or "max" when quality matters more than cost. [Learn more about thinking modes](#thinking-modes---managing-token-costs--quality)
+**Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
+
+**Model Selection Examples:**
+- Complex architecture review → Claude picks Gemini Pro
+- Quick formatting check → Claude picks Flash
+- Logical debugging → Claude picks O3
+- General explanations → Claude picks GPT-4o
+
+**Pro Tip:** Thinking modes (for Gemini models) control depth vs token cost. Use "minimal" or "low" for quick tasks, "high" or "max" for complex problems. [Learn more](#thinking-modes---managing-token-costs--quality)
 
 **Tools Overview:**
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
@@ -591,58 +632,65 @@ All tools that work with files support **both individual files and entire direct
 
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
-- `question`: What to analyze (required)
-- `model`: pro|flash (default: server default)
+- `question`: What to analyze (required)  
+- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
-- `thinking_mode`: minimal|low|medium|high|max (default: medium)
+- `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 - `use_websearch`: Enable web search for documentation and best practices (default: false)
 
 ```
-"Use gemini to analyze the src/ directory for architectural patterns"
-"Use flash to quickly analyze main.py and tests/ to understand test coverage"
+"Analyze the src/ directory for architectural patterns" (auto mode picks best model)
+"Use flash to quickly analyze main.py and tests/ to understand test coverage" 
+"Use o3 for logical analysis of the algorithm in backend/core.py"
 "Use pro for deep analysis of the entire backend/ directory structure"
 ```
 
 **`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
-- `model`: pro|flash (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
 - `severity_filter`: critical|high|medium|all
-- `thinking_mode`: minimal|low|medium|high|max (default: medium)
+- `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 
 ```
-"Use pro to review the entire api/ directory for security issues"
+"Review the entire api/ directory for security issues" (auto mode picks best model)
+"Use pro to review auth/ for deep security analysis"
+"Use o3 to review logic in algorithms/ for correctness"
 "Use flash to quickly review src/ with focus on performance, only show critical issues"
 ```
 
 **`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
-- `model`: pro|flash (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
 - `previous_attempts`: What you've tried
-- `thinking_mode`: minimal|low|medium|high|max (default: medium)
+- `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 - `use_websearch`: Enable web search for error messages and solutions (default: false)
 
 ```
-"Use gemini to debug this error with context from the entire backend/ directory"
+"Debug this logic error with context from backend/" (auto mode picks best model)
+"Use o3 to debug this algorithm correctness issue"
+"Use pro to debug this complex architecture problem"
 ```
 
 **`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
-- `model`: pro|flash (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|gpt-4o (default: server default)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
-- `thinking_mode`: minimal|low|medium|high|max (default: max)
+- `thinking_mode`: minimal|low|medium|high|max (default: max, Gemini only)
 - `use_websearch`: Enable web search for documentation and insights (default: false)
 
 ```
-"Use gemini to think deeper about my design with reference to the src/models/ directory"
+"Think deeper about my design with reference to src/models/" (auto mode picks best model)
+"Use pro to think deeper about this architecture with extended thinking"
+"Use o3 to think deeper about the logical flow in this algorithm"
 ```
 
 ## Collaborative Workflows
@@ -877,31 +925,54 @@ The server includes several configurable properties that control its behavior:
 
 ### Model Configuration
 
-**Default Model (Environment Variable):**
-- **`DEFAULT_MODEL`**: Set your preferred default model globally
-  - Default: `"gemini-2.5-pro-preview-06-05"` (extended thinking capabilities)
-  - Alternative: `"gemini-2.0-flash-exp"` (faster responses)
+**🎯 Auto Mode (Recommended):**
+Set `DEFAULT_MODEL=auto` in your .env file and Claude will intelligently select the best model for each task:
 
-**Per-Tool Model Selection:**
-All tools support a `model` parameter for flexible model switching:
-- **`"pro"`** → Gemini 2.5 Pro (extended thinking, slower, higher quality)
-- **`"flash"`** → Gemini 2.0 Flash (faster responses, lower cost)
-- **Full model names** → Direct model specification
-
-**Examples:**
 ```env
-# Set default globally in .env file
-DEFAULT_MODEL=flash
+# .env file
+DEFAULT_MODEL=auto  # Claude picks the best model automatically
+
+# API Keys (at least one required)
+GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, GPT-4o
 ```
 
-```
-# Per-tool usage in Claude
-"Use flash to quickly analyze this function"
-"Use pro for deep architectural analysis"
+**How Auto Mode Works:**
+- Claude analyzes each request and selects the optimal model
+- Model selection is based on task complexity, requirements, and model strengths
+- You can always override: "Use flash for quick check" or "Use o3 to debug"
+
+**Supported Models & When Claude Uses Them:**
+
+| Model | Provider | Context | Strengths | Auto Mode Usage |
+|-------|----------|---------|-----------|------------------|
+| **`pro`** (Gemini 2.5 Pro) | Google | 1M tokens | Extended thinking (up to 32K tokens), deep analysis | Complex architecture, security reviews, deep debugging |
+| **`flash`** (Gemini 2.0 Flash) | Google | 1M tokens | Ultra-fast responses | Quick checks, formatting, simple analysis |
+| **`o3`** | OpenAI | 200K tokens | Strong logical reasoning | Debugging logic errors, systematic analysis |
+| **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
+| **`gpt-4o`** | OpenAI | 128K tokens | General purpose | Explanations, documentation, chat |
+
+**Manual Model Selection:**
+You can specify a default model instead of auto mode:
+
+```env
+# Use a specific model by default
+DEFAULT_MODEL=gemini-2.5-pro-preview-06-05  # Always use Gemini Pro
+DEFAULT_MODEL=flash                         # Always use Flash
+DEFAULT_MODEL=o3                           # Always use O3
 ```
 
-**Token Limits:**
-- **`MAX_CONTEXT_TOKENS`**: `1,000,000` - Maximum input context (1M tokens for Gemini 2.5 Pro)
+**Per-Request Model Override:**
+Regardless of your default setting, you can specify models per request:
+- "Use **pro** for deep security analysis of auth.py"
+- "Use **flash** to quickly format this code"
+- "Use **o3** to debug this logic error"
+- "Review with **o3-mini** for balanced analysis"
+
+**Model Capabilities:**
+- **Gemini Models**: Support thinking modes (minimal to max), web search, 1M context
+- **O3 Models**: Excellent reasoning, systematic analysis, 200K context
+- **GPT-4o**: Balanced general-purpose model, 128K context
 
 ### Temperature Defaults
 Different tools use optimized temperature settings:

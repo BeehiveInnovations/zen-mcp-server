@@ -166,7 +166,7 @@ class TestConversationMemory:
             initial_context={},
         )
 
-        history, tokens = build_conversation_history(context)
+        history, tokens = build_conversation_history(context, model_context=None)
 
         # Test basic structure
         assert "CONVERSATION HISTORY" in history
@@ -207,7 +207,7 @@ class TestConversationMemory:
             initial_context={},
         )
 
-        history, tokens = build_conversation_history(context)
+        history, tokens = build_conversation_history(context, model_context=None)
         assert history == ""
         assert tokens == 0
 
@@ -374,7 +374,7 @@ class TestConversationFlow:
                 initial_context={},
             )
 
-            history, tokens = build_conversation_history(context)
+            history, tokens = build_conversation_history(context, model_context=None)
             expected_turn_text = f"Turn {test_max}/{MAX_CONVERSATION_TURNS}"
             assert expected_turn_text in history
 
@@ -763,7 +763,7 @@ class TestConversationFlow:
             )
 
             # Build conversation history (should handle token limits gracefully)
-            history, tokens = build_conversation_history(context)
+            history, tokens = build_conversation_history(context, model_context=None)
 
             # Verify the history was built successfully
             assert "=== CONVERSATION HISTORY ===" in history

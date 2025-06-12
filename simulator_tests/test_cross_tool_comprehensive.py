@@ -91,6 +91,7 @@ def hash_pwd(pwd):
                 "prompt": "Please give me a quick one line reply. I have an authentication module that needs review. Can you help me understand potential issues?",
                 "files": [auth_file],
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response1, continuation_id1 = self.call_mcp_tool("chat", chat_params)
@@ -106,8 +107,9 @@ def hash_pwd(pwd):
             self.logger.info("  Step 2: analyze tool - Deep code analysis (fresh)")
             analyze_params = {
                 "files": [auth_file],
-                "question": "Please give me a quick one line reply. What are the security vulnerabilities and architectural issues in this authentication code?",
+                "prompt": "Please give me a quick one line reply. What are the security vulnerabilities and architectural issues in this authentication code?",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response2, continuation_id2 = self.call_mcp_tool("analyze", analyze_params)
@@ -127,6 +129,7 @@ def hash_pwd(pwd):
                 "prompt": "Please give me a quick one line reply. I also have this configuration file. Can you analyze it alongside the authentication code?",
                 "files": [auth_file, config_file_path],  # Old + new file
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response3, _ = self.call_mcp_tool("chat", chat_continue_params)
@@ -141,8 +144,9 @@ def hash_pwd(pwd):
             self.logger.info("  Step 4: debug tool - Identify specific problems")
             debug_params = {
                 "files": [auth_file, config_file_path],
-                "error_description": "Please give me a quick one line reply. The authentication system has security vulnerabilities. Help me identify and fix the main issues.",
+                "prompt": "Please give me a quick one line reply. The authentication system has security vulnerabilities. Help me identify and fix the main issues.",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response4, continuation_id4 = self.call_mcp_tool("debug", debug_params)
@@ -161,8 +165,9 @@ def hash_pwd(pwd):
                 debug_continue_params = {
                     "continuation_id": continuation_id4,
                     "files": [auth_file, config_file_path],
-                    "error_description": "Please give me a quick one line reply. What specific code changes would you recommend to fix the password hashing vulnerability?",
+                    "prompt": "Please give me a quick one line reply. What specific code changes would you recommend to fix the password hashing vulnerability?",
                     "thinking_mode": "low",
+                    "model": "flash",
                 }
 
                 response5, _ = self.call_mcp_tool("debug", debug_continue_params)
@@ -174,8 +179,9 @@ def hash_pwd(pwd):
             self.logger.info("  Step 6: codereview tool - Comprehensive code review")
             codereview_params = {
                 "files": [auth_file, config_file_path],
-                "context": "Please give me a quick one line reply. Comprehensive security-focused code review for production readiness",
+                "prompt": "Please give me a quick one line reply. Comprehensive security-focused code review for production readiness",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response6, continuation_id6 = self.call_mcp_tool("codereview", codereview_params)
@@ -207,7 +213,7 @@ def secure_login(user, pwd):
             precommit_params = {
                 "path": self.test_dir,
                 "files": [auth_file, config_file_path, improved_file],
-                "original_request": "Please give me a quick one line reply. Ready to commit security improvements to authentication module",
+                "prompt": "Please give me a quick one line reply. Ready to commit security improvements to authentication module",
                 "thinking_mode": "low",
             }
 

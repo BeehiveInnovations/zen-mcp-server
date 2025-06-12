@@ -66,7 +66,7 @@ DATABASE_CONFIG = {
                 {
                     "path": os.getcwd(),
                     "files": [validation_file],
-                    "original_request": "Test for content duplication in precommit tool",
+                    "prompt": "Test for content duplication in precommit tool",
                 },
             )
 
@@ -116,16 +116,18 @@ DATABASE_CONFIG = {
                     {
                         "prompt": "Please use low thinking mode. Analyze this config file",
                         "files": [validation_file],
+                        "model": "flash",
                     },  # Using absolute path
                 ),
                 (
                     "codereview",
                     {
                         "files": [validation_file],
-                        "context": "Please use low thinking mode. Review this configuration",
+                        "prompt": "Please use low thinking mode. Review this configuration",
+                        "model": "flash",
                     },  # Using absolute path
                 ),
-                ("analyze", {"files": [validation_file], "analysis_type": "code_quality"}),  # Using absolute path
+                ("analyze", {"files": [validation_file], "analysis_type": "code_quality", "model": "flash"}),  # Using absolute path
             ]
 
             for tool_name, params in tools_to_test:
@@ -163,6 +165,7 @@ DATABASE_CONFIG = {
                         "prompt": "Please use low thinking mode. Continue analyzing this configuration file",
                         "files": [validation_file],  # Same file should be deduplicated
                         "continuation_id": thread_id,
+                        "model": "flash",
                     },
                 )
 

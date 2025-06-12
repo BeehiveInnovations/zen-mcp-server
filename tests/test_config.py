@@ -31,7 +31,8 @@ class TestConfig:
 
     def test_model_config(self):
         """Test model configuration"""
-        assert DEFAULT_MODEL == "gemini-2.5-pro-preview-06-05"
+        # DEFAULT_MODEL is set in conftest.py for tests
+        assert DEFAULT_MODEL == "gemini-2.0-flash-exp"
         assert MAX_CONTEXT_TOKENS == 1_000_000
 
     def test_temperature_defaults(self):

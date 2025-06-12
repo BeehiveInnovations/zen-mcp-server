@@ -7,6 +7,7 @@ normal-sized prompts after implementing the large prompt handling feature.
 
 import json
 from unittest.mock import MagicMock, patch
+from tests.mock_helpers import create_mock_provider
 
 import pytest
 
@@ -24,16 +25,16 @@ class TestPromptRegression:
     @pytest.fixture
     def mock_model_response(self):
         """Create a mock model response."""
+        from unittest.mock import Mock
 
         def _create_response(text="Test response"):
-            mock_response = MagicMock()
-            mock_response.candidates = [
-                MagicMock(
-                    content=MagicMock(parts=[MagicMock(text=text)]),
-                    finish_reason="STOP",
-                )
-            ]
-            return mock_response
+            # Return a Mock that acts like ModelResponse
+            return Mock(
+                content=text,
+                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                model_name="gemini-2.0-flash-exp",
+                metadata={"finish_reason": "STOP"}
+            )
 
         return _create_response
 
@@ -42,10 +43,12 @@ class TestPromptRegression:
         """Test chat tool with normal prompt."""
         tool = ChatTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response("This is a helpful response about Python.")
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response("This is a helpful response about Python.")
+            mock_get_provider.return_value = mock_provider
 
             result = await tool.execute({"prompt": "Explain Python decorators"})
 
@@ -54,18 +57,20 @@ class TestPromptRegression:
             assert output["status"] == "success"
             assert "helpful response about Python" in output["content"]
 
-            # Verify model was called
-            mock_model.generate_content.assert_called_once()
+            # Verify provider was called
+            mock_provider.generate_content.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_chat_with_files(self, mock_model_response):
         """Test chat tool with files parameter."""
         tool = ChatTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response()
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response()
+            mock_get_provider.return_value = mock_provider
 
             # Mock file reading through the centralized method
             with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
@@ -83,16 +88,18 @@ class TestPromptRegression:
         """Test thinkdeep tool with normal analysis."""
         tool = ThinkDeepTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response(
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response(
                 "Here's a deeper analysis with edge cases..."
             )
-            mock_create_model.return_value = mock_model
+            mock_get_provider.return_value = mock_provider
 
             result = await tool.execute(
                 {
-                    "current_analysis": "I think we should use a cache for performance",
+                    "prompt": "I think we should use a cache for performance",
                     "problem_context": "Building a high-traffic API",
                     "focus_areas": ["scalability", "reliability"],
                 }
@@ -109,12 +116,14 @@ class TestPromptRegression:
         """Test codereview tool with normal inputs."""
         tool = CodeReviewTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response(
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response(
                 "Found 3 issues: 1) Missing error handling..."
             )
-            mock_create_model.return_value = mock_model
+            mock_get_provider.return_value = mock_provider
 
             # Mock file reading
             with patch("tools.base.read_files") as mock_read_files:
@@ -125,7 +134,7 @@ class TestPromptRegression:
                         "files": ["/path/to/code.py"],
                         "review_type": "security",
                         "focus_on": "Look for SQL injection vulnerabilities",
-                        "context": "Test code review for validation purposes",
+                        "prompt": "Test code review for validation purposes",
                     }
                 )
 
@@ -139,12 +148,14 @@ class TestPromptRegression:
         """Test review_changes tool with normal original_request."""
         tool = Precommit()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response(
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response(
                 "Changes look good, implementing feature as requested..."
             )
-            mock_create_model.return_value = mock_model
+            mock_get_provider.return_value = mock_provider
 
             # Mock git operations
             with patch("tools.precommit.find_git_repositories") as mock_find_repos:
@@ -158,7 +169,7 @@ class TestPromptRegression:
                     result = await tool.execute(
                         {
                             "path": "/path/to/repo",
-                            "original_request": "Add user authentication feature with JWT tokens",
+                            "prompt": "Add user authentication feature with JWT tokens",
                         }
                     )
 
@@ -171,16 +182,18 @@ class TestPromptRegression:
         """Test debug tool with normal error description."""
         tool = DebugIssueTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response(
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response(
                 "Root cause: The variable is undefined. Fix: Initialize it..."
             )
-            mock_create_model.return_value = mock_model
+            mock_get_provider.return_value = mock_provider
 
             result = await tool.execute(
                 {
-                    "error_description": "TypeError: Cannot read property 'name' of undefined",
+                    "prompt": "TypeError: Cannot read property 'name' of undefined",
                     "error_context": "at line 42 in user.js\n  console.log(user.name)",
                     "runtime_info": "Node.js v16.14.0",
                 }
@@ -197,12 +210,14 @@ class TestPromptRegression:
         """Test analyze tool with normal question."""
         tool = AnalyzeTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response(
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response(
                 "The code follows MVC pattern with clear separation..."
             )
-            mock_create_model.return_value = mock_model
+            mock_get_provider.return_value = mock_provider
 
             # Mock file reading
             with patch("tools.base.read_files") as mock_read_files:
@@ -211,7 +226,7 @@ class TestPromptRegression:
                 result = await tool.execute(
                     {
                         "files": ["/path/to/project"],
-                        "question": "What design patterns are used in this codebase?",
+                        "prompt": "What design patterns are used in this codebase?",
                         "analysis_type": "architecture",
                     }
                 )
@@ -226,10 +241,12 @@ class TestPromptRegression:
         """Test tools work with empty optional fields."""
         tool = ChatTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response()
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response()
+            mock_get_provider.return_value = mock_provider
 
             # Test with no files parameter
             result = await tool.execute({"prompt": "Hello"})
@@ -243,10 +260,12 @@ class TestPromptRegression:
         """Test that thinking modes are properly passed through."""
         tool = ChatTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response()
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response()
+            mock_get_provider.return_value = mock_provider
 
             result = await tool.execute({"prompt": "Test", "thinking_mode": "high", "temperature": 0.8})
 
@@ -254,21 +273,24 @@ class TestPromptRegression:
             output = json.loads(result[0].text)
             assert output["status"] == "success"
 
-            # Verify create_model was called with correct parameters
-            mock_create_model.assert_called_once()
-            call_args = mock_create_model.call_args
-            assert call_args[0][2] == "high"  # thinking_mode
-            assert call_args[0][1] == 0.8  # temperature
+            # Verify generate_content was called with correct parameters
+            mock_provider.generate_content.assert_called_once()
+            call_kwargs = mock_provider.generate_content.call_args[1]
+            assert call_kwargs.get("temperature") == 0.8
+            # thinking_mode would be passed if the provider supports it
+            # In this test, we set supports_thinking_mode to False, so it won't be passed
 
     @pytest.mark.asyncio
     async def test_special_characters_in_prompts(self, mock_model_response):
         """Test prompts with special characters work correctly."""
         tool = ChatTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response()
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response()
+            mock_get_provider.return_value = mock_provider
 
             special_prompt = 'Test with "quotes" and\nnewlines\tand tabs'
             result = await tool.execute({"prompt": special_prompt})
@@ -282,10 +304,12 @@ class TestPromptRegression:
         """Test handling of various file path formats."""
         tool = AnalyzeTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response()
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response()
+            mock_get_provider.return_value = mock_provider
 
             with patch("tools.base.read_files") as mock_read_files:
                 mock_read_files.return_value = "Content"
@@ -297,7 +321,7 @@ class TestPromptRegression:
                             "/Users/name/project/src/",
                             "/home/user/code.js",
                         ],
-                        "question": "Analyze these files",
+                        "prompt": "Analyze these files",
                     }
                 )
 
@@ -311,10 +335,12 @@ class TestPromptRegression:
         """Test handling of unicode content in prompts."""
         tool = ChatTool()
 
-        with patch.object(tool, "create_model") as mock_create_model:
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_model_response()
-            mock_create_model.return_value = mock_model
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = mock_model_response()
+            mock_get_provider.return_value = mock_provider
 
             unicode_prompt = "Explain this: 你好世界 مرحبا بالعالم"
             result = await tool.execute({"prompt": unicode_prompt})
