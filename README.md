@@ -1,9 +1,9 @@
-# Claude Code + Multi-Model AI: Your Ultimate Development Team
+# Zen MCP: One Context. Many Minds.
 
   https://github.com/user-attachments/assets/a67099df-9387-4720-9b41-c986243ac11b
 
 <div align="center">  
-  <b>🤖 Claude + Gemini / O3 / GPT-4o = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + [Gemini / O3 / Both] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -61,7 +61,7 @@ All within a single conversation thread!
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
 
 - **Advanced Topics**
-  - [Model Configuration](#model-configuration) - Pro vs Flash model selection
+  - [Model Configuration](#model-configuration) - Auto mode & multi-provider selection
   - [Thinking Modes](#thinking-modes---managing-token-costs--quality) - Control depth vs cost
   - [Working with Large Prompts](#working-with-large-prompts) - Bypass MCP's 25K token limit
   - [Web Search Integration](#web-search-integration) - Smart search recommendations
@@ -147,23 +147,15 @@ nano .env
 # The file will contain:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
-# REDIS_URL=redis://redis:6379/0  (automatically configured)
 # WORKSPACE_ROOT=/workspace  (automatically configured)
 
 # Note: At least one API key is required (Gemini or OpenAI)
 ```
 
-### 4. Configure Claude Desktop
+### 4. Configure Claude
 
-**Find your config file:**
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-- **Windows (WSL required)**: Access from WSL using `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
-
-**Or use Claude Desktop UI (macOS):**
-- Open Claude Desktop
-- Go to **Settings** → **Developer** → **Edit Config**
-
-**Or use Claude Code CLI (Recommended):**
+#### Claude Code
+Run the following commands on the terminal to add the MCP directly to Claude Code
 ```bash
 # Add the MCP server directly via Claude Code CLI
 claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.py
@@ -171,11 +163,21 @@ claude mcp add gemini -s user -- docker exec -i gemini-mcp-server python server.
 # List your MCP servers to verify
 claude mcp list
 
-# Remove if needed
+# Remove when needed
 claude mcp remove gemini
 ```
 
-#### Docker Configuration (Copy from setup script output)
+#### Claude Desktop
+
+1. **Find your config file:**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+- **Windows (WSL required)**: Access from WSL using `/mnt/c/Users/USERNAME/AppData/Roaming/Claude/claude_desktop_config.json`
+
+**Or use Claude Desktop UI (macOS):**
+- Open Claude Desktop
+- Go to **Settings** → **Developer** → **Edit Config**
+
+2. ** Update Docker Configuration (Copy from setup script output)**
 
 The setup script shows you the exact configuration. It looks like this:
 
@@ -196,18 +198,10 @@ The setup script shows you the exact configuration. It looks like this:
 }
 ```
 
-**How it works:**
-- **Docker Compose services** run continuously in the background
-- **Redis** automatically handles conversation memory between requests  
-- **AI-to-AI conversations** persist across multiple exchanges
-- **File access** through mounted workspace directory
-
-**That's it!** The Docker setup handles all dependencies, Redis configuration, and service management automatically.
-
-### 5. Restart Claude Desktop
+3. **Restart Claude Desktop**
 Completely quit and restart Claude Desktop for the changes to take effect.
 
-### 6. Start Using It!
+### 5. Start Using It!
 
 Just ask Claude naturally:
 - "Think deeper about this architecture design" → Claude picks best model + `thinkdeep`
@@ -1150,7 +1144,8 @@ MIT License - see LICENSE file for details.
 
 ## Acknowledgments
 
-Built with the power of **Claude + Gemini** collaboration 🤝
+Built with the power of **Multi-Model AI** collaboration 🤝
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
-- [Claude Code](https://claude.ai/code) - Your AI coding assistant
-- [Gemini 2.5 Pro](https://ai.google.dev/) - Extended thinking & analysis engine
+- [Claude Code](https://claude.ai/code) - Your AI coding assistant & orchestrator
+- [Gemini 2.5 Pro & 2.0 Flash](https://ai.google.dev/) - Extended thinking & fast analysis
+- [OpenAI O3 & GPT-4o](https://openai.com/) - Strong reasoning & general intelligence

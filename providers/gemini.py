@@ -5,7 +5,13 @@ from typing import Dict, Optional, List
 from google import genai
 from google.genai import types
 
-from .base import ModelProvider, ModelResponse, ModelCapabilities, ProviderType
+from .base import (
+    ModelProvider, 
+    ModelResponse, 
+    ModelCapabilities, 
+    ProviderType,
+    RangeTemperatureConstraint
+)
 
 
 class GeminiModelProvider(ModelProvider):
@@ -58,6 +64,9 @@ class GeminiModelProvider(ModelProvider):
         
         config = self.SUPPORTED_MODELS[resolved_name]
         
+        # Gemini models support 0.0-2.0 temperature range
+        temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
+        
         return ModelCapabilities(
             provider=ProviderType.GOOGLE,
             model_name=resolved_name,
@@ -67,7 +76,7 @@ class GeminiModelProvider(ModelProvider):
             supports_system_prompts=True,
             supports_streaming=True,
             supports_function_calling=True,
-            temperature_range=(0.0, 2.0),
+            temperature_constraint=temp_constraint,
         )
     
     def generate_content(

@@ -332,7 +332,7 @@ class Precommit(BaseTool):
                 context_files_content = [file_content]
                 context_files_summary.append(f"✅ Included: {len(translated_files)} context files")
             else:
-                context_files_summary.append("⚠️ No context files could be read or files too large")
+                context_files_summary.append("WARNING: No context files could be read or files too large")
 
             total_tokens += context_tokens
 
@@ -368,7 +368,7 @@ class Precommit(BaseTool):
         for idx, summary in enumerate(repo_summaries, 1):
             prompt_parts.append(f"\n### Repository {idx}: {summary['path']}")
             if "error" in summary:
-                prompt_parts.append(f"⚠️ Error: {summary['error']}")
+                prompt_parts.append(f"ERROR: {summary['error']}")
             else:
                 prompt_parts.append(f"- Branch: {summary['branch']}")
                 if summary["ahead"] or summary["behind"]:

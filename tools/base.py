@@ -258,7 +258,7 @@ class BaseTool(ABC):
             # this might indicate an issue with conversation history. Be conservative.
             if not embedded_files:
                 logger.debug(
-                    f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}"
+                    f"{self.name} tool: No files found in conversation history for thread {continuation_id}"
                 )
                 logger.debug(
                     f"[FILES] {self.name}: No embedded files found, returning all {len(requested_files)} requested files"
@@ -276,7 +276,7 @@ class BaseTool(ABC):
             if len(new_files) < len(requested_files):
                 skipped = [f for f in requested_files if f in embedded_files]
                 logger.debug(
-                    f"📁 {self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}"
+                    f"{self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}"
                 )
                 logger.debug(f"[FILES] {self.name}: Skipped (already embedded): {skipped}")
 
@@ -285,8 +285,8 @@ class BaseTool(ABC):
         except Exception as e:
             # If there's any issue with conversation history lookup, be conservative
             # and include all files rather than risk losing access to needed files
-            logger.warning(f"📁 {self.name} tool: Error checking conversation history for {continuation_id}: {e}")
-            logger.warning(f"📁 {self.name} tool: Including all requested files as fallback")
+            logger.warning(f"{self.name} tool: Error checking conversation history for {continuation_id}: {e}")
+            logger.warning(f"{self.name} tool: Including all requested files as fallback")
             logger.debug(
                 f"[FILES] {self.name}: Exception in filter_new_files, returning all {len(requested_files)} files as fallback"
             )
@@ -325,10 +325,9 @@ class BaseTool(ABC):
         if not request_files:
             return ""
             
-        # If conversation history is already embedded, skip file processing
-        if hasattr(self, '_has_embedded_history') and self._has_embedded_history:
-            logger.debug(f"[FILES] {self.name}: Skipping file processing - conversation history already embedded")
-            return ""
+        # Note: Even if conversation history is already embedded, we still need to process
+        # any NEW files that aren't in the conversation history yet. The filter_new_files
+        # method will correctly identify which files need to be embedded.
 
         # Extract remaining budget from arguments if available
         if remaining_budget is None:
@@ -395,12 +394,18 @@ class BaseTool(ABC):
 
         files_to_embed = self.filter_new_files(request_files, continuation_id)
         logger.debug(f"[FILES] {self.name}: Will embed {len(files_to_embed)} files after filtering")
+        
+        # Log the specific files for debugging/testing
+        if files_to_embed:
+            logger.info(f"[FILE_PROCESSING] {self.name} tool will embed new files: {', '.join([os.path.basename(f) for f in files_to_embed])}")
+        else:
+            logger.info(f"[FILE_PROCESSING] {self.name} tool: No new files to embed (all files already in conversation history)")
 
         content_parts = []
 
         # Read content of new files only
         if files_to_embed:
-            logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
+            logger.debug(f"{self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
             logger.debug(
                 f"[FILES] {self.name}: Starting file embedding with token budget {effective_max_tokens + reserve_tokens:,}"
             )
@@ -416,11 +421,11 @@ class BaseTool(ABC):
 
                 content_tokens = estimate_tokens(file_content)
                 logger.debug(
-                    f"📁 {self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
+                    f"{self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
                 )
                 logger.debug(f"[FILES] {self.name}: Successfully embedded files - {content_tokens:,} tokens used")
             except Exception as e:
-                logger.error(f"📁 {self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
+                logger.error(f"{self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
                 logger.debug(f"[FILES] {self.name}: File embedding failed - {type(e).__name__}: {e}")
                 raise
         else:
@@ -432,7 +437,7 @@ class BaseTool(ABC):
             skipped_files = [f for f in request_files if f in embedded_files]
             if skipped_files:
                 logger.debug(
-                    f"📁 {self.name} tool skipping {len(skipped_files)} files already in conversation history: {', '.join(skipped_files)}"
+                    f"{self.name} tool skipping {len(skipped_files)} files already in conversation history: {', '.join(skipped_files)}"
                 )
                 logger.debug(f"[FILES] {self.name}: Adding note about {len(skipped_files)} skipped files")
                 if content_parts:
@@ -744,11 +749,19 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # Get the appropriate model provider
             provider = self.get_model_provider(model_name)
             
+            # Validate and correct temperature for this model
+            temperature, temp_warnings = self._validate_and_correct_temperature(model_name, temperature)
+            
+            # Log any temperature corrections
+            for warning in temp_warnings:
+                logger.warning(warning)
+            
             # Get system prompt for this tool
             system_prompt = self.get_system_prompt()
 
             # Generate AI response using the provider
             logger.info(f"Sending request to {provider.get_provider_type().value} API for {self.name}")
+            logger.info(f"Using model: {model_name} via {provider.get_provider_type().value} provider")
             logger.debug(f"Prompt length: {len(prompt)} characters")
             
             # Generate content with provider abstraction
@@ -1243,6 +1256,42 @@ If any of these would strengthen your analysis, specify what Claude should searc
             raise ValueError(
                 f"{context_type} too large (~{estimated_tokens:,} tokens). Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
             )
+
+    def _validate_and_correct_temperature(self, model_name: str, temperature: float) -> tuple[float, list[str]]:
+        """
+        Validate and correct temperature for the specified model.
+        
+        Args:
+            model_name: Name of the model to validate temperature for
+            temperature: Temperature value to validate
+            
+        Returns:
+            Tuple of (corrected_temperature, warning_messages)
+        """
+        try:
+            provider = self.get_model_provider(model_name)
+            capabilities = provider.get_capabilities(model_name)
+            constraint = capabilities.temperature_constraint
+            
+            warnings = []
+            
+            if not constraint.validate(temperature):
+                corrected = constraint.get_corrected_value(temperature)
+                warning = (
+                    f"Temperature {temperature} invalid for {model_name}. "
+                    f"{constraint.get_description()}. Using {corrected} instead."
+                )
+                warnings.append(warning)
+                return corrected, warnings
+            
+            return temperature, warnings
+            
+        except Exception as e:
+            # If validation fails for any reason, use the original temperature
+            # and log a warning (but don't fail the request)
+            logger = logging.getLogger(f"tools.{self.name}")
+            logger.warning(f"Temperature validation failed for {model_name}: {e}")
+            return temperature, [f"Temperature validation failed: {e}"]
 
     def get_model_provider(self, model_name: str) -> ModelProvider:
         """

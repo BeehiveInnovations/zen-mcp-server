@@ -310,7 +310,7 @@ final analysis and recommendations."""
         remaining_turns = max_turns - current_turn_count - 1
         return f"""
 
-🤝 CONVERSATION THREADING: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
+CONVERSATION THREADING: You can continue this discussion with Claude! ({remaining_turns} exchanges remaining)
 
 If you'd like to ask a follow-up question, explore a specific aspect deeper, or need clarification,
 add this JSON block at the very end of your response:
@@ -323,7 +323,7 @@ add this JSON block at the very end of your response:
 }}
 ```
 
-💡 Good follow-up opportunities:
+Good follow-up opportunities:
 - "Would you like me to examine the error handling in more detail?"
 - "Should I analyze the performance implications of this approach?"
 - "Would it be helpful to review the security aspects of this implementation?"

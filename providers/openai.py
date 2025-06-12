@@ -6,7 +6,14 @@ import logging
 
 from openai import OpenAI
 
-from .base import ModelProvider, ModelResponse, ModelCapabilities, ProviderType
+from .base import (
+    ModelProvider, 
+    ModelResponse, 
+    ModelCapabilities, 
+    ProviderType,
+    FixedTemperatureConstraint,
+    RangeTemperatureConstraint
+)
 
 
 class OpenAIModelProvider(ModelProvider):
@@ -51,6 +58,14 @@ class OpenAIModelProvider(ModelProvider):
         
         config = self.SUPPORTED_MODELS[model_name]
         
+        # Define temperature constraints per model
+        if model_name in ["o3", "o3-mini"]:
+            # O3 models only support temperature=1.0
+            temp_constraint = FixedTemperatureConstraint(1.0)
+        else:
+            # Other OpenAI models support 0.0-2.0 range
+            temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
+        
         return ModelCapabilities(
             provider=ProviderType.OPENAI,
             model_name=model_name,
@@ -60,7 +75,7 @@ class OpenAIModelProvider(ModelProvider):
             supports_system_prompts=True,
             supports_streaming=True,
             supports_function_calling=True,
-            temperature_range=(0.0, 2.0),
+            temperature_constraint=temp_constraint,
         )
     
     def generate_content(

@@ -12,8 +12,11 @@ from .test_cross_tool_comprehensive import CrossToolComprehensiveTest
 from .test_cross_tool_continuation import CrossToolContinuationTest
 from .test_logs_validation import LogsValidationTest
 from .test_model_thinking_config import TestModelThinkingConfig
+from .test_o3_model_selection import O3ModelSelectionTest
 from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_redis_validation import RedisValidationTest
+from .test_token_allocation_validation import TokenAllocationValidationTest
+from .test_conversation_chain_validation import ConversationChainValidationTest
 
 # Test registry for dynamic loading
 TEST_REGISTRY = {
@@ -25,6 +28,9 @@ TEST_REGISTRY = {
     "logs_validation": LogsValidationTest,
     "redis_validation": RedisValidationTest,
     "model_thinking_config": TestModelThinkingConfig,
+    "o3_model_selection": O3ModelSelectionTest,
+    "token_allocation_validation": TokenAllocationValidationTest,
+    "conversation_chain_validation": ConversationChainValidationTest,
 }
 
 __all__ = [
@@ -37,5 +43,8 @@ __all__ = [
     "LogsValidationTest",
     "RedisValidationTest",
     "TestModelThinkingConfig",
+    "O3ModelSelectionTest",
+    "TokenAllocationValidationTest",
+    "ConversationChainValidationTest",
     "TEST_REGISTRY",
 ]

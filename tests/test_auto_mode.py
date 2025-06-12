@@ -46,7 +46,7 @@ class TestAutoMode:
         from config import MODEL_CAPABILITIES_DESC
         
         # Check all expected models are present
-        expected_models = ["flash", "pro", "o3", "o3-mini", "gpt-4o"]
+        expected_models = ["flash", "pro", "o3", "o3-mini"]
         for model in expected_models:
             assert model in MODEL_CAPABILITIES_DESC
             assert isinstance(MODEL_CAPABILITIES_DESC[model], str)

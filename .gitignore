@@ -165,3 +165,5 @@ test_simulation_files/.claude/
 
 # Temporary test directories
 test-setup/
+/test_simulation_files/config.json
+/test_simulation_files/test_module.py

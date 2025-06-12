@@ -513,7 +513,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                             total_tokens += content_tokens
                             files_included += 1
                             logger.debug(
-                                f"📄 File embedded in conversation history: {file_path} ({content_tokens:,} tokens)"
+                                f"File embedded in conversation history: {file_path} ({content_tokens:,} tokens)"
                             )
                             logger.debug(
                                 f"[FILES] Successfully embedded {file_path} - {content_tokens:,} tokens (total: {total_tokens:,})"
@@ -521,7 +521,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                         else:
                             files_truncated += 1
                             logger.debug(
-                                f"📄 File truncated due to token limit: {file_path} ({content_tokens:,} tokens, would exceed {max_file_tokens:,} limit)"
+                                f"File truncated due to token limit: {file_path} ({content_tokens:,} tokens, would exceed {max_file_tokens:,} limit)"
                             )
                             logger.debug(
                                 f"[FILES] File {file_path} would exceed token limit - skipping (would be {total_tokens + content_tokens:,} tokens)"
@@ -529,12 +529,12 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                             # Stop processing more files
                             break
                     else:
-                        logger.debug(f"📄 File skipped (empty content): {file_path}")
+                        logger.debug(f"File skipped (empty content): {file_path}")
                         logger.debug(f"[FILES] File {file_path} has empty content - skipping")
                 except Exception as e:
                     # Skip files that can't be read but log the failure
                     logger.warning(
-                        f"📄 Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
+                        f"Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
                     )
                     logger.debug(f"[FILES] Failed to read file {file_path} - {type(e).__name__}: {e}")
                     continue
@@ -547,7 +547,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                     )
                 history_parts.append(files_content)
                 logger.debug(
-                    f"📄 Conversation history file embedding complete: {files_included} files embedded, {files_truncated} truncated, {total_tokens:,} total tokens"
+                    f"Conversation history file embedding complete: {files_included} files embedded, {files_truncated} truncated, {total_tokens:,} total tokens"
                 )
                 logger.debug(
                     f"[FILES] File embedding summary - {files_included} embedded, {files_truncated} truncated, {total_tokens:,} tokens total"
@@ -555,7 +555,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
             else:
                 history_parts.append("(No accessible files found)")
                 logger.debug(
-                    f"📄 Conversation history file embedding: no accessible files found from {len(all_files)} requested"
+                    f"Conversation history file embedding: no accessible files found from {len(all_files)} requested"
                 )
                 logger.debug(f"[FILES] No accessible files found from {len(all_files)} requested files")
         else:
@@ -615,7 +615,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         # Add files context if present - but just reference which files were used
         # (the actual contents are already embedded above)
         if turn.files:
-            turn_parts.append(f"📁 Files used in this turn: {', '.join(turn.files)}")
+            turn_parts.append(f"Files used in this turn: {', '.join(turn.files)}")
             turn_parts.append("")  # Empty line for readability
 
         # Add the actual content

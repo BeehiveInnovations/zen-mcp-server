@@ -175,13 +175,14 @@ class TestOpenAIProvider:
         """Test model name validation"""
         provider = OpenAIModelProvider(api_key="test-key")
         
+        assert provider.validate_model_name("o3")
         assert provider.validate_model_name("o3-mini")
-        assert provider.validate_model_name("gpt-4o")
+        assert not provider.validate_model_name("gpt-4o")
         assert not provider.validate_model_name("invalid-model")
     
     def test_no_thinking_mode_support(self):
         """Test that no OpenAI models support thinking mode"""
         provider = OpenAIModelProvider(api_key="test-key")
         
+        assert not provider.supports_thinking_mode("o3")
         assert not provider.supports_thinking_mode("o3-mini")
-        assert not provider.supports_thinking_mode("gpt-4o")

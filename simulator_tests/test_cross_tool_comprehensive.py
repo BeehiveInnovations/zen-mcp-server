@@ -215,6 +215,7 @@ def secure_login(user, pwd):
                 "files": [auth_file, config_file_path, improved_file],
                 "prompt": "Please give me a quick one line reply. Ready to commit security improvements to authentication module",
                 "thinking_mode": "low",
+                "model": "flash",
             }
 
             response7, continuation_id7 = self.call_mcp_tool("precommit", precommit_params)
