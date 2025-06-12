@@ -13,10 +13,9 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple
 
 
-def parse_version(version_string: str) -> Tuple[int, int, int]:
+def parse_version(version_string: str) -> tuple[int, int, int]:
     """Parse semantic version string into tuple of integers."""
     match = re.match(r"^(\d+)\.(\d+)\.(\d+)", version_string)
     if not match:
@@ -24,7 +23,7 @@ def parse_version(version_string: str) -> Tuple[int, int, int]:
     return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
-def bump_version(version: Tuple[int, int, int], bump_type: str) -> Tuple[int, int, int]:
+def bump_version(version: tuple[int, int, int], bump_type: str) -> tuple[int, int, int]:
     """Apply version bump according to semantic versioning rules."""
     major, minor, patch = version
 
