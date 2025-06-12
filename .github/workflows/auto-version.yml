@@ -46,15 +46,28 @@ jobs:
           echo "bump_type=major" >> $GITHUB_OUTPUT
           echo "should_bump=true" >> $GITHUB_OUTPUT
           echo "should_build_docker=true" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
         elif [[ "$PR_TITLE_LOWER" =~ ^feat: ]]; then
           echo "Detected new feature - minor version bump"
           echo "bump_type=minor" >> $GITHUB_OUTPUT
           echo "should_bump=true" >> $GITHUB_OUTPUT
           echo "should_build_docker=true" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
         elif [[ "$PR_TITLE_LOWER" =~ ^(fix|perf|refactor): ]]; then
           echo "Detected fix/perf/refactor - patch version bump"
           echo "bump_type=patch" >> $GITHUB_OUTPUT
           echo "should_bump=true" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
+        elif [[ "$PR_TITLE_LOWER" =~ ^docker: ]]; then
+          echo "Detected docker build request - no version bump but build Docker"
+          echo "bump_type=none" >> $GITHUB_OUTPUT
+          echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
+        elif [[ "$PR_TITLE_LOWER" =~ ^(docs|chore|test|ci|style)\+docker: ]]; then
+          echo "Detected non-versioned change with Docker build request"
+          echo "bump_type=none" >> $GITHUB_OUTPUT
+          echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=true" >> $GITHUB_OUTPUT
           echo "should_build_docker=true" >> $GITHUB_OUTPUT
         elif [[ "$PR_TITLE_LOWER" =~ ^docker: ]]; then
           echo "Detected docker build request - no version bump but build Docker"
@@ -72,9 +85,12 @@ jobs:
           echo "should_bump=false" >> $GITHUB_OUTPUT
           echo "should_build_docker=false" >> $GITHUB_OUTPUT
         else
+          echo "should_build_docker=false" >> $GITHUB_OUTPUT
+        else
           echo "No recognized prefix - no version bump"
           echo "bump_type=none" >> $GITHUB_OUTPUT
           echo "should_bump=false" >> $GITHUB_OUTPUT
+          echo "should_build_docker=false" >> $GITHUB_OUTPUT
           echo "should_build_docker=false" >> $GITHUB_OUTPUT
         fi
     
@@ -181,37 +197,37 @@ jobs:
           # Add comment to PR about Docker build
           COMMENT_BODY="🐳 **Docker Image Build Triggered**
 
-This PR triggered a Docker image build because of the \`+docker\` suffix in the title.
+          This PR triggered a Docker image build because of the \`+docker\` suffix in the title.
 
-**Expected Image Tags:**
-- \`ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:pr-${{ github.event.pull_request.number }}\`
-- \`ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:main-${{ github.sha }}\`
+          **Expected Image Tags:**
+          - \`ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:pr-${{ github.event.pull_request.number }}\`
+          - \`ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:main-${{ github.sha }}\`
 
-**To test the image after build completes:**
-\`\`\`bash
-docker pull ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:pr-${{ github.event.pull_request.number }}
-\`\`\`
+          **To test the image after build completes:**
+          \`\`\`bash
+          docker pull ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:pr-${{ github.event.pull_request.number }}
+          \`\`\`
 
-**Claude Desktop config for testing:**
-\`\`\`json
-{
-  \"mcpServers\": {
-    \"gemini\": {
-      \"command\": \"docker\",
-      \"args\": [
-        \"run\", \"--rm\", \"-i\",
-        \"-e\", \"GEMINI_API_KEY\",
-        \"ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:pr-${{ github.event.pull_request.number }}\"
-      ],
-      \"env\": {
-        \"GEMINI_API_KEY\": \"your-api-key-here\"
-      }
-    }
-  }
-}
-\`\`\`
+          **Claude Desktop config for testing:**
+          \`\`\`json
+          {
+            \"mcpServers\": {
+              \"gemini\": {
+                \"command\": \"docker\",
+                \"args\": [
+                  \"run\", \"--rm\", \"-i\",
+                  \"-e\", \"GEMINI_API_KEY\",
+                  \"ghcr.io/${{ github.repository_owner }}/gemini-mcp-server:pr-${{ github.event.pull_request.number }}\"
+                ],
+                \"env\": {
+                  \"GEMINI_API_KEY\": \"your-api-key-here\"
+                }
+              }
+            }
+          }
+          \`\`\`
 
-View the build progress in the [Actions tab](https://github.com/${{ github.repository }}/actions)."
+          View the build progress in the [Actions tab](https://github.com/${{ github.repository }}/actions)."
           
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -230,6 +246,14 @@ View the build progress in the [Actions tab](https://github.com/${{ github.repos
           echo "- **Bump type**: ${{ steps.bump_type.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag**: v${{ steps.new_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker**: Will build and publish with new tag" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ steps.bump_type.outputs.should_build_docker }}" == "true" ]; then
+          echo "### 🐳 Docker Build Requested" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No version bump but Docker image will be built and published." >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Title**: ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker tag**: Based on commit SHA" >> $GITHUB_STEP_SUMMARY
           echo "- **Docker**: Will build and publish with new tag" >> $GITHUB_STEP_SUMMARY
         elif [ "${{ steps.bump_type.outputs.should_build_docker }}" == "true" ]; then
           echo "### 🐳 Docker Build Requested" >> $GITHUB_STEP_SUMMARY
