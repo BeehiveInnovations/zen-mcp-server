@@ -186,8 +186,8 @@ class TestCrossToolContinuation:
             response = await self.review_tool.execute(arguments)
             response_data = json.loads(response[0].text)
 
-            # Should successfully continue the conversation
-            assert response_data["status"] == "success"
+            # Should offer continuation since there are remaining turns available
+            assert response_data["status"] == "continuation_available"
             assert "Critical security vulnerability confirmed" in response_data["content"]
 
         # Step 4: Verify the cross-tool continuation worked
@@ -247,7 +247,7 @@ class TestCrossToolContinuation:
         # Build conversation history
         from utils.conversation_memory import build_conversation_history
 
-        history = build_conversation_history(thread_context)
+        history, tokens = build_conversation_history(thread_context)
 
         # Verify tool names are included in the history
         assert "Turn 1 (Gemini using test_analysis)" in history
@@ -307,7 +307,7 @@ class TestCrossToolContinuation:
             response = await self.review_tool.execute(arguments)
             response_data = json.loads(response[0].text)
 
-            assert response_data["status"] == "success"
+            assert response_data["status"] == "continuation_available"
 
         # Verify files from both tools are tracked in Redis calls
         setex_calls = mock_client.setex.call_args_list

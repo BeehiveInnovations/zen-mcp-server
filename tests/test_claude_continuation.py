@@ -196,8 +196,8 @@ class TestClaudeContinuationOffers:
             assert response_data.get("continuation_offer") is None
 
     @patch("utils.conversation_memory.get_redis_client")
-    async def test_threaded_conversation_no_continuation_offer(self, mock_redis):
-        """Test that threaded conversations don't get continuation offers"""
+    async def test_threaded_conversation_with_continuation_offer(self, mock_redis):
+        """Test that threaded conversations still get continuation offers when turns remain"""
         mock_client = Mock()
         mock_redis.return_value = mock_client
 
@@ -234,9 +234,10 @@ class TestClaudeContinuationOffers:
             # Parse response
             response_data = json.loads(response[0].text)
 
-            # Should be regular success, not continuation offer
-            assert response_data["status"] == "success"
-            assert response_data.get("continuation_offer") is None
+            # Should offer continuation since there are remaining turns (9 remaining: 10 max - 0 current - 1)
+            assert response_data["status"] == "continuation_available"
+            assert response_data.get("continuation_offer") is not None
+            assert response_data["continuation_offer"]["remaining_turns"] == 9
 
     def test_max_turns_reached_no_continuation_offer(self):
         """Test that no continuation is offered when max turns would be exceeded"""
@@ -404,9 +405,11 @@ class TestContinuationIntegration:
         # Step 3: Claude uses continuation_id
         request2 = ToolRequest(prompt="Now analyze the performance aspects", continuation_id=thread_id)
 
-        # This should NOT offer another continuation (already threaded)
+        # Should still offer continuation if there are remaining turns
         continuation_data2 = self.tool._check_continuation_opportunity(request2)
-        assert continuation_data2 is None
+        assert continuation_data2 is not None
+        assert continuation_data2["remaining_turns"] == 8  # MAX_CONVERSATION_TURNS(10) - current_turns(1) - 1
+        assert continuation_data2["tool_name"] == "test_continuation"
 
 
 if __name__ == "__main__":

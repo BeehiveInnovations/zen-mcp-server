@@ -17,41 +17,34 @@ if [ -f .env ]; then
     echo "⚠️  .env file already exists! Updating if needed..."
     echo ""
 else
-    # Check if GEMINI_API_KEY is already set in environment
-    if [ -n "$GEMINI_API_KEY" ]; then
-        API_KEY_VALUE="$GEMINI_API_KEY"
-        echo "✅ Found existing GEMINI_API_KEY in environment"
-    else
-        API_KEY_VALUE="your-gemini-api-key-here"
+    # Copy from .env.example and customize
+    if [ ! -f .env.example ]; then
+        echo "❌ .env.example file not found! This file should exist in the project directory."
+        exit 1
     fi
     
-    # Create the .env file
-    cat > .env << EOF
-# Gemini MCP Server Docker Environment Configuration
-# Generated on $(date)
-
-# Your Gemini API key (get one from https://makersuite.google.com/app/apikey)
-# IMPORTANT: Replace this with your actual API key
-GEMINI_API_KEY=$API_KEY_VALUE
-
-# Redis configuration (automatically set for Docker Compose)
-REDIS_URL=redis://redis:6379/0
-
-# Workspace root - host path that maps to /workspace in container
-# This should be the host directory path that contains all files Claude might reference
-# We use $HOME (not $PWD) because Claude needs access to ANY absolute file path,
-# not just files within the current project directory. Additionally, Claude Code
-# could be running from multiple locations at the same time.
-WORKSPACE_ROOT=$HOME
-
-# Logging level (DEBUG, INFO, WARNING, ERROR)
-# DEBUG: Shows detailed operational messages, conversation threading, tool execution flow
-# INFO: Shows general operational messages (default)
-# WARNING: Shows only warnings and errors
-# ERROR: Shows only errors
-# Uncomment and change to DEBUG if you need detailed troubleshooting information
-LOG_LEVEL=INFO
-EOF
+    # Copy .env.example to .env
+    cp .env.example .env
+    echo "✅ Created .env from .env.example"
+    
+    # Customize the API key if it's set in environment
+    if [ -n "$GEMINI_API_KEY" ]; then
+        # Replace the placeholder API key with the actual value
+        if command -v sed >/dev/null 2>&1; then
+            sed -i.bak "s/your_gemini_api_key_here/$GEMINI_API_KEY/" .env && rm .env.bak
+            echo "✅ Updated .env with existing GEMINI_API_KEY from environment"
+        else
+            echo "⚠️  Found GEMINI_API_KEY in environment, but sed not available. Please update .env manually."
+        fi
+    else
+        echo "⚠️  GEMINI_API_KEY not found in environment. Please edit .env and add your API key."
+    fi
+    
+    # Update WORKSPACE_ROOT to use current user's home directory
+    if command -v sed >/dev/null 2>&1; then
+        sed -i.bak "s|WORKSPACE_ROOT=/Users/your-username|WORKSPACE_ROOT=$HOME|" .env && rm .env.bak
+        echo "✅ Updated WORKSPACE_ROOT to $HOME"
+    fi
     echo "✅ Created .env file with Redis configuration"
     echo ""
 fi

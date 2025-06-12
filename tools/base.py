@@ -25,7 +25,7 @@ from google.genai import types
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
-from config import GEMINI_MODEL, MAX_CONTEXT_TOKENS, MCP_PROMPT_SIZE_LIMIT
+from config import DEFAULT_MODEL, MAX_CONTEXT_TOKENS, MCP_PROMPT_SIZE_LIMIT
 from utils import check_token_limit
 from utils.conversation_memory import (
     MAX_CONVERSATION_TURNS,
@@ -50,7 +50,10 @@ class ToolRequest(BaseModel):
     these common fields.
     """
 
-    model: Optional[str] = Field(None, description="Model to use (defaults to Gemini 2.5 Pro)")
+    model: Optional[str] = Field(
+        None,
+        description=f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
+    )
     temperature: Optional[float] = Field(None, description="Temperature for response (tool-specific defaults)")
     # Thinking mode controls how much computational budget the model uses for reasoning
     # Higher values allow for more complex reasoning but increase latency and cost
@@ -189,15 +192,18 @@ class BaseTool(ABC):
             # Thread not found, no files embedded
             return []
 
-        return get_conversation_file_list(thread_context)
+        embedded_files = get_conversation_file_list(thread_context)
+        logger.debug(f"[FILES] {self.name}: Found {len(embedded_files)} embedded files")
+        return embedded_files
 
     def filter_new_files(self, requested_files: list[str], continuation_id: Optional[str]) -> list[str]:
         """
         Filter out files that are already embedded in conversation history.
 
-        This method takes a list of requested files and removes any that have
-        already been embedded in the conversation history, preventing duplicate
-        file embeddings and optimizing token usage.
+        This method prevents duplicate file embeddings by filtering out files that have
+        already been embedded in the conversation history. This optimizes token usage
+        while ensuring tools still have logical access to all requested files through
+        conversation history references.
 
         Args:
             requested_files: List of files requested for current tool execution
@@ -206,19 +212,64 @@ class BaseTool(ABC):
         Returns:
             list[str]: List of files that need to be embedded (not already in history)
         """
+        logger.debug(f"[FILES] {self.name}: Filtering {len(requested_files)} requested files")
+
         if not continuation_id:
             # New conversation, all files are new
+            logger.debug(f"[FILES] {self.name}: New conversation, all {len(requested_files)} files are new")
             return requested_files
 
-        embedded_files = set(self.get_conversation_embedded_files(continuation_id))
+        try:
+            embedded_files = set(self.get_conversation_embedded_files(continuation_id))
+            logger.debug(f"[FILES] {self.name}: Found {len(embedded_files)} embedded files in conversation")
 
-        # Return only files that haven't been embedded yet
-        new_files = [f for f in requested_files if f not in embedded_files]
+            # Safety check: If no files are marked as embedded but we have a continuation_id,
+            # this might indicate an issue with conversation history. Be conservative.
+            if not embedded_files:
+                logger.debug(
+                    f"📁 {self.name} tool: No files found in conversation history for thread {continuation_id}"
+                )
+                logger.debug(
+                    f"[FILES] {self.name}: No embedded files found, returning all {len(requested_files)} requested files"
+                )
+                return requested_files
 
-        return new_files
+            # Return only files that haven't been embedded yet
+            new_files = [f for f in requested_files if f not in embedded_files]
+            logger.debug(
+                f"[FILES] {self.name}: After filtering: {len(new_files)} new files, {len(requested_files) - len(new_files)} already embedded"
+            )
+            logger.debug(f"[FILES] {self.name}: New files to embed: {new_files}")
+
+            # Log filtering results for debugging
+            if len(new_files) < len(requested_files):
+                skipped = [f for f in requested_files if f in embedded_files]
+                logger.debug(
+                    f"📁 {self.name} tool: Filtering {len(skipped)} files already in conversation history: {', '.join(skipped)}"
+                )
+                logger.debug(f"[FILES] {self.name}: Skipped (already embedded): {skipped}")
+
+            return new_files
+
+        except Exception as e:
+            # If there's any issue with conversation history lookup, be conservative
+            # and include all files rather than risk losing access to needed files
+            logger.warning(f"📁 {self.name} tool: Error checking conversation history for {continuation_id}: {e}")
+            logger.warning(f"📁 {self.name} tool: Including all requested files as fallback")
+            logger.debug(
+                f"[FILES] {self.name}: Exception in filter_new_files, returning all {len(requested_files)} files as fallback"
+            )
+            return requested_files
 
     def _prepare_file_content_for_prompt(
-        self, request_files: list[str], continuation_id: Optional[str], context_description: str = "New files"
+        self,
+        request_files: list[str],
+        continuation_id: Optional[str],
+        context_description: str = "New files",
+        max_tokens: Optional[int] = None,
+        reserve_tokens: int = 1_000,
+        remaining_budget: Optional[int] = None,
+        arguments: Optional[dict] = None,
     ) -> str:
         """
         Centralized file processing for tool prompts.
@@ -232,6 +283,10 @@ class BaseTool(ABC):
             request_files: List of files requested for current tool execution
             continuation_id: Thread continuation ID, or None for new conversations
             context_description: Description for token limit validation (e.g. "Code", "New files")
+            max_tokens: Maximum tokens to use (defaults to remaining budget or MAX_CONTENT_TOKENS)
+            reserve_tokens: Tokens to reserve for additional prompt content (default 1K)
+            remaining_budget: Remaining token budget after conversation history (from server.py)
+            arguments: Original tool arguments (used to extract _remaining_tokens if available)
 
         Returns:
             str: Formatted file content string ready for prompt inclusion
@@ -239,15 +294,40 @@ class BaseTool(ABC):
         if not request_files:
             return ""
 
+        # Extract remaining budget from arguments if available
+        if remaining_budget is None:
+            # Use provided arguments or fall back to stored arguments from execute()
+            args_to_use = arguments or getattr(self, "_current_arguments", {})
+            remaining_budget = args_to_use.get("_remaining_tokens")
+
+        # Use remaining budget if provided, otherwise fall back to max_tokens or default
+        if remaining_budget is not None:
+            effective_max_tokens = remaining_budget - reserve_tokens
+        elif max_tokens is not None:
+            effective_max_tokens = max_tokens - reserve_tokens
+        else:
+            from config import MAX_CONTENT_TOKENS
+
+            effective_max_tokens = MAX_CONTENT_TOKENS - reserve_tokens
+
+        # Ensure we have a reasonable minimum budget
+        effective_max_tokens = max(1000, effective_max_tokens)
+
         files_to_embed = self.filter_new_files(request_files, continuation_id)
+        logger.debug(f"[FILES] {self.name}: Will embed {len(files_to_embed)} files after filtering")
 
         content_parts = []
 
         # Read content of new files only
         if files_to_embed:
             logger.debug(f"📁 {self.name} tool embedding {len(files_to_embed)} new files: {', '.join(files_to_embed)}")
+            logger.debug(
+                f"[FILES] {self.name}: Starting file embedding with token budget {effective_max_tokens + reserve_tokens:,}"
+            )
             try:
-                file_content = read_files(files_to_embed)
+                file_content = read_files(
+                    files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens
+                )
                 self._validate_token_limit(file_content, context_description)
                 content_parts.append(file_content)
 
@@ -258,9 +338,13 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
                 )
+                logger.debug(f"[FILES] {self.name}: Successfully embedded files - {content_tokens:,} tokens used")
             except Exception as e:
                 logger.error(f"📁 {self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
+                logger.debug(f"[FILES] {self.name}: File embedding failed - {type(e).__name__}: {e}")
                 raise
+        else:
+            logger.debug(f"[FILES] {self.name}: No files to embed after filtering")
 
         # Generate note about files already in conversation history
         if continuation_id and len(files_to_embed) < len(request_files):
@@ -270,6 +354,7 @@ class BaseTool(ABC):
                 logger.debug(
                     f"📁 {self.name} tool skipping {len(skipped_files)} files already in conversation history: {', '.join(skipped_files)}"
                 )
+                logger.debug(f"[FILES] {self.name}: Adding note about {len(skipped_files)} skipped files")
                 if content_parts:
                     content_parts.append("\n\n")
                 note_lines = [
@@ -279,8 +364,12 @@ class BaseTool(ABC):
                     "--- END NOTE ---",
                 ]
                 content_parts.append("\n".join(note_lines))
+            else:
+                logger.debug(f"[FILES] {self.name}: No skipped files to note")
 
-        return "".join(content_parts) if content_parts else ""
+        result = "".join(content_parts) if content_parts else ""
+        logger.debug(f"[FILES] {self.name}: _prepare_file_content_for_prompt returning {len(result)} chars")
+        return result
 
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
         """
@@ -488,6 +577,9 @@ If any of these would strengthen your analysis, specify what Claude should searc
             List[TextContent]: Formatted response as MCP TextContent objects
         """
         try:
+            # Store arguments for access by helper methods (like _prepare_file_content_for_prompt)
+            self._current_arguments = arguments
+
             # Set up logger for this tool execution
             logger = logging.getLogger(f"tools.{self.name}")
             logger.info(f"Starting {self.name} tool execution with arguments: {list(arguments.keys())}")
@@ -536,7 +628,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
                 # No need to rebuild it here - prompt already contains conversation history
 
             # Extract model configuration from request or use defaults
-            model_name = getattr(request, "model", None) or GEMINI_MODEL
+            model_name = getattr(request, "model", None) or DEFAULT_MODEL
             temperature = getattr(request, "temperature", None)
             if temperature is None:
                 temperature = self.get_default_temperature()
@@ -580,11 +672,29 @@ If any of these would strengthen your analysis, specify what Claude should searc
             # Catch all exceptions to prevent server crashes
             # Return error information in standardized format
             logger = logging.getLogger(f"tools.{self.name}")
-            logger.error(f"Error in {self.name} tool execution: {str(e)}", exc_info=True)
+            error_msg = str(e)
+
+            # Check if this is a 500 INTERNAL error that asks for retry
+            if "500 INTERNAL" in error_msg and "Please retry" in error_msg:
+                logger.warning(f"500 INTERNAL error in {self.name} - attempting retry")
+                try:
+                    # Single retry attempt
+                    model = self._get_model_wrapper(request)
+                    raw_response = await model.generate_content(prompt)
+                    response = raw_response.text
+
+                    # If successful, process normally
+                    return [TextContent(type="text", text=self._process_response(response, request).model_dump_json())]
+
+                except Exception as retry_e:
+                    logger.error(f"Retry failed for {self.name} tool: {str(retry_e)}")
+                    error_msg = f"Tool failed after retry: {str(retry_e)}"
+
+            logger.error(f"Error in {self.name} tool execution: {error_msg}", exc_info=True)
 
             error_output = ToolOutput(
                 status="error",
-                content=f"Error in {self.name}: {str(e)}",
+                content=f"Error in {self.name}: {error_msg}",
                 content_type="text",
             )
             return [TextContent(type="text", text=error_output.model_dump_json())]
@@ -811,18 +921,24 @@ If any of these would strengthen your analysis, specify what Claude should searc
         Returns:
             Dict with continuation data if opportunity should be offered, None otherwise
         """
-        # Only offer continuation for new conversations (not already threaded)
         continuation_id = getattr(request, "continuation_id", None)
-        if continuation_id:
-            # This is already a threaded conversation, don't offer continuation
-            # (either Gemini will ask follow-up or conversation naturally ends)
-            return None
 
-        # Only offer if we haven't reached conversation limits
         try:
-            # For new conversations, we have MAX_CONVERSATION_TURNS - 1 remaining
-            # (since this response will be turn 1)
-            remaining_turns = MAX_CONVERSATION_TURNS - 1
+            if continuation_id:
+                # Check remaining turns in existing thread
+                from utils.conversation_memory import get_thread
+
+                context = get_thread(continuation_id)
+                if context:
+                    current_turns = len(context.turns)
+                    remaining_turns = MAX_CONVERSATION_TURNS - current_turns - 1  # -1 for this response
+                else:
+                    # Thread not found, don't offer continuation
+                    return None
+            else:
+                # New conversation, we have MAX_CONVERSATION_TURNS - 1 remaining
+                # (since this response will be turn 1)
+                remaining_turns = MAX_CONVERSATION_TURNS - 1
 
             if remaining_turns <= 0:
                 return None
@@ -951,13 +1067,22 @@ If any of these would strengthen your analysis, specify what Claude should searc
         temperature and thinking budget configuration for models that support it.
 
         Args:
-            model_name: Name of the Gemini model to use
+            model_name: Name of the Gemini model to use (or shorthand like 'flash', 'pro')
             temperature: Temperature setting for response generation
             thinking_mode: Thinking depth mode (affects computational budget)
 
         Returns:
             Model instance configured and ready for generation
         """
+        # Define model shorthands for user convenience
+        model_shorthands = {
+            "pro": "gemini-2.5-pro-preview-06-05",
+            "flash": "gemini-2.0-flash-exp",
+        }
+
+        # Resolve shorthand to full model name
+        resolved_model_name = model_shorthands.get(model_name.lower(), model_name)
+
         # Map thinking modes to computational budget values
         # Higher budgets allow for more complex reasoning but increase latency
         thinking_budgets = {
@@ -972,7 +1097,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
         # Gemini 2.5 models support thinking configuration for enhanced reasoning
         # Skip special handling in test environment to allow mocking
-        if "2.5" in model_name and not os.environ.get("PYTEST_CURRENT_TEST"):
+        if "2.5" in resolved_model_name and not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
                 # Retrieve API key for Gemini client creation
                 api_key = os.environ.get("GEMINI_API_KEY")
@@ -1031,7 +1156,7 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
                         return ResponseWrapper(response.text)
 
-                return ModelWrapper(client, model_name, temperature, thinking_budget)
+                return ModelWrapper(client, resolved_model_name, temperature, thinking_budget)
 
             except Exception:
                 # Fall back to regular API if thinking configuration fails
@@ -1084,4 +1209,4 @@ If any of these would strengthen your analysis, specify what Claude should searc
 
                 return ResponseWrapper(response.text)
 
-        return SimpleModelWrapper(client, model_name, temperature)
+        return SimpleModelWrapper(client, resolved_model_name, temperature)

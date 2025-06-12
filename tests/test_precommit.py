@@ -228,10 +228,8 @@ class TestPrecommitTool:
     @patch("tools.precommit.find_git_repositories")
     @patch("tools.precommit.get_git_status")
     @patch("tools.precommit.run_git_command")
-    @patch("tools.precommit.read_files")
     async def test_files_parameter_with_context(
         self,
-        mock_read_files,
         mock_run_git,
         mock_status,
         mock_find_repos,
@@ -254,14 +252,15 @@ class TestPrecommitTool:
             (True, ""),  # unstaged files list (empty)
         ]
 
-        # Mock read_files
-        mock_read_files.return_value = "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ==="
+        # Mock the centralized file preparation method
+        with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
+            mock_prepare_files.return_value = "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ==="
 
-        request = PrecommitRequest(
-            path="/absolute/repo/path",
-            files=["/absolute/repo/path/config.py"],
-        )
-        result = await tool.prepare_prompt(request)
+            request = PrecommitRequest(
+                path="/absolute/repo/path",
+                files=["/absolute/repo/path/config.py"],
+            )
+            result = await tool.prepare_prompt(request)
 
         # Verify context files are included
         assert "## Context Files Summary" in result
@@ -316,9 +315,9 @@ class TestPrecommitTool:
             (True, ""),  # unstaged files (empty)
         ]
 
-        # Mock read_files to return empty (file not found)
-        with patch("tools.precommit.read_files") as mock_read:
-            mock_read.return_value = ""
+        # Mock the centralized file preparation method to return empty (file not found)
+        with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
+            mock_prepare_files.return_value = ""
             result_with_files = await tool.prepare_prompt(request_with_files)
 
         assert "If you need additional context files" not in result_with_files

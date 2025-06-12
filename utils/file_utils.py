@@ -422,11 +422,14 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
         Tuple of (formatted_content, estimated_tokens)
         Content is wrapped with clear delimiters for AI parsing
     """
+    logger.debug(f"[FILES] read_file_content called for: {file_path}")
     try:
         # Validate path security before any file operations
         path = resolve_and_validate_path(file_path)
+        logger.debug(f"[FILES] Path validated and resolved: {path}")
     except (ValueError, PermissionError) as e:
         # Return error in a format that provides context to the AI
+        logger.debug(f"[FILES] Path validation failed for {file_path}: {type(e).__name__}: {e}")
         error_msg = str(e)
         # Add Docker-specific help if we're in Docker and path is inaccessible
         if WORKSPACE_ROOT and CONTAINER_WORKSPACE.exists():
@@ -438,37 +441,54 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
                 f"To access files in a different directory, please run Claude from that directory."
             )
         content = f"\n--- ERROR ACCESSING FILE: {file_path} ---\nError: {error_msg}\n--- END FILE ---\n"
-        return content, estimate_tokens(content)
+        tokens = estimate_tokens(content)
+        logger.debug(f"[FILES] Returning error content for {file_path}: {tokens} tokens")
+        return content, tokens
 
     try:
         # Validate file existence and type
         if not path.exists():
+            logger.debug(f"[FILES] File does not exist: {file_path}")
             content = f"\n--- FILE NOT FOUND: {file_path} ---\nError: File does not exist\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
         if not path.is_file():
+            logger.debug(f"[FILES] Path is not a file: {file_path}")
             content = f"\n--- NOT A FILE: {file_path} ---\nError: Path is not a file\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
         # Check file size to prevent memory exhaustion
         file_size = path.stat().st_size
+        logger.debug(f"[FILES] File size for {file_path}: {file_size:,} bytes")
         if file_size > max_size:
+            logger.debug(f"[FILES] File too large: {file_path} ({file_size:,} > {max_size:,} bytes)")
             content = f"\n--- FILE TOO LARGE: {file_path} ---\nFile size: {file_size:,} bytes (max: {max_size:,})\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
         # Read the file with UTF-8 encoding, replacing invalid characters
         # This ensures we can handle files with mixed encodings
+        logger.debug(f"[FILES] Reading file content for {file_path}")
         with open(path, encoding="utf-8", errors="replace") as f:
             file_content = f.read()
 
+        logger.debug(f"[FILES] Successfully read {len(file_content)} characters from {file_path}")
+
         # Format with clear delimiters that help the AI understand file boundaries
         # Using consistent markers makes it easier for the model to parse
+        # NOTE: These markers ("--- BEGIN FILE: ... ---") are distinct from git diff markers
+        # ("--- BEGIN DIFF: ... ---") to allow AI to distinguish between complete file content
+        # vs. partial diff content when files appear in both sections
         formatted = f"\n--- BEGIN FILE: {file_path} ---\n{file_content}\n--- END FILE: {file_path} ---\n"
-        return formatted, estimate_tokens(formatted)
+        tokens = estimate_tokens(formatted)
+        logger.debug(f"[FILES] Formatted content for {file_path}: {len(formatted)} chars, {tokens} tokens")
+        return formatted, tokens
 
     except Exception as e:
+        logger.debug(f"[FILES] Exception reading file {file_path}: {type(e).__name__}: {e}")
         content = f"\n--- ERROR READING FILE: {file_path} ---\nError: {str(e)}\n--- END FILE ---\n"
-        return content, estimate_tokens(content)
+        tokens = estimate_tokens(content)
+        logger.debug(f"[FILES] Returning error content for {file_path}: {tokens} tokens")
+        return content, tokens
 
 
 def read_files(
@@ -497,6 +517,11 @@ def read_files(
     if max_tokens is None:
         max_tokens = MAX_CONTEXT_TOKENS
 
+    logger.debug(f"[FILES] read_files called with {len(file_paths)} paths")
+    logger.debug(
+        f"[FILES] Token budget: max={max_tokens:,}, reserve={reserve_tokens:,}, available={max_tokens - reserve_tokens:,}"
+    )
+
     content_parts = []
     total_tokens = 0
     available_tokens = max_tokens - reserve_tokens
@@ -517,31 +542,42 @@ def read_files(
     # Priority 2: Process file paths
     if file_paths:
         # Expand directories to get all individual files
+        logger.debug(f"[FILES] Expanding {len(file_paths)} file paths")
         all_files = expand_paths(file_paths)
+        logger.debug(f"[FILES] After expansion: {len(all_files)} individual files")
 
         if not all_files and file_paths:
             # No files found but paths were provided
+            logger.debug("[FILES] No files found from provided paths")
             content_parts.append(f"\n--- NO FILES FOUND ---\nProvided paths: {', '.join(file_paths)}\n--- END ---\n")
         else:
             # Read files sequentially until token limit is reached
-            for file_path in all_files:
+            logger.debug(f"[FILES] Reading {len(all_files)} files with token budget {available_tokens:,}")
+            for i, file_path in enumerate(all_files):
                 if total_tokens >= available_tokens:
-                    files_skipped.append(file_path)
-                    continue
+                    logger.debug(f"[FILES] Token budget exhausted, skipping remaining {len(all_files) - i} files")
+                    files_skipped.extend(all_files[i:])
+                    break
 
                 file_content, file_tokens = read_file_content(file_path)
+                logger.debug(f"[FILES] File {file_path}: {file_tokens:,} tokens")
 
                 # Check if adding this file would exceed limit
                 if total_tokens + file_tokens <= available_tokens:
                     content_parts.append(file_content)
                     total_tokens += file_tokens
+                    logger.debug(f"[FILES] Added file {file_path}, total tokens: {total_tokens:,}")
                 else:
                     # File too large for remaining budget
+                    logger.debug(
+                        f"[FILES] File {file_path} too large for remaining budget ({file_tokens:,} tokens, {available_tokens - total_tokens:,} remaining)"
+                    )
                     files_skipped.append(file_path)
 
     # Add informative note about skipped files to help users understand
     # what was omitted and why
     if files_skipped:
+        logger.debug(f"[FILES] {len(files_skipped)} files skipped due to token limits")
         skip_note = "\n\n--- SKIPPED FILES (TOKEN LIMIT) ---\n"
         skip_note += f"Total skipped: {len(files_skipped)}\n"
         # Show first 10 skipped files as examples
@@ -552,4 +588,6 @@ def read_files(
         skip_note += "--- END SKIPPED FILES ---\n"
         content_parts.append(skip_note)
 
-    return "\n\n".join(content_parts) if content_parts else ""
+    result = "\n\n".join(content_parts) if content_parts else ""
+    logger.debug(f"[FILES] read_files complete: {len(result)} chars, {total_tokens:,} tokens used")
+    return result

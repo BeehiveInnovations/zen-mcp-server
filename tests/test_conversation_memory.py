@@ -166,7 +166,7 @@ class TestConversationMemory:
             initial_context={},
         )
 
-        history = build_conversation_history(context)
+        history, tokens = build_conversation_history(context)
 
         # Test basic structure
         assert "CONVERSATION HISTORY" in history
@@ -207,8 +207,9 @@ class TestConversationMemory:
             initial_context={},
         )
 
-        history = build_conversation_history(context)
+        history, tokens = build_conversation_history(context)
         assert history == ""
+        assert tokens == 0
 
 
 class TestConversationFlow:
@@ -373,7 +374,7 @@ class TestConversationFlow:
                 initial_context={},
             )
 
-            history = build_conversation_history(context)
+            history, tokens = build_conversation_history(context)
             expected_turn_text = f"Turn {test_max}/{MAX_CONVERSATION_TURNS}"
             assert expected_turn_text in history
 
@@ -595,7 +596,7 @@ class TestConversationFlow:
             initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
         )
 
-        history = build_conversation_history(final_context)
+        history, tokens = build_conversation_history(final_context)
 
         # Verify chronological order and speaker identification
         assert "--- Turn 1 (Gemini using analyze) ---" in history
@@ -670,7 +671,7 @@ class TestConversationFlow:
         mock_client.get.return_value = context_with_followup.model_dump_json()
 
         # Build history to verify follow-up is preserved
-        history = build_conversation_history(context_with_followup)
+        history, tokens = build_conversation_history(context_with_followup)
         assert "Found potential issue in authentication" in history
         assert "[Gemini's Follow-up: Should I examine the authentication middleware?]" in history
 
@@ -762,7 +763,7 @@ class TestConversationFlow:
             )
 
             # Build conversation history (should handle token limits gracefully)
-            history = build_conversation_history(context)
+            history, tokens = build_conversation_history(context)
 
             # Verify the history was built successfully
             assert "=== CONVERSATION HISTORY ===" in history

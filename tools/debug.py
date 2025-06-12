@@ -50,12 +50,18 @@ class DebugIssueTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
+        from config import DEFAULT_MODEL
+
         return {
             "type": "object",
             "properties": {
                 "error_description": {
                     "type": "string",
                     "description": "Error message, symptoms, or issue description",
+                },
+                "model": {
+                    "type": "string",
+                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
                 },
                 "error_context": {
                     "type": "string",

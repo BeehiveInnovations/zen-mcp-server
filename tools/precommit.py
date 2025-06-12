@@ -1,5 +1,11 @@
 """
 Tool for pre-commit validation of git changes across multiple repositories.
+
+Design Note - File Content in Multiple Sections:
+Files may legitimately appear in both "Git Diffs" and "Additional Context Files" sections:
+- Git Diffs: Shows changed lines + limited context (marked with "BEGIN DIFF" / "END DIFF")
+- Additional Context: Shows complete file content (marked with "BEGIN FILE" / "END FILE")
+This provides comprehensive context for AI analysis - not a duplication bug.
 """
 
 import os
@@ -10,7 +16,7 @@ from pydantic import Field
 
 from config import MAX_CONTEXT_TOKENS
 from prompts.tool_prompts import PRECOMMIT_PROMPT
-from utils.file_utils import read_files, translate_file_paths, translate_path_for_environment
+from utils.file_utils import translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
@@ -92,7 +98,15 @@ class Precommit(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
+        from config import DEFAULT_MODEL
+
         schema = self.get_request_model().model_json_schema()
+        # Ensure model parameter has enhanced description
+        if "properties" in schema and "model" in schema["properties"]:
+            schema["properties"]["model"] = {
+                "type": "string",
+                "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
+            }
         # Ensure use_websearch is in the schema with proper description
         if "properties" in schema and "use_websearch" not in schema["properties"]:
             schema["properties"]["use_websearch"] = {
@@ -239,9 +253,12 @@ class Precommit(BaseTool):
                         staged_files = [f for f in files_output.strip().split("\n") if f]
 
                         # Generate per-file diffs for staged changes
+                        # Each diff is wrapped with clear markers to distinguish from full file content
                         for file_path in staged_files:
                             success, diff = run_git_command(repo_path, ["diff", "--cached", "--", file_path])
                             if success and diff.strip():
+                                # Use "BEGIN DIFF" markers (distinct from "BEGIN FILE" markers in utils/file_utils.py)
+                                # This allows AI to distinguish between diff context vs complete file content
                                 diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (staged) ---\n"
                                 diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
                                 formatted_diff = diff_header + diff + diff_footer
@@ -258,6 +275,7 @@ class Precommit(BaseTool):
                         unstaged_files = [f for f in files_output.strip().split("\n") if f]
 
                         # Generate per-file diffs for unstaged changes
+                        # Same clear marker pattern as staged changes above
                         for file_path in unstaged_files:
                             success, diff = run_git_command(repo_path, ["diff", "--", file_path])
                             if success and diff.strip():
@@ -298,10 +316,12 @@ class Precommit(BaseTool):
         if translated_files:
             remaining_tokens = max_tokens - total_tokens
 
-            # Use standardized file reading with token budget
-            file_content = read_files(
+            # Use centralized file handling with filtering for duplicate prevention
+            file_content = self._prepare_file_content_for_prompt(
                 translated_files,
-                max_tokens=remaining_tokens,
+                request.continuation_id,
+                "Context files",
+                max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
                 reserve_tokens=1000,  # Small reserve for formatting
             )
 
@@ -370,7 +390,8 @@ class Precommit(BaseTool):
         if total_tokens > 0:
             prompt_parts.append(f"\nTotal context tokens used: ~{total_tokens:,}")
 
-        # Add the diff contents
+        # Add the diff contents with clear section markers
+        # Each diff is wrapped with "--- BEGIN DIFF: ... ---" and "--- END DIFF: ... ---"
         prompt_parts.append("\n## Git Diffs\n")
         if all_diffs:
             prompt_parts.extend(all_diffs)
@@ -378,6 +399,11 @@ class Precommit(BaseTool):
             prompt_parts.append("--- NO DIFFS FOUND ---")
 
         # Add context files content if provided
+        # IMPORTANT: Files may legitimately appear in BOTH sections:
+        # - Git Diffs: Show only changed lines + limited context (what changed)
+        # - Additional Context: Show complete file content (full understanding)
+        # This is intentional design for comprehensive AI analysis, not duplication bug.
+        # Each file in this section is wrapped with "--- BEGIN FILE: ... ---" and "--- END FILE: ... ---"
         if context_files_content:
             prompt_parts.append("\n## Additional Context Files")
             prompt_parts.append(

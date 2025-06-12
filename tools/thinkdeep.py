@@ -48,12 +48,18 @@ class ThinkDeepTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
+        from config import DEFAULT_MODEL
+
         return {
             "type": "object",
             "properties": {
                 "current_analysis": {
                     "type": "string",
                     "description": "Your current thinking/analysis to extend and validate",
+                },
+                "model": {
+                    "type": "string",
+                    "description": f"Model to use: 'pro' (Gemini 2.5 Pro with extended thinking) or 'flash' (Gemini 2.0 Flash - faster). Defaults to '{DEFAULT_MODEL}' if not specified.",
                 },
                 "problem_context": {
                     "type": "string",
@@ -78,8 +84,7 @@ class ThinkDeepTool(BaseTool):
                 "thinking_mode": {
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768)",
-                    "default": "high",
+                    "description": f"Thinking depth: minimal (128), low (2048), medium (8192), high (16384), max (32768). Defaults to '{self.get_default_thinking_mode()}' if not specified.",
                 },
                 "use_websearch": {
                     "type": "boolean",
@@ -101,8 +106,10 @@ class ThinkDeepTool(BaseTool):
         return TEMPERATURE_CREATIVE
 
     def get_default_thinking_mode(self) -> str:
-        """ThinkDeep uses high thinking by default"""
-        return "high"
+        """ThinkDeep uses configurable thinking mode, defaults to high"""
+        from config import DEFAULT_THINKING_MODE_THINKDEEP
+
+        return DEFAULT_THINKING_MODE_THINKDEEP
 
     def get_request_model(self):
         return ThinkDeepRequest

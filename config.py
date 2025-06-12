@@ -13,21 +13,23 @@ import os
 # Version and metadata
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
-# setup.py imports these values to avoid duplication
-__version__ = "3.2.0"  # Semantic versioning: MAJOR.MINOR.PATCH
-__updated__ = "2025-06-10"  # Last update date in ISO format
+__version__ = "3.3.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+__updated__ = "2025-06-11"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
 # Model configuration
-# GEMINI_MODEL: The Gemini model used for all AI operations
+# DEFAULT_MODEL: The default model used for all AI operations
 # This should be a stable, high-performance model suitable for code analysis
-GEMINI_MODEL = "gemini-2.5-pro-preview-06-05"
+# Can be overridden by setting DEFAULT_MODEL environment variable
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-2.5-pro-preview-06-05")
 
-# MAX_CONTEXT_TOKENS: Maximum number of tokens that can be included in a single request
-# This limit includes both the prompt and expected response
-# Gemini Pro models support up to 1M tokens, but practical usage should reserve
-# space for the model's response (typically 50K-100K tokens reserved)
-MAX_CONTEXT_TOKENS = 1_000_000  # 1M tokens for Gemini Pro
+# Token allocation for Gemini Pro (1M total capacity)
+# MAX_CONTEXT_TOKENS: Total model capacity
+# MAX_CONTENT_TOKENS: Available for prompts, conversation history, and files
+# RESPONSE_RESERVE_TOKENS: Reserved for model response generation
+MAX_CONTEXT_TOKENS = 1_000_000  # 1M tokens total capacity for Gemini Pro
+MAX_CONTENT_TOKENS = 800_000  # 800K tokens for content (prompts + files + history)
+RESPONSE_RESERVE_TOKENS = 200_000  # 200K tokens reserved for response generation
 
 # Temperature defaults for different tool types
 # Temperature controls the randomness/creativity of model responses
@@ -45,6 +47,11 @@ TEMPERATURE_BALANCED = 0.5  # For general chat
 # TEMPERATURE_CREATIVE: Higher temperature for exploratory tasks
 # Used when brainstorming, exploring alternatives, or architectural discussions
 TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
+
+# Thinking Mode Defaults
+# DEFAULT_THINKING_MODE_THINKDEEP: Default thinking depth for extended reasoning tool
+# Higher modes use more computational budget but provide deeper analysis
+DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "high")
 
 # MCP Protocol Limits
 # MCP_PROMPT_SIZE_LIMIT: Maximum character size for prompts sent directly through MCP

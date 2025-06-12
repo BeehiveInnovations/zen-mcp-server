@@ -67,16 +67,16 @@ class TestPromptRegression:
             mock_model.generate_content.return_value = mock_model_response()
             mock_create_model.return_value = mock_model
 
-            # Mock file reading
-            with patch("tools.chat.read_files") as mock_read_files:
-                mock_read_files.return_value = "File content here"
+            # Mock file reading through the centralized method
+            with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
+                mock_prepare_files.return_value = "File content here"
 
                 result = await tool.execute({"prompt": "Analyze this code", "files": ["/path/to/file.py"]})
 
                 assert len(result) == 1
                 output = json.loads(result[0].text)
                 assert output["status"] == "success"
-                mock_read_files.assert_called_once_with(["/path/to/file.py"])
+                mock_prepare_files.assert_called_once_with(["/path/to/file.py"], None, "Context files")
 
     @pytest.mark.asyncio
     async def test_thinkdeep_normal_analysis(self, mock_model_response):
