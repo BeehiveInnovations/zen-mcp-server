@@ -393,7 +393,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - **Web search capability**: When enabled with `use_websearch`, can look up framework documentation, design patterns, and best practices relevant to the code being analyzed
 ### 7. `get_version` - Server Information
 ```
-"Get zen to show server configuration"
+"Get zen to show its version"
 ```
 
 ## Tool Parameters
