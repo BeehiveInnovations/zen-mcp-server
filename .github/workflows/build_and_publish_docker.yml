@@ -42,7 +42,7 @@ jobs:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=tag
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
           type=sha,prefix=main-,enable=${{ github.event_name == 'repository_dispatch' }}
           type=raw,value=pr-${{ github.event.client_payload.pr_number }},enable=${{ github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '' }}
 
