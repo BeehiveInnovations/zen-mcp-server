@@ -117,17 +117,21 @@ jobs:
         echo "[View all versions and tags →](https://github.com/${{ github.repository }}/pkgs/container/gemini-mcp-server)" >> $GITHUB_STEP_SUMMARY
 
     - name: Update README with latest image info
-      if: github.ref_type == 'tag' || github.event_name == 'repository_dispatch'
+      if: github.ref_type == 'tag' || (github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '')
       run: |
         # Extract the primary image tag for updating README
         if [[ "${{ github.ref_type }}" == "tag" ]]; then
           # For tag releases, use the version tag
           LATEST_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
           UPDATE_TYPE="release"
-        else
+        elif [[ "${{ github.event_name }}" == "repository_dispatch" && "${{ github.event.client_payload.pr_number }}" != "" ]]; then
           # For repository_dispatch (PR builds), use the PR tag
           LATEST_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.client_payload.pr_number }}"
           UPDATE_TYPE="development"
+        else
+          # For manual repository_dispatch without PR number, use latest tag
+          LATEST_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          UPDATE_TYPE="manual"
         fi
         
         echo "Updating README.md with latest Docker image: $LATEST_TAG"
@@ -161,11 +165,18 @@ jobs:
           All documentation now references the latest stable image.
 
           🤖 Automated by GitHub Actions"
-          else
+          elif [[ "$UPDATE_TYPE" == "development" ]]; then
             git commit -m "docs: Update Docker image references for PR #${{ github.event.client_payload.pr_number }}
 
           Automated update after Docker image publish for development build.
           Documentation updated to reference the latest development image.
+
+          🤖 Automated by GitHub Actions"
+          else
+            git commit -m "docs: Update Docker image references to latest
+
+          Automated update after manual Docker image build.
+          Documentation updated to reference the latest image.
 
           🤖 Automated by GitHub Actions"
           fi
