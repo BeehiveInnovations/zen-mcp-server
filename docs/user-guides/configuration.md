@@ -139,7 +139,7 @@ Create `docker-compose.override.yml` for custom settings:
 
 ```yaml
 services:
-  gemini-mcp:
+  zen-mcp:
     environment:
       - LOG_LEVEL=DEBUG
     volumes:
@@ -182,7 +182,7 @@ The container mounts your home directory as read-only. To restrict access:
 ```yaml
 # In docker-compose.override.yml
 services:
-  gemini-mcp:
+  zen-mcp:
     environment:
       - WORKSPACE_ROOT=/path/to/specific/project
     volumes:
@@ -196,7 +196,7 @@ services:
 ```yaml
 # In docker-compose.override.yml
 services:
-  gemini-mcp:
+  zen-mcp:
     deploy:
       resources:
         limits:
@@ -240,7 +240,7 @@ services:
 3. **Redis Connection Issues**
    ```bash
    # Test Redis connectivity
-   docker exec -it gemini-mcp-redis redis-cli ping
+   docker exec -it zen-mcp-redis redis-cli ping
    ```
 
 ### Debug Mode
@@ -276,7 +276,7 @@ networks:
     driver: bridge
 
 services:
-  gemini-mcp:
+  zen-mcp:
     networks:
       - custom_network
   redis:

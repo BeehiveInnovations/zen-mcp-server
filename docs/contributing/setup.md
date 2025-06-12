@@ -177,7 +177,7 @@ Create `docker-compose.dev.yml`:
 
 ```yaml
 services:
-  gemini-mcp:
+  zen-mcp:
     build:
       context: .
       dockerfile: Dockerfile.dev  # If you have a dev Dockerfile

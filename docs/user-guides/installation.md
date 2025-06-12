@@ -190,14 +190,14 @@ cat > docker-compose.yml << 'EOF'
 services:
   redis:
     image: redis:7-alpine
-    container_name: gemini-mcp-redis
+    container_name: zen-mcp-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
 
-  gemini-mcp:
+  zen-mcp:
     image: ghcr.io/beehiveinnovations/zen-mcp-server:latest
     container_name: zen-mcp-server
     restart: unless-stopped
@@ -251,13 +251,13 @@ The Docker setup automatically mounts your home directory as `/workspace`. This 
 # See if containers are running
 docker compose ps
 
-# Should show both 'gemini-mcp-redis' and 'zen-mcp-server' as 'Up'
+# Should show both 'zen-mcp-redis' and 'zen-mcp-server' as 'Up'
 ```
 
 ### View Logs
 ```bash
 # Check MCP server logs
-docker compose logs gemini-mcp -f
+docker compose logs zen-mcp -f
 
 # Check Redis logs
 docker compose logs redis -f
@@ -312,7 +312,7 @@ docker compose ps
 
 # Should show both containers as 'Up'
 # If not, check logs:
-docker compose logs gemini-mcp
+docker compose logs zen-mcp
 ```
 
 ### "GEMINI_API_KEY environment variable is required"
@@ -359,7 +359,7 @@ chmod +x setup-docker.sh
 
 The setup uses Docker Compose to orchestrate two services:
 
-1. **Redis Container** (`gemini-mcp-redis`)
+1. **Redis Container** (`zen-mcp-redis`)
    - Official Redis 7 Alpine image
    - Automatic data persistence with Docker volume
    - Available at `redis:6379` within Docker network

@@ -90,7 +90,7 @@ docker compose ps
 docker compose ps redis
 
 # Test Redis connectivity
-docker exec -it gemini-mcp-redis redis-cli ping
+docker exec -it zen-mcp-redis redis-cli ping
 # Should return: PONG
 ```
 
@@ -139,7 +139,7 @@ docker stats
    ```yaml
    # In docker-compose.override.yml
    services:
-     gemini-mcp:
+     zen-mcp:
        deploy:
          resources:
            limits:
