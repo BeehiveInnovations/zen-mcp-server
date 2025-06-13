@@ -21,29 +21,7 @@ body:
     attributes:
       label: Bug Description
       description: A clear and concise description of what the bug is.
-      placeholder: "When I run the `codereview` tool on a Python file with syntax errors, it hangs instead of reporting an error."
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction-steps
-    attributes:
-      label: Steps to Reproduce
-      description: "Provide the exact steps to reproduce the behavior. Include the full command you ran."
-      placeholder: |
-        1. Create a file `test.py` with the content `def my_func(a,b)`
-        2. Run the command: `docker exec -i zen-mcp-server python server.py`
-        3. Use Claude Desktop with gemini codereview tool on test.py
-        4. Observe the behavior...
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected-behavior
-    attributes:
-      label: Expected Behavior
-      description: A clear and concise description of what you expected to happen.
-      placeholder: "I expected the tool to exit with an error message about the invalid Python syntax."
+      placeholder: "When I run the `codereview` nothing happens"
     validations:
       required: true
 
@@ -51,7 +29,7 @@ body:
     id: logs
     attributes:
       label: Relevant Log Output
-      description: "Please copy and paste any relevant log output. This will be automatically formatted into a code block."
+      description: "Please copy and paste any relevant log output. You can obtain these from the MCP folder by running `docker compose logs`."
       render: shell
 
   - type: dropdown
@@ -60,10 +38,8 @@ body:
       label: Operating System
       description: What operating system are you running the Docker client on?
       options:
-        - Windows (via WSL2)
-        - Windows (via Docker Desktop)
-        - macOS (Intel)
-        - macOS (Apple Silicon)
+        - macOS
+        - Windows
         - Linux
     validations:
       required: true
@@ -76,6 +52,11 @@ body:
       options:
         - label: I have searched the existing issues and this is not a duplicate.
           required: true
-        - label: I have confirmed that my `GEMINI_API_KEY` is set correctly.
+        - label: I am using `GEMINI_API_KEY`
           required: true
-
+        - label: I am using `OPENAI_API_KEY`
+          required: true
+        - label: I am using `OPENROUTER_API_KEY`
+          required: true
+        - label: I am using `CUSTOM_API_URL`
+          required: true
