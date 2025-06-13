@@ -33,7 +33,6 @@ from mcp.types import ServerCapabilities, TextContent, Tool, ToolsCapability
 
 from config import (
     DEFAULT_MODEL,
-    MAX_CONTEXT_TOKENS,
     __author__,
     __updated__,
     __version__,
@@ -157,24 +156,6 @@ def configure_providers():
         valid_providers.append("OpenRouter")
         has_openrouter = True
         logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
-
-    # Check for conflicting configuration
-    if has_native_apis and has_openrouter:
-        logger.warning(
-            "\n" + "=" * 70 + "\n"
-            "WARNING: Both OpenRouter and native API keys detected!\n"
-            "\n"
-            "This creates ambiguity about which provider will be used for models\n"
-            "available through both APIs (e.g., 'o3' could come from OpenAI or OpenRouter).\n"
-            "\n"
-            "RECOMMENDATION: Use EITHER OpenRouter OR native APIs, not both.\n"
-            "\n"
-            "To fix this:\n"
-            "1. Use only OpenRouter: unset GEMINI_API_KEY and OPENAI_API_KEY\n"
-            "2. Use only native APIs: unset OPENROUTER_API_KEY\n"
-            "\n"
-            "Current configuration will prioritize native APIs over OpenRouter.\n" + "=" * 70 + "\n"
-        )
 
     # Register providers - native APIs first to ensure they take priority
     if has_native_apis:
@@ -539,7 +520,7 @@ async def handle_get_version() -> list[TextContent]:
         "author": __author__,
         "default_model": DEFAULT_MODEL,
         "default_thinking_mode_thinkdeep": DEFAULT_THINKING_MODE_THINKDEEP,
-        "max_context_tokens": f"{MAX_CONTEXT_TOKENS:,}",
+        "max_context_tokens": "Dynamic (model-specific)",
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "server_started": datetime.now().isoformat(),
         "available_tools": list(TOOLS.keys()) + ["get_version"],
@@ -565,7 +546,7 @@ Author: {__author__}
 Configuration:
 - Default Model: {DEFAULT_MODEL}
 - Default Thinking Mode (ThinkDeep): {DEFAULT_THINKING_MODE_THINKDEEP}
-- Max Context: {MAX_CONTEXT_TOKENS:,} tokens
+- Max Context: Dynamic (model-specific)
 - Python: {version_info["python_version"]}
 - Started: {version_info["server_started"]}
 

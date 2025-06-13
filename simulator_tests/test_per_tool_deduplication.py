@@ -11,6 +11,7 @@ Validates that:
 4. Docker logs show deduplication behavior
 """
 
+import os
 import subprocess
 
 from .base_test import BaseSimulatorTest
@@ -98,14 +99,17 @@ class PerToolDeduplicationTest(BaseSimulatorTest):
             # Setup test files
             self.setup_test_files()
 
-            # Create a short dummy file for quick testing
+            # Create a short dummy file for quick testing in the current repo
             dummy_content = """def add(a, b):
     return a + b  # Missing type hints
 
 def divide(x, y):
     return x / y  # No zero check
 """
-            dummy_file_path = self.create_additional_test_file("dummy_code.py", dummy_content)
+            # Create the file in the current git repo directory to make it show up in git status
+            dummy_file_path = os.path.join(os.getcwd(), "dummy_code.py")
+            with open(dummy_file_path, "w") as f:
+                f.write(dummy_content)
 
             # Get timestamp for log filtering
             import datetime
@@ -162,7 +166,10 @@ def divide(x, y):
 def subtract(a, b):
     return a - b
 """
-            new_file_path = self.create_additional_test_file("new_feature.py", new_file_content)
+            # Create another temp file in the current repo for git changes
+            new_file_path = os.path.join(os.getcwd(), "new_feature.py")
+            with open(new_file_path, "w") as f:
+                f.write(new_file_content)
 
             # Continue precommit with both files
             continue_params = {
@@ -249,4 +256,11 @@ def subtract(a, b):
             self.logger.error(f"File deduplication workflow test failed: {e}")
             return False
         finally:
+            # Clean up temp files created in current repo
+            temp_files = ["dummy_code.py", "new_feature.py"]
+            for temp_file in temp_files:
+                temp_path = os.path.join(os.getcwd(), temp_file)
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    self.logger.debug(f"Removed temp file: {temp_path}")
             self.cleanup_test_files()

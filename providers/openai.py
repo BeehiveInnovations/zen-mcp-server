@@ -15,11 +15,11 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
     # Model configurations
     SUPPORTED_MODELS = {
         "o3": {
-            "max_tokens": 200_000,  # 200K tokens
+            "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
         },
         "o3-mini": {
-            "max_tokens": 200_000,  # 200K tokens
+            "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
         },
     }
@@ -49,7 +49,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             provider=ProviderType.OPENAI,
             model_name=model_name,
             friendly_name="OpenAI",
-            max_tokens=config["max_tokens"],
+            context_window=config["context_window"],
             supports_extended_thinking=config["supports_extended_thinking"],
             supports_system_prompts=True,
             supports_streaming=True,

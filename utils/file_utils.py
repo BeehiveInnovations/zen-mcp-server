@@ -23,7 +23,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .token_utils import MAX_CONTEXT_TOKENS, estimate_tokens
+from .token_utils import DEFAULT_CONTEXT_WINDOW, estimate_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -508,14 +508,14 @@ def read_files(
     Args:
         file_paths: List of file or directory paths (absolute paths required)
         code: Optional direct code to include (prioritized over files)
-        max_tokens: Maximum tokens to use (defaults to MAX_CONTEXT_TOKENS)
+        max_tokens: Maximum tokens to use (defaults to DEFAULT_CONTEXT_WINDOW)
         reserve_tokens: Tokens to reserve for prompt and response (default 50K)
 
     Returns:
         str: All file contents formatted for AI consumption
     """
     if max_tokens is None:
-        max_tokens = MAX_CONTEXT_TOKENS
+        max_tokens = DEFAULT_CONTEXT_WINDOW
 
     logger.debug(f"[FILES] read_files called with {len(file_paths)} paths")
     logger.debug(

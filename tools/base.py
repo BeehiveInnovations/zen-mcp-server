@@ -22,7 +22,7 @@ from typing import Any, Literal, Optional
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
 
-from config import MAX_CONTEXT_TOKENS, MCP_PROMPT_SIZE_LIMIT
+from config import MCP_PROMPT_SIZE_LIMIT
 from providers import ModelProvider, ModelProviderRegistry
 from utils import check_token_limit
 from utils.conversation_memory import (
@@ -414,7 +414,7 @@ class BaseTool(ABC):
             request_files: List of files requested for current tool execution
             continuation_id: Thread continuation ID, or None for new conversations
             context_description: Description for token limit validation (e.g. "Code", "New files")
-            max_tokens: Maximum tokens to use (defaults to remaining budget or MAX_CONTENT_TOKENS)
+            max_tokens: Maximum tokens to use (defaults to remaining budget or model-specific content allocation)
             reserve_tokens: Tokens to reserve for additional prompt content (default 1K)
             remaining_budget: Remaining token budget after conversation history (from server.py)
             arguments: Original tool arguments (used to extract _remaining_tokens if available)
@@ -473,17 +473,17 @@ class BaseTool(ABC):
                     capabilities = provider.get_capabilities(model_name)
 
                     # Calculate content allocation based on model capacity
-                    if capabilities.max_tokens < 300_000:
+                    if capabilities.context_window < 300_000:
                         # Smaller context models: 60% content, 40% response
-                        model_content_tokens = int(capabilities.max_tokens * 0.6)
+                        model_content_tokens = int(capabilities.context_window * 0.6)
                     else:
                         # Larger context models: 80% content, 20% response
-                        model_content_tokens = int(capabilities.max_tokens * 0.8)
+                        model_content_tokens = int(capabilities.context_window * 0.8)
 
                     effective_max_tokens = model_content_tokens - reserve_tokens
                     logger.debug(
                         f"[FILES] {self.name}: Using model-specific limit for {model_name}: "
-                        f"{model_content_tokens:,} content tokens from {capabilities.max_tokens:,} total"
+                        f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
                     )
                 except (ValueError, AttributeError) as e:
                     # Handle specific errors: provider not found, model not supported, missing attributes
@@ -491,17 +491,13 @@ class BaseTool(ABC):
                         f"[FILES] {self.name}: Could not get model capabilities for {model_name}: {type(e).__name__}: {e}"
                     )
                     # Fall back to conservative default for safety
-                    from config import MAX_CONTENT_TOKENS
-
-                    effective_max_tokens = min(MAX_CONTENT_TOKENS, 100_000) - reserve_tokens
+                    effective_max_tokens = 100_000 - reserve_tokens
                 except Exception as e:
                     # Catch any other unexpected errors
                     logger.error(
                         f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
                     )
-                    from config import MAX_CONTENT_TOKENS
-
-                    effective_max_tokens = min(MAX_CONTENT_TOKENS, 100_000) - reserve_tokens
+                    effective_max_tokens = 100_000 - reserve_tokens
 
         # Ensure we have a reasonable minimum budget
         effective_max_tokens = max(1000, effective_max_tokens)
@@ -1233,7 +1229,7 @@ When recommending searches, be specific about what information you need and why 
         """
         return response
 
-    def _validate_token_limit(self, text: str, context_type: str = "Context") -> None:
+    def _validate_token_limit(self, text: str, context_type: str = "Context", context_window: int = 200_000) -> None:
         """
         Validate token limit and raise ValueError if exceeded.
 
@@ -1243,14 +1239,15 @@ When recommending searches, be specific about what information you need and why 
         Args:
             text: The text to check
             context_type: Description of what's being checked (for error message)
+            context_window: The model's context window size
 
         Raises:
-            ValueError: If text exceeds MAX_CONTEXT_TOKENS
+            ValueError: If text exceeds context_window
         """
-        within_limit, estimated_tokens = check_token_limit(text)
+        within_limit, estimated_tokens = check_token_limit(text, context_window)
         if not within_limit:
             raise ValueError(
-                f"{context_type} too large (~{estimated_tokens:,} tokens). Maximum is {MAX_CONTEXT_TOKENS:,} tokens."
+                f"{context_type} too large (~{estimated_tokens:,} tokens). Maximum is {context_window:,} tokens."
             )
 
     def _validate_and_correct_temperature(self, model_name: str, temperature: float) -> tuple[float, list[str]]:

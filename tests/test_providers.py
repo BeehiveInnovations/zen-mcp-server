@@ -84,7 +84,7 @@ class TestGeminiProvider:
 
         assert capabilities.provider == ProviderType.GOOGLE
         assert capabilities.model_name == "gemini-2.5-flash-preview-05-20"
-        assert capabilities.max_tokens == 1_048_576
+        assert capabilities.context_window == 1_048_576
         assert capabilities.supports_extended_thinking
 
     def test_get_capabilities_pro_model(self):
@@ -165,7 +165,7 @@ class TestOpenAIProvider:
 
         assert capabilities.provider == ProviderType.OPENAI
         assert capabilities.model_name == "o3-mini"
-        assert capabilities.max_tokens == 200_000
+        assert capabilities.context_window == 200_000
         assert not capabilities.supports_extended_thinking
 
     def test_validate_model_names(self):

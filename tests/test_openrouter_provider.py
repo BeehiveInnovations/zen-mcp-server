@@ -61,7 +61,7 @@ class TestOpenRouterProvider:
         caps = provider.get_capabilities("unknown-model")
         assert caps.provider == ProviderType.OPENROUTER
         assert caps.model_name == "unknown-model"
-        assert caps.max_tokens == 32_768  # Safe default
+        assert caps.context_window == 32_768  # Safe default
         assert hasattr(caps, "_is_generic") and caps._is_generic is True
 
     def test_model_alias_resolution(self):
@@ -139,7 +139,7 @@ class TestOpenRouterRegistry:
         caps = registry.get_capabilities("opus")
         assert caps is not None
         assert caps.model_name == "anthropic/claude-3-opus"
-        assert caps.max_tokens == 200000  # Claude's context window
+        assert caps.context_window == 200000  # Claude's context window
 
         # Test using full model name
         caps = registry.get_capabilities("anthropic/claude-3-opus")

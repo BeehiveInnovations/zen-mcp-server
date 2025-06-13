@@ -165,9 +165,3 @@ test_simulation_files/.claude/
 
 # Temporary test directories
 test-setup/
-/test_simulation_files/**
-
-# Remove Claude configuration
-.mcp.json
-Claude.md
-memory-bank
