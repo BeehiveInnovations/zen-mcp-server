@@ -667,6 +667,11 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
             "",
             "IMPORTANT: You are continuing an existing conversation thread. Build upon the previous exchanges shown above,",
             "reference earlier points, and maintain consistency with what has been discussed.",
+            "",
+            "DO NOT repeat or summarize previous analysis, findings, or instructions that are already covered in the",
+            "conversation history. Instead, provide only new insights, additional analysis, or direct answers to",
+            "the follow-up question / concerns / insights. Assume the user has read the prior conversation.",
+            "",
             f"This is turn {len(all_turns) + 1} of the conversation - use the conversation history above to provide a coherent continuation.",
         ]
     )
