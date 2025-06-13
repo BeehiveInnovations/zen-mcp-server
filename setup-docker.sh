@@ -6,7 +6,56 @@ set -euo pipefail
 # Modern Docker setup script for Zen MCP Server with Redis
 # This script sets up the complete Docker environment including Redis for conversation threading
 
-echo "🚀 Setting up Zen MCP Server with Docker Compose..."
+# Spinner function for long-running operations
+show_spinner() {
+    local pid=$1
+    local message=$2
+    local spinner_chars="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    local delay=0.1
+    
+    # Hide cursor
+    tput civis 2>/dev/null || true
+    
+    while kill -0 $pid 2>/dev/null; do
+        for (( i=0; i<${#spinner_chars}; i++ )); do
+            printf "\r%s %s" "${spinner_chars:$i:1}" "$message"
+            sleep $delay
+            if ! kill -0 $pid 2>/dev/null; then
+                break 2
+            fi
+        done
+    done
+    
+    # Show cursor and clear line
+    tput cnorm 2>/dev/null || true
+    printf "\r"
+}
+
+# Function to run command with spinner
+run_with_spinner() {
+    local message=$1
+    local command=$2
+    
+    printf "%s" "$message"
+    eval "$command" >/dev/null 2>&1 &
+    local pid=$!
+    
+    show_spinner $pid "$message"
+    wait $pid
+    local result=$?
+    
+    if [ $result -eq 0 ]; then
+        printf "\r✅ %s\n" "${message#* }"
+    else
+        printf "\r❌ %s failed\n" "${message#* }"
+        return $result
+    fi
+}
+
+# Extract version from config.py
+VERSION=$(grep -E '^__version__ = ' config.py 2>/dev/null | sed 's/__version__ = "\(.*\)"/\1/' || echo "unknown")
+
+echo "Setting up Zen MCP Server v$VERSION..."
 echo ""
 
 # Get the current working directory (absolute path)
@@ -14,7 +63,7 @@ CURRENT_DIR=$(pwd)
 
 # Check if .env already exists
 if [ -f .env ]; then
-    echo "⚠️  .env file already exists! Updating if needed..."
+    echo "✅ .env file already exists!"
     echo ""
 else
     # Copy from .env.example and customize
@@ -92,85 +141,62 @@ if ! docker compose version &> /dev/null; then
     COMPOSE_CMD="docker-compose"
 fi
 
-# Check if at least one API key is properly configured
-echo "🔑 Checking API key configuration..."
+# Check if at least one API key or custom URL is properly configured
 source .env 2>/dev/null || true
 
 VALID_GEMINI_KEY=false
 VALID_OPENAI_KEY=false
 VALID_OPENROUTER_KEY=false
+VALID_CUSTOM_URL=false
 
 # Check if GEMINI_API_KEY is set and not the placeholder
 if [ -n "${GEMINI_API_KEY:-}" ] && [ "$GEMINI_API_KEY" != "your_gemini_api_key_here" ]; then
     VALID_GEMINI_KEY=true
-    echo "✅ Valid GEMINI_API_KEY found"
+    echo "✅ GEMINI_API_KEY found"
 fi
 
 # Check if OPENAI_API_KEY is set and not the placeholder
 if [ -n "${OPENAI_API_KEY:-}" ] && [ "$OPENAI_API_KEY" != "your_openai_api_key_here" ]; then
     VALID_OPENAI_KEY=true
-    echo "✅ Valid OPENAI_API_KEY found"
+    echo "✅ OPENAI_API_KEY found"
 fi
 
 # Check if OPENROUTER_API_KEY is set and not the placeholder
 if [ -n "${OPENROUTER_API_KEY:-}" ] && [ "$OPENROUTER_API_KEY" != "your_openrouter_api_key_here" ]; then
     VALID_OPENROUTER_KEY=true
-    echo "✅ Valid OPENROUTER_API_KEY found"
+    echo "✅ OPENROUTER_API_KEY found"
 fi
 
-# Check for conflicting configuration
-if [ "$VALID_OPENROUTER_KEY" = true ] && ([ "$VALID_GEMINI_KEY" = true ] || [ "$VALID_OPENAI_KEY" = true ]); then
-    echo ""
-    echo "⚠️  WARNING: Conflicting API configuration detected!"
-    echo ""
-    echo "You have configured both:"
-    echo "  - OpenRouter API key"
-    if [ "$VALID_GEMINI_KEY" = true ]; then
-        echo "  - Native Gemini API key"
-    fi
-    if [ "$VALID_OPENAI_KEY" = true ]; then
-        echo "  - Native OpenAI API key"
-    fi
-    echo ""
-    echo "This creates ambiguity about which provider to use for models available"
-    echo "through multiple APIs (e.g., 'o3' could come from OpenAI or OpenRouter)."
-    echo ""
-    echo "RECOMMENDATION: Use EITHER OpenRouter OR native APIs, not both."
-    echo ""
-    echo "To fix this, edit .env and:"
-    echo "  Option 1: Use only OpenRouter - comment out GEMINI_API_KEY and OPENAI_API_KEY"
-    echo "  Option 2: Use only native APIs - comment out OPENROUTER_API_KEY"
-    echo ""
-    echo "The server will start anyway, but native APIs will take priority over OpenRouter."
-    echo ""
-    # Give user time to read the warning
-    sleep 3
+# Check if CUSTOM_API_URL is set and not empty (custom API key is optional)
+if [ -n "${CUSTOM_API_URL:-}" ]; then
+    VALID_CUSTOM_URL=true
+    echo "✅ CUSTOM_API_URL found: $CUSTOM_API_URL"
 fi
 
-# Require at least one valid API key
-if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ]; then
+# Require at least one valid API key or custom URL
+if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ] && [ "$VALID_CUSTOM_URL" = false ]; then
     echo ""
-    echo "❌ ERROR: At least one valid API key is required!"
+    echo "❌ ERROR: At least one valid API key or custom URL is required!"
     echo ""
     echo "Please edit the .env file and set at least one of:"
     echo "  - GEMINI_API_KEY (get from https://makersuite.google.com/app/apikey)"
     echo "  - OPENAI_API_KEY (get from https://platform.openai.com/api-keys)"
     echo "  - OPENROUTER_API_KEY (get from https://openrouter.ai/)"
+    echo "  - CUSTOM_API_URL (for local models like Ollama, vLLM, etc.)"
     echo ""
     echo "Example:"
     echo "  GEMINI_API_KEY=your-actual-api-key-here"
     echo "  OPENAI_API_KEY=sk-your-actual-openai-key-here"
     echo "  OPENROUTER_API_KEY=sk-or-your-actual-openrouter-key-here"
+    echo "  CUSTOM_API_URL=http://host.docker.internal:11434/v1  # Ollama (use host.docker.internal, NOT localhost!)"
     echo ""
     exit 1
 fi
 
-echo "🛠️  Building and starting services..."
 echo ""
 
 # Stop and remove existing containers
-echo "  - Stopping existing containers..."
-$COMPOSE_CMD down --remove-orphans >/dev/null 2>&1 || true
+run_with_spinner "🛑 Stopping existing docker containers..." "$COMPOSE_CMD down --remove-orphans" || true
 
 # Clean up any old containers with different naming patterns
 OLD_CONTAINERS_FOUND=false
@@ -236,32 +262,17 @@ fi
 # Only show cleanup messages if something was actually cleaned up
 
 # Build and start services
-echo "  - Building Zen MCP Server image..."
-if $COMPOSE_CMD build >/dev/null 2>&1; then
-    echo "✅ Docker image built successfully!"
-else
+if ! run_with_spinner "🔨 Building Zen MCP Server image..." "$COMPOSE_CMD build"; then
     echo "❌ Failed to build Docker image. Run '$COMPOSE_CMD build' manually to see errors."
     exit 1
 fi
 
-echo "  - Starting all services (Redis + Zen MCP Server)..."
-if $COMPOSE_CMD up -d >/dev/null 2>&1; then
-    echo "✅ Services started successfully!"
-else
+if ! run_with_spinner "Starting server (Redis + Zen MCP)..." "$COMPOSE_CMD up -d"; then
     echo "❌ Failed to start services. Run '$COMPOSE_CMD up -d' manually to see errors."
     exit 1
 fi
 
-# Check service status
-if $COMPOSE_CMD ps --format table | grep -q "Up" 2>/dev/null || false; then
-    echo "✅ All services are running!"
-else
-    echo "⚠️  Some services may not be running. Check with: $COMPOSE_CMD ps"
-fi
-
-echo ""
-echo "📋 Service Status:"
-$COMPOSE_CMD ps --format table
+echo "✅ Services started successfully!"
 
 # Function to show configuration steps - only if CLI not already set up
 show_configuration_steps() {
@@ -313,16 +324,14 @@ setup_claude_code_cli() {
         echo "claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py"
         return 1
     fi
-    
-    echo "🔧 Configuring Claude Code CLI..."
-    
+
     # Get current MCP list and check if zen-mcp-server already exists
     if claude mcp list 2>/dev/null | grep -q "zen-mcp-server" 2>/dev/null; then
-        echo "✅ Zen MCP Server already configured in Claude Code CLI"
         echo ""
         return 0  # Already configured
     else
-        echo "  - Zen MCP Server not found in Claude Code CLI configuration"
+        echo ""
+        echo "🔧 Configuring Claude Code CLI..."
         echo ""
         echo -n "Would you like to add the Zen MCP Server to Claude Code CLI now? [Y/n]: "
         read -r response

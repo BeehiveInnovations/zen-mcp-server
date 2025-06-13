@@ -163,8 +163,12 @@ class TestPromptRegression:
                 with patch("tools.precommit.get_git_status") as mock_git_status:
                     mock_find_repos.return_value = ["/path/to/repo"]
                     mock_git_status.return_value = {
-                        "modified": ["file.py"],
-                        "untracked": [],
+                        "branch": "main",
+                        "ahead": 0,
+                        "behind": 0,
+                        "staged_files": ["file.py"],
+                        "unstaged_files": [],
+                        "untracked_files": [],
                     }
 
                     result = await tool.execute(

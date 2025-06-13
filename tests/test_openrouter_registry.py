@@ -50,8 +50,8 @@ class TestOpenRouterModelRegistry:
 
         try:
             # Set environment variable
-            original_env = os.environ.get("OPENROUTER_MODELS_PATH")
-            os.environ["OPENROUTER_MODELS_PATH"] = temp_path
+            original_env = os.environ.get("CUSTOM_MODELS_CONFIG_PATH")
+            os.environ["CUSTOM_MODELS_CONFIG_PATH"] = temp_path
 
             # Create registry without explicit path
             registry = OpenRouterModelRegistry()
@@ -63,9 +63,9 @@ class TestOpenRouterModelRegistry:
         finally:
             # Restore environment
             if original_env is not None:
-                os.environ["OPENROUTER_MODELS_PATH"] = original_env
+                os.environ["CUSTOM_MODELS_CONFIG_PATH"] = original_env
             else:
-                del os.environ["OPENROUTER_MODELS_PATH"]
+                del os.environ["CUSTOM_MODELS_CONFIG_PATH"]
             os.unlink(temp_path)
 
     def test_alias_resolution(self):

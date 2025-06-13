@@ -12,6 +12,7 @@ class ProviderType(Enum):
     GOOGLE = "google"
     OPENAI = "openai"
     OPENROUTER = "openrouter"
+    CUSTOM = "custom"
 
 
 class TemperatureConstraint(ABC):

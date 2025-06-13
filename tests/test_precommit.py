@@ -201,6 +201,7 @@ class TestPrecommitTool:
             "behind": 1,
             "staged_files": ["file1.py"],
             "unstaged_files": ["file2.py"],
+            "untracked_files": [],
         }
 
         # Mock git commands
@@ -243,6 +244,7 @@ class TestPrecommitTool:
             "behind": 0,
             "staged_files": ["file1.py"],
             "unstaged_files": [],
+            "untracked_files": [],
         }
 
         # Mock git commands - need to match all calls in prepare_prompt
@@ -288,6 +290,7 @@ class TestPrecommitTool:
             "behind": 0,
             "staged_files": ["file1.py"],
             "unstaged_files": [],
+            "untracked_files": [],
         }
 
         mock_run_git.side_effect = [

@@ -44,21 +44,33 @@ class OpenRouterFallbackTest(BaseSimulatorTest):
         try:
             self.logger.info("Test: OpenRouter fallback behavior when only provider available")
 
-            # Check if OpenRouter API key is configured
+            # Check if ONLY OpenRouter API key is configured (this is a fallback test)
             check_cmd = [
                 "docker",
                 "exec",
                 self.container_name,
                 "python",
                 "-c",
-                'import os; print("OPENROUTER_KEY:" + str(bool(os.environ.get("OPENROUTER_API_KEY"))))',
+                'import os; print("OPENROUTER_KEY:" + str(bool(os.environ.get("OPENROUTER_API_KEY"))) + "|GEMINI_KEY:" + str(bool(os.environ.get("GEMINI_API_KEY"))) + "|OPENAI_KEY:" + str(bool(os.environ.get("OPENAI_API_KEY"))))',
             ]
             result = subprocess.run(check_cmd, capture_output=True, text=True)
 
-            if result.returncode == 0 and "OPENROUTER_KEY:False" in result.stdout:
-                self.logger.info("  ⚠️  OpenRouter API key not configured - skipping test")
-                self.logger.info("  ℹ️  This test requires OPENROUTER_API_KEY to be set in .env")
-                return True  # Return True to indicate test is skipped, not failed
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                has_openrouter = "OPENROUTER_KEY:True" in output
+                has_gemini = "GEMINI_KEY:True" in output
+                has_openai = "OPENAI_KEY:True" in output
+
+                if not has_openrouter:
+                    self.logger.info("  ⚠️  OpenRouter API key not configured - skipping test")
+                    self.logger.info("  ℹ️  This test requires OPENROUTER_API_KEY to be set in .env")
+                    return True  # Return True to indicate test is skipped, not failed
+
+                if has_gemini or has_openai:
+                    self.logger.info("  ⚠️  Other API keys configured - this is not a fallback scenario")
+                    self.logger.info("  ℹ️  This test requires ONLY OpenRouter to be configured (no Gemini/OpenAI keys)")
+                    self.logger.info("  ℹ️  Current setup has multiple providers, so fallback behavior doesn't apply")
+                    return True  # Return True to indicate test is skipped, not failed
 
             # Setup test files
             self.setup_test_files()

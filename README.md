@@ -3,7 +3,7 @@
 https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
 
 <div align="center">  
-  <b>🤖 Claude + [Gemini / O3 / OpenRouter / Any Model] = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + [Gemini / O3 / OpenRouter / Ollama / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -27,7 +27,7 @@ with context carrying forward seamlessly.
 All within a single conversation thread! Gemini Pro in step 6 _knows_ what was recommended by O3 in step 3! Taking that context
 and review into consideration to aid with its pre-commit review.
 
-**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
+**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**. 
 
 ## Quick Navigation
 
@@ -63,12 +63,13 @@ Claude is brilliant, but sometimes you need:
 - **Multiple AI perspectives** - Let Claude orchestrate between different models to get the best analysis
 - **Automatic model selection** - Claude picks the right model for each task (or you can specify)
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
-- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or [dozens of other models via OpenRouter](docs/openrouter.md) ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
+- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or [dozens of other models via custom endpoints](docs/custom_models.md) ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
 - **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#4-precommit---pre-commit-validation))
 - **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#5-debug---expert-debugging-assistant))
 - **Extended context windows beyond Claude's limits** - Delegate analysis to Gemini (1M tokens) or O3 (200K tokens) for entire codebases, large datasets, or comprehensive documentation
-- **Model-specific strengths** - Extended thinking with Gemini Pro, fast iteration with Flash, strong reasoning with O3
+- **Model-specific strengths** - Extended thinking with Gemini Pro, fast iteration with Flash, strong reasoning with O3, local privacy with Ollama
+- **Local model support** - Run models like Llama 3.2 locally via Ollama, vLLM, or LM Studio for privacy and cost control
 - **Dynamic collaboration** - Models can request additional context and follow-up replies from Claude mid-analysis
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
 - **[Bypass MCP's token limits](#working-with-large-prompts)** - Work around MCP's 25K limit automatically
@@ -100,16 +101,25 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 ### 1. Get API Keys (at least one required)
 
 **Option A: OpenRouter (Access multiple models with one API)**
-- **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/openrouter.md)
+- **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/custom_models.md)
   - Control model access and spending limits directly in your OpenRouter dashboard
-  - Configure model aliases in `conf/openrouter_models.json`
+  - Configure model aliases in [`conf/custom_models.json`](conf/custom_models.json)
 
 **Option B: Native APIs**
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 
-> **Note:** Using both OpenRouter and native APIs creates ambiguity about which provider serves each model. 
-> If both are configured, native APIs will take priority for `gemini` and `o3`.
+**Option C: Custom API Endpoints (Local models like Ollama, vLLM)**
+[Please see the setup guide](docs/custom_models.md#custom-api-setup-ollama-vllm-etc). With a custom API you can use:
+- **Ollama**: Run models like Llama 3.2 locally for free inference
+- **vLLM**: Self-hosted inference server for high-throughput inference
+- **LM Studio**: Local model hosting with OpenAI-compatible API interface
+- **Text Generation WebUI**: Popular local interface for running models
+- **Any OpenAI-compatible API**: Custom endpoints for your own infrastructure
+
+> **Note:** Using all three options may create ambiguity about which provider / model to use if there is an overlap. 
+> If all APIs are configured, native APIs will take priority when there is a clash in model name, such as for `gemini` and `o3`.
+> Configure your model aliases and give them unique names in [`conf/custom_models.json`](conf/custom_models.json)
 
 ### 2. Clone and Set Up
 
@@ -138,10 +148,16 @@ nano .env
 # The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
-# OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/openrouter.md)
+# OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/custom_models.md)
+
+# For local models (Ollama, vLLM, etc.) - Note: Use host.docker.internal for Docker networking:
+# CUSTOM_API_URL=http://host.docker.internal:11434/v1  # Ollama example (NOT localhost!)
+# CUSTOM_API_KEY=                                      # Empty for Ollama
+# CUSTOM_MODEL_NAME=llama3.2                          # Default model
+
 # WORKSPACE_ROOT=/Users/your-username  (automatically configured)
 
-# Note: At least one API key is required
+# Note: At least one API key OR custom URL is required
 ```
 
 ### 4. Configure Claude
@@ -222,6 +238,8 @@ Just ask Claude naturally:
 - "Use flash to suggest how to format this code based on the specs mentioned in policy.md" → Uses Gemini Flash specifically
 - "Think deeply about this and get o3 to debug this logic error I found in the checkOrders() function" → Uses O3 specifically
 - "Brainstorm scaling strategies with pro. Study the code, pick your preferred strategy and debate with pro to settle on two best approaches" → Uses Gemini Pro specifically
+- "Use local-llama to localize and add missing translations to this project" → Uses local Llama 3.2 via custom URL
+- "First use local-llama for a quick local analysis, then use opus for a thorough security review" → Uses both providers in sequence
 
 > **Remember:** Claude remains in control — but **you** are the true orchestrator.  
 > You're the prompter, the guide, the puppeteer.  
@@ -245,6 +263,7 @@ Just ask Claude naturally:
 - Quick formatting check → Claude picks Flash
 - Logical debugging → Claude picks O3
 - General explanations → Claude picks Flash for speed
+- Local analysis → Claude picks your Ollama model
 
 **Pro Tip:** Thinking modes (for Gemini models) control depth vs token cost. Use "minimal" or "low" for quick tasks, "high" or "max" for complex problems. [Learn more](#thinking-modes---managing-token-costs--quality)
 
@@ -753,7 +772,11 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
 | **`flash`** (Gemini 2.0 Flash) | Google | 1M tokens | Ultra-fast responses | Quick checks, formatting, simple analysis |
 | **`o3`** | OpenAI | 200K tokens | Strong logical reasoning | Debugging logic errors, systematic analysis |
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
+| **`llama`** (Llama 3.2) | Custom/Local | 128K tokens | Local inference, privacy | On-device analysis, cost-free processing |
 | **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
+
+**Mix & Match Providers:** Use multiple providers simultaneously! Set both `OPENROUTER_API_KEY` and `CUSTOM_API_URL` to access 
+cloud models (expensive/powerful) AND local models (free/private) in the same conversation.
 
 **Manual Model Selection:**
 You can specify a default model instead of auto mode:

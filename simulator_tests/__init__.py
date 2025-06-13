@@ -14,6 +14,7 @@ from .test_cross_tool_continuation import CrossToolContinuationTest
 from .test_logs_validation import LogsValidationTest
 from .test_model_thinking_config import TestModelThinkingConfig
 from .test_o3_model_selection import O3ModelSelectionTest
+from .test_ollama_custom_url import OllamaCustomUrlTest
 from .test_openrouter_fallback import OpenRouterFallbackTest
 from .test_openrouter_models import OpenRouterModelsTest
 from .test_per_tool_deduplication import PerToolDeduplicationTest
@@ -31,6 +32,7 @@ TEST_REGISTRY = {
     "redis_validation": RedisValidationTest,
     "model_thinking_config": TestModelThinkingConfig,
     "o3_model_selection": O3ModelSelectionTest,
+    "ollama_custom_url": OllamaCustomUrlTest,
     "openrouter_fallback": OpenRouterFallbackTest,
     "openrouter_models": OpenRouterModelsTest,
     "token_allocation_validation": TokenAllocationValidationTest,
@@ -48,6 +50,7 @@ __all__ = [
     "RedisValidationTest",
     "TestModelThinkingConfig",
     "O3ModelSelectionTest",
+    "OllamaCustomUrlTest",
     "OpenRouterFallbackTest",
     "OpenRouterModelsTest",
     "TokenAllocationValidationTest",

@@ -14,15 +14,27 @@ class TestModelProviderRegistry:
 
     def setup_method(self):
         """Clear registry before each test"""
-        ModelProviderRegistry._providers.clear()
-        ModelProviderRegistry._initialized_providers.clear()
+        # Store the original providers to restore them later
+        registry = ModelProviderRegistry()
+        self._original_providers = registry._providers.copy()
+        registry._providers.clear()
+        registry._initialized_providers.clear()
+
+    def teardown_method(self):
+        """Restore original providers after each test"""
+        # Restore the original providers that were registered in conftest.py
+        registry = ModelProviderRegistry()
+        registry._providers.clear()
+        registry._initialized_providers.clear()
+        registry._providers.update(self._original_providers)
 
     def test_register_provider(self):
         """Test registering a provider"""
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
-        assert ProviderType.GOOGLE in ModelProviderRegistry._providers
-        assert ModelProviderRegistry._providers[ProviderType.GOOGLE] == GeminiModelProvider
+        registry = ModelProviderRegistry()
+        assert ProviderType.GOOGLE in registry._providers
+        assert registry._providers[ProviderType.GOOGLE] == GeminiModelProvider
 
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"})
     def test_get_provider(self):

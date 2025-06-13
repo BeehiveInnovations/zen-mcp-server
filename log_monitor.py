@@ -21,24 +21,49 @@ def monitor_mcp_activity():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Debug file: {debug_file}")
     print("-" * 60)
 
-    # Track file positions
+    # Track file positions and sizes for rotation detection
     log_pos = 0
     activity_pos = 0
     debug_pos = 0
+
+    # Track file sizes to detect rotation
+    log_size = 0
+    activity_size = 0
+    debug_size = 0
 
     # Ensure files exist
     Path(log_file).touch()
     Path(activity_file).touch()
     Path(debug_file).touch()
 
+    # Initialize file sizes
+    if os.path.exists(log_file):
+        log_size = os.path.getsize(log_file)
+        log_pos = log_size  # Start from end to avoid old logs
+    if os.path.exists(activity_file):
+        activity_size = os.path.getsize(activity_file)
+        activity_pos = activity_size  # Start from end to avoid old logs
+    if os.path.exists(debug_file):
+        debug_size = os.path.getsize(debug_file)
+        debug_pos = debug_size  # Start from end to avoid old logs
+
     while True:
         try:
             # Check activity file (most important for tool calls)
             if os.path.exists(activity_file):
+                # Check for log rotation
+                current_activity_size = os.path.getsize(activity_file)
+                if current_activity_size < activity_size:
+                    # File was rotated - start from beginning
+                    activity_pos = 0
+                    activity_size = current_activity_size
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Activity log rotated - restarting from beginning")
+
                 with open(activity_file) as f:
                     f.seek(activity_pos)
                     new_lines = f.readlines()
                     activity_pos = f.tell()
+                    activity_size = current_activity_size
 
                     for line in new_lines:
                         line = line.strip()
@@ -61,10 +86,19 @@ def monitor_mcp_activity():
 
             # Check main log file for errors and warnings
             if os.path.exists(log_file):
+                # Check for log rotation
+                current_log_size = os.path.getsize(log_file)
+                if current_log_size < log_size:
+                    # File was rotated - start from beginning
+                    log_pos = 0
+                    log_size = current_log_size
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Main log rotated - restarting from beginning")
+
                 with open(log_file) as f:
                     f.seek(log_pos)
                     new_lines = f.readlines()
                     log_pos = f.tell()
+                    log_size = current_log_size
 
                     for line in new_lines:
                         line = line.strip()
@@ -86,10 +120,19 @@ def monitor_mcp_activity():
 
             # Check debug file
             if os.path.exists(debug_file):
+                # Check for log rotation
+                current_debug_size = os.path.getsize(debug_file)
+                if current_debug_size < debug_size:
+                    # File was rotated - start from beginning
+                    debug_pos = 0
+                    debug_size = current_debug_size
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Debug log rotated - restarting from beginning")
+
                 with open(debug_file) as f:
                     f.seek(debug_pos)
                     new_lines = f.readlines()
                     debug_pos = f.tell()
+                    debug_size = current_debug_size
 
                     for line in new_lines:
                         line = line.strip()

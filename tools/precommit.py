@@ -247,9 +247,10 @@ class Precommit(BaseTool):
                                 all_diffs.append(formatted_diff)
                                 total_tokens += diff_tokens
             else:
-                # Handle staged/unstaged changes
+                # Handle staged/unstaged/untracked changes
                 staged_files = []
                 unstaged_files = []
+                untracked_files = []
 
                 if request.include_staged:
                     success, files_output = run_git_command(repo_path, ["diff", "--name-only", "--cached"])
@@ -293,8 +294,40 @@ class Precommit(BaseTool):
                                     all_diffs.append(formatted_diff)
                                     total_tokens += diff_tokens
 
+                    # Also include untracked files when include_unstaged is True
+                    # Untracked files are new files that haven't been added to git yet
+                    if status["untracked_files"]:
+                        untracked_files = status["untracked_files"]
+
+                        # For untracked files, show the entire file content as a "new file" diff
+                        for file_path in untracked_files:
+                            file_full_path = os.path.join(repo_path, file_path)
+                            if os.path.exists(file_full_path) and os.path.isfile(file_full_path):
+                                try:
+                                    with open(file_full_path, encoding="utf-8", errors="ignore") as f:
+                                        file_content = f.read()
+
+                                    # Format as a new file diff
+                                    diff_header = (
+                                        f"\n--- BEGIN DIFF: {repo_name} / {file_path} (untracked - new file) ---\n"
+                                    )
+                                    diff_content = f"+++ b/{file_path}\n"
+                                    for _line_num, line in enumerate(file_content.splitlines(), 1):
+                                        diff_content += f"+{line}\n"
+                                    diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                    formatted_diff = diff_header + diff_content + diff_footer
+
+                                    # Check token limit
+                                    diff_tokens = estimate_tokens(formatted_diff)
+                                    if total_tokens + diff_tokens <= max_tokens:
+                                        all_diffs.append(formatted_diff)
+                                        total_tokens += diff_tokens
+                                except Exception:
+                                    # Skip files that can't be read (binary, permission issues, etc.)
+                                    pass
+
                 # Combine unique files
-                changed_files = list(set(staged_files + unstaged_files))
+                changed_files = list(set(staged_files + unstaged_files + untracked_files))
 
             # Add repository summary
             if changed_files:

@@ -39,8 +39,8 @@ class OpenRouterProvider(OpenAICompatibleProvider):
             api_key: OpenRouter API key
             **kwargs: Additional configuration
         """
-        # Always use OpenRouter's base URL
-        super().__init__(api_key, base_url="https://openrouter.ai/api/v1", **kwargs)
+        base_url = "https://openrouter.ai/api/v1"
+        super().__init__(api_key, base_url=base_url, **kwargs)
 
         # Initialize model registry
         if OpenRouterProvider._registry is None:
@@ -101,7 +101,7 @@ class OpenRouterProvider(OpenAICompatibleProvider):
 
             logging.debug(
                 f"Using generic capabilities for '{resolved_name}' via OpenRouter. "
-                "Consider adding to openrouter_models.json for specific capabilities."
+                "Consider adding to custom_models.json for specific capabilities."
             )
 
             # Create generic capabilities with conservative defaults
@@ -129,16 +129,18 @@ class OpenRouterProvider(OpenAICompatibleProvider):
     def validate_model_name(self, model_name: str) -> bool:
         """Validate if the model name is allowed.
 
-        For OpenRouter, we accept any model name. OpenRouter will
-        validate based on the API key's permissions.
+        As the catch-all provider, OpenRouter accepts any model name that wasn't
+        handled by higher-priority providers. OpenRouter will validate based on
+        the API key's permissions.
 
         Args:
             model_name: Model name to validate
 
         Returns:
-            Always True - OpenRouter handles validation
+            Always True - OpenRouter is the catch-all provider
         """
-        # Accept any model name - OpenRouter will validate based on API key permissions
+        # Accept any model name - OpenRouter is the fallback provider
+        # Higher priority providers (native APIs, custom endpoints) get first chance
         return True
 
     def generate_content(

@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from utils.file_utils import translate_path_for_environment
+
 from .base import ModelCapabilities, ProviderType, RangeTemperatureConstraint
 
 
@@ -53,15 +55,19 @@ class OpenRouterModelRegistry:
 
         # Determine config path
         if config_path:
-            self.config_path = Path(config_path)
+            # Direct config_path parameter - translate for Docker if needed
+            translated_path = translate_path_for_environment(config_path)
+            self.config_path = Path(translated_path)
         else:
             # Check environment variable first
-            env_path = os.getenv("OPENROUTER_MODELS_PATH")
+            env_path = os.getenv("CUSTOM_MODELS_CONFIG_PATH")
             if env_path:
-                self.config_path = Path(env_path)
+                # Environment variable path - translate for Docker if needed
+                translated_path = translate_path_for_environment(env_path)
+                self.config_path = Path(translated_path)
             else:
-                # Default to conf/openrouter_models.json
-                self.config_path = Path(__file__).parent.parent / "conf" / "openrouter_models.json"
+                # Default to conf/custom_models.json (already in container)
+                self.config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
 
         # Load configuration
         self.reload()
@@ -125,6 +131,22 @@ class OpenRouterModelRegistry:
             # Add to model map
             model_map[config.model_name] = config
 
+            # Add the model_name itself as an alias for case-insensitive lookup
+            # But only if it's not already in the aliases list
+            model_name_lower = config.model_name.lower()
+            aliases_lower = [alias.lower() for alias in config.aliases]
+
+            if model_name_lower not in aliases_lower:
+                if model_name_lower in alias_map:
+                    existing_model = alias_map[model_name_lower]
+                    if existing_model != config.model_name:
+                        raise ValueError(
+                            f"Duplicate model name '{config.model_name}' (case-insensitive) found for models "
+                            f"'{existing_model}' and '{config.model_name}'"
+                        )
+                else:
+                    alias_map[model_name_lower] = config.model_name
+
             # Add aliases
             for alias in config.aliases:
                 alias_lower = alias.lower()
@@ -148,14 +170,13 @@ class OpenRouterModelRegistry:
         Returns:
             Model configuration if found, None otherwise
         """
-        # Try alias first (case-insensitive)
+        # Try alias lookup (case-insensitive) - this now includes model names too
         alias_lower = name_or_alias.lower()
         if alias_lower in self.alias_map:
             model_name = self.alias_map[alias_lower]
             return self.model_map.get(model_name)
 
-        # Try as direct model name
-        return self.model_map.get(name_or_alias)
+        return None
 
     def get_capabilities(self, name_or_alias: str) -> Optional[ModelCapabilities]:
         """Get model capabilities for a name or alias.

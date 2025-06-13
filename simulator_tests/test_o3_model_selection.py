@@ -27,8 +27,8 @@ class O3ModelSelectionTest(BaseSimulatorTest):
     def get_recent_server_logs(self) -> str:
         """Get recent server logs from the log file directly"""
         try:
-            # Read logs directly from the log file - more reliable than docker logs --since
-            cmd = ["docker", "exec", self.container_name, "tail", "-n", "200", "/tmp/mcp_server.log"]
+            # Read logs directly from the log file - use more lines to ensure we get all test-related logs
+            cmd = ["docker", "exec", self.container_name, "tail", "-n", "500", "/tmp/mcp_server.log"]
             result = subprocess.run(cmd, capture_output=True, text=True)
 
             if result.returncode == 0:

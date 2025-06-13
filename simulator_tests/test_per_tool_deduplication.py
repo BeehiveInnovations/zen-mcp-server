@@ -119,7 +119,7 @@ def divide(x, y):
             # Step 1: precommit tool with dummy file (low thinking mode)
             self.logger.info("  Step 1: precommit tool with dummy file")
             precommit_params = {
-                "path": self.test_dir,  # Required path parameter
+                "path": os.getcwd(),  # Use current working directory as the git repo path
                 "files": [dummy_file_path],
                 "prompt": "Please give me a quick one line reply. Review this code for commit readiness",
                 "thinking_mode": "low",
@@ -174,7 +174,7 @@ def subtract(a, b):
             # Continue precommit with both files
             continue_params = {
                 "continuation_id": continuation_id,
-                "path": self.test_dir,  # Required path parameter
+                "path": os.getcwd(),  # Use current working directory as the git repo path
                 "files": [dummy_file_path, new_file_path],  # Old + new file
                 "prompt": "Please give me a quick one line reply. Now also review the new feature file along with the previous one",
                 "thinking_mode": "low",
