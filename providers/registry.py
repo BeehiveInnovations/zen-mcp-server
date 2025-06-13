@@ -117,6 +117,7 @@ class ModelProviderRegistry:
         key_mapping = {
             ProviderType.GOOGLE: "GEMINI_API_KEY",
             ProviderType.OPENAI: "OPENAI_API_KEY",
+            ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
         }
 
         env_var = key_mapping.get(provider_type)

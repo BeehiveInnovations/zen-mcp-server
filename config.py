@@ -13,8 +13,8 @@ import os
 # Version and metadata
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
-__version__ = "4.0.0"  # Semantic versioning: MAJOR.MINOR.PATCH
-__updated__ = "2025-06-12"  # Last update date in ISO format
+__version__ = "4.1.0"  # Semantic versioning: MAJOR.MINOR.PATCH
+__updated__ = "2025-06-13"  # Last update date in ISO format
 __author__ = "Fahad Gilani"  # Primary maintainer
 
 # Model configuration
@@ -23,26 +23,6 @@ __author__ = "Fahad Gilani"  # Primary maintainer
 # Can be overridden by setting DEFAULT_MODEL environment variable
 # Special value "auto" means Claude should pick the best model for each task
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "auto")
-
-# Validate DEFAULT_MODEL and set to "auto" if invalid
-# Only include actually supported models from providers
-VALID_MODELS = [
-    "auto",
-    "flash",
-    "pro",
-    "o3",
-    "o3-mini",
-    "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-pro-preview-06-05",
-]
-if DEFAULT_MODEL not in VALID_MODELS:
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        f"Invalid DEFAULT_MODEL '{DEFAULT_MODEL}'. Setting to 'auto'. Valid options: {', '.join(VALID_MODELS)}"
-    )
-    DEFAULT_MODEL = "auto"
 
 # Auto mode detection - when DEFAULT_MODEL is "auto", Claude picks the model
 IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
@@ -56,8 +36,16 @@ MODEL_CAPABILITIES_DESC = {
     "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
     # Full model names also supported
     "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
-    "gemini-2.5-pro-preview-06-05": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
+    "gemini-2.5-pro-preview-06-05": (
+        "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"
+    ),
 }
+
+# Note: When only OpenRouter is configured, these model aliases automatically map to equivalent models:
+# - "flash" → "google/gemini-flash-1.5-8b"
+# - "pro" → "google/gemini-pro-1.5"
+# - "o3" → "openai/gpt-4o"
+# - "o3-mini" → "openai/gpt-4o-mini"
 
 # Token allocation for Gemini Pro (1M total capacity)
 # MAX_CONTEXT_TOKENS: Total model capacity

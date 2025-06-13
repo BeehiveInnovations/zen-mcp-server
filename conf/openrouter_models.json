@@ -1,0 +1,168 @@
+{
+  "_README": {
+    "description": "OpenRouter model configuration for Zen MCP Server",
+    "documentation": "https://github.com/BeehiveInnovations/zen-mcp-server/blob/main/docs/openrouter.md",
+    "instructions": [
+      "Add new models by copying an existing entry and modifying it",
+      "Aliases are case-insensitive and should be unique across all models",
+      "context_window is the model's total context window size in tokens (input + output)",
+      "Set supports_* flags based on the model's actual capabilities",
+      "Models not listed here will use generic defaults (32K context window, basic features)"
+    ],
+    "field_descriptions": {
+      "model_name": "The official OpenRouter model identifier (e.g., 'anthropic/claude-3-opus')",
+      "aliases": "Array of short names users can type instead of the full model name",
+      "context_window": "Total number of tokens the model can process (input + output combined)",
+      "supports_extended_thinking": "Whether the model supports extended reasoning tokens (currently none do via OpenRouter)",
+      "supports_json_mode": "Whether the model can guarantee valid JSON output",
+      "supports_function_calling": "Whether the model supports function/tool calling",
+      "description": "Human-readable description of the model"
+    },
+    "example_custom_model": {
+      "model_name": "vendor/model-name-version",
+      "aliases": ["shortname", "nickname", "abbrev"],
+      "context_window": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "Brief description of the model"
+    }
+  },
+  "models": [
+    {
+      "model_name": "openai/gpt-4o",
+      "aliases": ["gpt4o", "4o", "gpt-4o"],
+      "context_window": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's most capable model, GPT-4 Optimized"
+    },
+    {
+      "model_name": "openai/gpt-4o-mini",
+      "aliases": ["gpt4o-mini", "4o-mini", "gpt-4o-mini"],
+      "context_window": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "Smaller, faster version of GPT-4o"
+    },
+    {
+      "model_name": "anthropic/claude-3-opus",
+      "aliases": ["opus", "claude-opus", "claude3-opus", "claude-3-opus"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": false,
+      "description": "Claude 3 Opus - Most capable Claude model"
+    },
+    {
+      "model_name": "anthropic/claude-3-sonnet",
+      "aliases": ["sonnet", "claude-sonnet", "claude3-sonnet", "claude-3-sonnet", "claude"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": false,
+      "description": "Claude 3 Sonnet - Balanced performance"
+    },
+    {
+      "model_name": "anthropic/claude-3-haiku",
+      "aliases": ["haiku", "claude-haiku", "claude3-haiku", "claude-3-haiku"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": false,
+      "description": "Claude 3 Haiku - Fast and efficient"
+    },
+    {
+      "model_name": "google/gemini-pro-1.5",
+      "aliases": ["pro","gemini-pro", "gemini", "pro-openrouter"],
+      "context_window": 1048576,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "description": "Google's Gemini Pro 1.5 via OpenRouter"
+    },
+    {
+      "model_name": "google/gemini-flash-1.5-8b",
+      "aliases": ["flash","gemini-flash", "flash-openrouter", "flash-8b"],
+      "context_window": 1048576,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "description": "Google's Gemini Flash 1.5 8B via OpenRouter"
+    },
+    {
+      "model_name": "mistral/mistral-large",
+      "aliases": ["mistral-large", "mistral"],
+      "context_window": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "Mistral's largest model"
+    },
+    {
+      "model_name": "meta-llama/llama-3-70b",
+      "aliases": ["llama","llama3-70b", "llama-70b", "llama3"],
+      "context_window": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": false,
+      "description": "Meta's Llama 3 70B model"
+    },
+    {
+      "model_name": "cohere/command-r-plus",
+      "aliases": ["command-r-plus", "command-r", "cohere"],
+      "context_window": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": true,
+      "description": "Cohere's Command R Plus model"
+    },
+    {
+      "model_name": "deepseek/deepseek-coder",
+      "aliases": ["deepseek-coder", "deepseek", "coder"],
+      "context_window": 16384,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": false,
+      "description": "DeepSeek's coding-focused model"
+    },
+    {
+      "model_name": "perplexity/llama-3-sonar-large-32k-online",
+      "aliases": ["perplexity", "sonar", "perplexity-online"],
+      "context_window": 32768,
+      "supports_extended_thinking": false,
+      "supports_json_mode": false,
+      "supports_function_calling": false,
+      "description": "Perplexity's online model with web search"
+    },
+    {
+      "model_name": "openai/o3",
+      "aliases": ["o3"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3 model - well-rounded and powerful across domains"
+    },
+    {
+      "model_name": "openai/o3-mini",
+      "aliases": ["o3-mini", "o3mini"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3-mini reasoning model - cost-efficient with STEM performance"
+    },
+    {
+      "model_name": "openai/o3-mini-high",
+      "aliases": ["o3-mini-high", "o3mini-high"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3-mini with high reasoning effort - optimized for complex problems"
+    }
+  ]
+}

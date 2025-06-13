@@ -125,38 +125,82 @@ def configure_providers():
     At least one valid API key (Gemini or OpenAI) is required.
 
     Raises:
-        ValueError: If no valid API keys are found
+        ValueError: If no valid API keys are found or conflicting configurations detected
     """
     from providers import ModelProviderRegistry
     from providers.base import ProviderType
     from providers.gemini import GeminiModelProvider
     from providers.openai import OpenAIModelProvider
+    from providers.openrouter import OpenRouterProvider
 
     valid_providers = []
+    has_native_apis = False
+    has_openrouter = False
 
     # Check for Gemini API key
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key and gemini_key != "your_gemini_api_key_here":
-        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
         valid_providers.append("Gemini")
+        has_native_apis = True
         logger.info("Gemini API key found - Gemini models available")
 
     # Check for OpenAI API key
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key and openai_key != "your_openai_api_key_here":
-        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         valid_providers.append("OpenAI (o3)")
+        has_native_apis = True
         logger.info("OpenAI API key found - o3 model available")
+
+    # Check for OpenRouter API key
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
+        valid_providers.append("OpenRouter")
+        has_openrouter = True
+        logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
+
+    # Check for conflicting configuration
+    if has_native_apis and has_openrouter:
+        logger.warning(
+            "\n" + "=" * 70 + "\n"
+            "WARNING: Both OpenRouter and native API keys detected!\n"
+            "\n"
+            "This creates ambiguity about which provider will be used for models\n"
+            "available through both APIs (e.g., 'o3' could come from OpenAI or OpenRouter).\n"
+            "\n"
+            "RECOMMENDATION: Use EITHER OpenRouter OR native APIs, not both.\n"
+            "\n"
+            "To fix this:\n"
+            "1. Use only OpenRouter: unset GEMINI_API_KEY and OPENAI_API_KEY\n"
+            "2. Use only native APIs: unset OPENROUTER_API_KEY\n"
+            "\n"
+            "Current configuration will prioritize native APIs over OpenRouter.\n" + "=" * 70 + "\n"
+        )
+
+    # Register providers - native APIs first to ensure they take priority
+    if has_native_apis:
+        if gemini_key and gemini_key != "your_gemini_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+        if openai_key and openai_key != "your_openai_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+
+    # Register OpenRouter last so native APIs take precedence
+    if has_openrouter:
+        ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
     # Require at least one valid provider
     if not valid_providers:
         raise ValueError(
             "At least one API key is required. Please set either:\n"
             "- GEMINI_API_KEY for Gemini models\n"
-            "- OPENAI_API_KEY for OpenAI o3 model"
+            "- OPENAI_API_KEY for OpenAI o3 model\n"
+            "- OPENROUTER_API_KEY for OpenRouter (multiple models)"
         )
 
     logger.info(f"Available providers: {', '.join(valid_providers)}")
+
+    # Log provider priority if both are configured
+    if has_native_apis and has_openrouter:
+        logger.info("Provider priority: Native APIs (Gemini, OpenAI) will be checked before OpenRouter")
 
 
 @server.list_tools()
@@ -318,18 +362,22 @@ If something needs clarification or you'd benefit from additional context, simpl
 IMPORTANT: When you suggest follow-ups or ask questions, you MUST explicitly instruct Claude to use the continuation_id
 to respond. Use clear, direct language based on urgency:
 
-For optional follow-ups: "Please continue this conversation using the continuation_id from this response if you'd like to explore this further."
+For optional follow-ups: "Please continue this conversation using the continuation_id from this response if you'd "
+"like to explore this further."
 
 For needed responses: "Please respond using the continuation_id from this response - your input is needed to proceed."
 
-For essential/critical responses: "RESPONSE REQUIRED: Please immediately continue using the continuation_id from this response. Cannot proceed without your clarification/input."
+For essential/critical responses: "RESPONSE REQUIRED: Please immediately continue using the continuation_id from "
+"this response. Cannot proceed without your clarification/input."
 
-This ensures Claude knows both HOW to maintain the conversation thread AND whether a response is optional, needed, or essential.
+This ensures Claude knows both HOW to maintain the conversation thread AND whether a response is optional, "
+"needed, or essential.
 
 The tool will automatically provide a continuation_id in the structured response that Claude can use in subsequent
 tool calls to maintain full conversation context across multiple exchanges.
 
-Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct Claude to use the continuation_id when you do."""
+Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct "
+"Claude to use the continuation_id when you do."""
 
 
 async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -366,8 +414,10 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         # Return error asking Claude to restart conversation with full context
         raise ValueError(
             f"Conversation thread '{continuation_id}' was not found or has expired. "
-            f"This may happen if the conversation was created more than 1 hour ago or if there was an issue with Redis storage. "
-            f"Please restart the conversation by providing your full question/prompt without the continuation_id parameter. "
+            f"This may happen if the conversation was created more than 1 hour ago or if there was an issue "
+            f"with Redis storage. "
+            f"Please restart the conversation by providing your full question/prompt without the "
+            f"continuation_id parameter. "
             f"This will create a new conversation thread that can continue with follow-up exchanges."
         )
 
@@ -459,7 +509,8 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(
-            f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
+            f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - "
+            f"{len(context.turns)} previous turns loaded"
         )
     except Exception:
         pass
@@ -494,6 +545,18 @@ async def handle_get_version() -> list[TextContent]:
         "available_tools": list(TOOLS.keys()) + ["get_version"],
     }
 
+    # Check configured providers
+    from providers import ModelProviderRegistry
+    from providers.base import ProviderType
+
+    configured_providers = []
+    if ModelProviderRegistry.get_provider(ProviderType.GOOGLE):
+        configured_providers.append("Gemini (flash, pro)")
+    if ModelProviderRegistry.get_provider(ProviderType.OPENAI):
+        configured_providers.append("OpenAI (o3, o3-mini)")
+    if ModelProviderRegistry.get_provider(ProviderType.OPENROUTER):
+        configured_providers.append("OpenRouter (configured via conf/openrouter_models.json)")
+
     # Format the information in a human-readable way
     text = f"""Zen MCP Server v{__version__}
 Updated: {__updated__}
@@ -505,6 +568,9 @@ Configuration:
 - Max Context: {MAX_CONTEXT_TOKENS:,} tokens
 - Python: {version_info["python_version"]}
 - Started: {version_info["server_started"]}
+
+Configured Providers:
+{chr(10).join(f"  - {provider}" for provider in configured_providers)}
 
 Available Tools:
 {chr(10).join(f"  - {tool}" for tool in version_info["available_tools"])}
