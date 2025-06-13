@@ -3,7 +3,7 @@
 https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
 
 <div align="center">  
-  <b>🤖 Claude + [Gemini / O3 / or Both] = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + [Gemini / O3 / OpenRouter / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -63,7 +63,7 @@ Claude is brilliant, but sometimes you need:
 - **Multiple AI perspectives** - Let Claude orchestrate between different models to get the best analysis
 - **Automatic model selection** - Claude picks the right model for each task (or you can specify)
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
-- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or others ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
+- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or [dozens of other models via OpenRouter](docs/openrouter.md) ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
 - **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#4-precommit---pre-commit-validation))
 - **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#5-debug---expert-debugging-assistant))
@@ -98,8 +98,18 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Windows users**: WSL2 is required for Claude Code CLI
 
 ### 1. Get API Keys (at least one required)
+
+**Option A: OpenRouter (Access multiple models with one API)**
+- **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/openrouter.md)
+  - Control model access and spending limits directly in your OpenRouter dashboard
+  - Configure model aliases in `conf/openrouter_models.json`
+
+**Option B: Native APIs**
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
+
+> **Note:** Using both OpenRouter and native APIs creates ambiguity about which provider serves each model. 
+> If both are configured, native APIs will take priority for `gemini` and `o3`.
 
 ### 2. Clone and Set Up
 
@@ -125,12 +135,13 @@ cd zen-mcp-server
 # Edit .env to add your API keys (if not already set in environment)
 nano .env
 
-# The file will contain:
+# The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
+# OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/openrouter.md)
 # WORKSPACE_ROOT=/Users/your-username  (automatically configured)
 
-# Note: At least one API key is required (Gemini or OpenAI)
+# Note: At least one API key is required
 ```
 
 ### 4. Configure Claude
@@ -195,23 +206,6 @@ Paste the above into `claude_desktop_config.json`. If you have several other MCP
         "python",
         "server.py"
       ]
-  }
-```
-
-**Alternative: Using Pre-built Docker Image**
-
-You can also use the pre-built Docker image from GitHub Container Registry:
-```json
-  "zen": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-e", "GEMINI_API_KEY",
-        "ghcr.io/beehiveinnovations/zen-mcp-server:latest"
-      ],
-      "env": {
-        "GEMINI_API_KEY": "paste-here-your-api-key-for-gemini"
-      }
   }
 ```
 
@@ -759,6 +753,7 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
 | **`flash`** (Gemini 2.0 Flash) | Google | 1M tokens | Ultra-fast responses | Quick checks, formatting, simple analysis |
 | **`o3`** | OpenAI | 200K tokens | Strong logical reasoning | Debugging logic errors, systematic analysis |
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
+| **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
 
 **Manual Model Selection:**
 You can specify a default model instead of auto mode:

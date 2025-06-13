@@ -120,7 +120,8 @@ jobs:
         echo "[View all versions and tags →](https://github.com/${{ github.repository }}/pkgs/container/zen-mcp-server)" >> $GITHUB_STEP_SUMMARY
 
     - name: Update README with latest image info
-      if: github.ref_type == 'tag' || (github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '')
+      if: false # Temporarily disabled as agreed with repo author
+      # if: github.ref_type == 'tag' || (github.event_name == 'repository_dispatch' && github.event.client_payload.pr_number != '')
       run: |
         # Checkout main branch to avoid detached HEAD when pushing
         git fetch origin main:main
