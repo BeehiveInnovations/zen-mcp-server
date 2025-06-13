@@ -105,7 +105,7 @@ class ModelCapabilities:
     provider: ProviderType
     model_name: str
     friendly_name: str  # Human-friendly name like "Gemini" or "OpenAI"
-    max_tokens: int
+    context_window: int  # Total context window size in tokens
     supports_extended_thinking: bool = False
     supports_system_prompts: bool = True
     supports_streaming: bool = True

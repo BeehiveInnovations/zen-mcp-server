@@ -9,7 +9,8 @@ approximate. For production systems requiring precise token counts,
 consider using the actual tokenizer for the specific model.
 """
 
-from config import MAX_CONTEXT_TOKENS
+# Default fallback for token limit (conservative estimate)
+DEFAULT_CONTEXT_WINDOW = 200_000  # Conservative fallback for unknown models
 
 
 def estimate_tokens(text: str) -> int:
@@ -32,9 +33,9 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
-def check_token_limit(text: str) -> tuple[bool, int]:
+def check_token_limit(text: str, context_window: int = DEFAULT_CONTEXT_WINDOW) -> tuple[bool, int]:
     """
-    Check if text exceeds the maximum token limit for Gemini models.
+    Check if text exceeds the specified token limit.
 
     This function is used to validate that prepared prompts will fit
     within the model's context window, preventing API errors and ensuring
@@ -42,11 +43,12 @@ def check_token_limit(text: str) -> tuple[bool, int]:
 
     Args:
         text: The text to check
+        context_window: The model's context window size (defaults to conservative fallback)
 
     Returns:
         Tuple[bool, int]: (is_within_limit, estimated_tokens)
-        - is_within_limit: True if the text fits within MAX_CONTEXT_TOKENS
+        - is_within_limit: True if the text fits within context_window
         - estimated_tokens: The estimated token count
     """
     estimated = estimate_tokens(text)
-    return estimated <= MAX_CONTEXT_TOKENS, estimated
+    return estimated <= context_window, estimated

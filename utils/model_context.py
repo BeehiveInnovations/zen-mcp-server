@@ -72,7 +72,7 @@ class ModelContext:
         Returns:
             TokenAllocation with calculated budgets
         """
-        total_tokens = self.capabilities.max_tokens
+        total_tokens = self.capabilities.context_window
 
         # Dynamic allocation based on model capacity
         if total_tokens < 300_000:

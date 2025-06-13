@@ -33,7 +33,6 @@ from mcp.types import ServerCapabilities, TextContent, Tool, ToolsCapability
 
 from config import (
     DEFAULT_MODEL,
-    MAX_CONTEXT_TOKENS,
     __author__,
     __updated__,
     __version__,
@@ -521,7 +520,7 @@ async def handle_get_version() -> list[TextContent]:
         "author": __author__,
         "default_model": DEFAULT_MODEL,
         "default_thinking_mode_thinkdeep": DEFAULT_THINKING_MODE_THINKDEEP,
-        "max_context_tokens": f"{MAX_CONTEXT_TOKENS:,}",
+        "max_context_tokens": "Dynamic (model-specific)",
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "server_started": datetime.now().isoformat(),
         "available_tools": list(TOOLS.keys()) + ["get_version"],
@@ -547,7 +546,7 @@ Author: {__author__}
 Configuration:
 - Default Model: {DEFAULT_MODEL}
 - Default Thinking Mode (ThinkDeep): {DEFAULT_THINKING_MODE_THINKDEEP}
-- Max Context: {MAX_CONTEXT_TOKENS:,} tokens
+- Max Context: Dynamic (model-specific)
 - Python: {version_info["python_version"]}
 - Started: {version_info["server_started"]}
 

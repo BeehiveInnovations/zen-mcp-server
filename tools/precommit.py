@@ -14,7 +14,8 @@ from typing import Any, Literal, Optional
 from mcp.types import TextContent
 from pydantic import Field
 
-from config import MAX_CONTEXT_TOKENS
+# Conservative fallback for token limits
+DEFAULT_CONTEXT_WINDOW = 200_000
 from prompts.tool_prompts import PRECOMMIT_PROMPT
 from utils.file_utils import translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
@@ -186,7 +187,7 @@ class Precommit(BaseTool):
         all_diffs = []
         repo_summaries = []
         total_tokens = 0
-        max_tokens = MAX_CONTEXT_TOKENS - 50000  # Reserve tokens for prompt and response
+        max_tokens = DEFAULT_CONTEXT_WINDOW - 50000  # Reserve tokens for prompt and response
 
         for repo_path in repositories:
             repo_name = os.path.basename(repo_path) or "root"

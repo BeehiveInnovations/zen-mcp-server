@@ -14,12 +14,12 @@ class GeminiModelProvider(ModelProvider):
     # Model configurations
     SUPPORTED_MODELS = {
         "gemini-2.5-flash-preview-05-20": {
-            "max_tokens": 1_048_576,  # 1M tokens
+            "context_window": 1_048_576,  # 1M tokens
             "supports_extended_thinking": True,
             "max_thinking_tokens": 24576,  # Flash 2.5 thinking budget limit
         },
         "gemini-2.5-pro-preview-06-05": {
-            "max_tokens": 1_048_576,  # 1M tokens
+            "context_window": 1_048_576,  # 1M tokens
             "supports_extended_thinking": True,
             "max_thinking_tokens": 32768,  # Pro 2.5 thinking budget limit
         },
@@ -68,7 +68,7 @@ class GeminiModelProvider(ModelProvider):
             provider=ProviderType.GOOGLE,
             model_name=resolved_name,
             friendly_name="Gemini",
-            max_tokens=config["max_tokens"],
+            context_window=config["context_window"],
             supports_extended_thinking=config["supports_extended_thinking"],
             supports_system_prompts=True,
             supports_streaming=True,

@@ -47,13 +47,6 @@ MODEL_CAPABILITIES_DESC = {
 # - "o3" → "openai/gpt-4o"
 # - "o3-mini" → "openai/gpt-4o-mini"
 
-# Token allocation for Gemini Pro (1M total capacity)
-# MAX_CONTEXT_TOKENS: Total model capacity
-# MAX_CONTENT_TOKENS: Available for prompts, conversation history, and files
-# RESPONSE_RESERVE_TOKENS: Reserved for model response generation
-MAX_CONTEXT_TOKENS = 1_000_000  # 1M tokens total capacity for Gemini Pro
-MAX_CONTENT_TOKENS = 800_000  # 800K tokens for content (prompts + files + history)
-RESPONSE_RESERVE_TOKENS = 200_000  # 200K tokens reserved for response generation
 
 # Temperature defaults for different tool types
 # Temperature controls the randomness/creativity of model responses

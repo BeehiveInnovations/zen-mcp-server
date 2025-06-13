@@ -4,7 +4,6 @@ Tests for configuration
 
 from config import (
     DEFAULT_MODEL,
-    MAX_CONTEXT_TOKENS,
     TEMPERATURE_ANALYTICAL,
     TEMPERATURE_BALANCED,
     TEMPERATURE_CREATIVE,
@@ -33,7 +32,6 @@ class TestConfig:
         """Test model configuration"""
         # DEFAULT_MODEL is set in conftest.py for tests
         assert DEFAULT_MODEL == "gemini-2.5-flash-preview-05-20"
-        assert MAX_CONTEXT_TOKENS == 1_000_000
 
     def test_temperature_defaults(self):
         """Test temperature constants"""

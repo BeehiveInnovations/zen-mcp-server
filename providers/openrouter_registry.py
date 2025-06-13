@@ -30,7 +30,7 @@ class OpenRouterModelConfig:
             provider=ProviderType.OPENROUTER,
             model_name=self.model_name,
             friendly_name="OpenRouter",
-            max_tokens=self.context_window,  # ModelCapabilities still uses max_tokens
+            context_window=self.context_window,
             supports_extended_thinking=self.supports_extended_thinking,
             supports_system_prompts=self.supports_system_prompts,
             supports_streaming=self.supports_streaming,
@@ -103,10 +103,6 @@ class OpenRouterModelRegistry:
             # Parse models
             configs = []
             for model_data in data.get("models", []):
-                # Handle backwards compatibility - rename max_tokens to context_window
-                if "max_tokens" in model_data and "context_window" not in model_data:
-                    model_data["context_window"] = model_data.pop("max_tokens")
-
                 config = OpenRouterModelConfig(**model_data)
                 configs.append(config)
 
