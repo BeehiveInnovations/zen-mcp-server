@@ -34,9 +34,9 @@ class TestThinkingModes:
         ]
 
         for tool, expected_default in tools:
-            assert tool.get_default_thinking_mode() == expected_default, (
-                f"{tool.__class__.__name__} should default to {expected_default}"
-            )
+            assert (
+                tool.get_default_thinking_mode() == expected_default
+            ), f"{tool.__class__.__name__} should default to {expected_default}"
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
