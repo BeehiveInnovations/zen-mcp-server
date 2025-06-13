@@ -82,8 +82,6 @@ class CodeReviewTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import IS_AUTO_MODE
-
         schema = {
             "type": "object",
             "properties": {
@@ -138,7 +136,7 @@ class CodeReviewTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
+            "required": ["files", "prompt"] + (["model"] if self.is_effective_auto_mode() else []),
         }
 
         return schema

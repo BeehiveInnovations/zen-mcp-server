@@ -2,10 +2,13 @@
 Analyze tool - General-purpose code and file analysis
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
+
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
 
 from config import TEMPERATURE_ANALYTICAL
 from prompts import ANALYZE_PROMPT
@@ -42,8 +45,6 @@ class AnalyzeTool(BaseTool):
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import IS_AUTO_MODE
-
         schema = {
             "type": "object",
             "properties": {
@@ -95,7 +96,7 @@ class AnalyzeTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
+            "required": ["files", "prompt"] + (["model"] if self.is_effective_auto_mode() else []),
         }
 
         return schema
@@ -105,6 +106,12 @@ class AnalyzeTool(BaseTool):
 
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
+
+    def get_model_category(self) -> "ToolModelCategory":
+        """Analyze requires deep understanding and reasoning"""
+        from tools.models import ToolModelCategory
+
+        return ToolModelCategory.EXTENDED_REASONING
 
     def get_request_model(self):
         return AnalyzeRequest

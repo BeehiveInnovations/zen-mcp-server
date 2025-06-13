@@ -17,10 +17,13 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
 
 from config import MCP_PROMPT_SIZE_LIMIT
 from providers import ModelProvider, ModelProviderRegistry
@@ -156,6 +159,88 @@ class BaseTool(ABC):
         """
         pass
 
+    def is_effective_auto_mode(self) -> bool:
+        """
+        Check if we're in effective auto mode for schema generation.
+
+        This determines whether the model parameter should be required in the tool schema.
+        Used at initialization time when schemas are generated.
+
+        Returns:
+            bool: True if model parameter should be required in the schema
+        """
+        from config import DEFAULT_MODEL, IS_AUTO_MODE
+        from providers.registry import ModelProviderRegistry
+
+        # Case 1: Explicit auto mode
+        if IS_AUTO_MODE:
+            return True
+
+        # Case 2: Model not available
+        if DEFAULT_MODEL.lower() != "auto":
+            provider = ModelProviderRegistry.get_provider_for_model(DEFAULT_MODEL)
+            if not provider:
+                return True
+
+        return False
+
+    def _should_require_model_selection(self, model_name: str) -> bool:
+        """
+        Check if we should require Claude to select a model at runtime.
+
+        This is called during request execution to determine if we need
+        to return an error asking Claude to provide a model parameter.
+
+        Args:
+            model_name: The model name from the request or DEFAULT_MODEL
+
+        Returns:
+            bool: True if we should require model selection
+        """
+        # Case 1: Model is explicitly "auto"
+        if model_name.lower() == "auto":
+            return True
+
+        # Case 2: Requested model is not available
+        from providers.registry import ModelProviderRegistry
+
+        provider = ModelProviderRegistry.get_provider_for_model(model_name)
+        if not provider:
+            logger = logging.getLogger(f"tools.{self.name}")
+            logger.warning(
+                f"Model '{model_name}' is not available with current API keys. " f"Requiring model selection."
+            )
+            return True
+
+        return False
+
+    def _get_available_models(self) -> list[str]:
+        """
+        Get list of models that are actually available with current API keys.
+
+        Returns:
+            List of available model names
+        """
+        from config import MODEL_CAPABILITIES_DESC
+        from providers.base import ProviderType
+        from providers.registry import ModelProviderRegistry
+
+        available_models = []
+
+        # Check each model in our capabilities list
+        for model_name in MODEL_CAPABILITIES_DESC.keys():
+            provider = ModelProviderRegistry.get_provider_for_model(model_name)
+            if provider:
+                available_models.append(model_name)
+
+        # Also check if OpenRouter is available (it accepts any model)
+        openrouter_provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)
+        if openrouter_provider and not available_models:
+            # If only OpenRouter is available, suggest using any model through it
+            available_models.append("any model via OpenRouter")
+
+        return available_models if available_models else ["none - please configure API keys"]
+
     def get_model_field_schema(self) -> dict[str, Any]:
         """
         Generate the model field schema based on auto mode configuration.
@@ -168,16 +253,20 @@ class BaseTool(ABC):
         """
         import os
 
-        from config import DEFAULT_MODEL, IS_AUTO_MODE, MODEL_CAPABILITIES_DESC
+        from config import DEFAULT_MODEL, MODEL_CAPABILITIES_DESC
 
         # Check if OpenRouter is configured
         has_openrouter = bool(
             os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here"
         )
 
-        if IS_AUTO_MODE:
+        # Use the centralized effective auto mode check
+        if self.is_effective_auto_mode():
             # In auto mode, model is required and we provide detailed descriptions
-            model_desc_parts = ["Choose the best model for this task based on these capabilities:"]
+            model_desc_parts = [
+                "IMPORTANT: Use the model specified by the user if provided, OR select the most suitable model "
+                "for this specific task based on the requirements and capabilities listed below:"
+            ]
             for model, desc in MODEL_CAPABILITIES_DESC.items():
                 model_desc_parts.append(f"- '{model}': {desc}")
 
@@ -301,6 +390,21 @@ class BaseTool(ABC):
             str: One of "minimal", "low", "medium", "high", "max"
         """
         return "medium"  # Default to medium thinking for better reasoning
+
+    def get_model_category(self) -> "ToolModelCategory":
+        """
+        Return the model category for this tool.
+
+        Model category influences which model is selected in auto mode.
+        Override to specify whether your tool needs extended reasoning,
+        fast response, or balanced capabilities.
+
+        Returns:
+            ToolModelCategory: Category that influences model selection
+        """
+        from tools.models import ToolModelCategory
+
+        return ToolModelCategory.BALANCED
 
     def get_conversation_embedded_files(self, continuation_id: Optional[str]) -> list[str]:
         """
@@ -474,11 +578,13 @@ class BaseTool(ABC):
                 if model_name.lower() == "auto":
                     from providers.registry import ModelProviderRegistry
 
-                    # Use the preferred fallback model for capacity estimation
+                    # Use tool-specific fallback model for capacity estimation
                     # This properly handles different providers (OpenAI=200K, Gemini=1M)
-                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
+                    tool_category = self.get_model_category()
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
                     logger.debug(
-                        f"[FILES] {self.name}: Auto mode detected, using {fallback_model} for capacity estimation"
+                        f"[FILES] {self.name}: Auto mode detected, using {fallback_model} "
+                        f"for {tool_category.value} tool capacity estimation"
                     )
 
                     try:
@@ -898,13 +1004,39 @@ When recommending searches, be specific about what information you need and why 
 
                 model_name = DEFAULT_MODEL
 
-            # In auto mode, model parameter is required
-            from config import IS_AUTO_MODE
+            # Check if we need Claude to select a model
+            # This happens when:
+            # 1. The model is explicitly "auto"
+            # 2. The requested model is not available
+            if self._should_require_model_selection(model_name):
+                # Get suggested model based on tool category
+                from providers.registry import ModelProviderRegistry
 
-            if IS_AUTO_MODE and model_name.lower() == "auto":
+                tool_category = self.get_model_category()
+                suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
+
+                # Build error message based on why selection is required
+                if model_name.lower() == "auto":
+                    error_message = (
+                        f"Model parameter is required in auto mode. "
+                        f"Suggested model for {self.name}: '{suggested_model}' "
+                        f"(category: {tool_category.value})"
+                    )
+                else:
+                    # Model was specified but not available
+                    # Get list of available models
+                    available_models = self._get_available_models()
+
+                    error_message = (
+                        f"Model '{model_name}' is not available with current API keys. "
+                        f"Available models: {', '.join(available_models)}. "
+                        f"Suggested model for {self.name}: '{suggested_model}' "
+                        f"(category: {tool_category.value})"
+                    )
+
                 error_output = ToolOutput(
                     status="error",
-                    content="Model parameter is required. Please specify which model to use for this task.",
+                    content=error_message,
                     content_type="text",
                 )
                 return [TextContent(type="text", text=error_output.model_dump_json())]

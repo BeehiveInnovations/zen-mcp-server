@@ -75,7 +75,7 @@ class TestAutoMode:
             model_schema = schema["properties"]["model"]
             assert "enum" in model_schema
             assert "flash" in model_schema["enum"]
-            assert "Choose the best model" in model_schema["description"]
+            assert "select the most suitable model" in model_schema["description"]
 
         finally:
             # Restore
@@ -134,6 +134,58 @@ class TestAutoMode:
                 os.environ.pop("DEFAULT_MODEL", None)
             importlib.reload(config)
 
+    @pytest.mark.asyncio
+    async def test_unavailable_model_error_message(self):
+        """Test that unavailable model shows helpful error with available models"""
+        # Save original
+        original = os.environ.get("DEFAULT_MODEL", "")
+
+        try:
+            # Enable auto mode
+            os.environ["DEFAULT_MODEL"] = "auto"
+            import config
+
+            importlib.reload(config)
+
+            tool = AnalyzeTool()
+
+            # Mock the provider to simulate o3 not being available
+            with patch("providers.registry.ModelProviderRegistry.get_provider_for_model") as mock_provider:
+                # Mock that o3 is not available but flash/pro are
+                def mock_get_provider(model_name):
+                    if model_name in ["flash", "pro", "gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-06-05"]:
+                        # Return a mock provider for available models
+                        from unittest.mock import MagicMock
+
+                        return MagicMock()
+                    else:
+                        # o3 and others are not available
+                        return None
+
+                mock_provider.side_effect = mock_get_provider
+
+                # Execute with unavailable model
+                result = await tool.execute(
+                    {"files": ["/tmp/test.py"], "prompt": "Analyze this", "model": "o3"}  # This model is not available
+                )
+
+            # Should get error with helpful message
+            assert len(result) == 1
+            response = result[0].text
+            assert "error" in response
+            assert "Model 'o3' is not available" in response
+            assert "Available models:" in response
+            # Should list the available models
+            assert "flash" in response or "pro" in response
+
+        finally:
+            # Restore
+            if original:
+                os.environ["DEFAULT_MODEL"] = original
+            else:
+                os.environ.pop("DEFAULT_MODEL", None)
+            importlib.reload(config)
+
     def test_model_field_schema_generation(self):
         """Test the get_model_field_schema method"""
         from tools.base import BaseTool
@@ -173,7 +225,7 @@ class TestAutoMode:
             schema = tool.get_model_field_schema()
             assert "enum" in schema
             assert all(model in schema["enum"] for model in ["flash", "pro", "o3"])
-            assert "Choose the best model" in schema["description"]
+            assert "select the most suitable model" in schema["description"]
 
             # Test normal mode
             os.environ["DEFAULT_MODEL"] = "pro"
