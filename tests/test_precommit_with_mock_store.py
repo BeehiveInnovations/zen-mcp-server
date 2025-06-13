@@ -233,7 +233,11 @@ TEMPERATURE_ANALYTICAL = 0.2  # For code review, debugging
 
         # Test the centralized file preparation method directly
         file_content = tool._prepare_file_content_for_prompt(
-            [config_path], None, "Test files", max_tokens=100000, reserve_tokens=1000  # No continuation
+            [config_path],
+            None,
+            "Test files",
+            max_tokens=100000,
+            reserve_tokens=1000,  # No continuation
         )
 
         # Should contain file markers

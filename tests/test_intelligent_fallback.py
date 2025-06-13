@@ -76,7 +76,6 @@ class TestIntelligentFallback:
             patch("config.DEFAULT_MODEL", "auto"),
             patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False),
         ):
-
             ModelProviderRegistry.clear_cache()
 
             # Create a context with at least one turn so it doesn't exit early
@@ -115,7 +114,6 @@ class TestIntelligentFallback:
             patch("config.DEFAULT_MODEL", "auto"),
             patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-key"}, clear=False),
         ):
-
             ModelProviderRegistry.clear_cache()
 
             from utils.conversation_memory import ConversationTurn
@@ -148,7 +146,6 @@ class TestIntelligentFallback:
         from utils.conversation_memory import ThreadContext, build_conversation_history
 
         with patch("config.IS_AUTO_MODE", False), patch("config.DEFAULT_MODEL", "gemini-2.5-pro-preview-06-05"):
-
             from utils.conversation_memory import ConversationTurn
 
             context = ThreadContext(

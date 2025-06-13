@@ -372,7 +372,7 @@ def get_conversation_file_list(context: ThreadContext) -> list[str]:
 
     for i, turn in enumerate(context.turns):
         if turn.files:
-            logger.debug(f"[FILES] Turn {i+1} has {len(turn.files)} files: {turn.files}")
+            logger.debug(f"[FILES] Turn {i + 1} has {len(turn.files)} files: {turn.files}")
             for file_path in turn.files:
                 if file_path not in seen_files:
                     seen_files.add(file_path)
@@ -381,7 +381,7 @@ def get_conversation_file_list(context: ThreadContext) -> list[str]:
                 else:
                     logger.debug(f"[FILES] Duplicate file skipped: {file_path}")
         else:
-            logger.debug(f"[FILES] Turn {i+1} has no files")
+            logger.debug(f"[FILES] Turn {i + 1} has no files")
 
     logger.debug(f"[FILES] Final unique file list ({len(unique_files)}): {unique_files}")
     return unique_files

@@ -138,7 +138,11 @@ class Calculator:
 
             # Execute the command
             result = subprocess.run(
-                docker_cmd, input=input_data, text=True, capture_output=True, timeout=3600  # 1 hour timeout
+                docker_cmd,
+                input=input_data,
+                text=True,
+                capture_output=True,
+                timeout=3600,  # 1 hour timeout
             )
 
             if result.returncode != 0:

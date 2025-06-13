@@ -58,8 +58,7 @@ class ToolRequest(BaseModel):
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
         None,
         description=(
-            "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), "
-            "max (100% of model max)"
+            "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)"
         ),
     )
     use_websearch: Optional[bool] = Field(

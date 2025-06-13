@@ -154,7 +154,7 @@ class OpenRouterModelRegistry:
                 if alias_lower in alias_map:
                     existing_model = alias_map[alias_lower]
                     raise ValueError(
-                        f"Duplicate alias '{alias}' found for models " f"'{existing_model}' and '{config.model_name}'"
+                        f"Duplicate alias '{alias}' found for models '{existing_model}' and '{config.model_name}'"
                     )
                 alias_map[alias_lower] = config.model_name
 

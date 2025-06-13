@@ -104,8 +104,26 @@
       "description": "Meta's Llama 3 70B model"
     },
     {
+      "model_name": "openai/gpt-4o",
+      "aliases": ["gpt4o", "4o", "gpt-4o"],
+      "context_window": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's GPT-4o model"
+    },
+    {
+      "model_name": "deepseek/deepseek-coder",
+      "aliases": ["deepseek-coder", "deepseek", "coder"],
+      "context_window": 65536,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "DeepSeek Coder model for programming tasks"
+    },
+    {
       "model_name": "deepseek/deepseek-r1-0528",
-      "aliases": ["deepseek-r1", "deepseek", "r1", "deepseek-thinking"],
+      "aliases": ["deepseek-r1", "r1", "deepseek-thinking"],
       "context_window": 65536,
       "supports_extended_thinking": true,
       "supports_json_mode": true,

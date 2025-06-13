@@ -95,7 +95,9 @@ class TestCustomProvider:
 
         # Call with an alias
         result = provider.generate_content(
-            prompt="test prompt", model_name="llama", temperature=0.7  # This is an alias
+            prompt="test prompt",
+            model_name="llama",
+            temperature=0.7,  # This is an alias
         )
 
         # Verify parent method was called with resolved model name

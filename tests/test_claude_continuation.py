@@ -284,7 +284,7 @@ I'd be happy to examine the error handling patterns in more detail if that would
         turns = [
             ConversationTurn(
                 role="assistant" if i % 2 else "user",
-                content=f"Turn {i+1}",
+                content=f"Turn {i + 1}",
                 timestamp="2023-01-01T00:00:00Z",
                 tool_name="test_continuation",
             )

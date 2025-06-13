@@ -246,9 +246,7 @@ class OpenAICompatibleProvider(ModelProvider):
         """
         # Validate model name against allow-list
         if not self.validate_model_name(model_name):
-            raise ValueError(
-                f"Model '{model_name}' not in allowed models list. " f"Allowed models: {self.allowed_models}"
-            )
+            raise ValueError(f"Model '{model_name}' not in allowed models list. Allowed models: {self.allowed_models}")
 
         # Validate parameters
         self.validate_parameters(model_name, temperature)
@@ -367,7 +365,7 @@ class OpenAICompatibleProvider(ModelProvider):
             # Check if we're using generic capabilities
             if hasattr(capabilities, "_is_generic"):
                 logging.debug(
-                    f"Using generic parameter validation for {model_name}. " "Actual model constraints may differ."
+                    f"Using generic parameter validation for {model_name}. Actual model constraints may differ."
                 )
 
             # Validate temperature using parent class method
