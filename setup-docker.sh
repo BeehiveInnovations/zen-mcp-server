@@ -237,24 +237,20 @@ fi
 
 # Build and start services
 echo "  - Building Zen MCP Server image..."
-if $COMPOSE_CMD build --no-cache >/dev/null 2>&1; then
+if $COMPOSE_CMD build >/dev/null 2>&1; then
     echo "✅ Docker image built successfully!"
 else
     echo "❌ Failed to build Docker image. Run '$COMPOSE_CMD build' manually to see errors."
     exit 1
 fi
 
-echo "  - Starting Redis (needed for conversation memory)... please wait"
+echo "  - Starting all services (Redis + Zen MCP Server)..."
 if $COMPOSE_CMD up -d >/dev/null 2>&1; then
     echo "✅ Services started successfully!"
 else
     echo "❌ Failed to start services. Run '$COMPOSE_CMD up -d' manually to see errors."
     exit 1
 fi
-
-# Wait for services to be healthy
-echo "  - Waiting for Redis to be ready..."
-sleep 3
 
 # Check service status
 if $COMPOSE_CMD ps --format table | grep -q "Up" 2>/dev/null || false; then

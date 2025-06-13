@@ -76,7 +76,7 @@
     },
     {
       "model_name": "google/gemini-pro-1.5",
-      "aliases": ["gemini-pro", "gemini", "pro-openrouter"],
+      "aliases": ["pro","gemini-pro", "gemini", "pro-openrouter"],
       "context_window": 1048576,
       "supports_extended_thinking": false,
       "supports_json_mode": true,
@@ -85,7 +85,7 @@
     },
     {
       "model_name": "google/gemini-flash-1.5-8b",
-      "aliases": ["gemini-flash", "flash-openrouter", "flash-8b"],
+      "aliases": ["flash","gemini-flash", "flash-openrouter", "flash-8b"],
       "context_window": 1048576,
       "supports_extended_thinking": false,
       "supports_json_mode": true,
@@ -103,7 +103,7 @@
     },
     {
       "model_name": "meta-llama/llama-3-70b",
-      "aliases": ["llama3-70b", "llama-70b", "llama3"],
+      "aliases": ["llama","llama3-70b", "llama-70b", "llama3"],
       "context_window": 8192,
       "supports_extended_thinking": false,
       "supports_json_mode": false,
@@ -136,6 +136,33 @@
       "supports_json_mode": false,
       "supports_function_calling": false,
       "description": "Perplexity's online model with web search"
+    },
+    {
+      "model_name": "openai/o3",
+      "aliases": ["o3"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3 model - well-rounded and powerful across domains"
+    },
+    {
+      "model_name": "openai/o3-mini",
+      "aliases": ["o3-mini", "o3mini"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3-mini reasoning model - cost-efficient with STEM performance"
+    },
+    {
+      "model_name": "openai/o3-mini-high",
+      "aliases": ["o3-mini-high", "o3mini-high"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3-mini with high reasoning effort - optimized for complex problems"
     }
   ]
 }
