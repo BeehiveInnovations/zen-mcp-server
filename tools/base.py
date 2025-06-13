@@ -183,8 +183,9 @@ class BaseTool(ABC):
             if has_openrouter:
                 # Add OpenRouter models with descriptions
                 try:
-                    from providers.openrouter_registry import OpenRouterModelRegistry
                     import logging
+
+                    from providers.openrouter_registry import OpenRouterModelRegistry
 
                     registry = OpenRouterModelRegistry()
 
