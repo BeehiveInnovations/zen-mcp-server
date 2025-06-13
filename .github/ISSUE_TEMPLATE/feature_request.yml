@@ -1,0 +1,52 @@
+name: ✨ Feature Request
+description: Suggest an idea for this project
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: What problem is this feature trying to solve?
+      description: "A clear and concise description of the problem or user need. Why is this change needed?"
+      placeholder: "Currently, I can only use one Gemini tool at a time. I want to be able to chain multiple tools together (e.g., analyze -> codereview -> thinkdeep) in a single workflow."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen. How would it work from a user's perspective?
+      placeholder: "I'd like to be able to specify a workflow like 'analyze src/ then codereview the findings then use thinkdeep to suggest improvements' in a single command or configuration."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+      placeholder: "I considered manually running each tool sequentially, but automatic workflow chaining would be more efficient and ensure context is preserved between steps."
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Category
+      description: What type of enhancement is this?
+      options:
+        - New Gemini tool (chat, codereview, debug, etc.)
+        - Workflow improvement
+        - Integration enhancement
+        - Performance optimization
+        - User experience improvement
+        - Documentation enhancement
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to submit a Pull Request to implement this feature.
+

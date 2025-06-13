@@ -1,0 +1,68 @@
+name: 📖 Documentation Improvement
+description: Report an issue or suggest an improvement for the documentation
+labels: ["documentation", "good first issue"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: "Which file or page has the issue? (e.g., README.md, CONTRIBUTING.md, CLAUDE.md)"
+      placeholder: "e.g., README.md"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Type of Documentation Issue
+      description: What kind of documentation improvement is this?
+      options:
+        - Typo or grammar error
+        - Unclear or confusing explanation
+        - Outdated information
+        - Missing information
+        - Code example doesn't work
+        - Installation/setup instructions unclear
+        - Tool usage examples need improvement
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong with the documentation?
+      description: "Please describe the problem. Be specific about what is unclear, incorrect, or missing."
+      placeholder: "The Docker setup command in the README is missing the `--pull=always` flag, which means users might use an outdated image version."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: "How can we make it better? If you can, please provide the exact text or changes you'd like to see."
+      placeholder: |
+        Change:
+        ```
+        docker run ghcr.io/beehiveinnovations/zen-mcp-server:latest
+        ```
+        
+        To:
+        ```
+        docker run --pull=always ghcr.io/beehiveinnovations/zen-mcp-server:latest
+        ```
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Which audience would benefit most from this improvement?
+      options:
+        - New users (first-time setup)
+        - Developers (contributing to the project)
+        - Advanced users (complex workflows)
+        - All users
+    validations:
+      required: true
+
