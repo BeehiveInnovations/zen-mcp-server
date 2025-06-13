@@ -67,7 +67,7 @@ Claude is brilliant, but sometimes you need:
 - **Local model support** - Run models like Llama 3.2 locally via Ollama, vLLM, or LM Studio for privacy and cost control
 - **Dynamic collaboration** - Models can request additional context and follow-up replies from Claude mid-analysis
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
-- **[Bypass MCP's token limits](#working-with-large-prompts)** - Work around MCP's 25K limit automatically
+- **[Bypass MCP's token limits](docs/advanced-usage.md#working-with-large-prompts)** - Work around MCP's 25K limit automatically
 
 This server orchestrates multiple AI models as your development team, with Claude automatically selecting the best model for each task or allowing you to choose specific models for different strengths.
 
@@ -105,7 +105,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 
 **Option C: Custom API Endpoints (Local models like Ollama, vLLM)**
-[Please see the setup guide](docs/custom_models.md#custom-api-setup-ollama-vllm-etc). With a custom API you can use:
+[Please see the setup guide](docs/custom_models.md#option-2-custom-api-setup-ollama-vllm-etc). With a custom API you can use:
 - **Ollama**: Run models like Llama 3.2 locally for free inference
 - **vLLM**: Self-hosted inference server for high-throughput inference
 - **LM Studio**: Local model hosting with OpenAI-compatible API interface
@@ -260,7 +260,7 @@ Just ask Claude naturally:
 - General explanations → Claude picks Flash for speed
 - Local analysis → Claude picks your Ollama model
 
-**Pro Tip:** Thinking modes (for Gemini models) control depth vs token cost. Use "minimal" or "low" for quick tasks, "high" or "max" for complex problems. [Learn more](#thinking-modes---managing-token-costs--quality)
+**Pro Tip:** Thinking modes (for Gemini models) control depth vs token cost. Use "minimal" or "low" for quick tasks, "high" or "max" for complex problems. [Learn more](docs/advanced-usage.md#thinking-modes)
 
 **Tools Overview:**
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
