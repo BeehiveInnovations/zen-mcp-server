@@ -165,4 +165,3 @@ test_simulation_files/.claude/
 
 # Temporary test directories
 test-setup/
-/test_simulation_files/**

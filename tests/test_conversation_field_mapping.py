@@ -77,7 +77,7 @@ async def test_conversation_history_field_mapping():
                             provider=ProviderType.GOOGLE,
                             model_name="gemini-2.5-flash-preview-05-20",
                             friendly_name="Gemini",
-                            max_tokens=200000,
+                            context_window=200000,
                             supports_extended_thinking=True,
                         )
                         mock_get_provider.return_value = mock_provider

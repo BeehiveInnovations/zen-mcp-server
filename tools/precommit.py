@@ -14,8 +14,6 @@ from typing import Any, Literal, Optional
 from mcp.types import TextContent
 from pydantic import Field
 
-# Conservative fallback for token limits
-DEFAULT_CONTEXT_WINDOW = 200_000
 from prompts.tool_prompts import PRECOMMIT_PROMPT
 from utils.file_utils import translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
@@ -23,6 +21,9 @@ from utils.token_utils import estimate_tokens
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
+
+# Conservative fallback for token limits
+DEFAULT_CONTEXT_WINDOW = 200_000
 
 
 class PrecommitRequest(ToolRequest):

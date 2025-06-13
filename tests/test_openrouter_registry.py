@@ -120,7 +120,7 @@ class TestOpenRouterModelRegistry:
         assert caps.provider == ProviderType.OPENROUTER
         assert caps.model_name == "anthropic/claude-3-opus"
         assert caps.friendly_name == "OpenRouter"
-        assert caps.max_tokens == 200000
+        assert caps.context_window == 200000
         assert not caps.supports_extended_thinking
 
     def test_duplicate_alias_detection(self):
@@ -147,13 +147,13 @@ class TestOpenRouterModelRegistry:
             os.unlink(temp_path)
 
     def test_backwards_compatibility_max_tokens(self):
-        """Test backwards compatibility with old max_tokens field."""
+        """Test that old max_tokens field is no longer supported (should result in empty registry)."""
         config_data = {
             "models": [
                 {
                     "model_name": "test/old-model",
                     "aliases": ["old"],
-                    "max_tokens": 16384,  # Old field name
+                    "max_tokens": 16384,  # Old field name should cause error
                     "supports_extended_thinking": False,
                 }
             ]
@@ -164,15 +164,12 @@ class TestOpenRouterModelRegistry:
             temp_path = f.name
 
         try:
+            # Should gracefully handle the error and result in empty registry
             registry = OpenRouterModelRegistry(config_path=temp_path)
-            config = registry.resolve("old")
-
-            assert config is not None
-            assert config.context_window == 16384  # Should be converted
-
-            # Check capabilities still work
-            caps = config.to_capabilities()
-            assert caps.max_tokens == 16384
+            # Registry should be empty due to config error
+            assert len(registry.list_models()) == 0
+            assert len(registry.list_aliases()) == 0
+            assert registry.resolve("old") is None
         finally:
             os.unlink(temp_path)
 
@@ -215,7 +212,7 @@ class TestOpenRouterModelRegistry:
         )
 
         caps = config.to_capabilities()
-        assert caps.max_tokens == 128000
+        assert caps.context_window == 128000
         assert caps.supports_extended_thinking
         assert caps.supports_system_prompts
         assert caps.supports_streaming
