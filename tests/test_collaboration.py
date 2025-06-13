@@ -31,7 +31,7 @@ class TestDynamicContextRequests:
         # Mock model to return a clarification request
         clarification_json = json.dumps(
             {
-                "status": "requires_clarification",
+                "status": "clarification_required",
                 "question": "I need to see the package.json file to understand dependencies",
                 "files_needed": ["package.json", "package-lock.json"],
             }
@@ -56,7 +56,7 @@ class TestDynamicContextRequests:
 
         # Parse the response
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "requires_clarification"
+        assert response_data["status"] == "clarification_required"
         assert response_data["content_type"] == "json"
 
         # Parse the clarification request
@@ -100,7 +100,7 @@ class TestDynamicContextRequests:
     @patch("tools.base.BaseTool.get_model_provider")
     async def test_malformed_clarification_request_treated_as_normal(self, mock_get_provider, analyze_tool):
         """Test that malformed JSON clarification requests are treated as normal responses"""
-        malformed_json = '{"status": "requires_clarification", "prompt": "Missing closing brace"'
+        malformed_json = '{"status": "clarification_required", "prompt": "Missing closing brace"'
 
         mock_provider = create_mock_provider()
         mock_provider.get_provider_type.return_value = Mock(value="google")
@@ -125,7 +125,7 @@ class TestDynamicContextRequests:
         """Test clarification request with suggested next action"""
         clarification_json = json.dumps(
             {
-                "status": "requires_clarification",
+                "status": "clarification_required",
                 "question": "I need to see the database configuration to diagnose the connection error",
                 "files_needed": ["config/database.yml", "src/db.py"],
                 "suggested_next_action": {
@@ -160,7 +160,7 @@ class TestDynamicContextRequests:
         assert len(result) == 1
 
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "requires_clarification"
+        assert response_data["status"] == "clarification_required"
 
         clarification = json.loads(response_data["content"])
         assert "suggested_next_action" in clarification
@@ -223,7 +223,7 @@ class TestCollaborationWorkflow:
         # Mock Gemini to request package.json when asked about dependencies
         clarification_json = json.dumps(
             {
-                "status": "requires_clarification",
+                "status": "clarification_required",
                 "question": "I need to see the package.json file to analyze npm dependencies",
                 "files_needed": ["package.json", "package-lock.json"],
             }
@@ -247,7 +247,7 @@ class TestCollaborationWorkflow:
 
         response = json.loads(result[0].text)
         assert (
-            response["status"] == "requires_clarification"
+            response["status"] == "clarification_required"
         ), "Should request clarification when asked about dependencies without package files"
 
         clarification = json.loads(response["content"])
@@ -262,7 +262,7 @@ class TestCollaborationWorkflow:
         # Step 1: Initial request returns clarification needed
         clarification_json = json.dumps(
             {
-                "status": "requires_clarification",
+                "status": "clarification_required",
                 "question": "I need to see the configuration file to understand the connection settings",
                 "files_needed": ["config.py"],
             }
@@ -284,7 +284,7 @@ class TestCollaborationWorkflow:
         )
 
         response1 = json.loads(result1[0].text)
-        assert response1["status"] == "requires_clarification"
+        assert response1["status"] == "clarification_required"
 
         # Step 2: Claude would provide additional context and re-invoke
         # This simulates the second call with more context

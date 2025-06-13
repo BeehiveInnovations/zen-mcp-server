@@ -1,5 +1,6 @@
 """Gemini model provider implementation."""
 
+import time
 from typing import Optional
 
 from google import genai
@@ -117,35 +118,74 @@ class GeminiModelProvider(ModelProvider):
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
-        try:
-            # Generate content
-            response = self.client.models.generate_content(
-                model=resolved_name,
-                contents=full_prompt,
-                config=generation_config,
-            )
+        # Retry logic with exponential backoff
+        max_retries = 2  # Total of 2 attempts (1 initial + 1 retry)
+        base_delay = 1.0  # Start with 1 second delay
 
-            # Extract usage information if available
-            usage = self._extract_usage(response)
+        last_exception = None
 
-            return ModelResponse(
-                content=response.text,
-                usage=usage,
-                model_name=resolved_name,
-                friendly_name="Gemini",
-                provider=ProviderType.GOOGLE,
-                metadata={
-                    "thinking_mode": thinking_mode if capabilities.supports_extended_thinking else None,
-                    "finish_reason": (
-                        getattr(response.candidates[0], "finish_reason", "STOP") if response.candidates else "STOP"
-                    ),
-                },
-            )
+        for attempt in range(max_retries):
+            try:
+                # Generate content
+                response = self.client.models.generate_content(
+                    model=resolved_name,
+                    contents=full_prompt,
+                    config=generation_config,
+                )
 
-        except Exception as e:
-            # Log error and re-raise with more context
-            error_msg = f"Gemini API error for model {resolved_name}: {str(e)}"
-            raise RuntimeError(error_msg) from e
+                # Extract usage information if available
+                usage = self._extract_usage(response)
+
+                return ModelResponse(
+                    content=response.text,
+                    usage=usage,
+                    model_name=resolved_name,
+                    friendly_name="Gemini",
+                    provider=ProviderType.GOOGLE,
+                    metadata={
+                        "thinking_mode": thinking_mode if capabilities.supports_extended_thinking else None,
+                        "finish_reason": (
+                            getattr(response.candidates[0], "finish_reason", "STOP") if response.candidates else "STOP"
+                        ),
+                    },
+                )
+
+            except Exception as e:
+                last_exception = e
+
+                # Check if this is a retryable error
+                error_str = str(e).lower()
+                is_retryable = any(
+                    term in error_str
+                    for term in [
+                        "timeout",
+                        "connection",
+                        "network",
+                        "temporary",
+                        "unavailable",
+                        "retry",
+                        "429",
+                        "500",
+                        "502",
+                        "503",
+                        "504",
+                    ]
+                )
+
+                # If this is the last attempt or not retryable, give up
+                if attempt == max_retries - 1 or not is_retryable:
+                    break
+
+                # Calculate delay with exponential backoff
+                delay = base_delay * (2**attempt)
+
+                # Log retry attempt (could add logging here if needed)
+                # For now, just sleep and retry
+                time.sleep(delay)
+
+        # If we get here, all retries failed
+        error_msg = f"Gemini API error for model {resolved_name} after {max_retries} attempts: {str(last_exception)}"
+        raise RuntimeError(error_msg) from last_exception
 
     def count_tokens(self, text: str, model_name: str) -> int:
         """Count tokens for the given text using Gemini's tokenizer."""

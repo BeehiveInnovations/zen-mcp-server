@@ -13,7 +13,7 @@ class ContinuationOffer(BaseModel):
     continuation_id: str = Field(
         ..., description="Thread continuation ID for multi-turn conversations across different tools"
     )
-    message_to_user: str = Field(..., description="Message explaining continuation opportunity to Claude")
+    note: str = Field(..., description="Message explaining continuation opportunity to Claude")
     suggested_tool_params: Optional[dict[str, Any]] = Field(
         None, description="Suggested parameters for continued tool usage"
     )
@@ -26,8 +26,8 @@ class ToolOutput(BaseModel):
     status: Literal[
         "success",
         "error",
-        "requires_clarification",
-        "requires_file_prompt",
+        "clarification_required",
+        "resend_prompt",
         "continuation_available",
     ] = "success"
     content: Optional[str] = Field(None, description="The main content/response from the tool")

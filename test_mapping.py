@@ -14,14 +14,14 @@ class MappingTest(BaseSimulatorTest):
     def test_mapping(self):
         """Test model alias mapping"""
 
-        # Test with 'flash' alias - should map to google/gemini-flash-1.5-8b
+        # Test with 'flash' alias - should map to google/gemini-2.5-flash-preview-05-20
         print("\nTesting 'flash' alias mapping...")
 
         response, continuation_id = self.call_mcp_tool(
             "chat",
             {
                 "prompt": "Say 'Hello from Flash model!'",
-                "model": "flash",  # Should be mapped to google/gemini-flash-1.5-8b
+                "model": "flash",  # Should be mapped to google/gemini-2.5-flash-preview-05-20
                 "temperature": 0.1,
             },
         )

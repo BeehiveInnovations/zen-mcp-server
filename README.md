@@ -49,7 +49,7 @@ and review into consideration to aid with its pre-commit review.
   - [Complete Advanced Guide](docs/advanced-usage.md) - Model configuration, thinking modes, workflows, tool parameters
 
 - **Setup & Support**
-  - [Setup & Troubleshooting Guide](docs/setup-troubleshooting.md) - Testing, troubleshooting, common issues
+  - [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and debugging steps
   - [License](#license) - Apache 2.0
 
 ## Why This Server?

@@ -119,7 +119,163 @@ EXCLUDED_DIRS = {
     ".tox",
     "htmlcov",
     ".coverage",
+    # Additional build and temp directories
+    "out",
+    ".next",
+    ".nuxt",
+    ".cache",
+    ".temp",
+    ".tmp",
+    "bower_components",
+    "vendor",
+    ".sass-cache",
+    ".gradle",
+    ".m2",
+    "coverage",
+    # OS-specific directories
+    ".DS_Store",
+    "Thumbs.db",
+    # Python specific
+    "*.egg-info",
+    ".eggs",
+    "wheels",
+    ".Python",
+    # IDE and editor directories
+    ".sublime",
+    ".atom",
+    ".brackets",
+    "*.swp",
+    "*.swo",
+    "*~",
+    # Documentation build
+    "_build",
+    "site",
+    # Mobile development
+    ".expo",
+    ".flutter",
 }
+
+# MCP signature files - presence of these indicates the MCP's own directory
+# Used to prevent the MCP from scanning its own codebase
+MCP_SIGNATURE_FILES = {
+    "zen_server.py",
+    "server.py",
+    "tools/precommit.py",
+    "utils/file_utils.py",
+    "prompts/tool_prompts.py",
+}
+
+
+def is_mcp_directory(path: Path) -> bool:
+    """
+    Check if a directory is the MCP server's own directory.
+
+    This prevents the MCP from including its own code when scanning projects
+    where the MCP has been cloned as a subdirectory.
+
+    Args:
+        path: Directory path to check
+
+    Returns:
+        True if this appears to be the MCP directory
+    """
+    if not path.is_dir():
+        return False
+
+    # Check for multiple signature files to be sure
+    matches = 0
+    for sig_file in MCP_SIGNATURE_FILES:
+        if (path / sig_file).exists():
+            matches += 1
+            if matches >= 3:  # Require at least 3 matches to be certain
+                logger.info(f"Detected MCP directory at {path}, will exclude from scanning")
+                return True
+    return False
+
+
+def get_user_home_directory() -> Optional[Path]:
+    """
+    Get the user's home directory based on environment variables.
+
+    In Docker, USER_HOME should be set to the mounted home path.
+    Outside Docker, we use Path.home() or environment variables.
+
+    Returns:
+        User's home directory path or None if not determinable
+    """
+    # Check for explicit USER_HOME env var (set in docker-compose.yml)
+    user_home = os.environ.get("USER_HOME")
+    if user_home:
+        return Path(user_home).resolve()
+
+    # In container, check if we're running in Docker
+    if CONTAINER_WORKSPACE.exists():
+        # We're in Docker but USER_HOME not set - use WORKSPACE_ROOT as fallback
+        if WORKSPACE_ROOT:
+            return Path(WORKSPACE_ROOT).resolve()
+
+    # Outside Docker, use system home
+    return Path.home()
+
+
+def is_home_directory_root(path: Path) -> bool:
+    """
+    Check if the given path is the user's home directory root.
+
+    This prevents scanning the entire home directory which could include
+    sensitive data and non-project files.
+
+    Args:
+        path: Directory path to check
+
+    Returns:
+        True if this is the home directory root
+    """
+    user_home = get_user_home_directory()
+    if not user_home:
+        return False
+
+    try:
+        resolved_path = path.resolve()
+        resolved_home = user_home.resolve()
+
+        # Check if this is exactly the home directory
+        if resolved_path == resolved_home:
+            logger.warning(
+                f"Attempted to scan user home directory root: {path}. " f"Please specify a subdirectory instead."
+            )
+            return True
+
+        # Also check common home directory patterns
+        path_str = str(resolved_path).lower()
+        home_patterns = [
+            "/users/",  # macOS
+            "/home/",  # Linux
+            "c:\\users\\",  # Windows
+            "c:/users/",  # Windows with forward slashes
+        ]
+
+        for pattern in home_patterns:
+            if pattern in path_str:
+                # Extract the user directory path
+                # e.g., /Users/fahad or /home/username
+                parts = path_str.split(pattern)
+                if len(parts) > 1:
+                    # Get the part after the pattern
+                    after_pattern = parts[1]
+                    # Check if we're at the user's root (no subdirectories)
+                    if "/" not in after_pattern and "\\" not in after_pattern:
+                        logger.warning(
+                            f"Attempted to scan user home directory root: {path}. "
+                            f"Please specify a subdirectory instead."
+                        )
+                        return True
+
+    except Exception as e:
+        logger.debug(f"Error checking if path is home directory: {e}")
+
+    return False
+
 
 # Common code file extensions that are automatically included when processing directories
 # This set can be extended to support additional file types
@@ -344,17 +500,30 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
         if not path_obj.exists():
             continue
 
-        # Safety check: Prevent reading entire workspace root
-        # This could expose too many files and cause performance issues
+        # Safety checks for directory scanning
         if path_obj.is_dir():
             resolved_workspace = SECURITY_ROOT.resolve()
             resolved_path = path_obj.resolve()
 
-            # Check if this is the entire workspace root directory
+            # Check 1: Prevent reading entire workspace root
             if resolved_path == resolved_workspace:
                 logger.warning(
                     f"Ignoring request to read entire workspace directory: {path}. "
                     f"Please specify individual files or subdirectories instead."
+                )
+                continue
+
+            # Check 2: Prevent scanning user's home directory root
+            if is_home_directory_root(path_obj):
+                logger.warning(
+                    f"Skipping home directory root: {path}. " f"Please specify a project subdirectory instead."
+                )
+                continue
+
+            # Check 3: Skip if this is the MCP's own directory
+            if is_mcp_directory(path_obj):
+                logger.info(
+                    f"Skipping MCP server directory: {path}. " f"The MCP server code is excluded from project scans."
                 )
                 continue
 
@@ -369,7 +538,21 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
             for root, dirs, files in os.walk(path_obj):
                 # Filter directories in-place to skip hidden and excluded directories
                 # This prevents descending into .git, .venv, __pycache__, node_modules, etc.
-                dirs[:] = [d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS]
+                original_dirs = dirs[:]
+                dirs[:] = []
+                for d in original_dirs:
+                    # Skip hidden directories
+                    if d.startswith("."):
+                        continue
+                    # Skip excluded directories
+                    if d in EXCLUDED_DIRS:
+                        continue
+                    # Skip MCP directories found during traversal
+                    dir_path = Path(root) / d
+                    if is_mcp_directory(dir_path):
+                        logger.debug(f"Skipping MCP directory during traversal: {dir_path}")
+                        continue
+                    dirs.append(d)
 
                 for file in files:
                     # Skip hidden files (e.g., .DS_Store, .gitignore)

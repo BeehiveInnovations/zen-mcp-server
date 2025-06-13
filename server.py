@@ -24,7 +24,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from logging.handlers import RotatingFileHandler
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Any
 
 from mcp.server import Server
@@ -81,20 +81,49 @@ for handler in logging.getLogger().handlers:
     handler.setFormatter(LocalTimeFormatter(log_format))
 
 # Add rotating file handler for Docker log monitoring
+
 try:
-    # Main server log with rotation (10MB max, keep 2 files)
-    file_handler = RotatingFileHandler("/tmp/mcp_server.log", maxBytes=10 * 1024 * 1024, backupCount=2)
+    # Main server log with daily rotation (keep 7 days of logs)
+    # Using 'midnight' interval rotates at midnight each day
+    # Filename will have date suffix like mcp_server.log.2024-06-14
+    file_handler = TimedRotatingFileHandler(
+        "/tmp/mcp_server.log",
+        when="midnight",  # Rotate at midnight
+        interval=1,  # Every 1 day
+        backupCount=7,  # Keep 7 days of logs
+        encoding="utf-8",
+    )
     file_handler.setLevel(getattr(logging, log_level, logging.INFO))
     file_handler.setFormatter(LocalTimeFormatter(log_format))
+    # Add suffix pattern for rotated files
+    file_handler.suffix = "%Y-%m-%d"
     logging.getLogger().addHandler(file_handler)
 
-    # Create a special logger for MCP activity tracking with rotation
+    # Create a special logger for MCP activity tracking with daily rotation
     mcp_logger = logging.getLogger("mcp_activity")
-    mcp_file_handler = RotatingFileHandler("/tmp/mcp_activity.log", maxBytes=10 * 1024 * 1024, backupCount=2)
+    mcp_file_handler = TimedRotatingFileHandler(
+        "/tmp/mcp_activity.log",
+        when="midnight",  # Rotate at midnight
+        interval=1,  # Every 1 day
+        backupCount=7,  # Keep 7 days of logs
+        encoding="utf-8",
+    )
     mcp_file_handler.setLevel(logging.INFO)
     mcp_file_handler.setFormatter(LocalTimeFormatter("%(asctime)s - %(message)s"))
+    mcp_file_handler.suffix = "%Y-%m-%d"
     mcp_logger.addHandler(mcp_file_handler)
     mcp_logger.setLevel(logging.INFO)
+
+    # Also keep a size-based rotation as backup (100MB max per file)
+    # This prevents any single day's log from growing too large
+    from logging.handlers import RotatingFileHandler
+
+    size_handler = RotatingFileHandler(
+        "/tmp/mcp_server_overflow.log", maxBytes=100 * 1024 * 1024, backupCount=3  # 100MB
+    )
+    size_handler.setLevel(logging.WARNING)  # Only warnings and errors
+    size_handler.setFormatter(LocalTimeFormatter(log_format))
+    logging.getLogger().addHandler(size_handler)
 
 except Exception as e:
     print(f"Warning: Could not set up file logging: {e}", file=sys.stderr)

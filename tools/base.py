@@ -687,18 +687,19 @@ When recommending searches, be specific about what information you need and why 
         """
         if text and len(text) > MCP_PROMPT_SIZE_LIMIT:
             return {
-                "status": "requires_file_prompt",
+                "status": "resend_prompt",
                 "content": (
                     f"The prompt is too large for MCP's token limits (>{MCP_PROMPT_SIZE_LIMIT:,} characters). "
-                    "Please save the prompt text to a temporary file named 'prompt.txt' and "
-                    "resend the request with an empty prompt string and the absolute file path included "
-                    "in the files parameter, along with any other files you wish to share as context."
+                    "Please save the prompt text to a temporary file named 'prompt.txt' in the current directory and "
+                    "resend request with the absolute file path in the files parameter, along with any other files "
+                    "you wish to share as context. You may leave the prompt text itself empty."
                 ),
                 "content_type": "text",
                 "metadata": {
                     "prompt_size": len(text),
                     "limit": MCP_PROMPT_SIZE_LIMIT,
-                    "instructions": "Save prompt to 'prompt.txt' and include absolute path in files parameter",
+                    "instructions": "Save prompt to 'prompt.txt' in current folder and include absolute path in files"
+                    " parameter",
                 },
             }
         return None
@@ -791,7 +792,7 @@ When recommending searches, be specific about what information you need and why 
 
             # Set up logger for this tool execution
             logger = logging.getLogger(f"tools.{self.name}")
-            logger.info(f"Starting {self.name} tool execution with arguments: {list(arguments.keys())}")
+            logger.info(f"🔧 {self.name} tool called with arguments: {list(arguments.keys())}")
 
             # Validate request using the tool's Pydantic model
             # This ensures all required fields are present and properly typed
@@ -911,7 +912,7 @@ When recommending searches, be specific about what information you need and why 
                 # Pass model info for conversation tracking
                 model_info = {"provider": provider, "model_name": model_name, "model_response": model_response}
                 tool_output = self._parse_response(raw_text, request, model_info)
-                logger.info(f"Successfully completed {self.name} tool execution")
+                logger.info(f"✅ {self.name} tool completed successfully")
 
             else:
                 # Handle cases where the model couldn't generate a response
@@ -990,16 +991,24 @@ When recommending searches, be specific about what information you need and why 
             # Try to parse as JSON to check for clarification requests
             potential_json = json.loads(raw_text.strip())
 
-            if isinstance(potential_json, dict) and potential_json.get("status") == "requires_clarification":
+            if isinstance(potential_json, dict) and potential_json.get("status") == "clarification_required":
                 # Validate the clarification request structure
                 clarification = ClarificationRequest(**potential_json)
+                logger.debug(f"{self.name} tool requested clarification: {clarification.question}")
+                # Extract model information for metadata
+                metadata = {
+                    "original_request": (request.model_dump() if hasattr(request, "model_dump") else str(request))
+                }
+                if model_info:
+                    model_name = model_info.get("model_name")
+                    if model_name:
+                        metadata["model_used"] = model_name
+
                 return ToolOutput(
-                    status="requires_clarification",
+                    status="clarification_required",
                     content=clarification.model_dump_json(),
                     content_type="json",
-                    metadata={
-                        "original_request": (request.model_dump() if hasattr(request, "model_dump") else str(request))
-                    },
+                    metadata=metadata,
                 )
 
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -1056,11 +1065,18 @@ When recommending searches, be specific about what information you need and why 
             "markdown" if any(marker in formatted_content for marker in ["##", "**", "`", "- ", "1. "]) else "text"
         )
 
+        # Extract model information for metadata
+        metadata = {"tool_name": self.name}
+        if model_info:
+            model_name = model_info.get("model_name")
+            if model_name:
+                metadata["model_used"] = model_name
+
         return ToolOutput(
             status="success",
             content=formatted_content,
             content_type=content_type,
-            metadata={"tool_name": self.name},
+            metadata=metadata,
         )
 
     def _check_continuation_opportunity(self, request) -> Optional[dict]:
@@ -1165,7 +1181,7 @@ When recommending searches, be specific about what information you need and why 
             remaining_turns = continuation_data["remaining_turns"]
             continuation_offer = ContinuationOffer(
                 continuation_id=thread_id,
-                message_to_user=(
+                note=(
                     f"If you'd like to continue this discussion or need to provide me with further details or context, "
                     f"you can use the continuation_id '{thread_id}' with any tool and any model. "
                     f"You have {remaining_turns} more exchange(s) available in this conversation thread."
@@ -1177,23 +1193,37 @@ When recommending searches, be specific about what information you need and why 
                 remaining_turns=remaining_turns,
             )
 
+            # Extract model information for metadata
+            metadata = {"tool_name": self.name, "thread_id": thread_id, "remaining_turns": remaining_turns}
+            if model_info:
+                model_name = model_info.get("model_name")
+                if model_name:
+                    metadata["model_used"] = model_name
+
             return ToolOutput(
                 status="continuation_available",
                 content=content,
                 content_type="markdown",
                 continuation_offer=continuation_offer,
-                metadata={"tool_name": self.name, "thread_id": thread_id, "remaining_turns": remaining_turns},
+                metadata=metadata,
             )
 
         except Exception as e:
             # If threading fails, return normal response but log the error
             logger = logging.getLogger(f"tools.{self.name}")
             logger.warning(f"Conversation threading failed in {self.name}: {str(e)}")
+            # Extract model information for metadata
+            metadata = {"tool_name": self.name, "threading_error": str(e)}
+            if model_info:
+                model_name = model_info.get("model_name")
+                if model_name:
+                    metadata["model_used"] = model_name
+
             return ToolOutput(
                 status="success",
                 content=content,
                 content_type="markdown",
-                metadata={"tool_name": self.name, "threading_error": str(e)},
+                metadata=metadata,
             )
 
     @abstractmethod

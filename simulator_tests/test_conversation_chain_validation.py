@@ -98,6 +98,10 @@ class ConversationChainValidationTest(BaseSimulatorTest):
     '''Simple test function for conversation continuity testing'''
     return "Hello from conversation chain test"
 
+def buggy_function(x, y):
+    '''Function with a bug - incorrect operator'''
+    return x - y  # BUG: Should be x + y for addition
+
 class TestClass:
     def method(self):
         return "Method in test class"
@@ -223,7 +227,8 @@ class TestClass:
             response_a1_branch, continuation_id_a1_branch = self.call_mcp_tool(
                 "debug",
                 {
-                    "prompt": "Let's debug this from a different angle now.",
+                    "prompt": "buggy_function(5, 3) returns 2 but should return 8 for addition",
+                    "error_context": "Unit test failure: expected buggy_function(5, 3) to return 8 (5+3) but got 2. Function appears to be subtracting instead of adding.",
                     "files": [test_file_path],
                     "continuation_id": continuation_id_a1,  # Go back to original!
                     "model": "flash",

@@ -186,8 +186,8 @@ class TestClaudeContinuationOffers:
             offer = response_data["continuation_offer"]
             assert "continuation_id" in offer
             assert offer["remaining_turns"] == MAX_CONVERSATION_TURNS - 1
-            assert "You have" in offer["message_to_user"]
-            assert "more exchange(s) available" in offer["message_to_user"]
+            assert "You have" in offer["note"]
+            assert "more exchange(s) available" in offer["note"]
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)

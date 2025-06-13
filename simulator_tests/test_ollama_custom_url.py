@@ -227,7 +227,7 @@ if __name__ == "__main__":
         ]
 
         # Special handling for clarification requests from local models
-        if "requires_clarification" in response.lower():
+        if "clarification_required" in response.lower():
             if files_provided:
                 # If we provided actual files, clarification request is a FAILURE
                 self.logger.error(

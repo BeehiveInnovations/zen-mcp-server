@@ -46,8 +46,8 @@ The server uses `conf/custom_models.json` to map convenient aliases to both Open
 | `haiku` | `anthropic/claude-3-haiku` |
 | `gpt4o`, `4o` | `openai/gpt-4o` |
 | `gpt4o-mini`, `4o-mini` | `openai/gpt-4o-mini` |
-| `pro`, `gemini` | `google/gemini-pro-1.5` |
-| `flash` | `google/gemini-flash-1.5-8b` |
+| `pro`, `gemini` | `google/gemini-2.5-pro-preview-06-05` |
+| `flash` | `google/gemini-2.5-flash-preview-05-20` |
 | `mistral` | `mistral/mistral-large` |
 | `deepseek`, `coder` | `deepseek/deepseek-coder` |
 | `perplexity` | `perplexity/llama-3-sonar-large-32k-online` |
@@ -156,7 +156,7 @@ CUSTOM_MODEL_NAME=your-loaded-model
 # OpenRouter models:
 "Use opus for deep analysis"         # → anthropic/claude-3-opus
 "Use sonnet to review this code"     # → anthropic/claude-3-sonnet
-"Use pro via zen to analyze this"    # → google/gemini-pro-1.5
+"Use pro via zen to analyze this"    # → google/gemini-2.5-pro-preview-06-05
 "Use gpt4o via zen to analyze this"  # → openai/gpt-4o
 "Use mistral via zen to optimize"    # → mistral/mistral-large
 

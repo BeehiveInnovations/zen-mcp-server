@@ -57,7 +57,7 @@ class TestLargePromptHandling:
         assert isinstance(result[0], TextContent)
 
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
         assert f"{MCP_PROMPT_SIZE_LIMIT:,} characters" in output["content"]
         assert output["metadata"]["prompt_size"] == len(large_prompt)
         assert output["metadata"]["limit"] == MCP_PROMPT_SIZE_LIMIT
@@ -141,7 +141,7 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_codereview_large_focus(self, large_prompt):
@@ -157,7 +157,7 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_review_changes_large_original_request(self, large_prompt):
@@ -167,7 +167,7 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_debug_large_error_description(self, large_prompt):
@@ -177,7 +177,7 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_debug_large_error_context(self, large_prompt, normal_prompt):
@@ -187,7 +187,7 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_analyze_large_question(self, large_prompt):
@@ -197,7 +197,7 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_multiple_files_with_prompt_txt(self, temp_prompt_file):
@@ -262,7 +262,7 @@ class TestLargePromptHandling:
 
         result = await tool.execute({"prompt": over_prompt})
         output = json.loads(result[0].text)
-        assert output["status"] == "requires_file_prompt"
+        assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_empty_prompt_no_file(self):

@@ -45,8 +45,8 @@ MODEL_CAPABILITIES_DESC = {
 }
 
 # Note: When only OpenRouter is configured, these model aliases automatically map to equivalent models:
-# - "flash" → "google/gemini-flash-1.5-8b"
-# - "pro" → "google/gemini-pro-1.5"
+# - "flash" → "google/gemini-2.5-flash-preview-05-20"
+# - "pro" → "google/gemini-2.5-pro-preview-06-05"
 # - "o3" → "openai/gpt-4o"
 # - "o3-mini" → "openai/gpt-4o-mini"
 

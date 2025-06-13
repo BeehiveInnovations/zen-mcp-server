@@ -14,27 +14,33 @@ def monitor_mcp_activity():
     log_file = "/tmp/mcp_server.log"
     activity_file = "/tmp/mcp_activity.log"
     debug_file = "/tmp/gemini_debug.log"
+    overflow_file = "/tmp/mcp_server_overflow.log"
 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] MCP Log Monitor started")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Monitoring: {log_file}")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Activity file: {activity_file}")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Debug file: {debug_file}")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Overflow file: {overflow_file}")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Note: Logs rotate daily at midnight, keeping 7 days of history")
     print("-" * 60)
 
     # Track file positions and sizes for rotation detection
     log_pos = 0
     activity_pos = 0
     debug_pos = 0
+    overflow_pos = 0
 
     # Track file sizes to detect rotation
     log_size = 0
     activity_size = 0
     debug_size = 0
+    overflow_size = 0
 
     # Ensure files exist
     Path(log_file).touch()
     Path(activity_file).touch()
     Path(debug_file).touch()
+    Path(overflow_file).touch()
 
     # Initialize file sizes
     if os.path.exists(log_file):
@@ -46,6 +52,9 @@ def monitor_mcp_activity():
     if os.path.exists(debug_file):
         debug_size = os.path.getsize(debug_file)
         debug_pos = debug_size  # Start from end to avoid old logs
+    if os.path.exists(overflow_file):
+        overflow_size = os.path.getsize(overflow_file)
+        overflow_pos = overflow_size  # Start from end to avoid old logs
 
     while True:
         try:
@@ -138,6 +147,30 @@ def monitor_mcp_activity():
                         line = line.strip()
                         if line:
                             print(f"[{datetime.now().strftime('%H:%M:%S')}] DEBUG: {line}")
+
+            # Check overflow file for warnings/errors when main log gets too large
+            if os.path.exists(overflow_file):
+                # Check for log rotation
+                current_overflow_size = os.path.getsize(overflow_file)
+                if current_overflow_size < overflow_size:
+                    # File was rotated - start from beginning
+                    overflow_pos = 0
+                    overflow_size = current_overflow_size
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Overflow log rotated - restarting from beginning")
+
+                with open(overflow_file) as f:
+                    f.seek(overflow_pos)
+                    new_lines = f.readlines()
+                    overflow_pos = f.tell()
+                    overflow_size = current_overflow_size
+
+                    for line in new_lines:
+                        line = line.strip()
+                        if line:
+                            if "ERROR" in line:
+                                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 OVERFLOW: {line}")
+                            elif "WARNING" in line:
+                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  OVERFLOW: {line}")
 
             time.sleep(0.5)  # Check every 500ms
 
