@@ -56,6 +56,8 @@ class TestClaudeContinuationOffers:
 
     def setup_method(self):
         self.tool = ClaudeContinuationTool()
+        # Set default model to avoid effective auto mode
+        self.tool.default_model = "gemini-2.5-flash-preview-05-20"
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -331,6 +333,8 @@ class TestContinuationIntegration:
 
     def setup_method(self):
         self.tool = ClaudeContinuationTool()
+        # Set default model to avoid effective auto mode
+        self.tool.default_model = "gemini-2.5-flash-preview-05-20"
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)

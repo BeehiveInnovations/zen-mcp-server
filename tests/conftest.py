@@ -72,3 +72,48 @@ def project_path(tmp_path):
 def pytest_configure(config):
     """Configure pytest with custom markers"""
     config.addinivalue_line("markers", "asyncio: mark test as async")
+    config.addinivalue_line("markers", "no_mock_provider: disable automatic provider mocking")
+
+
+@pytest.fixture(autouse=True)
+def mock_provider_availability(request, monkeypatch):
+    """
+    Automatically mock provider availability for all tests to prevent
+    effective auto mode from being triggered when DEFAULT_MODEL is unavailable.
+
+    This fixture ensures that when tests run with dummy API keys,
+    the tools don't require model selection unless explicitly testing auto mode.
+    """
+    # Skip this fixture for tests that need real providers
+    if hasattr(request, "node") and request.node.get_closest_marker("no_mock_provider"):
+        return
+
+    from unittest.mock import MagicMock
+
+    original_get_provider = ModelProviderRegistry.get_provider_for_model
+
+    def mock_get_provider_for_model(model_name):
+        # If it's a test looking for unavailable models, return None
+        if model_name in ["unavailable-model", "gpt-5-turbo", "o3"]:
+            return None
+        # For common test models, return a mock provider
+        if model_name in ["gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-06-05", "pro", "flash"]:
+            # Try to use the real provider first if it exists
+            real_provider = original_get_provider(model_name)
+            if real_provider:
+                return real_provider
+
+            # Otherwise create a mock
+            provider = MagicMock()
+            # Set up the model capabilities mock with actual values
+            capabilities = MagicMock()
+            capabilities.context_window = 1000000  # 1M tokens for Gemini models
+            capabilities.supports_extended_thinking = False
+            capabilities.input_cost_per_1k = 0.075
+            capabilities.output_cost_per_1k = 0.3
+            provider.get_model_capabilities.return_value = capabilities
+            return provider
+        # Otherwise use the original logic
+        return original_get_provider(model_name)
+
+    monkeypatch.setattr(ModelProviderRegistry, "get_provider_for_model", mock_get_provider_for_model)

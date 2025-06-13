@@ -3,6 +3,8 @@
 import os
 from unittest.mock import Mock, patch
 
+import pytest
+
 from providers import ModelProviderRegistry, ModelResponse
 from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
@@ -57,6 +59,7 @@ class TestModelProviderRegistry:
         assert provider is None
 
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"})
+    @pytest.mark.no_mock_provider
     def test_get_provider_for_model(self):
         """Test getting provider for a specific model"""
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)

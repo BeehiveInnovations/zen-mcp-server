@@ -130,17 +130,14 @@ async def test_unknown_tool_defaults_to_prompt():
     with patch("utils.conversation_memory.get_thread", return_value=mock_context):
         with patch("utils.conversation_memory.add_turn", return_value=True):
             with patch("utils.conversation_memory.build_conversation_history", return_value=("History", 500)):
-                with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False):
-                    from providers.registry import ModelProviderRegistry
+                # The test uses the conftest fixture which should handle provider mocking
+                # We just need to ensure the arguments are correct
+                arguments = {
+                    "continuation_id": "test-thread-456",
+                    "prompt": "User input",
+                }
 
-                    ModelProviderRegistry.clear_cache()
-
-                    arguments = {
-                        "continuation_id": "test-thread-456",
-                        "prompt": "User input",
-                    }
-
-                    enhanced_args = await reconstruct_thread_context(arguments)
+                enhanced_args = await reconstruct_thread_context(arguments)
 
                 # Should default to 'prompt' field
                 assert "prompt" in enhanced_args

@@ -88,6 +88,7 @@ class TestAutoMode:
     def test_tool_schema_in_normal_mode(self):
         """Test that tool schemas don't require model in normal mode"""
         # This test uses the default from conftest.py which sets non-auto mode
+        # The conftest.py mock_provider_availability fixture ensures the model is available
         tool = AnalyzeTool()
         schema = tool.get_input_schema()
 
