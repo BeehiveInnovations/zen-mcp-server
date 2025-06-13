@@ -33,7 +33,7 @@ The server uses `conf/openrouter_models.json` to map convenient aliases to OpenR
 | `deepseek`, `coder` | `deepseek/deepseek-coder` |
 | `perplexity` | `perplexity/llama-3-sonar-large-32k-online` |
 
-View the full list in `conf/openrouter_models.json`. 
+View the full list in [`conf/openrouter_models.json`](conf/openrouter_models.json). 
 
 **Note:** While you can use any OpenRouter model by its full name, models not in the config file will use generic capabilities (32K context window, no extended thinking, etc.) which may not match the model's actual capabilities. For best results, add new models to the config file with their proper specifications.
 
@@ -50,7 +50,8 @@ View the full list in `conf/openrouter_models.json`.
 OPENROUTER_API_KEY=your-openrouter-api-key
 ```
 
-> **Note:** Control which models can be used directly in your OpenRouter dashboard at [openrouter.ai](https://openrouter.ai/). This gives you centralized control over model access and spending limits.
+> **Note:** Control which models can be used directly in your OpenRouter dashboard at [openrouter.ai](https://openrouter.ai/). 
+> This gives you centralized control over model access and spending limits.
 
 That's it! Docker Compose already includes all necessary configuration.
 
@@ -59,8 +60,8 @@ That's it! Docker Compose already includes all necessary configuration.
 **Using model aliases (from conf/openrouter_models.json):**
 ```
 # Use short aliases:
-"Use opus via zen for deep analysis"         # → anthropic/claude-3-opus
-"Use sonnet via zen to review this code"     # → anthropic/claude-3-sonnet
+"Use opus for deep analysis"         # → anthropic/claude-3-opus
+"Use sonnet to review this code"     # → anthropic/claude-3-sonnet
 "Use gpt4o via zen to analyze this"          # → openai/gpt-4o
 "Use mistral via zen to optimize"            # → mistral/mistral-large
 ```
