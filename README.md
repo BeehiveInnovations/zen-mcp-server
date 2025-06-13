@@ -99,16 +99,14 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ### 1. Get API Keys (at least one required)
 
-**Important:** Choose EITHER native APIs OR OpenRouter:
-
-**Option A: Native APIs**
-- **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
-- **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
-
-**Option B: OpenRouter (Access multiple models with one API)**
+**Option A: OpenRouter (Access multiple models with one API)**
 - **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/openrouter.md)
   - Control model access and spending limits directly in your OpenRouter dashboard
   - Configure model aliases in `conf/openrouter_models.json`
+
+**Option B: Native APIs**
+- **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
+- **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 
 > **Note:** Using both OpenRouter and native APIs creates ambiguity about which provider serves each model. 
 > If both are configured, native APIs will take priority for `gemini` and `o3`.
