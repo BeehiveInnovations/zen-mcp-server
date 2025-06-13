@@ -35,7 +35,9 @@ This guide covers setting up multiple AI model providers including OpenRouter, c
 
 ## Model Aliases
 
-The server uses `conf/custom_models.json` to map convenient aliases to both OpenRouter and custom model names. Some popular aliases:
+The server uses `conf/custom_models.json` to map convenient aliases to both OpenRouter and custom model names. This unified registry supports both cloud models (via OpenRouter) and local models (via custom endpoints).
+
+### OpenRouter Models (Cloud)
 
 | Alias | Maps to OpenRouter Model |
 |-------|-------------------------|
@@ -44,11 +46,17 @@ The server uses `conf/custom_models.json` to map convenient aliases to both Open
 | `haiku` | `anthropic/claude-3-haiku` |
 | `gpt4o`, `4o` | `openai/gpt-4o` |
 | `gpt4o-mini`, `4o-mini` | `openai/gpt-4o-mini` |
-| `gemini`, `pro-openrouter` | `google/gemini-pro-1.5` |
-| `flash-openrouter` | `google/gemini-flash-1.5-8b` |
+| `pro`, `gemini` | `google/gemini-pro-1.5` |
+| `flash` | `google/gemini-flash-1.5-8b` |
 | `mistral` | `mistral/mistral-large` |
 | `deepseek`, `coder` | `deepseek/deepseek-coder` |
 | `perplexity` | `perplexity/llama-3-sonar-large-32k-online` |
+
+### Custom/Local Models
+
+| Alias | Maps to Local Model | Note |
+|-------|-------------------|------|
+| `local-llama`, `local` | `llama3.2` | Requires `CUSTOM_API_URL` configured |
 
 View the full list in [`conf/custom_models.json`](conf/custom_models.json). 
 
@@ -143,11 +151,12 @@ CUSTOM_MODEL_NAME=your-loaded-model
 
 ## Using Models
 
-**Using model aliases (from conf/openrouter_models.json):**
+**Using model aliases (from conf/custom_models.json):**
 ```
 # OpenRouter models:
 "Use opus for deep analysis"         # → anthropic/claude-3-opus
 "Use sonnet to review this code"     # → anthropic/claude-3-sonnet
+"Use pro via zen to analyze this"    # → google/gemini-pro-1.5
 "Use gpt4o via zen to analyze this"  # → openai/gpt-4o
 "Use mistral via zen to optimize"    # → mistral/mistral-large
 
@@ -171,6 +180,21 @@ CUSTOM_MODEL_NAME=your-loaded-model
 **For OpenRouter:** Check current model pricing at [openrouter.ai/models](https://openrouter.ai/models).  
 **For Local models:** Context window and capabilities are defined in `conf/custom_models.json`.
 
+## Model Provider Selection
+
+The system automatically routes models to the appropriate provider:
+
+1. **Models with `is_custom: true`** → Always routed to Custom API (requires `CUSTOM_API_URL`)
+2. **Models with `is_custom: false` or omitted** → Routed to OpenRouter (requires `OPENROUTER_API_KEY`)
+3. **Unknown models** → Fallback logic based on model name patterns
+
+**Provider Priority Order:**
+1. Native APIs (Google, OpenAI) - if API keys are available
+2. Custom endpoints - for models marked with `is_custom: true`  
+3. OpenRouter - catch-all for cloud models
+
+This ensures clean separation between local and cloud models while maintaining flexibility for unknown models.
+
 ## Model Configuration
 
 The server uses `conf/custom_models.json` to define model aliases and capabilities. You can:
@@ -181,7 +205,9 @@ The server uses `conf/custom_models.json` to define model aliases and capabiliti
 
 ### Adding Custom Models
 
-Edit `conf/custom_models.json` to add new models:
+Edit `conf/custom_models.json` to add new models. The configuration supports both OpenRouter (cloud) and custom endpoint (local) models.
+
+#### Adding an OpenRouter Model
 
 ```json
 {
@@ -195,11 +221,32 @@ Edit `conf/custom_models.json` to add new models:
 }
 ```
 
+#### Adding a Custom/Local Model
+
+```json
+{
+  "model_name": "my-local-model",
+  "aliases": ["local-model", "custom"],
+  "context_window": 128000,
+  "supports_extended_thinking": false,
+  "supports_json_mode": false,
+  "supports_function_calling": false,
+  "is_custom": true,
+  "description": "My custom Ollama/vLLM model"
+}
+```
+
 **Field explanations:**
+- `model_name`: The model identifier (OpenRouter format like `vendor/model` or local name like `llama3.2`)
+- `aliases`: Array of short names users can type instead of the full model name
 - `context_window`: Total tokens the model can process (input + output combined)
 - `supports_extended_thinking`: Whether the model has extended reasoning capabilities
 - `supports_json_mode`: Whether the model can guarantee valid JSON output
 - `supports_function_calling`: Whether the model supports function/tool calling
+- `is_custom`: **Set to `true` for models that should ONLY work with custom endpoints** (Ollama, vLLM, etc.)
+- `description`: Human-readable description of the model
+
+**Important:** Always set `is_custom: true` for local models. This ensures they're only used when `CUSTOM_API_URL` is configured and prevents conflicts with OpenRouter.
 
 ## Available Models
 

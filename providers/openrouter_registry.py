@@ -24,6 +24,7 @@ class OpenRouterModelConfig:
     supports_streaming: bool = True
     supports_function_calling: bool = False
     supports_json_mode: bool = False
+    is_custom: bool = False  # True for models that should only be used with custom endpoints
     description: str = ""
 
     def to_capabilities(self) -> ModelCapabilities:

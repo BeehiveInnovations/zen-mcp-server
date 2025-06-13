@@ -176,52 +176,50 @@ class CustomProvider(OpenAICompatibleProvider):
         """
         logging.debug(f"Custom provider validating model: '{model_name}'")
 
+        # If OpenRouter is available and this looks like a cloud model, defer to OpenRouter
+        openrouter_available = os.getenv("OPENROUTER_API_KEY") is not None
+
         # Try to resolve through registry first
         config = self._registry.resolve(model_name)
         if config:
             model_id = config.model_name
-            # Only accept models that are clearly local/custom based on the resolved name
-            # Local models should not have vendor/ prefix (except for special cases)
-            is_local_model = (
-                "/" not in model_id  # Simple names like "llama3.2"
-                or "local" in model_id.lower()  # Explicit local indicator
-                or
-                # Check if any of the aliases contain local indicators
-                any("local" in alias.lower() or "ollama" in alias.lower() for alias in config.aliases)
-                if hasattr(config, "aliases")
-                else False
-            )
-
-            if is_local_model:
-                logging.debug(f"Model '{model_name}' -> '{model_id}' validated via registry (local model)")
+            # Use explicit is_custom flag for clean validation
+            if config.is_custom:
+                logging.debug(f"Model '{model_name}' -> '{model_id}' validated via registry (custom model)")
                 return True
             else:
-                # This is a cloud/OpenRouter model - reject it for custom provider
-                logging.debug(f"Model '{model_name}' -> '{model_id}' rejected (cloud model for OpenRouter)")
+                # This is a cloud/OpenRouter model - if OpenRouter is available, defer to it
+                if openrouter_available:
+                    logging.debug(f"Model '{model_name}' -> '{model_id}' deferred to OpenRouter (cloud model)")
+                else:
+                    logging.debug(f"Model '{model_name}' -> '{model_id}' rejected (cloud model, no OpenRouter)")
                 return False
 
-        # Strip :latest suffix and try validation again (it's just a version tag)
+        # Handle version tags for unknown models (e.g., "my-model:latest")
         clean_model_name = model_name
-        if model_name.endswith(":latest"):
-            clean_model_name = model_name[:-7]  # Remove ":latest"
-            logging.debug(f"Stripped :latest from '{model_name}' -> '{clean_model_name}'")
+        if ":" in model_name:
+            clean_model_name = model_name.split(":")[0]
+            logging.debug(f"Stripped version tag from '{model_name}' -> '{clean_model_name}'")
             # Try to resolve the clean name
             config = self._registry.resolve(clean_model_name)
             if config:
                 return self.validate_model_name(clean_model_name)  # Recursively validate clean name
+
+        # For unknown models (not in registry), only accept if they look like local models
+        # This maintains backward compatibility for custom models not yet in the registry
 
         # Accept models with explicit local indicators in the name
         if any(indicator in clean_model_name.lower() for indicator in ["local", "ollama", "vllm", "lmstudio"]):
             logging.debug(f"Model '{clean_model_name}' validated via local indicators")
             return True
 
-        # Accept simple model names without vendor prefix ONLY if they're not in registry
-        # This allows for unknown local models like custom fine-tunes
-        if "/" not in clean_model_name and ":" not in clean_model_name and not config:
-            logging.debug(f"Model '{clean_model_name}' validated via simple name pattern (unknown local model)")
+        # Accept simple model names without vendor prefix (likely local/custom models)
+        if "/" not in clean_model_name:
+            logging.debug(f"Model '{clean_model_name}' validated as potential local model (no vendor prefix)")
             return True
 
-        logging.debug(f"Model '{model_name}' NOT validated by custom provider")
+        # Reject everything else (likely cloud models not in registry)
+        logging.debug(f"Model '{model_name}' rejected by custom provider (appears to be cloud model)")
         return False
 
     def generate_content(
