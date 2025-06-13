@@ -98,8 +98,14 @@ class GeminiModelProvider(ModelProvider):
         else:
             full_prompt = prompt
 
+        tools = [
+            types.Tool(url_context=types.UrlContext()),
+            types.Tool(google_search=types.GoogleSearch()),
+        ]
+
         # Prepare generation config
         generation_config = types.GenerateContentConfig(
+            tools=tools,
             temperature=temperature,
             candidate_count=1,
         )
