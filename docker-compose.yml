@@ -44,7 +44,7 @@ services:
       # Use HOME not PWD: Claude needs access to any absolute file path, not just current project,
       # and Claude Code could be running from multiple locations at the same time
       - WORKSPACE_ROOT=${WORKSPACE_ROOT:-${HOME}}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       - PYTHONUNBUFFERED=1
     volumes:
       - ${HOME:-/tmp}:/workspace:ro

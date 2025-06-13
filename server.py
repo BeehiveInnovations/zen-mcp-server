@@ -50,7 +50,7 @@ from tools.models import ToolOutput
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
 
 # Create timezone-aware formatter
 
