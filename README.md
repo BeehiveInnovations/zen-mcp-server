@@ -107,8 +107,8 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 **Option B: OpenRouter (Access multiple models with one API)**
 - **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/openrouter.md)
-  - Set `OPENROUTER_ALLOWED_MODELS` to restrict which models can be used (recommended)
-  - Leave empty to allow ANY model (warning: some models are expensive!)
+  - Control model access and spending limits directly in your OpenRouter dashboard
+  - Configure model aliases in `conf/openrouter_models.json`
 
 > **Note:** Using both OpenRouter and native APIs creates ambiguity about which provider serves each model. If both are configured, native APIs will take priority.
 

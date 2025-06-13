@@ -2,13 +2,16 @@
 
 import logging
 import os
+from typing import Optional
 
 from .base import (
     ModelCapabilities,
+    ModelResponse,
     ProviderType,
     RangeTemperatureConstraint,
 )
 from .openai_compatible import OpenAICompatibleProvider
+from .openrouter_registry import OpenRouterModelRegistry
 
 
 class OpenRouterProvider(OpenAICompatibleProvider):
@@ -26,6 +29,9 @@ class OpenRouterProvider(OpenAICompatibleProvider):
         "X-Title": os.getenv("OPENROUTER_TITLE", "Zen MCP Server"),
     }
     
+    # Model registry for managing configurations and aliases
+    _registry: Optional[OpenRouterModelRegistry] = None
+    
     def __init__(self, api_key: str, **kwargs):
         """Initialize OpenRouter provider.
         
@@ -36,49 +42,87 @@ class OpenRouterProvider(OpenAICompatibleProvider):
         # Always use OpenRouter's base URL
         super().__init__(api_key, base_url="https://openrouter.ai/api/v1", **kwargs)
         
-        # Log warning about model allow-list if not configured
-        if not self.allowed_models:
-            logging.warning(
-                "OpenRouter provider initialized without model allow-list. "
-                "Consider setting OPENROUTER_ALLOWED_MODELS environment variable "
-                "to restrict model access and control costs."
-            )
+        # Initialize model registry
+        if OpenRouterProvider._registry is None:
+            OpenRouterProvider._registry = OpenRouterModelRegistry()
+        
+        # Log loaded models and aliases
+        models = self._registry.list_models()
+        aliases = self._registry.list_aliases()
+        logging.info(
+            f"OpenRouter loaded {len(models)} models with {len(aliases)} aliases"
+        )
+    
+    def _parse_allowed_models(self) -> None:
+        """Override to disable environment-based allow-list.
+        
+        OpenRouter model access is controlled via the OpenRouter dashboard,
+        not through environment variables.
+        """
+        return None
+    
+    def _resolve_model_name(self, model_name: str) -> str:
+        """Resolve model aliases to OpenRouter model names.
+        
+        Args:
+            model_name: Input model name or alias
+            
+        Returns:
+            Resolved OpenRouter model name
+        """
+        # Try to resolve through registry
+        config = self._registry.resolve(model_name)
+        
+        if config:
+            if config.model_name != model_name:
+                logging.info(f"Resolved model alias '{model_name}' to '{config.model_name}'")
+            return config.model_name
+        else:
+            # If not found in registry, return as-is
+            # This allows using models not in our config file
+            logging.debug(f"Model '{model_name}' not found in registry, using as-is")
+            return model_name
     
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         """Get capabilities for a model.
         
-        Since OpenRouter supports many models dynamically, we return
-        generic capabilities with conservative defaults.
-        
         Args:
-            model_name: Name of the model
+            model_name: Name of the model (or alias)
             
         Returns:
-            Generic ModelCapabilities with warnings logged
+            ModelCapabilities from registry or generic defaults
         """
-        logging.warning(
-            f"Using generic capabilities for '{model_name}' via OpenRouter. "
-            "Actual model capabilities may differ. Consider querying OpenRouter's "
-            "/models endpoint for accurate information."
-        )
+        # Try to get from registry first
+        capabilities = self._registry.get_capabilities(model_name)
         
-        # Create generic capabilities with conservative defaults
-        capabilities = ModelCapabilities(
-            provider=ProviderType.OPENROUTER,
-            model_name=model_name,
-            friendly_name=self.FRIENDLY_NAME,
-            max_tokens=32_768,  # Conservative default
-            supports_extended_thinking=False,  # Most models don't support this
-            supports_system_prompts=True,  # Most models support this
-            supports_streaming=True,
-            supports_function_calling=False,  # Varies by model
-            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 1.0),
-        )
-        
-        # Mark as generic for validation purposes
-        capabilities._is_generic = True
-        
-        return capabilities
+        if capabilities:
+            return capabilities
+        else:
+            # Resolve any potential aliases and create generic capabilities
+            resolved_name = self._resolve_model_name(model_name)
+            
+            logging.debug(
+                f"Using generic capabilities for '{resolved_name}' via OpenRouter. "
+                "Consider adding to openrouter_models.json for specific capabilities."
+            )
+            
+            # Create generic capabilities with conservative defaults
+            capabilities = ModelCapabilities(
+                provider=ProviderType.OPENROUTER,
+                model_name=resolved_name,
+                friendly_name=self.FRIENDLY_NAME,
+                max_tokens=32_768,  # Conservative default context window
+                supports_extended_thinking=False,
+                supports_system_prompts=True,
+                supports_streaming=True,
+                supports_function_calling=False,
+                temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 1.0),
+            )
+            
+            # Mark as generic for validation purposes
+            capabilities._is_generic = True
+            
+            return capabilities
     
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
@@ -87,22 +131,52 @@ class OpenRouterProvider(OpenAICompatibleProvider):
     def validate_model_name(self, model_name: str) -> bool:
         """Validate if the model name is allowed.
         
-        For OpenRouter, we accept any model name unless an allow-list
-        is configured via OPENROUTER_ALLOWED_MODELS environment variable.
+        For OpenRouter, we accept any model name. OpenRouter will
+        validate based on the API key's permissions.
         
         Args:
             model_name: Model name to validate
             
         Returns:
-            True if model is allowed, False otherwise
+            Always True - OpenRouter handles validation
         """
-        if self.allowed_models:
-            # Case-insensitive validation against allow-list
-            return model_name.lower() in self.allowed_models
-        
-        # Accept any model if no allow-list configured
-        # The API will return an error if the model doesn't exist
+        # Accept any model name - OpenRouter will validate based on API key permissions
         return True
+    
+    def generate_content(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_output_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> ModelResponse:
+        """Generate content using the OpenRouter API.
+        
+        Args:
+            prompt: User prompt to send to the model
+            model_name: Name of the model (or alias) to use
+            system_prompt: Optional system prompt for model behavior
+            temperature: Sampling temperature
+            max_output_tokens: Maximum tokens to generate
+            **kwargs: Additional provider-specific parameters
+            
+        Returns:
+            ModelResponse with generated content and metadata
+        """
+        # Resolve model alias to actual OpenRouter model name
+        resolved_model = self._resolve_model_name(model_name)
+        
+        # Call parent method with resolved model name
+        return super().generate_content(
+            prompt=prompt,
+            model_name=resolved_model,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            **kwargs
+        )
     
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode.

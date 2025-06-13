@@ -549,11 +549,7 @@ async def handle_get_version() -> list[TextContent]:
     if ModelProviderRegistry.get_provider(ProviderType.OPENAI):
         configured_providers.append("OpenAI (o3, o3-mini)")
     if ModelProviderRegistry.get_provider(ProviderType.OPENROUTER):
-        openrouter_allowed = os.getenv("OPENROUTER_ALLOWED_MODELS", "")
-        if openrouter_allowed:
-            configured_providers.append(f"OpenRouter (restricted to: {openrouter_allowed})")
-        else:
-            configured_providers.append("OpenRouter (ANY model on openrouter.ai)")
+        configured_providers.append("OpenRouter (configured via conf/openrouter_models.json)")
 
     # Format the information in a human-readable way
     text = f"""Zen MCP Server v{__version__}
