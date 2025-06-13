@@ -31,11 +31,11 @@ import config  # noqa: E402
 
 importlib.reload(config)
 
-# Set MCP_PROJECT_ROOT to a temporary directory for tests
+# Set WORKSPACE_ROOT to a temporary directory for tests
 # This provides a safe sandbox for file operations during testing
-# Create a temporary directory that will be used as the project root for all tests
+# Create a temporary directory that will be used as the workspace for all tests
 test_root = tempfile.mkdtemp(prefix="zen_mcp_test_")
-os.environ["MCP_PROJECT_ROOT"] = test_root
+os.environ["WORKSPACE_ROOT"] = test_root
 
 # Configure asyncio for Windows compatibility
 if sys.platform == "win32":
@@ -55,11 +55,11 @@ ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider
 @pytest.fixture
 def project_path(tmp_path):
     """
-    Provides a temporary directory within the PROJECT_ROOT sandbox for tests.
+    Provides a temporary directory within the WORKSPACE_ROOT sandbox for tests.
     This ensures all file operations during tests are within the allowed directory.
     """
-    # Get the test project root
-    test_root = Path(os.environ.get("MCP_PROJECT_ROOT", "/tmp"))
+    # Get the test workspace root
+    test_root = Path(os.environ.get("WORKSPACE_ROOT", "/tmp"))
 
     # Create a subdirectory for this specific test
     test_dir = test_root / f"test_{tmp_path.name}"

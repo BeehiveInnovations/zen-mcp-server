@@ -79,7 +79,6 @@ def test_docker_security_validation():
         original_env = os.environ.copy()
         try:
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
-            os.environ["MCP_PROJECT_ROOT"] = str(host_workspace)
 
             # Reload the module
             importlib.reload(utils.file_utils)

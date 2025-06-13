@@ -34,7 +34,7 @@ class TestFileUtils:
         # Try to read a file outside the project root
         content, tokens = read_file_content("/etc/passwd")
         assert "--- ERROR ACCESSING FILE:" in content
-        assert "Path outside project root" in content
+        assert "Path outside workspace" in content
         assert tokens > 0
 
     def test_read_file_content_relative_path_rejected(self):

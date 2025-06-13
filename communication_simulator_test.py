@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Communication Simulator Test for Zen MCP Server
 
@@ -13,20 +12,28 @@ Test Flow:
 4. Cleanup and report results
 
 Usage:
-    python communication_simulator_test.py [--verbose] [--keep-logs] [--tests TEST_NAME...] [--individual TEST_NAME] [--skip-docker]
+    python communication_simulator_test.py [--verbose] [--keep-logs] [--tests TEST_NAME...] [--individual TEST_NAME] [--rebuild]
 
     --tests: Run specific tests only (space-separated)
     --list-tests: List all available tests
     --individual: Run a single test individually
-    --skip-docker: Skip Docker setup (assumes containers are already running)
+    --rebuild: Force rebuild Docker environment using setup-docker.sh
 
 Available tests:
     basic_conversation          - Basic conversation flow with chat tool
+    content_validation          - Content validation and duplicate detection
     per_tool_deduplication      - File deduplication for individual tools
     cross_tool_continuation     - Cross-tool conversation continuation scenarios
-    content_validation          - Content validation and duplicate detection
+    cross_tool_comprehensive    - Comprehensive cross-tool integration testing
     logs_validation             - Docker logs validation
     redis_validation            - Redis conversation memory validation
+    model_thinking_config       - Model thinking configuration testing
+    o3_model_selection          - O3 model selection and routing testing
+    ollama_custom_url           - Ollama custom URL configuration testing
+    openrouter_fallback         - OpenRouter fallback mechanism testing
+    openrouter_models           - OpenRouter models availability testing
+    token_allocation_validation - Token allocation and limits validation
+    conversation_chain_validation - Conversation chain continuity validation
 
 Examples:
     # Run all tests
@@ -38,8 +45,8 @@ Examples:
     # Run a single test individually (with full Docker setup)
     python communication_simulator_test.py --individual content_validation
 
-    # Run a single test individually (assuming Docker is already running)
-    python communication_simulator_test.py --individual content_validation --skip-docker
+    # Force rebuild Docker environment before running tests
+    python communication_simulator_test.py --rebuild
 
     # List available tests
     python communication_simulator_test.py --list-tests
@@ -52,16 +59,18 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 
 
 class CommunicationSimulator:
     """Simulates real-world Claude CLI communication with MCP Gemini server"""
 
-    def __init__(self, verbose: bool = False, keep_logs: bool = False, selected_tests: list[str] = None):
+    def __init__(
+        self, verbose: bool = False, keep_logs: bool = False, selected_tests: list[str] = None, rebuild: bool = False
+    ):
         self.verbose = verbose
         self.keep_logs = keep_logs
         self.selected_tests = selected_tests or []
+        self.rebuild = rebuild
         self.temp_dir = None
         self.container_name = "zen-mcp-server"
         self.redis_container = "zen-mcp-redis"
@@ -98,7 +107,7 @@ class CommunicationSimulator:
         return run_test
 
     def setup_test_environment(self) -> bool:
-        """Setup fresh Docker environment"""
+        """Setup test environment"""
         try:
             self.logger.info("Setting up test environment...")
 
@@ -106,72 +115,71 @@ class CommunicationSimulator:
             self.temp_dir = tempfile.mkdtemp(prefix="mcp_test_")
             self.logger.debug(f"Created temp directory: {self.temp_dir}")
 
-            # Setup Docker environment
-            return self._setup_docker()
+            # Only run setup-docker.sh if rebuild is requested
+            if self.rebuild:
+                if not self._run_setup_docker():
+                    return False
+
+            # Always verify containers are running (regardless of rebuild)
+            return self._verify_existing_containers()
 
         except Exception as e:
             self.logger.error(f"Failed to setup test environment: {e}")
             return False
 
-    def _setup_docker(self) -> bool:
-        """Setup fresh Docker environment"""
+    def _run_setup_docker(self) -> bool:
+        """Run the setup-docker.sh script"""
         try:
-            self.logger.info("Setting up Docker environment...")
+            self.logger.info("Running setup-docker.sh...")
 
-            # Stop and remove existing containers
-            self._run_command(["docker", "compose", "down", "--remove-orphans"], check=False, capture_output=True)
+            # Check if setup-docker.sh exists
+            setup_script = "./setup-docker.sh"
+            if not os.path.exists(setup_script):
+                self.logger.error(f"setup-docker.sh not found at {setup_script}")
+                return False
 
-            # Clean up any old containers/images
-            old_containers = [self.container_name, self.redis_container]
-            for container in old_containers:
-                self._run_command(["docker", "stop", container], check=False, capture_output=True)
-                self._run_command(["docker", "rm", container], check=False, capture_output=True)
-
-            # Build and start services
-            self.logger.info("Building Docker images...")
-            result = self._run_command(["docker", "compose", "build", "--no-cache"], capture_output=True)
+            # Make sure it's executable
+            result = self._run_command(["chmod", "+x", setup_script], capture_output=True)
             if result.returncode != 0:
-                self.logger.error(f"Docker build failed: {result.stderr}")
+                self.logger.error(f"Failed to make setup-docker.sh executable: {result.stderr}")
                 return False
 
-            self.logger.info("Starting Docker services...")
-            result = self._run_command(["docker", "compose", "up", "-d"], capture_output=True)
+            # Run the setup script
+            result = self._run_command([setup_script], capture_output=True)
             if result.returncode != 0:
-                self.logger.error(f"Docker startup failed: {result.stderr}")
+                self.logger.error(f"setup-docker.sh failed: {result.stderr}")
                 return False
 
-            # Wait for services to be ready
-            self.logger.info("Waiting for services to be ready...")
-            time.sleep(10)  # Give services time to initialize
-
-            # Verify containers are running
-            if not self._verify_containers():
-                return False
-
-            self.logger.info("Docker environment ready")
+            self.logger.info("setup-docker.sh completed successfully")
             return True
 
         except Exception as e:
-            self.logger.error(f"Docker setup failed: {e}")
+            self.logger.error(f"Failed to run setup-docker.sh: {e}")
             return False
 
-    def _verify_containers(self) -> bool:
-        """Verify that required containers are running"""
+    def _verify_existing_containers(self) -> bool:
+        """Verify that required containers are already running (no setup)"""
         try:
+            self.logger.info("Verifying existing Docker containers...")
+
             result = self._run_command(["docker", "ps", "--format", "{{.Names}}"], capture_output=True)
-            running_containers = result.stdout.decode().strip().split("\\n")
+            running_containers = result.stdout.decode().strip().split("\n")
 
             required = [self.container_name, self.redis_container]
             for container in required:
                 if container not in running_containers:
-                    self.logger.error(f"Container not running: {container}")
+                    self.logger.error(f"Required container not running: {container}")
+                    self.logger.error(
+                        "Please start Docker containers first, or use --rebuild to set them up automatically"
+                    )
                     return False
 
-            self.logger.debug(f"Verified containers running: {required}")
+            self.logger.info(f"All required containers are running: {required}")
             return True
 
         except Exception as e:
             self.logger.error(f"Container verification failed: {e}")
+            self.logger.error("Please ensure Docker is running and containers are available, or use --rebuild")
             return False
 
     def simulate_claude_cli_session(self) -> bool:
@@ -236,8 +244,8 @@ class CommunicationSimulator:
             self.logger.error(f"Test {test_name} failed with exception: {e}")
             return False
 
-    def run_individual_test(self, test_name: str, skip_docker_setup: bool = False) -> bool:
-        """Run a single test individually with optional Docker setup skip"""
+    def run_individual_test(self, test_name: str) -> bool:
+        """Run a single test individually"""
         try:
             if test_name not in self.available_tests:
                 self.logger.error(f"Unknown test: {test_name}")
@@ -246,11 +254,10 @@ class CommunicationSimulator:
 
             self.logger.info(f"Running individual test: {test_name}")
 
-            # Setup environment unless skipped
-            if not skip_docker_setup:
-                if not self.setup_test_environment():
-                    self.logger.error("Environment setup failed")
-                    return False
+            # Setup environment
+            if not self.setup_test_environment():
+                self.logger.error("Environment setup failed")
+                return False
 
             # Run the single test
             test_function = self.available_tests[test_name]
@@ -267,7 +274,7 @@ class CommunicationSimulator:
             self.logger.error(f"Individual test {test_name} failed with exception: {e}")
             return False
         finally:
-            if not skip_docker_setup and not self.keep_logs:
+            if not self.keep_logs:
                 self.cleanup()
 
     def get_available_tests(self) -> dict[str, str]:
@@ -281,9 +288,9 @@ class CommunicationSimulator:
 
     def print_test_summary(self):
         """Print comprehensive test results summary"""
-        print("\\n" + "=" * 70)
-        print("ZEN MCP COMMUNICATION SIMULATOR - TEST RESULTS SUMMARY")
-        print("=" * 70)
+        self.logger.info("\n" + "=" * 70)
+        self.logger.info("ZEN MCP COMMUNICATION SIMULATOR - TEST RESULTS SUMMARY")
+        self.logger.info("=" * 70)
 
         passed_count = sum(1 for result in self.test_results.values() if result)
         total_count = len(self.test_results)
@@ -293,25 +300,28 @@ class CommunicationSimulator:
             # Get test description
             temp_instance = self.test_registry[test_name](verbose=False)
             description = temp_instance.test_description
-            print(f"{description}: {status}")
+            if result:
+                self.logger.info(f"{description}: {status}")
+            else:
+                self.logger.error(f"{description}: {status}")
 
-        print(f"\\nOVERALL RESULT: {'SUCCESS' if passed_count == total_count else 'FAILURE'}")
-        print(f"{passed_count}/{total_count} tests passed")
-        print("=" * 70)
+        if passed_count == total_count:
+            self.logger.info("\nOVERALL RESULT: SUCCESS")
+        else:
+            self.logger.error("\nOVERALL RESULT: FAILURE")
+        self.logger.info(f"{passed_count}/{total_count} tests passed")
+        self.logger.info("=" * 70)
         return passed_count == total_count
 
-    def run_full_test_suite(self, skip_docker_setup: bool = False) -> bool:
+    def run_full_test_suite(self) -> bool:
         """Run the complete test suite"""
         try:
             self.logger.info("Starting Zen MCP Communication Simulator Test Suite")
 
             # Setup
-            if not skip_docker_setup:
-                if not self.setup_test_environment():
-                    self.logger.error("Environment setup failed")
-                    return False
-            else:
-                self.logger.info("Skipping Docker setup (containers assumed running)")
+            if not self.setup_test_environment():
+                self.logger.error("Environment setup failed")
+                return False
 
             # Main simulation
             if not self.simulate_claude_cli_session():
@@ -327,7 +337,7 @@ class CommunicationSimulator:
             self.logger.error(f"Test suite failed: {e}")
             return False
         finally:
-            if not self.keep_logs and not skip_docker_setup:
+            if not self.keep_logs:
                 self.cleanup()
 
     def cleanup(self):
@@ -335,11 +345,11 @@ class CommunicationSimulator:
         try:
             self.logger.info("Cleaning up test environment...")
 
+            # Note: We don't stop Docker services ourselves - let setup-docker.sh handle Docker lifecycle
             if not self.keep_logs:
-                # Stop Docker services
-                self._run_command(["docker", "compose", "down", "--remove-orphans"], check=False, capture_output=True)
+                self.logger.info("Test completed. Docker containers left running (use setup-docker.sh to manage)")
             else:
-                self.logger.info("Keeping Docker services running for log inspection")
+                self.logger.info("Keeping logs and Docker services running for inspection")
 
             # Remove temp directory
             if self.temp_dir and os.path.exists(self.temp_dir):
@@ -365,15 +375,7 @@ def parse_arguments():
     parser.add_argument("--tests", "-t", nargs="+", help="Specific tests to run (space-separated)")
     parser.add_argument("--list-tests", action="store_true", help="List available tests and exit")
     parser.add_argument("--individual", "-i", help="Run a single test individually")
-    parser.add_argument(
-        "--skip-docker",
-        action="store_true",
-        default=True,
-        help="Skip Docker setup (assumes containers are already running) - DEFAULT",
-    )
-    parser.add_argument(
-        "--rebuild-docker", action="store_true", help="Force rebuild Docker environment (overrides --skip-docker)"
-    )
+    parser.add_argument("--rebuild", action="store_true", help="Force rebuild Docker environment using setup-docker.sh")
 
     return parser.parse_args()
 
@@ -381,57 +383,59 @@ def parse_arguments():
 def list_available_tests():
     """List all available tests and exit"""
     simulator = CommunicationSimulator()
-    print("Available tests:")
+    # Create a simple logger for this function
+    logger = logging.getLogger("list_tests")
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    logger.info("Available tests:")
     for test_name, description in simulator.get_available_tests().items():
-        print(f"  {test_name:<25} - {description}")
+        logger.info(f"  {test_name:<25} - {description}")
 
 
-def run_individual_test(simulator, test_name, skip_docker):
+def run_individual_test(simulator, test_name):
     """Run a single test individually"""
+    logger = simulator.logger
     try:
-        success = simulator.run_individual_test(test_name, skip_docker_setup=skip_docker)
+        success = simulator.run_individual_test(test_name)
 
         if success:
-            print(f"\\nINDIVIDUAL TEST {test_name.upper()}: PASSED")
+            logger.info(f"\nINDIVIDUAL TEST {test_name.upper()}: PASSED")
             return 0
         else:
-            print(f"\\nINDIVIDUAL TEST {test_name.upper()}: FAILED")
+            logger.error(f"\nINDIVIDUAL TEST {test_name.upper()}: FAILED")
             return 1
 
     except KeyboardInterrupt:
-        print(f"\\nIndividual test {test_name} interrupted by user")
-        if not skip_docker:
-            simulator.cleanup()
+        logger.warning(f"\nIndividual test {test_name} interrupted by user")
+        simulator.cleanup()
         return 130
     except Exception as e:
-        print(f"\\nIndividual test {test_name} failed with error: {e}")
-        if not skip_docker:
-            simulator.cleanup()
+        logger.error(f"\nIndividual test {test_name} failed with error: {e}")
+        simulator.cleanup()
         return 1
 
 
-def run_test_suite(simulator, skip_docker=False):
+def run_test_suite(simulator):
     """Run the full test suite or selected tests"""
+    logger = simulator.logger
     try:
-        success = simulator.run_full_test_suite(skip_docker_setup=skip_docker)
+        success = simulator.run_full_test_suite()
 
         if success:
-            print("\\nCOMPREHENSIVE MCP COMMUNICATION TEST: PASSED")
+            logger.info("\nCOMPREHENSIVE MCP COMMUNICATION TEST: PASSED")
             return 0
         else:
-            print("\\nCOMPREHENSIVE MCP COMMUNICATION TEST: FAILED")
-            print("Check detailed results above")
+            logger.error("\nCOMPREHENSIVE MCP COMMUNICATION TEST: FAILED")
+            logger.error("Check detailed results above")
             return 1
 
     except KeyboardInterrupt:
-        print("\\nTest interrupted by user")
-        if not skip_docker:
-            simulator.cleanup()
+        logger.warning("\nTest interrupted by user")
+        simulator.cleanup()
         return 130
     except Exception as e:
-        print(f"\\nUnexpected error: {e}")
-        if not skip_docker:
-            simulator.cleanup()
+        logger.error(f"\nUnexpected error: {e}")
+        simulator.cleanup()
         return 1
 
 
@@ -445,16 +449,15 @@ def main():
         return
 
     # Initialize simulator consistently for all use cases
-    simulator = CommunicationSimulator(verbose=args.verbose, keep_logs=args.keep_logs, selected_tests=args.tests)
+    simulator = CommunicationSimulator(
+        verbose=args.verbose, keep_logs=args.keep_logs, selected_tests=args.tests, rebuild=args.rebuild
+    )
 
     # Determine execution mode and run
-    # Override skip_docker if rebuild_docker is specified
-    skip_docker = args.skip_docker and not args.rebuild_docker
-
     if args.individual:
-        exit_code = run_individual_test(simulator, args.individual, skip_docker)
+        exit_code = run_individual_test(simulator, args.individual)
     else:
-        exit_code = run_test_suite(simulator, skip_docker)
+        exit_code = run_test_suite(simulator)
 
     sys.exit(exit_code)
 

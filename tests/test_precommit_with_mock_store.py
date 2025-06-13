@@ -60,10 +60,10 @@ class TestPrecommitToolWithMockStore:
         temp_dir, _ = temp_repo
         tool = Precommit()
 
-        # Mock the Redis client getter and PROJECT_ROOT to allow access to temp files
+        # Mock the Redis client getter and SECURITY_ROOT to allow access to temp files
         with (
             patch("utils.conversation_memory.get_redis_client", return_value=mock_redis),
-            patch("utils.file_utils.PROJECT_ROOT", Path(temp_dir).resolve()),
+            patch("utils.file_utils.SECURITY_ROOT", Path(temp_dir).resolve()),
         ):
             yield tool
 

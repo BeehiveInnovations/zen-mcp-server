@@ -82,32 +82,18 @@ if WORKSPACE_ROOT:
             f"Please set WORKSPACE_ROOT to a specific project directory."
         )
 
-# Get project root from environment or use current directory
-# This defines the sandbox directory where file access is allowed
-#
-# Simplified Security model:
-# 1. If MCP_PROJECT_ROOT is explicitly set, use it as sandbox (override)
-# 2. If WORKSPACE_ROOT is set (Docker mode), auto-use /workspace as sandbox
-# 3. Otherwise, use home directory (direct usage)
-env_root = os.environ.get("MCP_PROJECT_ROOT")
-if env_root:
-    # If explicitly set, use it as sandbox (allows custom override)
-    PROJECT_ROOT = Path(env_root).resolve()
-elif WORKSPACE_ROOT and CONTAINER_WORKSPACE.exists():
-    # Running in Docker with workspace mounted - auto-use /workspace
-    PROJECT_ROOT = CONTAINER_WORKSPACE
+# Security boundary
+# In Docker: use /workspace (container directory)
+# In tests/direct mode: use WORKSPACE_ROOT (host directory)
+if CONTAINER_WORKSPACE.exists():
+    # Running in Docker container
+    SECURITY_ROOT = CONTAINER_WORKSPACE
+elif WORKSPACE_ROOT:
+    # Running in tests or direct mode with WORKSPACE_ROOT set
+    SECURITY_ROOT = Path(WORKSPACE_ROOT).resolve()
 else:
-    # Running directly on host - default to home directory for normal usage
-    # This allows access to any file under the user's home directory
-    PROJECT_ROOT = Path.home()
-
-# Additional security check for explicit PROJECT_ROOT
-if env_root and PROJECT_ROOT.parent == PROJECT_ROOT:
-    raise RuntimeError(
-        "Security Error: MCP_PROJECT_ROOT cannot be the filesystem root. "
-        "This would give access to the entire filesystem. "
-        "Please set MCP_PROJECT_ROOT to a specific directory."
-    )
+    # Fallback for backward compatibility (should not happen in normal usage)
+    SECURITY_ROOT = Path.home()
 
 
 # Directories to exclude from recursive file search
@@ -293,15 +279,15 @@ def resolve_and_validate_path(path_str: str) -> Path:
     # Step 5: Security Policy - Ensure the resolved path is within PROJECT_ROOT
     # This prevents directory traversal attacks (e.g., /project/../../../etc/passwd)
     try:
-        resolved_path.relative_to(PROJECT_ROOT)
+        resolved_path.relative_to(SECURITY_ROOT)
     except ValueError:
         # Provide detailed error for debugging while avoiding information disclosure
         logger.warning(
-            f"Access denied - path outside project root. "
-            f"Requested: {path_str}, Resolved: {resolved_path}, Root: {PROJECT_ROOT}"
+            f"Access denied - path outside workspace. "
+            f"Requested: {path_str}, Resolved: {resolved_path}, Workspace: {SECURITY_ROOT}"
         )
         raise PermissionError(
-            f"Path outside project root: {path_str}\nProject root: {PROJECT_ROOT}\nResolved path: {resolved_path}"
+            f"Path outside workspace: {path_str}\nWorkspace: {SECURITY_ROOT}\nResolved path: {resolved_path}"
         )
 
     return resolved_path
@@ -358,16 +344,16 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
         if not path_obj.exists():
             continue
 
-        # Safety check: Prevent reading entire home directory or workspace root
+        # Safety check: Prevent reading entire workspace root
         # This could expose too many files and cause performance issues
         if path_obj.is_dir():
-            resolved_project_root = PROJECT_ROOT.resolve()
+            resolved_workspace = SECURITY_ROOT.resolve()
             resolved_path = path_obj.resolve()
 
-            # Check if this is the entire project root/home directory
-            if resolved_path == resolved_project_root:
+            # Check if this is the entire workspace root directory
+            if resolved_path == resolved_workspace:
                 logger.warning(
-                    f"Ignoring request to read entire project root directory: {path}. "
+                    f"Ignoring request to read entire workspace directory: {path}. "
                     f"Please specify individual files or subdirectories instead."
                 )
                 continue
