@@ -158,24 +158,6 @@ def configure_providers():
         has_openrouter = True
         logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
 
-    # Check for conflicting configuration
-    if has_native_apis and has_openrouter:
-        logger.warning(
-            "\n" + "=" * 70 + "\n"
-            "WARNING: Both OpenRouter and native API keys detected!\n"
-            "\n"
-            "This creates ambiguity about which provider will be used for models\n"
-            "available through both APIs (e.g., 'o3' could come from OpenAI or OpenRouter).\n"
-            "\n"
-            "RECOMMENDATION: Use EITHER OpenRouter OR native APIs, not both.\n"
-            "\n"
-            "To fix this:\n"
-            "1. Use only OpenRouter: unset GEMINI_API_KEY and OPENAI_API_KEY\n"
-            "2. Use only native APIs: unset OPENROUTER_API_KEY\n"
-            "\n"
-            "Current configuration will prioritize native APIs over OpenRouter.\n" + "=" * 70 + "\n"
-        )
-
     # Register providers - native APIs first to ensure they take priority
     if has_native_apis:
         if gemini_key and gemini_key != "your_gemini_api_key_here":
