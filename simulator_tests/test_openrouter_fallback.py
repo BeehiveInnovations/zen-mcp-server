@@ -8,7 +8,6 @@ Tests that verify the system correctly falls back to OpenRouter when:
 - Auto mode correctly selects OpenRouter models
 """
 
-import json
 import subprocess
 
 from .base_test import BaseSimulatorTest
@@ -45,6 +44,22 @@ class OpenRouterFallbackTest(BaseSimulatorTest):
         try:
             self.logger.info("Test: OpenRouter fallback behavior when only provider available")
 
+            # Check if OpenRouter API key is configured
+            check_cmd = [
+                "docker",
+                "exec",
+                self.container_name,
+                "python",
+                "-c",
+                'import os; print("OPENROUTER_KEY:" + str(bool(os.environ.get("OPENROUTER_API_KEY"))))',
+            ]
+            result = subprocess.run(check_cmd, capture_output=True, text=True)
+
+            if result.returncode == 0 and "OPENROUTER_KEY:False" in result.stdout:
+                self.logger.info("  ⚠️  OpenRouter API key not configured - skipping test")
+                self.logger.info("  ℹ️  This test requires OPENROUTER_API_KEY to be set in .env")
+                return True  # Return True to indicate test is skipped, not failed
+
             # Setup test files
             self.setup_test_files()
 
@@ -75,7 +90,7 @@ class OpenRouterFallbackTest(BaseSimulatorTest):
     for num in numbers:
         total += num
     return total"""
-            
+
             test_file = self.create_additional_test_file("sum_function.py", test_code)
 
             response2, _ = self.call_mcp_tool(
@@ -137,28 +152,29 @@ class OpenRouterFallbackTest(BaseSimulatorTest):
 
             # Check for provider fallback logs
             fallback_logs = [
-                line for line in logs.split("\n") 
-                if "No Gemini API key found" in line or
-                   "No OpenAI API key found" in line or
-                   "Only OpenRouter available" in line or
-                   "Using OpenRouter" in line
+                line
+                for line in logs.split("\n")
+                if "No Gemini API key found" in line
+                or "No OpenAI API key found" in line
+                or "Only OpenRouter available" in line
+                or "Using OpenRouter" in line
             ]
 
             # Check for OpenRouter provider initialization
             provider_logs = [
-                line for line in logs.split("\n")
-                if "OpenRouter provider" in line or
-                   "OpenRouterProvider" in line or
-                   "openrouter.ai/api/v1" in line
+                line
+                for line in logs.split("\n")
+                if "OpenRouter provider" in line or "OpenRouterProvider" in line or "openrouter.ai/api/v1" in line
             ]
 
             # Check for model resolution through OpenRouter
             model_resolution_logs = [
-                line for line in logs.split("\n")
-                if ("Resolved model" in line and "via OpenRouter" in line) or
-                   ("Model alias" in line and "resolved to" in line) or
-                   ("flash" in line and "gemini-flash" in line) or
-                   ("pro" in line and "gemini-pro" in line)
+                line
+                for line in logs.split("\n")
+                if ("Resolved model" in line and "via OpenRouter" in line)
+                or ("Model alias" in line and "resolved to" in line)
+                or ("flash" in line and "gemini-flash" in line)
+                or ("pro" in line and "gemini-pro" in line)
             ]
 
             # Log findings
@@ -172,7 +188,7 @@ class OpenRouterFallbackTest(BaseSimulatorTest):
                     self.logger.debug("  📋 Sample fallback logs:")
                     for log in fallback_logs[:3]:
                         self.logger.debug(f"    {log}")
-                
+
                 if provider_logs:
                     self.logger.debug("  📋 Sample provider logs:")
                     for log in provider_logs[:3]:

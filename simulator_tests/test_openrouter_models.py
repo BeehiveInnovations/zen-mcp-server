@@ -9,7 +9,6 @@ Tests that verify OpenRouter functionality including:
 - Error handling when models are not available
 """
 
-import json
 import subprocess
 
 from .base_test import BaseSimulatorTest
@@ -46,6 +45,22 @@ class OpenRouterModelsTest(BaseSimulatorTest):
         """Test OpenRouter model functionality"""
         try:
             self.logger.info("Test: OpenRouter model functionality and alias mapping")
+
+            # Check if OpenRouter API key is configured
+            check_cmd = [
+                "docker",
+                "exec",
+                self.container_name,
+                "python",
+                "-c",
+                'import os; print("OPENROUTER_KEY:" + str(bool(os.environ.get("OPENROUTER_API_KEY"))))',
+            ]
+            result = subprocess.run(check_cmd, capture_output=True, text=True)
+
+            if result.returncode == 0 and "OPENROUTER_KEY:False" in result.stdout:
+                self.logger.info("  ⚠️  OpenRouter API key not configured - skipping test")
+                self.logger.info("  ℹ️  This test requires OPENROUTER_API_KEY to be set in .env")
+                return True  # Return True to indicate test is skipped, not failed
 
             # Setup test files for later use
             self.setup_test_files()
@@ -186,18 +201,20 @@ class OpenRouterModelsTest(BaseSimulatorTest):
             # Check for OpenRouter API calls
             openrouter_logs = [line for line in logs.split("\n") if "openrouter" in line.lower()]
             openrouter_api_logs = [line for line in logs.split("\n") if "openrouter.ai/api/v1" in line]
-            
+
             # Check for specific model mappings
             flash_mapping_logs = [
-                line for line in logs.split("\n") 
-                if ("flash" in line and "google/gemini-flash" in line) or
-                   ("Resolved model" in line and "google/gemini-flash" in line)
+                line
+                for line in logs.split("\n")
+                if ("flash" in line and "google/gemini-flash" in line)
+                or ("Resolved model" in line and "google/gemini-flash" in line)
             ]
-            
+
             pro_mapping_logs = [
-                line for line in logs.split("\n") 
-                if ("pro" in line and "google/gemini-pro" in line) or
-                   ("Resolved model" in line and "google/gemini-pro" in line)
+                line
+                for line in logs.split("\n")
+                if ("pro" in line and "google/gemini-pro" in line)
+                or ("Resolved model" in line and "google/gemini-pro" in line)
             ]
 
             # Log findings
@@ -215,7 +232,7 @@ class OpenRouterModelsTest(BaseSimulatorTest):
             # Success criteria
             openrouter_api_used = len(openrouter_api_logs) > 0
             models_mapped = len(flash_mapping_logs) > 0 or len(pro_mapping_logs) > 0
-            
+
             success_criteria = [
                 ("OpenRouter API calls made", openrouter_api_used),
                 ("Model aliases mapped correctly", models_mapped),

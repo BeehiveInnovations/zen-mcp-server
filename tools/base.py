@@ -186,7 +186,7 @@ class BaseTool(ABC):
                     # Import registry directly to show available aliases
                     # This works even without an API key
                     from providers.openrouter_registry import OpenRouterModelRegistry
-                    
+
                     registry = OpenRouterModelRegistry()
                     aliases = registry.list_aliases()
 
@@ -195,9 +195,7 @@ class BaseTool(ABC):
                         # Show all aliases so Claude knows every option available
                         all_aliases = sorted(aliases)
                         alias_list = ", ".join(f"'{a}'" for a in all_aliases)
-                        model_desc_parts.append(
-                            f"\nOpenRouter models available via aliases: {alias_list}"
-                        )
+                        model_desc_parts.append(f"\nOpenRouter models available via aliases: {alias_list}")
                     else:
                         model_desc_parts.append(
                             "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter."
@@ -225,7 +223,7 @@ class BaseTool(ABC):
                     # Import registry directly to show available aliases
                     # This works even without an API key
                     from providers.openrouter_registry import OpenRouterModelRegistry
-                    
+
                     registry = OpenRouterModelRegistry()
                     aliases = registry.list_aliases()
 

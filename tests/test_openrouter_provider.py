@@ -193,5 +193,5 @@ class TestOpenRouterFunctionality:
         provider = OpenRouterProvider(api_key="test-key")
 
         # Registry should be initialized
-        assert hasattr(provider, '_registry')
+        assert hasattr(provider, "_registry")
         assert provider._registry is not None
