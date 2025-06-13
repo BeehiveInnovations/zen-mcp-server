@@ -24,26 +24,6 @@ __author__ = "Fahad Gilani"  # Primary maintainer
 # Special value "auto" means Claude should pick the best model for each task
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "auto")
 
-# Validate DEFAULT_MODEL and set to "auto" if invalid
-# Only include actually supported models from providers
-VALID_MODELS = [
-    "auto",
-    "flash",
-    "pro",
-    "o3",
-    "o3-mini",
-    "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-pro-preview-06-05",
-]
-if DEFAULT_MODEL not in VALID_MODELS:
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        f"Invalid DEFAULT_MODEL '{DEFAULT_MODEL}'. Setting to 'auto'. Valid options: {', '.join(VALID_MODELS)}"
-    )
-    DEFAULT_MODEL = "auto"
-
 # Auto mode detection - when DEFAULT_MODEL is "auto", Claude picks the model
 IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
 

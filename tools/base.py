@@ -181,29 +181,58 @@ class BaseTool(ABC):
                 model_desc_parts.append(f"- '{model}': {desc}")
 
             if has_openrouter:
-                # Add OpenRouter aliases from the registry
+                # Add OpenRouter models with descriptions
                 try:
-                    # Import registry directly to show available aliases
-                    # This works even without an API key
                     from providers.openrouter_registry import OpenRouterModelRegistry
+                    import logging
 
                     registry = OpenRouterModelRegistry()
-                    aliases = registry.list_aliases()
 
-                    # Show ALL aliases from the configuration
-                    if aliases:
-                        # Show all aliases so Claude knows every option available
-                        all_aliases = sorted(aliases)
-                        alias_list = ", ".join(f"'{a}'" for a in all_aliases)
-                        model_desc_parts.append(f"\nOpenRouter models available via aliases: {alias_list}")
-                    else:
-                        model_desc_parts.append(
-                            "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter."
-                        )
-                except Exception:
-                    # Fallback if registry fails to load
+                    # Group models by their model_name to avoid duplicates
+                    seen_models = set()
+                    model_configs = []
+
+                    for alias in registry.list_aliases():
+                        config = registry.resolve(alias)
+                        if config and config.model_name not in seen_models:
+                            seen_models.add(config.model_name)
+                            model_configs.append((alias, config))
+
+                    # Sort by context window (descending) then by alias
+                    model_configs.sort(key=lambda x: (-x[1].context_window, x[0]))
+
+                    if model_configs:
+                        model_desc_parts.append("\nOpenRouter models (use these aliases):")
+                        for alias, config in model_configs[:10]:  # Limit to top 10
+                            # Format context window in human-readable form
+                            context_tokens = config.context_window
+                            if context_tokens >= 1_000_000:
+                                context_str = f"{context_tokens // 1_000_000}M"
+                            elif context_tokens >= 1_000:
+                                context_str = f"{context_tokens // 1_000}K"
+                            else:
+                                context_str = str(context_tokens)
+
+                            # Build description line
+                            if config.description:
+                                desc = f"- '{alias}' ({context_str} context): {config.description}"
+                            else:
+                                # Fallback to showing the model name if no description
+                                desc = f"- '{alias}' ({context_str} context): {config.model_name}"
+                            model_desc_parts.append(desc)
+
+                        # Add note about additional models if any were cut off
+                        total_models = len(model_configs)
+                        if total_models > 10:
+                            model_desc_parts.append(f"... and {total_models - 10} more models available")
+                except Exception as e:
+                    # Log for debugging but don't fail
+                    import logging
+
+                    logging.debug(f"Failed to load OpenRouter model descriptions: {e}")
+                    # Fallback to simple message
                     model_desc_parts.append(
-                        "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter (e.g., 'gpt-4', 'claude-3-opus', 'mistral-large')."
+                        "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter."
                     )
 
             return {
