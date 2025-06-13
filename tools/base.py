@@ -76,8 +76,10 @@ class ToolRequest(BaseModel):
     continuation_id: Optional[str] = Field(
         None,
         description=(
-            "Thread continuation ID for multi-turn conversations. Can be used to continue conversations "
-            "across different tools. Only provide this if continuing a previous conversation thread."
+            "Thread continuation ID for multi-turn conversations. When provided, the complete conversation "
+            "history is automatically embedded as context. Your response should build upon this history "
+            "without repeating previous analysis or instructions. Focus on providing only new insights, "
+            "additional findings, or answers to follow-up questions. Can be used across different tools."
         ),
     )
 
