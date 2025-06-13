@@ -57,15 +57,28 @@ class ToolRequest(BaseModel):
     # Higher values allow for more complex reasoning but increase latency and cost
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
         None,
-        description="Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
+        description=(
+            "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), "
+            "max (100% of model max)"
+        ),
     )
     use_websearch: Optional[bool] = Field(
         True,
-        description="Enable web search for documentation, best practices, and current information. When enabled, the model can request Claude to perform web searches and share results back during conversations. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+        description=(
+            "Enable web search for documentation, best practices, and current information. "
+            "When enabled, the model can request Claude to perform web searches and share results back "
+            "during conversations. Particularly useful for: brainstorming sessions, architectural design "
+            "discussions, exploring industry best practices, working with specific frameworks/technologies, "
+            "researching solutions to complex problems, or when current documentation and community insights "
+            "would enhance the analysis."
+        ),
     )
     continuation_id: Optional[str] = Field(
         None,
-        description="Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
+        description=(
+            "Thread continuation ID for multi-turn conversations. Can be used to continue conversations "
+            "across different tools. Only provide this if continuing a previous conversation thread."
+        ),
     )
 
 
@@ -152,21 +165,48 @@ class BaseTool(ABC):
         Returns:
             Dict containing the model field JSON schema
         """
-        from config import DEFAULT_MODEL, IS_AUTO_MODE, MODEL_CAPABILITIES_DESC
         import os
 
+        from config import DEFAULT_MODEL, IS_AUTO_MODE, MODEL_CAPABILITIES_DESC
+
         # Check if OpenRouter is configured
-        has_openrouter = bool(os.getenv("OPENROUTER_API_KEY") and 
-                            os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here")
+        has_openrouter = bool(
+            os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here"
+        )
 
         if IS_AUTO_MODE:
             # In auto mode, model is required and we provide detailed descriptions
             model_desc_parts = ["Choose the best model for this task based on these capabilities:"]
             for model, desc in MODEL_CAPABILITIES_DESC.items():
                 model_desc_parts.append(f"- '{model}': {desc}")
-            
+
             if has_openrouter:
-                model_desc_parts.append("\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter (e.g., 'gpt-4', 'claude-3-opus', 'mistral-large'). Check openrouter.ai/models for available models.")
+                # Add OpenRouter aliases from the registry
+                try:
+                    # Import registry directly to show available aliases
+                    # This works even without an API key
+                    from providers.openrouter_registry import OpenRouterModelRegistry
+                    
+                    registry = OpenRouterModelRegistry()
+                    aliases = registry.list_aliases()
+
+                    # Show ALL aliases from the configuration
+                    if aliases:
+                        # Show all aliases so Claude knows every option available
+                        all_aliases = sorted(aliases)
+                        alias_list = ", ".join(f"'{a}'" for a in all_aliases)
+                        model_desc_parts.append(
+                            f"\nOpenRouter models available via aliases: {alias_list}"
+                        )
+                    else:
+                        model_desc_parts.append(
+                            "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter."
+                        )
+                except Exception:
+                    # Fallback if registry fails to load
+                    model_desc_parts.append(
+                        "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter (e.g., 'gpt-4', 'claude-3-opus', 'mistral-large')."
+                    )
 
             return {
                 "type": "string",
@@ -177,12 +217,33 @@ class BaseTool(ABC):
             # Normal mode - model is optional with default
             available_models = list(MODEL_CAPABILITIES_DESC.keys())
             models_str = ", ".join(f"'{m}'" for m in available_models)
-            
+
             description = f"Model to use. Native models: {models_str}."
             if has_openrouter:
-                description += " OpenRouter: Any model available on openrouter.ai (e.g., 'gpt-4', 'claude-3-opus', 'mistral-large')."
+                # Add OpenRouter aliases
+                try:
+                    # Import registry directly to show available aliases
+                    # This works even without an API key
+                    from providers.openrouter_registry import OpenRouterModelRegistry
+                    
+                    registry = OpenRouterModelRegistry()
+                    aliases = registry.list_aliases()
+
+                    # Show ALL aliases from the configuration
+                    if aliases:
+                        # Show all aliases so Claude knows every option available
+                        all_aliases = sorted(aliases)
+                        alias_list = ", ".join(f"'{a}'" for a in all_aliases)
+                        description += f" OpenRouter aliases: {alias_list}."
+                    else:
+                        description += " OpenRouter: Any model available on openrouter.ai."
+                except Exception:
+                    description += (
+                        " OpenRouter: Any model available on openrouter.ai "
+                        "(e.g., 'gpt-4', 'claude-3-opus', 'mistral-large')."
+                    )
             description += f" Defaults to '{DEFAULT_MODEL}' if not specified."
-            
+
             return {
                 "type": "string",
                 "description": description,

@@ -1,12 +1,8 @@
 """OpenAI model provider implementation."""
 
-import logging
-from typing import Optional
-
 from .base import (
     FixedTemperatureConstraint,
     ModelCapabilities,
-    ModelResponse,
     ProviderType,
     RangeTemperatureConstraint,
 )
@@ -33,7 +29,6 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         # Set default OpenAI base URL, allow override for regions/custom endpoints
         kwargs.setdefault("base_url", "https://api.openai.com/v1")
         super().__init__(api_key, **kwargs)
-
 
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         """Get capabilities for a specific OpenAI model."""
@@ -62,7 +57,6 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             temperature_constraint=temp_constraint,
         )
 
-
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
         return ProviderType.OPENAI
@@ -76,4 +70,3 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         # Currently no OpenAI models support extended thinking
         # This may change with future O3 models
         return False
-

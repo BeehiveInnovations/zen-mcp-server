@@ -173,8 +173,7 @@ def configure_providers():
             "1. Use only OpenRouter: unset GEMINI_API_KEY and OPENAI_API_KEY\n"
             "2. Use only native APIs: unset OPENROUTER_API_KEY\n"
             "\n"
-            "Current configuration will prioritize native APIs over OpenRouter.\n" +
-            "=" * 70 + "\n"
+            "Current configuration will prioritize native APIs over OpenRouter.\n" + "=" * 70 + "\n"
         )
 
     # Register providers - native APIs first to ensure they take priority
@@ -363,18 +362,22 @@ If something needs clarification or you'd benefit from additional context, simpl
 IMPORTANT: When you suggest follow-ups or ask questions, you MUST explicitly instruct Claude to use the continuation_id
 to respond. Use clear, direct language based on urgency:
 
-For optional follow-ups: "Please continue this conversation using the continuation_id from this response if you'd like to explore this further."
+For optional follow-ups: "Please continue this conversation using the continuation_id from this response if you'd "
+"like to explore this further."
 
 For needed responses: "Please respond using the continuation_id from this response - your input is needed to proceed."
 
-For essential/critical responses: "RESPONSE REQUIRED: Please immediately continue using the continuation_id from this response. Cannot proceed without your clarification/input."
+For essential/critical responses: "RESPONSE REQUIRED: Please immediately continue using the continuation_id from "
+"this response. Cannot proceed without your clarification/input."
 
-This ensures Claude knows both HOW to maintain the conversation thread AND whether a response is optional, needed, or essential.
+This ensures Claude knows both HOW to maintain the conversation thread AND whether a response is optional, "
+"needed, or essential.
 
 The tool will automatically provide a continuation_id in the structured response that Claude can use in subsequent
 tool calls to maintain full conversation context across multiple exchanges.
 
-Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct Claude to use the continuation_id when you do."""
+Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct "
+"Claude to use the continuation_id when you do."""
 
 
 async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -411,8 +414,10 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         # Return error asking Claude to restart conversation with full context
         raise ValueError(
             f"Conversation thread '{continuation_id}' was not found or has expired. "
-            f"This may happen if the conversation was created more than 1 hour ago or if there was an issue with Redis storage. "
-            f"Please restart the conversation by providing your full question/prompt without the continuation_id parameter. "
+            f"This may happen if the conversation was created more than 1 hour ago or if there was an issue "
+            f"with Redis storage. "
+            f"Please restart the conversation by providing your full question/prompt without the "
+            f"continuation_id parameter. "
             f"This will create a new conversation thread that can continue with follow-up exchanges."
         )
 
@@ -504,7 +509,8 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(
-            f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - {len(context.turns)} previous turns loaded"
+            f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - "
+            f"{len(context.turns)} previous turns loaded"
         )
     except Exception:
         pass
@@ -542,7 +548,7 @@ async def handle_get_version() -> list[TextContent]:
     # Check configured providers
     from providers import ModelProviderRegistry
     from providers.base import ProviderType
-    
+
     configured_providers = []
     if ModelProviderRegistry.get_provider(ProviderType.GOOGLE):
         configured_providers.append("Gemini (flash, pro)")

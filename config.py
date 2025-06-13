@@ -56,11 +56,13 @@ MODEL_CAPABILITIES_DESC = {
     "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
     # Full model names also supported
     "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
-    "gemini-2.5-pro-preview-06-05": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
+    "gemini-2.5-pro-preview-06-05": (
+        "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"
+    ),
 }
 
 # Note: When only OpenRouter is configured, these model aliases automatically map to equivalent models:
-# - "flash" → "google/gemini-flash-1.5-8b" 
+# - "flash" → "google/gemini-flash-1.5-8b"
 # - "pro" → "google/gemini-pro-1.5"
 # - "o3" → "openai/gpt-4o"
 # - "o3-mini" → "openai/gpt-4o-mini"

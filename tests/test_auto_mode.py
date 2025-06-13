@@ -97,7 +97,8 @@ class TestAutoMode:
         # Model field should have simpler description
         model_schema = schema["properties"]["model"]
         assert "enum" not in model_schema
-        assert "Available:" in model_schema["description"]
+        assert "Native models:" in model_schema["description"]
+        assert "Defaults to" in model_schema["description"]
 
     @pytest.mark.asyncio
     async def test_auto_mode_requires_model_parameter(self):
@@ -180,8 +181,9 @@ class TestAutoMode:
 
             schema = tool.get_model_field_schema()
             assert "enum" not in schema
-            assert "Available:" in schema["description"]
+            assert "Native models:" in schema["description"]
             assert "'pro'" in schema["description"]
+            assert "Defaults to" in schema["description"]
 
         finally:
             # Restore
