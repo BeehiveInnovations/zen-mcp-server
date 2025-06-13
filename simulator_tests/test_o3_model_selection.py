@@ -44,6 +44,29 @@ class O3ModelSelectionTest(BaseSimulatorTest):
         """Test O3 model selection and usage"""
         try:
             self.logger.info(" Test: O3 model selection and usage validation")
+            
+            # Check which API keys are configured
+            check_cmd = ["docker", "exec", self.container_name, "python", "-c", 
+                        "import os; print(f'OPENAI_KEY:{bool(os.environ.get(\"OPENAI_API_KEY\"))}|OPENROUTER_KEY:{bool(os.environ.get(\"OPENROUTER_API_KEY\"))}')"]
+            result = subprocess.run(check_cmd, capture_output=True, text=True)
+            
+            has_openai = False
+            has_openrouter = False
+            
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                if "OPENAI_KEY:True" in output:
+                    has_openai = True
+                if "OPENROUTER_KEY:True" in output:
+                    has_openrouter = True
+            
+            # If only OpenRouter is configured, adjust test expectations
+            if has_openrouter and not has_openai:
+                self.logger.info("  ℹ️  Only OpenRouter configured - O3 models will be routed through OpenRouter")
+                return self._run_openrouter_o3_test()
+            
+            # Original test for when OpenAI is configured
+            self.logger.info("  ℹ️  OpenAI API configured - expecting direct OpenAI API calls")
 
             # Setup test files for later use
             self.setup_test_files()
@@ -188,6 +211,121 @@ def multiply(x, y):
 
         except Exception as e:
             self.logger.error(f"O3 model selection test failed: {e}")
+            return False
+        finally:
+            self.cleanup_test_files()
+
+    def _run_openrouter_o3_test(self) -> bool:
+        """Test O3 model selection when using OpenRouter"""
+        try:
+            # Setup test files
+            self.setup_test_files()
+            
+            # Test 1: O3 model via OpenRouter
+            self.logger.info("  1: Testing O3 model via OpenRouter")
+            
+            response1, _ = self.call_mcp_tool(
+                "chat",
+                {
+                    "prompt": "Simple test: What is 2 + 2? Just give a brief answer.",
+                    "model": "o3",
+                    "temperature": 1.0,
+                },
+            )
+            
+            if not response1:
+                self.logger.error("  ❌ O3 model test via OpenRouter failed")
+                return False
+            
+            self.logger.info("  ✅ O3 model call via OpenRouter completed")
+            
+            # Test 2: O3-mini model via OpenRouter
+            self.logger.info("  2: Testing O3-mini model via OpenRouter")
+            
+            response2, _ = self.call_mcp_tool(
+                "chat",
+                {
+                    "prompt": "Simple test: What is 3 + 3? Just give a brief answer.",
+                    "model": "o3-mini",
+                    "temperature": 1.0,
+                },
+            )
+            
+            if not response2:
+                self.logger.error("  ❌ O3-mini model test via OpenRouter failed")
+                return False
+            
+            self.logger.info("  ✅ O3-mini model call via OpenRouter completed")
+            
+            # Test 3: Codereview with O3 via OpenRouter
+            self.logger.info("  3: Testing O3 with codereview tool via OpenRouter")
+            
+            test_code = """def add(a, b):
+    return a + b
+
+def multiply(x, y):
+    return x * y
+"""
+            test_file = self.create_additional_test_file("simple_math.py", test_code)
+            
+            response3, _ = self.call_mcp_tool(
+                "codereview",
+                {
+                    "files": [test_file],
+                    "prompt": "Quick review of this simple code",
+                    "model": "o3",
+                    "temperature": 1.0,
+                },
+            )
+            
+            if not response3:
+                self.logger.error("  ❌ O3 with codereview tool via OpenRouter failed")
+                return False
+            
+            self.logger.info("  ✅ O3 with codereview tool via OpenRouter completed")
+            
+            # Validate OpenRouter usage in logs
+            self.logger.info("  4: Validating OpenRouter usage in logs")
+            logs = self.get_recent_server_logs()
+            
+            # Check for OpenRouter API calls
+            openrouter_api_logs = [line for line in logs.split("\n") if "openrouter" in line.lower() and ("API" in line or "request" in line)]
+            
+            # Check for model resolution through OpenRouter
+            openrouter_model_logs = [line for line in logs.split("\n") if "openrouter" in line.lower() and ("o3" in line or "model" in line)]
+            
+            # Check for successful responses
+            openrouter_response_logs = [line for line in logs.split("\n") if "openrouter" in line.lower() and "response" in line]
+            
+            self.logger.info(f"   OpenRouter API logs: {len(openrouter_api_logs)}")
+            self.logger.info(f"   OpenRouter model logs: {len(openrouter_model_logs)}")
+            self.logger.info(f"   OpenRouter response logs: {len(openrouter_response_logs)}")
+            
+            # Success criteria for OpenRouter
+            openrouter_used = len(openrouter_api_logs) >= 3 or len(openrouter_model_logs) >= 3
+            all_calls_succeeded = response1 and response2 and response3
+            
+            success_criteria = [
+                ("All O3 model calls succeeded", all_calls_succeeded),
+                ("OpenRouter provider was used", openrouter_used),
+            ]
+            
+            passed_criteria = sum(1 for _, passed in success_criteria if passed)
+            self.logger.info(f"   Success criteria met: {passed_criteria}/{len(success_criteria)}")
+            
+            for criterion, passed in success_criteria:
+                status = "✅" if passed else "❌"
+                self.logger.info(f"    {status} {criterion}")
+            
+            if passed_criteria == len(success_criteria):
+                self.logger.info("  ✅ O3 model selection via OpenRouter passed")
+                return True
+            else:
+                self.logger.error("  ❌ O3 model selection via OpenRouter failed")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"OpenRouter O3 test failed: {e}")
             return False
         finally:
             self.cleanup_test_files()
