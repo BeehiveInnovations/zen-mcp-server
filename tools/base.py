@@ -469,36 +469,80 @@ class BaseTool(ABC):
                 from config import DEFAULT_MODEL
 
                 model_name = getattr(self, "_current_model_name", None) or DEFAULT_MODEL
-                try:
-                    provider = self.get_model_provider(model_name)
-                    capabilities = provider.get_capabilities(model_name)
 
-                    # Calculate content allocation based on model capacity
-                    if capabilities.context_window < 300_000:
-                        # Smaller context models: 60% content, 40% response
-                        model_content_tokens = int(capabilities.context_window * 0.6)
-                    else:
-                        # Larger context models: 80% content, 20% response
-                        model_content_tokens = int(capabilities.context_window * 0.8)
+                # Handle auto mode gracefully
+                if model_name.lower() == "auto":
+                    from providers.registry import ModelProviderRegistry
 
-                    effective_max_tokens = model_content_tokens - reserve_tokens
+                    # Use the preferred fallback model for capacity estimation
+                    # This properly handles different providers (OpenAI=200K, Gemini=1M)
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
                     logger.debug(
-                        f"[FILES] {self.name}: Using model-specific limit for {model_name}: "
-                        f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
+                        f"[FILES] {self.name}: Auto mode detected, using {fallback_model} for capacity estimation"
                     )
-                except (ValueError, AttributeError) as e:
-                    # Handle specific errors: provider not found, model not supported, missing attributes
-                    logger.warning(
-                        f"[FILES] {self.name}: Could not get model capabilities for {model_name}: {type(e).__name__}: {e}"
-                    )
-                    # Fall back to conservative default for safety
-                    effective_max_tokens = 100_000 - reserve_tokens
-                except Exception as e:
-                    # Catch any other unexpected errors
-                    logger.error(
-                        f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
-                    )
-                    effective_max_tokens = 100_000 - reserve_tokens
+
+                    try:
+                        provider = self.get_model_provider(fallback_model)
+                        capabilities = provider.get_capabilities(fallback_model)
+
+                        # Calculate content allocation based on model capacity
+                        if capabilities.context_window < 300_000:
+                            # Smaller context models: 60% content, 40% response
+                            model_content_tokens = int(capabilities.context_window * 0.6)
+                        else:
+                            # Larger context models: 80% content, 20% response
+                            model_content_tokens = int(capabilities.context_window * 0.8)
+
+                        effective_max_tokens = model_content_tokens - reserve_tokens
+                        logger.debug(
+                            f"[FILES] {self.name}: Using {fallback_model} capacity for auto mode: "
+                            f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
+                        )
+                    except (ValueError, AttributeError) as e:
+                        # Handle specific errors: provider not found, model not supported, missing attributes
+                        logger.warning(
+                            f"[FILES] {self.name}: Could not get capabilities for fallback model {fallback_model}: {type(e).__name__}: {e}"
+                        )
+                        # Fall back to conservative default for safety
+                        effective_max_tokens = 100_000 - reserve_tokens
+                    except Exception as e:
+                        # Catch any other unexpected errors
+                        logger.error(
+                            f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
+                        )
+                        effective_max_tokens = 100_000 - reserve_tokens
+                else:
+                    # Normal mode - use the specified model
+                    try:
+                        provider = self.get_model_provider(model_name)
+                        capabilities = provider.get_capabilities(model_name)
+
+                        # Calculate content allocation based on model capacity
+                        if capabilities.context_window < 300_000:
+                            # Smaller context models: 60% content, 40% response
+                            model_content_tokens = int(capabilities.context_window * 0.6)
+                        else:
+                            # Larger context models: 80% content, 20% response
+                            model_content_tokens = int(capabilities.context_window * 0.8)
+
+                        effective_max_tokens = model_content_tokens - reserve_tokens
+                        logger.debug(
+                            f"[FILES] {self.name}: Using model-specific limit for {model_name}: "
+                            f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
+                        )
+                    except (ValueError, AttributeError) as e:
+                        # Handle specific errors: provider not found, model not supported, missing attributes
+                        logger.warning(
+                            f"[FILES] {self.name}: Could not get model capabilities for {model_name}: {type(e).__name__}: {e}"
+                        )
+                        # Fall back to conservative default for safety
+                        effective_max_tokens = 100_000 - reserve_tokens
+                    except Exception as e:
+                        # Catch any other unexpected errors
+                        logger.error(
+                            f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
+                        )
+                        effective_max_tokens = 100_000 - reserve_tokens
 
         # Ensure we have a reasonable minimum budget
         effective_max_tokens = max(1000, effective_max_tokens)
@@ -866,6 +910,7 @@ When recommending searches, be specific about what information you need and why 
                 return [TextContent(type="text", text=error_output.model_dump_json())]
 
             # Store model name for use by helper methods like _prepare_file_content_for_prompt
+            # Only set this after auto mode validation to prevent "auto" being used as a model name
             self._current_model_name = model_name
 
             temperature = getattr(request, "temperature", None)
