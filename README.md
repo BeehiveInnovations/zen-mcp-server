@@ -63,7 +63,7 @@ Claude is brilliant, but sometimes you need:
 - **Multiple AI perspectives** - Let Claude orchestrate between different models to get the best analysis
 - **Automatic model selection** - Claude picks the right model for each task (or you can specify)
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
-- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or others ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
+- **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or [dozens of other models via OpenRouter](docs/openrouter.md) ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
 - **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
 - **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#4-precommit---pre-commit-validation))
 - **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#5-debug---expert-debugging-assistant))
