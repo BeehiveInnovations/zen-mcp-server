@@ -52,9 +52,9 @@ class TestOpenRouterProvider:
         provider = OpenRouterProvider(api_key="test-key")
 
         # Test with a model in the registry (using alias)
-        caps = provider.get_capabilities("gpt4o")
+        caps = provider.get_capabilities("o3")
         assert caps.provider == ProviderType.OPENROUTER
-        assert caps.model_name == "openai/gpt-4o"  # Resolved name
+        assert caps.model_name == "openai/o3"  # Resolved name
         assert caps.friendly_name == "OpenRouter"
 
         # Test with a model not in registry - should get generic capabilities
@@ -71,22 +71,22 @@ class TestOpenRouterProvider:
         # Test alias resolution
         assert provider._resolve_model_name("opus") == "anthropic/claude-3-opus"
         assert provider._resolve_model_name("sonnet") == "anthropic/claude-3-sonnet"
-        assert provider._resolve_model_name("gpt4o") == "openai/gpt-4o"
-        assert provider._resolve_model_name("4o") == "openai/gpt-4o"
+        assert provider._resolve_model_name("o3") == "openai/o3"
+        assert provider._resolve_model_name("o3-mini") == "openai/o3-mini-high"
         assert provider._resolve_model_name("claude") == "anthropic/claude-3-sonnet"
         assert provider._resolve_model_name("mistral") == "mistral/mistral-large"
-        assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-coder"
-        assert provider._resolve_model_name("coder") == "deepseek/deepseek-coder"
+        assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-r1-0528"
+        assert provider._resolve_model_name("r1") == "deepseek/deepseek-r1-0528"
 
         # Test case-insensitive
         assert provider._resolve_model_name("OPUS") == "anthropic/claude-3-opus"
-        assert provider._resolve_model_name("GPT4O") == "openai/gpt-4o"
+        assert provider._resolve_model_name("O3") == "openai/o3"
         assert provider._resolve_model_name("Mistral") == "mistral/mistral-large"
         assert provider._resolve_model_name("CLAUDE") == "anthropic/claude-3-sonnet"
 
         # Test direct model names (should pass through unchanged)
         assert provider._resolve_model_name("anthropic/claude-3-opus") == "anthropic/claude-3-opus"
-        assert provider._resolve_model_name("openai/gpt-4o") == "openai/gpt-4o"
+        assert provider._resolve_model_name("openai/o3") == "openai/o3"
 
         # Test unknown models pass through
         assert provider._resolve_model_name("unknown-model") == "unknown-model"
@@ -120,13 +120,13 @@ class TestOpenRouterRegistry:
         models = registry.list_models()
         assert len(models) > 0
         assert "anthropic/claude-3-opus" in models
-        assert "openai/gpt-4o" in models
+        assert "openai/o3" in models
 
         # Should have loaded aliases
         aliases = registry.list_aliases()
         assert len(aliases) > 0
         assert "opus" in aliases
-        assert "gpt4o" in aliases
+        assert "o3" in aliases
         assert "claude" in aliases
 
     def test_registry_capabilities(self):

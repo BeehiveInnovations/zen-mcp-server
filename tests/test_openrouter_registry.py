@@ -77,8 +77,8 @@ class TestOpenRouterModelRegistry:
             ("opus", "anthropic/claude-3-opus"),
             ("OPUS", "anthropic/claude-3-opus"),  # Case insensitive
             ("claude", "anthropic/claude-3-sonnet"),
-            ("gpt4o", "openai/gpt-4o"),
-            ("4o", "openai/gpt-4o"),
+            ("o3", "openai/o3"),
+            ("deepseek", "deepseek/deepseek-r1-0528"),
             ("mistral", "mistral/mistral-large"),
         ]
 
@@ -96,9 +96,9 @@ class TestOpenRouterModelRegistry:
         assert config is not None
         assert config.model_name == "anthropic/claude-3-opus"
 
-        config = registry.resolve("openai/gpt-4o")
+        config = registry.resolve("openai/o3")
         assert config is not None
-        assert config.model_name == "openai/gpt-4o"
+        assert config.model_name == "openai/o3"
 
     def test_unknown_model_resolution(self):
         """Test resolution of unknown models."""
