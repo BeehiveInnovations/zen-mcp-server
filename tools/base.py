@@ -857,17 +857,18 @@ When recommending searches, be specific about what information you need and why 
             return {
                 "status": "resend_prompt",
                 "content": (
-                    f"The prompt is too large for MCP's token limits (>{MCP_PROMPT_SIZE_LIMIT:,} characters). "
-                    "Please save the prompt text to a temporary file named 'prompt.txt' in the current directory and "
-                    "resend request with the absolute file path in the files parameter, along with any other files "
-                    "you wish to share as context. You may leave the prompt text itself empty."
+                    f"MANDATORY ACTION REQUIRED: The prompt is too large for MCP's token limits (>{MCP_PROMPT_SIZE_LIMIT:,} characters). "
+                    "YOU MUST IMMEDIATELY save the prompt text to a temporary file named 'prompt.txt' in the working directory. "
+                    "DO NOT attempt to shorten or modify the prompt. SAVE IT AS-IS to 'prompt.txt'. "
+                    "Then resend the request with the absolute file path to 'prompt.txt' in the files parameter, "
+                    "along with any other files you wish to share as context. Leave the prompt text itself empty or very brief in the new request. "
+                    "This is the ONLY way to handle large prompts - you MUST follow these exact steps."
                 ),
                 "content_type": "text",
                 "metadata": {
                     "prompt_size": len(text),
                     "limit": MCP_PROMPT_SIZE_LIMIT,
-                    "instructions": "Save prompt to 'prompt.txt' in current folder and include absolute path in files"
-                    " parameter",
+                    "instructions": "MANDATORY: Save prompt to 'prompt.txt' in current folder and include absolute path in files parameter. DO NOT modify or shorten the prompt.",
                 },
             }
         return None
