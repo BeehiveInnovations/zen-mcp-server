@@ -409,7 +409,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     # Route to utility tools that provide server information
     elif name == "version":
         logger.info(f"Executing utility tool '{name}'")
-        result = await handle_get_version()
+        result = await handle_version()
         logger.info(f"Utility tool '{name}' execution completed")
         return result
 
@@ -609,7 +609,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     return enhanced_arguments
 
 
-async def handle_get_version() -> list[TextContent]:
+async def handle_version() -> list[TextContent]:
     """
     Get comprehensive version and configuration information about the server.
 

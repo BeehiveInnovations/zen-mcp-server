@@ -256,7 +256,7 @@ Just ask Claude naturally:
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
-- **Server info?** → `get_version` (version and configuration details)
+- **Server info?** → `version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
 
@@ -277,7 +277,7 @@ Just ask Claude naturally:
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`testgen`](#7-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
-8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
+8. [`version`](#8-version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -463,7 +463,7 @@ suites that cover realistic failure scenarios and integration points that shorte
 - Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
 - Specific code coverage - target specific functions/classes rather than testing everything
 
-### 8. `get_version` - Server Information
+### 8. `version` - Server Information
 ```
 "Get zen to show its version"
 ```

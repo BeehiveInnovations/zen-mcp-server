@@ -189,9 +189,6 @@ class CustomProvider(OpenAICompatibleProvider):
         """
         logging.debug(f"Custom provider validating model: '{model_name}'")
 
-        # If OpenRouter is available and this looks like a cloud model, defer to OpenRouter
-        openrouter_available = os.getenv("OPENROUTER_API_KEY") is not None
-
         # Try to resolve through registry first
         config = self._registry.resolve(model_name)
         if config:

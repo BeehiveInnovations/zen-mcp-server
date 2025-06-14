@@ -335,9 +335,7 @@ class TestClass:
                         thread_description = "A1-Branch (2-thread chain)"
                         is_valid_length = chain_length == 2
 
-                    traversal_validations.append(
-                        (f"{thread_description} has valid chain length", is_valid_length)
-                    )
+                    traversal_validations.append((f"{thread_description} has valid chain length", is_valid_length))
 
                 # Also validate we found at least one traversal (shows the system is working)
                 traversal_validations.append(
