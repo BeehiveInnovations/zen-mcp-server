@@ -18,6 +18,7 @@ Security Model:
 - Symbolic links are resolved to ensure they stay within bounds
 """
 
+import base64
 import logging
 import os
 from pathlib import Path
@@ -163,6 +164,20 @@ MCP_SIGNATURE_FILES = {
     "tools/precommit.py",
     "utils/file_utils.py",
     "prompts/tool_prompts.py",
+}
+
+# Image file extensions that should be converted to base64
+IMAGE_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".tiff",
+    ".tif",
 }
 
 
@@ -326,6 +341,17 @@ CODE_EXTENSIONS = {
     ".scss",
     ".sass",
     ".less",
+    # Image formats - will be converted to base64
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".tiff",
+    ".tif",
 }
 
 
@@ -634,9 +660,51 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
             content = f"\n--- FILE TOO LARGE: {file_path} ---\nFile size: {file_size:,} bytes (max: {max_size:,})\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
-        # Read the file with UTF-8 encoding, replacing invalid characters
+        # Check if this is an image file that should be converted to base64
+        file_extension = path.suffix.lower()
+        if file_extension in IMAGE_EXTENSIONS:
+            logger.debug(f"[FILES] Detected image file: {file_path}, converting to base64")
+            
+            try:
+                # Read image file as binary
+                with open(path, "rb") as f:
+                    image_data = f.read()
+                
+                # Convert to base64
+                base64_data = base64.b64encode(image_data).decode('utf-8')
+                
+                # Determine MIME type based on extension
+                mime_type_map = {
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg", 
+                    ".jpeg": "image/jpeg",
+                    ".gif": "image/gif",
+                    ".bmp": "image/bmp",
+                    ".webp": "image/webp",
+                    ".svg": "image/svg+xml",
+                    ".ico": "image/x-icon",
+                    ".tiff": "image/tiff",
+                    ".tif": "image/tiff",
+                }
+                mime_type = mime_type_map.get(file_extension, "image/unknown")
+                
+                # Format as data URL for AI model consumption
+                data_url = f"data:{mime_type};base64,{base64_data}"
+                formatted = f"\n--- BEGIN IMAGE FILE: {file_path} ---\nMIME Type: {mime_type}\nFile Size: {file_size:,} bytes\nBase64 Data URL:\n{data_url}\n--- END IMAGE FILE: {file_path} ---\n"
+                
+                logger.debug(f"[FILES] Successfully converted image {file_path} to base64: {len(base64_data)} chars")
+                tokens = estimate_tokens(formatted)
+                logger.debug(f"[FILES] Formatted image content for {file_path}: {len(formatted)} chars, {tokens} tokens")
+                return formatted, tokens
+                
+            except Exception as e:
+                logger.debug(f"[FILES] Failed to convert image {file_path} to base64: {type(e).__name__}: {e}")
+                content = f"\n--- ERROR CONVERTING IMAGE: {file_path} ---\nError: {str(e)}\n--- END FILE ---\n"
+                return content, estimate_tokens(content)
+        
+        # Read text files with UTF-8 encoding, replacing invalid characters
         # This ensures we can handle files with mixed encodings
-        logger.debug(f"[FILES] Reading file content for {file_path}")
+        logger.debug(f"[FILES] Reading text file content for {file_path}")
         with open(path, encoding="utf-8", errors="replace") as f:
             file_content = f.read()
 
