@@ -12,6 +12,7 @@ class ProviderType(Enum):
     GOOGLE = "google"
     OPENAI = "openai"
     XAI = "xai"
+    AZURE_OPENAI = "azure_openai"
     OPENROUTER = "openrouter"
     CUSTOM = "custom"
 

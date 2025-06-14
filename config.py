@@ -36,7 +36,8 @@ IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
 # IMPORTANT: These are the built-in natively supported models:
 # - When GEMINI_API_KEY is set: Enables "flash", "pro" (and their full names)
 # - When OPENAI_API_KEY is set: Enables "o3", "o3mini", "o4-mini", "o4-mini-high"
-# - When both are set: All models below are available
+# - When AZURE_OPENAI_API_KEY is set: Enables Azure OpenAI models with same aliases as OpenAI
+# - When multiple are set: All supported models below are available
 # - When neither is set but OpenRouter/Custom API is configured: These model
 #   aliases will automatically map to equivalent models via the proxy provider
 #
@@ -140,3 +141,24 @@ MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
 # Simple Redis-based conversation threading for stateless MCP environment
 # Set REDIS_URL environment variable to connect to your Redis instance
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+# Azure OpenAI Configuration
+# Azure OpenAI requires additional configuration parameters beyond just the API key
+# These environment variables must be set to use Azure OpenAI provider
+
+# AZURE_OPENAI_API_KEY: Your Azure OpenAI service API key
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+
+# AZURE_OPENAI_ENDPOINT: Your Azure OpenAI resource endpoint
+# Example: https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+
+# AZURE_OPENAI_API_VERSION: Azure OpenAI API version to use
+# This should match the API version supported by your Azure deployment
+# Default is 2024-02-01 which supports most current features
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+
+# AZURE_OPENAI_DEPLOYMENT_NAME: Default deployment name for models
+# If not provided, the model name will be used as deployment name
+# This can be overridden per request using deployment_name parameter
+AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")

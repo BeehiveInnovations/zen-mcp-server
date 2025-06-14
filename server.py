@@ -164,6 +164,7 @@ def configure_providers():
         ValueError: If no valid API keys are found or conflicting configurations detected
     """
     from providers import ModelProviderRegistry
+    from providers.azure_openai import AzureOpenAIProvider
     from providers.base import ProviderType
     from providers.custom import CustomProvider
     from providers.gemini import GeminiModelProvider
@@ -197,6 +198,13 @@ def configure_providers():
         valid_providers.append("X.AI (GROK)")
         has_native_apis = True
         logger.info("X.AI API key found - GROK models available")
+    # Check for Azure OpenAI API key and endpoint
+    azure_openai_key = os.getenv("AZURE_OPENAI_API_KEY")
+    azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    if azure_openai_key and azure_openai_endpoint:
+        valid_providers.append("Azure OpenAI")
+        has_native_apis = True
+        logger.info(f"Azure OpenAI API key and endpoint found - models available via {azure_openai_endpoint}")
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
@@ -231,6 +239,17 @@ def configure_providers():
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
+        if azure_openai_key and azure_openai_endpoint:
+            # Factory function for Azure OpenAI provider with additional required parameters
+            def azure_openai_provider_factory(api_key=None):
+                endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+                api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+                return AzureOpenAIProvider(
+                    api_key=api_key or azure_openai_key,
+                    azure_endpoint=endpoint,
+                    api_version=api_version
+                )
+            ModelProviderRegistry.register_provider(ProviderType.AZURE_OPENAI, azure_openai_provider_factory)
 
     # 2. Custom provider second (for local/private models)
     if has_custom:
@@ -253,6 +272,7 @@ def configure_providers():
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI o3 model\n"
             "- XAI_API_KEY for X.AI GROK models\n"
+            "- AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT for Azure OpenAI\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
             "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
         )
@@ -262,7 +282,7 @@ def configure_providers():
     # Log provider priority
     priority_info = []
     if has_native_apis:
-        priority_info.append("Native APIs (Gemini, OpenAI)")
+        priority_info.append("Native APIs (Gemini, OpenAI, Azure OpenAI)")
     if has_custom:
         priority_info.append("Custom endpoints")
     if has_openrouter:

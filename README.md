@@ -116,6 +116,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 - **X.AI**: Visit [X.AI Console](https://console.x.ai/) to get an API key for GROK model access.
+- **Azure OpenAI**: If you have an Azure subscription, deploy Azure OpenAI resources through the [Azure Portal](https://portal.azure.com/). This provides enterprise-grade security, compliance, and regional deployment options.
 
 **Option C: Custom API Endpoints (Local models like Ollama, vLLM)**
 [Please see the setup guide](docs/custom_models.md#option-2-custom-api-setup-ollama-vllm-etc). With a custom API you can use:
@@ -156,6 +157,8 @@ nano .env
 # The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
+# AZURE_OPENAI_API_KEY=your-azure-key     # For Azure OpenAI
+# AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/  # Azure endpoint
 # OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/custom_models.md)
 
 # For local models (Ollama, vLLM, etc.) - Note: Use host.docker.internal for Docker networking:
@@ -635,10 +638,11 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high
 **Available Models:**
 - **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
 - **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
-- **`o3`**: Strong logical reasoning  
-- **`o3mini`**: Balanced speed/quality
-- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
-- **`o4-mini-high`**: Enhanced O4 with higher reasoning effort
+- **`o3`**: Strong logical reasoning (OpenAI & Azure OpenAI)
+- **`o3mini`**: Balanced speed/quality (OpenAI & Azure OpenAI)
+- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts (OpenAI & Azure OpenAI)
+- **`o4-mini-high`**: Enhanced O4 with higher reasoning effort (OpenAI & Azure OpenAI)
+- **`gpt-4o`**, **`gpt-4o-mini`**: Available via Azure OpenAI
 - **Custom models**: via OpenRouter or local APIs (Ollama, vLLM, etc.)
 
 For detailed configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).
