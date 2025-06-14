@@ -58,13 +58,8 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         config = self.SUPPORTED_MODELS[resolved_name]
 
         # Define temperature constraints per model
-<<<<<<< HEAD
-        if resolved_name in ["o3", "o3-mini", "o4-mini", "o4-mini-high"]:
+        if resolved_name in ["o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"]:
             # O3 and O4 reasoning models only support temperature=1.0
-=======
-        if model_name in ["o3", "o3-mini", "o3-pro"]:
-            # O3 models only support temperature=1.0
->>>>>>> 155c4ec (Add o3-pro model support and extend test coverage)
             temp_constraint = FixedTemperatureConstraint(1.0)
         else:
             # Other OpenAI models support 0.0-2.0 range
