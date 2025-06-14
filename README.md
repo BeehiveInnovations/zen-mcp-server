@@ -470,7 +470,7 @@ This server enables **true AI collaboration** between Claude and multiple AI mod
 - **Asynchronous workflow**: Conversations don't need to be sequential - Claude can work on tasks between exchanges, then return to Gemini with additional context and progress updates
 - **Incremental updates**: Share only new information in each exchange while maintaining full conversation history
 - **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
-- Up to 5 exchanges per conversation with 3-hour expiry (configurable)
+- Up to 10 exchanges per conversation (configurable via `MAX_CONVERSATION_TURNS`) with 3-hour expiry (configurable via `CONVERSATION_TIMEOUT_HOURS`)
 - Thread-safe with Redis persistence across all tools
 
 **Cross-tool & Cross-Model Continuation Example:**

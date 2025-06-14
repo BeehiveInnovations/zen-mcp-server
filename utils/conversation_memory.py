@@ -57,7 +57,17 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 # Configuration constants
-MAX_CONVERSATION_TURNS = 10  # Maximum turns allowed per conversation thread
+# Get max conversation turns from environment, default to 20 turns (10 exchanges)
+try:
+    MAX_CONVERSATION_TURNS = int(os.getenv("MAX_CONVERSATION_TURNS", "20"))
+    if MAX_CONVERSATION_TURNS <= 0:
+        logger.warning(f"Invalid MAX_CONVERSATION_TURNS value ({MAX_CONVERSATION_TURNS}), using default of 20 turns")
+        MAX_CONVERSATION_TURNS = 20
+except ValueError:
+    logger.warning(
+        f"Invalid MAX_CONVERSATION_TURNS value ('{os.getenv('MAX_CONVERSATION_TURNS')}'), using default of 20 turns"
+    )
+    MAX_CONVERSATION_TURNS = 20
 
 # Get conversation timeout from environment (in hours), default to 3 hours
 try:
