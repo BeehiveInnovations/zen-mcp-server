@@ -26,10 +26,10 @@ class TestIntelligentFallback:
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False)
     def test_prefers_openai_o3_mini_when_available(self):
-        """Test that o3-mini is preferred when OpenAI API key is available"""
+        """Test that o4-mini is preferred when OpenAI API key is available"""
         ModelProviderRegistry.clear_cache()
         fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
-        assert fallback_model == "o3-mini"
+        assert fallback_model == "o4-mini"
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-gemini-key"}, clear=False)
     def test_prefers_gemini_flash_when_openai_unavailable(self):
@@ -43,7 +43,7 @@ class TestIntelligentFallback:
         """Test that OpenAI is preferred when both API keys are available"""
         ModelProviderRegistry.clear_cache()
         fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
-        assert fallback_model == "o3-mini"  # OpenAI has priority
+        assert fallback_model == "o4-mini"  # OpenAI has priority
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": ""}, clear=False)
     def test_fallback_when_no_keys_available(self):
@@ -90,7 +90,7 @@ class TestIntelligentFallback:
                 initial_context={},
             )
 
-            # This should use o3-mini for token calculations since OpenAI is available
+            # This should use o4-mini for token calculations since OpenAI is available
             with patch("utils.model_context.ModelContext") as mock_context_class:
                 mock_context_instance = Mock()
                 mock_context_class.return_value = mock_context_instance
@@ -102,8 +102,8 @@ class TestIntelligentFallback:
 
                 history, tokens = build_conversation_history(context, model_context=None)
 
-                # Verify that ModelContext was called with o3-mini (the intelligent fallback)
-                mock_context_class.assert_called_once_with("o3-mini")
+                # Verify that ModelContext was called with o4-mini (the intelligent fallback)
+                mock_context_class.assert_called_once_with("o4-mini")
 
     def test_auto_mode_with_gemini_only(self):
         """Test auto mode behavior when only Gemini API key is available"""

@@ -27,7 +27,13 @@ with context carrying forward seamlessly.
 All within a single conversation thread! Gemini Pro in step 6 _knows_ what was recommended by O3 in step 3! Taking that context
 and review into consideration to aid with its pre-commit review.
 
-**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**. 
+**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
+
+> **Remember:** Claude stays in full control — but **YOU** call the shots. 
+> Zen is designed to have Claude engage other models only when needed — and to follow through with meaningful back-and-forth. 
+> **You're** the one who crafts the powerful prompt that makes Claude bring in Gemini, Flash, O3 — or fly solo.  
+> You're the guide. The prompter. The puppeteer. 
+> ### You are the AI - **Actually Intelligent**.
 
 ## Quick Navigation
 
@@ -43,6 +49,7 @@ and review into consideration to aid with its pre-commit review.
   - [`precommit`](#4-precommit---pre-commit-validation) - Pre-commit validation
   - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
+  - [`testgen`](#7-testgen---comprehensive-test-generation) - Test generation with edge cases
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -124,7 +131,7 @@ git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
 cd zen-mcp-server
 
 # One-command setup (includes Redis for AI conversations)
-./setup-docker.sh
+./run-server.sh
 ```
 
 **What this does:**
@@ -153,6 +160,9 @@ nano .env
 # WORKSPACE_ROOT=/Users/your-username  (automatically configured)
 
 # Note: At least one API key OR custom URL is required
+
+# After making changes to .env, restart the server:
+# ./run-server.sh
 ```
 
 ### 4. Configure Claude
@@ -184,7 +194,7 @@ This will open a folder revealing `claude_desktop_config.json`.
 
 2. ** Update Docker Configuration**
 
-The setup script shows you the exact configuration. It looks like this. When you ran `setup-docker.sh` it should
+The setup script shows you the exact configuration. It looks like this. When you ran `run-server.sh` it should
 have produced a configuration for you to copy:
 
 ```json
@@ -236,10 +246,6 @@ Just ask Claude naturally:
 - "Use local-llama to localize and add missing translations to this project" → Uses local Llama 3.2 via custom URL
 - "First use local-llama for a quick local analysis, then use opus for a thorough security review" → Uses both providers in sequence
 
-> **Remember:** Claude remains in control — but **you** are the true orchestrator.  
-> You're the prompter, the guide, the puppeteer.  
-> Your prompt decides when Claude brings in Gemini, Flash, O3 — or handles it solo.
-
 ## Available Tools
 
 **Quick Tool Selection Guide:**
@@ -249,6 +255,7 @@ Just ask Claude naturally:
 - **Pre-commit validation?** → `precommit` (validate git changes before committing)
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
+- **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
 - **Server info?** → `get_version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
@@ -269,7 +276,8 @@ Just ask Claude naturally:
 4. [`precommit`](#4-precommit---pre-commit-validation) - Validate git changes before committing
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
-7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
+7. [`testgen`](#7-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
+8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -416,7 +424,30 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
 - **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
-### 7. `get_version` - Server Information
+### 7. `testgen` - Comprehensive Test Generation
+**Generates thorough test suites with edge case coverage** based on existing code and test framework used.
+
+**Thinking Mode (Extended thinking models):** Default is `medium` (8,192 tokens). Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
+
+#### Example Prompts:
+
+**Basic Usage:**
+```
+"Use zen to generate tests for User.login() method"
+"Generate comprehensive tests for the sorting method in src/new_sort.py using o3"
+"Create tests for edge cases not already covered in our tests using gemini pro"
+```
+
+**Key Features:**
+- Multi-agent workflow analyzing code paths and identifying realistic failure modes
+- Generates framework-specific tests following project conventions
+- Supports test pattern following when examples are provided
+- Dynamic token allocation (25% for test examples, 75% for main code)
+- Prioritizes smallest test files for pattern detection
+- Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
+- Specific code coverage - target specific functions/classes rather than testing everything
+
+### 8. `get_version` - Server Information
 ```
 "Get zen to show its version"
 ```
@@ -465,7 +496,7 @@ This server enables **true AI collaboration** between Claude and multiple AI mod
 - **Asynchronous workflow**: Conversations don't need to be sequential - Claude can work on tasks between exchanges, then return to Gemini with additional context and progress updates
 - **Incremental updates**: Share only new information in each exchange while maintaining full conversation history
 - **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
-- Up to 5 exchanges per conversation with 1-hour expiry
+- Up to 10 exchanges per conversation (configurable via `MAX_CONVERSATION_TURNS`) with 3-hour expiry (configurable via `CONVERSATION_TIMEOUT_HOURS`)
 - Thread-safe with Redis persistence across all tools
 
 **Cross-tool & Cross-Model Continuation Example:**
@@ -500,17 +531,23 @@ DEFAULT_MODEL=auto  # Claude picks the best model automatically
 
 # API Keys (at least one required)
 GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high
 ```
 
 **Available Models:**
 - **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
 - **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
 - **`o3`**: Strong logical reasoning  
-- **`o3-mini`**: Balanced speed/quality
+- **`o3mini`**: Balanced speed/quality
+- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
+- **`o4-mini-high`**: Enhanced O4 with higher reasoning effort
 - **Custom models**: via OpenRouter or local APIs (Ollama, vLLM, etc.)
 
 For detailed configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).
+
+## Testing
+
+For information on running tests and contributing, see the [Testing Guide](docs/testing.md).
 
 ## License
 

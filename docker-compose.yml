@@ -40,6 +40,11 @@ services:
       - CUSTOM_MODEL_NAME=${CUSTOM_MODEL_NAME:-llama3.2}
       - DEFAULT_MODEL=${DEFAULT_MODEL:-auto}
       - DEFAULT_THINKING_MODE_THINKDEEP=${DEFAULT_THINKING_MODE_THINKDEEP:-high}
+      - CONVERSATION_TIMEOUT_HOURS=${CONVERSATION_TIMEOUT_HOURS:-3}
+      - MAX_CONVERSATION_TURNS=${MAX_CONVERSATION_TURNS:-20}
+      # Model usage restrictions
+      - OPENAI_ALLOWED_MODELS=${OPENAI_ALLOWED_MODELS:-}
+      - GOOGLE_ALLOWED_MODELS=${GOOGLE_ALLOWED_MODELS:-}
       - REDIS_URL=redis://redis:6379/0
       # Use HOME not PWD: Claude needs access to any absolute file path, not just current project,
       # and Claude Code could be running from multiple locations at the same time

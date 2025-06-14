@@ -2,7 +2,6 @@
 Test that conversation history is correctly mapped to tool-specific fields
 """
 
-import os
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -130,10 +129,19 @@ async def test_unknown_tool_defaults_to_prompt():
     with patch("utils.conversation_memory.get_thread", return_value=mock_context):
         with patch("utils.conversation_memory.add_turn", return_value=True):
             with patch("utils.conversation_memory.build_conversation_history", return_value=("History", 500)):
-                with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False):
-                    from providers.registry import ModelProviderRegistry
-
-                    ModelProviderRegistry.clear_cache()
+                # Mock ModelContext to avoid calculation errors
+                with patch("utils.model_context.ModelContext") as mock_model_context_class:
+                    mock_model_context = MagicMock()
+                    mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+                    mock_model_context.calculate_token_allocation.return_value = MagicMock(
+                        total_tokens=200000,
+                        content_tokens=120000,
+                        response_tokens=80000,
+                        file_tokens=48000,
+                        history_tokens=48000,
+                        available_for_prompt=24000,
+                    )
+                    mock_model_context_class.from_arguments.return_value = mock_model_context
 
                     arguments = {
                         "continuation_id": "test-thread-456",
@@ -142,9 +150,9 @@ async def test_unknown_tool_defaults_to_prompt():
 
                     enhanced_args = await reconstruct_thread_context(arguments)
 
-                # Should default to 'prompt' field
-                assert "prompt" in enhanced_args
-                assert "History" in enhanced_args["prompt"]
+                    # Should default to 'prompt' field
+                    assert "prompt" in enhanced_args
+                    assert "History" in enhanced_args["prompt"]
 
 
 @pytest.mark.asyncio

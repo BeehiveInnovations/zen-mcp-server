@@ -105,7 +105,7 @@ def hash_pwd(pwd):
             # Step 1: Start with chat tool to understand the codebase
             self.logger.info("  Step 1: chat tool - Initial codebase exploration")
             chat_params = {
-                "prompt": "Please give me a quick one line reply. I have an authentication module that needs review. Can you help me understand potential issues?",
+                "prompt": "List security issues in auth.py",
                 "files": [auth_file],
                 "thinking_mode": "low",
                 "model": "flash",
@@ -124,7 +124,7 @@ def hash_pwd(pwd):
             self.logger.info("  Step 2: analyze tool - Deep code analysis (fresh)")
             analyze_params = {
                 "files": [auth_file],
-                "prompt": "Please give me a quick one line reply. What are the security vulnerabilities and architectural issues in this authentication code?",
+                "prompt": "Find vulnerabilities",
                 "thinking_mode": "low",
                 "model": "flash",
             }
@@ -143,7 +143,7 @@ def hash_pwd(pwd):
             self.logger.info("  Step 3: chat continuation - Add config file context")
             chat_continue_params = {
                 "continuation_id": current_continuation_id,
-                "prompt": "Please give me a quick one line reply. I also have this configuration file. Can you analyze it alongside the authentication code?",
+                "prompt": "Check config.json too",
                 "files": [auth_file, config_file_path],  # Old + new file
                 "thinking_mode": "low",
                 "model": "flash",
@@ -161,7 +161,7 @@ def hash_pwd(pwd):
             self.logger.info("  Step 4: debug tool - Identify specific problems")
             debug_params = {
                 "files": [auth_file, config_file_path],
-                "prompt": "Please give me a quick one line reply. The authentication system has security vulnerabilities. Help me identify and fix the main issues.",
+                "prompt": "Fix auth issues",
                 "thinking_mode": "low",
                 "model": "flash",
             }
@@ -182,7 +182,7 @@ def hash_pwd(pwd):
                 debug_continue_params = {
                     "continuation_id": continuation_id4,
                     "files": [auth_file, config_file_path],
-                    "prompt": "Please give me a quick one line reply. What specific code changes would you recommend to fix the password hashing vulnerability?",
+                    "prompt": "Fix password hashing",
                     "thinking_mode": "low",
                     "model": "flash",
                 }
@@ -196,7 +196,7 @@ def hash_pwd(pwd):
             self.logger.info("  Step 6: codereview tool - Comprehensive code review")
             codereview_params = {
                 "files": [auth_file, config_file_path],
-                "prompt": "Please give me a quick one line reply. Comprehensive security-focused code review for production readiness",
+                "prompt": "Security review",
                 "thinking_mode": "low",
                 "model": "flash",
             }
@@ -230,7 +230,7 @@ def secure_login(user, pwd):
             precommit_params = {
                 "path": self.test_dir,
                 "files": [auth_file, config_file_path, improved_file],
-                "prompt": "Please give me a quick one line reply. Ready to commit security improvements to authentication module",
+                "prompt": "Ready to commit",
                 "thinking_mode": "low",
                 "model": "flash",
             }

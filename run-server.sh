@@ -3,8 +3,12 @@
 # Exit on any error, undefined variables, and pipe failures
 set -euo pipefail
 
-# Modern Docker setup script for Zen MCP Server with Redis
-# This script sets up the complete Docker environment including Redis for conversation threading
+# Run/Restart script for Zen MCP Server with Redis
+# This script builds, starts, and manages the Docker environment including Redis for conversation threading
+# Run this script to:
+# - Initial setup of the Docker environment
+# - Restart services after changing .env configuration
+# - Rebuild and restart after code changes
 
 # Spinner function for long-running operations
 show_spinner() {

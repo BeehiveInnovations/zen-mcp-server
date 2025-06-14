@@ -14,7 +14,7 @@ import os
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "4.2.1"
+__version__ = "4.4.1"
 # Last update date in ISO format
 __updated__ = "2025-06-14"
 # Primary maintainer
@@ -32,23 +32,44 @@ IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
 
 # Model capabilities descriptions for auto mode
 # These help Claude choose the best model for each task
+#
+# IMPORTANT: These are the built-in natively supported models:
+# - When GEMINI_API_KEY is set: Enables "flash", "pro" (and their full names)
+# - When OPENAI_API_KEY is set: Enables "o3", "o3mini", "o4-mini", "o4-mini-high"
+# - When both are set: All models below are available
+# - When neither is set but OpenRouter/Custom API is configured: These model
+#   aliases will automatically map to equivalent models via the proxy provider
+#
+# In auto mode (DEFAULT_MODEL=auto), Claude will see these descriptions and
+# intelligently select the best model for each task. The descriptions appear
+# in the tool schema to guide Claude's selection based on task requirements.
 MODEL_CAPABILITIES_DESC = {
+    # Gemini models - Available when GEMINI_API_KEY is configured
     "flash": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
     "pro": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
+    # OpenAI models - Available when OPENAI_API_KEY is configured
     "o3": "Strong reasoning (200K context) - Logical problems, code generation, systematic analysis",
     "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
-    # Full model names also supported
+    "o4-mini": "Latest reasoning model (200K context) - Optimized for shorter contexts, rapid reasoning",
+    "o4-mini-high": "Enhanced O4 mini (200K context) - Higher reasoning effort for complex tasks",
+    # Full model names also supported (for explicit specification)
     "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
     "gemini-2.5-pro-preview-06-05": (
         "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"
     ),
 }
 
-# Note: When only OpenRouter is configured, these model aliases automatically map to equivalent models:
-# - "flash" → "google/gemini-2.5-flash-preview-05-20"
-# - "pro" → "google/gemini-2.5-pro-preview-06-05"
-# - "o3" → "openai/gpt-4o"
-# - "o3-mini" → "openai/gpt-4o-mini"
+# OpenRouter/Custom API Fallback Behavior:
+# When only OpenRouter or Custom API is configured (no native API keys), these
+# model aliases automatically map to equivalent models through the proxy:
+# - "flash" → "google/gemini-2.5-flash-preview-05-20" (via OpenRouter)
+# - "pro" → "google/gemini-2.5-pro-preview-06-05" (via OpenRouter)
+# - "o3" → "openai/o3" (via OpenRouter)
+# - "o3mini" → "openai/o3-mini" (via OpenRouter)
+# - "o4-mini" → "openai/o4-mini" (via OpenRouter)
+# - "o4-mini-high" → "openai/o4-mini-high" (via OpenRouter)
+#
+# This ensures the same model names work regardless of which provider is configured.
 
 
 # Temperature defaults for different tool types

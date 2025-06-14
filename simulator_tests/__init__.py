@@ -19,6 +19,7 @@ from .test_openrouter_fallback import OpenRouterFallbackTest
 from .test_openrouter_models import OpenRouterModelsTest
 from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_redis_validation import RedisValidationTest
+from .test_testgen_validation import TestGenValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
 
 # Test registry for dynamic loading
@@ -36,6 +37,7 @@ TEST_REGISTRY = {
     "openrouter_fallback": OpenRouterFallbackTest,
     "openrouter_models": OpenRouterModelsTest,
     "token_allocation_validation": TokenAllocationValidationTest,
+    "testgen_validation": TestGenValidationTest,
     "conversation_chain_validation": ConversationChainValidationTest,
 }
 
@@ -54,6 +56,7 @@ __all__ = [
     "OpenRouterFallbackTest",
     "OpenRouterModelsTest",
     "TokenAllocationValidationTest",
+    "TestGenValidationTest",
     "ConversationChainValidationTest",
     "TEST_REGISTRY",
 ]

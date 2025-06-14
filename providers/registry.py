@@ -2,9 +2,12 @@
 
 import logging
 import os
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from .base import ModelProvider, ProviderType
+
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
 
 
 class ModelProviderRegistry:
@@ -147,8 +150,11 @@ class ModelProviderRegistry:
         return list(instance._providers.keys())
 
     @classmethod
-    def get_available_models(cls) -> dict[str, ProviderType]:
+    def get_available_models(cls, respect_restrictions: bool = True) -> dict[str, ProviderType]:
         """Get mapping of all available models to their providers.
+
+        Args:
+            respect_restrictions: If True, filter out models not allowed by restrictions
 
         Returns:
             Dict mapping model names to provider types
@@ -156,14 +162,50 @@ class ModelProviderRegistry:
         models = {}
         instance = cls()
 
+        # Import here to avoid circular imports
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service() if respect_restrictions else None
+
         for provider_type in instance._providers:
             provider = cls.get_provider(provider_type)
             if provider:
-                # This assumes providers have a method to list supported models
-                # We'll need to add this to the interface
-                pass
+                # Get supported models based on provider type
+                if hasattr(provider, "SUPPORTED_MODELS"):
+                    for model_name, config in provider.SUPPORTED_MODELS.items():
+                        # Skip aliases (string values)
+                        if isinstance(config, str):
+                            continue
+
+                        # Check restrictions if enabled
+                        if restriction_service and not restriction_service.is_allowed(provider_type, model_name):
+                            logging.debug(f"Model {model_name} filtered by restrictions")
+                            continue
+
+                        models[model_name] = provider_type
 
         return models
+
+    @classmethod
+    def get_available_model_names(cls, provider_type: Optional[ProviderType] = None) -> list[str]:
+        """Get list of available model names, optionally filtered by provider.
+
+        This respects model restrictions automatically.
+
+        Args:
+            provider_type: Optional provider to filter by
+
+        Returns:
+            List of available model names
+        """
+        available_models = cls.get_available_models(respect_restrictions=True)
+
+        if provider_type:
+            # Filter by specific provider
+            return [name for name, ptype in available_models.items() if ptype == provider_type]
+        else:
+            # Return all available models
+            return list(available_models.keys())
 
     @classmethod
     def _get_api_key_for_provider(cls, provider_type: ProviderType) -> Optional[str]:
@@ -189,35 +231,136 @@ class ModelProviderRegistry:
         return os.getenv(env_var)
 
     @classmethod
-    def get_preferred_fallback_model(cls) -> str:
-        """Get the preferred fallback model based on available API keys.
+    def get_preferred_fallback_model(cls, tool_category: Optional["ToolModelCategory"] = None) -> str:
+        """Get the preferred fallback model based on available API keys and tool category.
 
         This method checks which providers have valid API keys and returns
         a sensible default model for auto mode fallback situations.
 
-        Priority order:
-        1. OpenAI o3-mini (balanced performance/cost) if OpenAI API key available
-        2. Gemini 2.0 Flash (fast and efficient) if Gemini API key available
-        3. OpenAI o3 (high performance) if OpenAI API key available
-        4. Gemini 2.5 Pro (deep reasoning) if Gemini API key available
-        5. Fallback to gemini-2.5-flash-preview-05-20 (most common case)
+        Takes into account model restrictions when selecting fallback models.
+
+        Args:
+            tool_category: Optional category to influence model selection
 
         Returns:
             Model name string for fallback use
         """
-        # Check provider availability by trying to get instances
-        openai_available = cls.get_provider(ProviderType.OPENAI) is not None
-        gemini_available = cls.get_provider(ProviderType.GOOGLE) is not None
+        # Import here to avoid circular import
+        from tools.models import ToolModelCategory
 
-        # Priority order: prefer balanced models first, then high-performance
-        if openai_available:
-            return "o3-mini"  # Balanced performance/cost
-        elif gemini_available:
-            return "gemini-2.5-flash-preview-05-20"  # Fast and efficient
+        # Get available models respecting restrictions
+        available_models = cls.get_available_models(respect_restrictions=True)
+
+        # Group by provider
+        openai_models = [m for m, p in available_models.items() if p == ProviderType.OPENAI]
+        gemini_models = [m for m, p in available_models.items() if p == ProviderType.GOOGLE]
+
+        openai_available = bool(openai_models)
+        gemini_available = bool(gemini_models)
+
+        if tool_category == ToolModelCategory.EXTENDED_REASONING:
+            # Prefer thinking-capable models for deep reasoning tools
+            if openai_available and "o3" in openai_models:
+                return "o3"  # O3 for deep reasoning
+            elif openai_available and openai_models:
+                # Fall back to any available OpenAI model
+                return openai_models[0]
+            elif gemini_available and any("pro" in m for m in gemini_models):
+                # Find the pro model (handles full names)
+                return next(m for m in gemini_models if "pro" in m)
+            elif gemini_available and gemini_models:
+                # Fall back to any available Gemini model
+                return gemini_models[0]
+            else:
+                # Try to find thinking-capable model from custom/openrouter
+                thinking_model = cls._find_extended_thinking_model()
+                if thinking_model:
+                    return thinking_model
+                # Fallback to pro if nothing found
+                return "gemini-2.5-pro-preview-06-05"
+
+        elif tool_category == ToolModelCategory.FAST_RESPONSE:
+            # Prefer fast, cost-efficient models
+            if openai_available and "o4-mini" in openai_models:
+                return "o4-mini"  # Latest, fast and efficient
+            elif openai_available and "o3-mini" in openai_models:
+                return "o3-mini"  # Second choice
+            elif openai_available and openai_models:
+                # Fall back to any available OpenAI model
+                return openai_models[0]
+            elif gemini_available and any("flash" in m for m in gemini_models):
+                # Find the flash model (handles full names)
+                return next(m for m in gemini_models if "flash" in m)
+            elif gemini_available and gemini_models:
+                # Fall back to any available Gemini model
+                return gemini_models[0]
+            else:
+                # Default to flash
+                return "gemini-2.5-flash-preview-05-20"
+
+        # BALANCED or no category specified - use existing balanced logic
+        if openai_available and "o4-mini" in openai_models:
+            return "o4-mini"  # Latest balanced performance/cost
+        elif openai_available and "o3-mini" in openai_models:
+            return "o3-mini"  # Second choice
+        elif openai_available and openai_models:
+            return openai_models[0]
+        elif gemini_available and any("flash" in m for m in gemini_models):
+            return next(m for m in gemini_models if "flash" in m)
+        elif gemini_available and gemini_models:
+            return gemini_models[0]
         else:
-            # No API keys available - return a reasonable default
-            # This maintains backward compatibility for tests
+            # No models available due to restrictions - check if any providers exist
+            if not available_models:
+                # This might happen if all models are restricted
+                logging.warning("No models available due to restrictions")
+            # Return a reasonable default for backward compatibility
             return "gemini-2.5-flash-preview-05-20"
+
+    @classmethod
+    def _find_extended_thinking_model(cls) -> Optional[str]:
+        """Find a model suitable for extended reasoning from custom/openrouter providers.
+
+        Returns:
+            Model name if found, None otherwise
+        """
+        # Check custom provider first
+        custom_provider = cls.get_provider(ProviderType.CUSTOM)
+        if custom_provider:
+            # Check if it's a CustomModelProvider and has thinking models
+            try:
+                from providers.custom import CustomProvider
+
+                if isinstance(custom_provider, CustomProvider) and hasattr(custom_provider, "model_registry"):
+                    for model_name, config in custom_provider.model_registry.items():
+                        if config.get("supports_extended_thinking", False):
+                            return model_name
+            except ImportError:
+                pass
+
+        # Then check OpenRouter for high-context/powerful models
+        openrouter_provider = cls.get_provider(ProviderType.OPENROUTER)
+        if openrouter_provider:
+            # Prefer models known for deep reasoning
+            preferred_models = [
+                "anthropic/claude-3.5-sonnet",
+                "anthropic/claude-3-opus-20240229",
+                "meta-llama/llama-3.1-70b-instruct",
+                "google/gemini-pro-1.5",
+                "mistralai/mixtral-8x7b-instruct",
+            ]
+            for model in preferred_models:
+                try:
+                    if openrouter_provider.validate_model_name(model):
+                        return model
+                except Exception as e:
+                    # Log the error for debugging purposes but continue searching
+                    import logging
+
+                    logging.warning(f"Model validation for '{model}' on OpenRouter failed: {e}")
+                    continue
+
+        return None
 
     @classmethod
     def get_available_providers_with_keys(cls) -> list[ProviderType]:

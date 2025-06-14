@@ -1,5 +1,6 @@
 """Gemini model provider implementation."""
 
+import logging
 import time
 from typing import Optional
 
@@ -7,6 +8,8 @@ from google import genai
 from google.genai import types
 
 from .base import ModelCapabilities, ModelProvider, ModelResponse, ProviderType, RangeTemperatureConstraint
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiModelProvider(ModelProvider):
@@ -59,6 +62,13 @@ class GeminiModelProvider(ModelProvider):
 
         if resolved_name not in self.SUPPORTED_MODELS:
             raise ValueError(f"Unsupported Gemini model: {model_name}")
+
+        # Check if model is allowed by restrictions
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
+            raise ValueError(f"Gemini model '{model_name}' is not allowed by restriction policy.")
 
         config = self.SUPPORTED_MODELS[resolved_name]
 
@@ -207,9 +217,22 @@ class GeminiModelProvider(ModelProvider):
         return ProviderType.GOOGLE
 
     def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported."""
+        """Validate if the model name is supported and allowed."""
         resolved_name = self._resolve_model_name(model_name)
-        return resolved_name in self.SUPPORTED_MODELS and isinstance(self.SUPPORTED_MODELS[resolved_name], dict)
+
+        # First check if model is supported
+        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
+            return False
+
+        # Then check if model is allowed by restrictions
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
+            logger.debug(f"Gemini model '{model_name}' -> '{resolved_name}' blocked by restrictions")
+            return False
+
+        return True
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""

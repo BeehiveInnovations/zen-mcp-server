@@ -3,6 +3,8 @@
 import os
 from unittest.mock import Mock, patch
 
+import pytest
+
 from providers import ModelProviderRegistry, ModelResponse
 from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
@@ -57,6 +59,7 @@ class TestModelProviderRegistry:
         assert provider is None
 
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"})
+    @pytest.mark.no_mock_provider
     def test_get_provider_for_model(self):
         """Test getting provider for a specific model"""
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -161,6 +164,18 @@ class TestGeminiProvider:
 class TestOpenAIProvider:
     """Test OpenAI model provider"""
 
+    def setup_method(self):
+        """Clear restriction service cache before each test"""
+        import utils.model_restrictions
+
+        utils.model_restrictions._restriction_service = None
+
+    def teardown_method(self):
+        """Clear restriction service cache after each test"""
+        import utils.model_restrictions
+
+        utils.model_restrictions._restriction_service = None
+
     def test_provider_initialization(self):
         """Test provider initialization"""
         provider = OpenAIModelProvider(api_key="test-key", organization="test-org")
@@ -180,12 +195,31 @@ class TestOpenAIProvider:
         assert capabilities.context_window == 200_000
         assert not capabilities.supports_extended_thinking
 
+    def test_get_capabilities_o4_mini(self):
+        """Test getting O4-mini model capabilities"""
+        provider = OpenAIModelProvider(api_key="test-key")
+
+        capabilities = provider.get_capabilities("o4-mini")
+
+        assert capabilities.provider == ProviderType.OPENAI
+        assert capabilities.model_name == "o4-mini"
+        assert capabilities.context_window == 200_000
+        assert not capabilities.supports_extended_thinking
+        # Check temperature constraint is fixed at 1.0
+        assert capabilities.temperature_constraint.value == 1.0
+
     def test_validate_model_names(self):
         """Test model name validation"""
         provider = OpenAIModelProvider(api_key="test-key")
 
         assert provider.validate_model_name("o3")
-        assert provider.validate_model_name("o3-mini")
+        assert provider.validate_model_name("o3mini")
+        assert provider.validate_model_name("o3-mini")  # Backwards compatibility
+        assert provider.validate_model_name("o4-mini")
+        assert provider.validate_model_name("o4mini")
+        assert provider.validate_model_name("o4-mini-high")
+        assert provider.validate_model_name("o4minihigh")
+        assert provider.validate_model_name("o4minihi")
         assert not provider.validate_model_name("gpt-4o")
         assert not provider.validate_model_name("invalid-model")
 
@@ -194,4 +228,7 @@ class TestOpenAIProvider:
         provider = OpenAIModelProvider(api_key="test-key")
 
         assert not provider.supports_thinking_mode("o3")
+        assert not provider.supports_thinking_mode("o3mini")
         assert not provider.supports_thinking_mode("o3-mini")
+        assert not provider.supports_thinking_mode("o4-mini")
+        assert not provider.supports_thinking_mode("o4-mini-high")

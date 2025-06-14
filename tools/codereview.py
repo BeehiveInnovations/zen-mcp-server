@@ -2,7 +2,7 @@
 Code Review tool - Comprehensive code analysis and review
 
 This tool provides professional-grade code review capabilities using
-Gemini's understanding of code patterns, best practices, and common issues.
+the chosen model's understanding of code patterns, best practices, and common issues.
 It can analyze individual files or entire codebases, providing actionable
 feedback categorized by severity.
 
@@ -20,7 +20,7 @@ from mcp.types import TextContent
 from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
-from prompts import CODEREVIEW_PROMPT
+from systemprompts import CODEREVIEW_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -78,12 +78,11 @@ class CodeReviewTool(BaseTool):
             "Supports focused reviews: security, performance, or quick checks. "
             "Choose thinking_mode based on review scope: 'low' for small code snippets, "
             "'medium' for standard files/modules (default), 'high' for complex systems/architectures, "
-            "'max' for critical security audits or large codebases requiring deepest analysis."
+            "'max' for critical security audits or large codebases requiring deepest analysis. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import IS_AUTO_MODE
-
         schema = {
             "type": "object",
             "properties": {
@@ -138,7 +137,7 @@ class CodeReviewTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["files", "prompt"] + (["model"] if IS_AUTO_MODE else []),
+            "required": ["files", "prompt"] + (["model"] if self.is_effective_auto_mode() else []),
         }
 
         return schema
@@ -178,7 +177,7 @@ class CodeReviewTool(BaseTool):
             request: The validated review request
 
         Returns:
-            str: Complete prompt for the Gemini model
+            str: Complete prompt for the model
 
         Raises:
             ValueError: If the code exceeds token limits

@@ -2,13 +2,16 @@
 Debug Issue tool - Root cause analysis and debugging assistance
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
 
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
+
 from config import TEMPERATURE_ANALYTICAL
-from prompts import DEBUG_ISSUE_PROMPT
+from systemprompts import DEBUG_ISSUE_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -46,12 +49,11 @@ class DebugIssueTool(BaseTool):
             "code files as absolute paths. The more context, the better the debugging analysis. "
             "Choose thinking_mode based on issue complexity: 'low' for simple errors, "
             "'medium' for standard debugging (default), 'high' for complex system issues, "
-            "'max' for extremely challenging bugs requiring deepest analysis."
+            "'max' for extremely challenging bugs requiring deepest analysis. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import IS_AUTO_MODE
-
         schema = {
             "type": "object",
             "properties": {
@@ -98,7 +100,7 @@ class DebugIssueTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
+            "required": ["prompt"] + (["model"] if self.is_effective_auto_mode() else []),
         }
 
         return schema
@@ -108,6 +110,12 @@ class DebugIssueTool(BaseTool):
 
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
+
+    def get_model_category(self) -> "ToolModelCategory":
+        """Debug requires deep analysis and reasoning"""
+        from tools.models import ToolModelCategory
+
+        return ToolModelCategory.EXTENDED_REASONING
 
     def get_request_model(self):
         return DebugIssueRequest

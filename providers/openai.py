@@ -1,5 +1,7 @@
 """OpenAI model provider implementation."""
 
+import logging
+
 from .base import (
     FixedTemperatureConstraint,
     ModelCapabilities,
@@ -7,6 +9,8 @@ from .base import (
     RangeTemperatureConstraint,
 )
 from .openai_compatible import OpenAICompatibleProvider
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIModelProvider(OpenAICompatibleProvider):
@@ -22,6 +26,20 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
         },
+        "o4-mini": {
+            "context_window": 200_000,  # 200K tokens
+            "supports_extended_thinking": False,
+        },
+        "o4-mini-high": {
+            "context_window": 200_000,  # 200K tokens
+            "supports_extended_thinking": False,
+        },
+        # Shorthands
+        "mini": "o4-mini",  # Default 'mini' to latest mini model
+        "o3mini": "o3-mini",
+        "o4mini": "o4-mini",
+        "o4minihigh": "o4-mini-high",
+        "o4minihi": "o4-mini-high",
     }
 
     def __init__(self, api_key: str, **kwargs):
@@ -32,14 +50,24 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         """Get capabilities for a specific OpenAI model."""
-        if model_name not in self.SUPPORTED_MODELS:
+        # Resolve shorthand
+        resolved_name = self._resolve_model_name(model_name)
+
+        if resolved_name not in self.SUPPORTED_MODELS or isinstance(self.SUPPORTED_MODELS[resolved_name], str):
             raise ValueError(f"Unsupported OpenAI model: {model_name}")
 
-        config = self.SUPPORTED_MODELS[model_name]
+        # Check if model is allowed by restrictions
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
+            raise ValueError(f"OpenAI model '{model_name}' is not allowed by restriction policy.")
+
+        config = self.SUPPORTED_MODELS[resolved_name]
 
         # Define temperature constraints per model
-        if model_name in ["o3", "o3-mini"]:
-            # O3 models only support temperature=1.0
+        if resolved_name in ["o3", "o3-mini", "o4-mini", "o4-mini-high"]:
+            # O3 and O4 reasoning models only support temperature=1.0
             temp_constraint = FixedTemperatureConstraint(1.0)
         else:
             # Other OpenAI models support 0.0-2.0 range
@@ -62,11 +90,33 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         return ProviderType.OPENAI
 
     def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported."""
-        return model_name in self.SUPPORTED_MODELS
+        """Validate if the model name is supported and allowed."""
+        resolved_name = self._resolve_model_name(model_name)
+
+        # First check if model is supported
+        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
+            return False
+
+        # Then check if model is allowed by restrictions
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
+            logger.debug(f"OpenAI model '{model_name}' -> '{resolved_name}' blocked by restrictions")
+            return False
+
+        return True
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
         # Currently no OpenAI models support extended thinking
         # This may change with future O3 models
         return False
+
+    def _resolve_model_name(self, model_name: str) -> str:
+        """Resolve model shorthand to full name."""
+        # Check if it's a shorthand
+        shorthand_value = self.SUPPORTED_MODELS.get(model_name)
+        if isinstance(shorthand_value, str):
+            return shorthand_value
+        return model_name

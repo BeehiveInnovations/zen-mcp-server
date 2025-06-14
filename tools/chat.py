@@ -2,13 +2,16 @@
 Chat tool - General development chat and collaborative thinking
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
 
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
+
 from config import TEMPERATURE_BALANCED
-from prompts import CHAT_PROMPT
+from systemprompts import CHAT_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
@@ -40,12 +43,11 @@ class ChatTool(BaseTool):
             "collaborative brainstorming, validating your checklists and approaches, exploring alternatives. "
             "Also great for: explanations, comparisons, general development questions. "
             "Use this when you want to ask questions, brainstorm ideas, get opinions, discuss topics, "
-            "share your thinking, or need explanations about concepts and approaches."
+            "share your thinking, or need explanations about concepts and approaches. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import IS_AUTO_MODE
-
         schema = {
             "type": "object",
             "properties": {
@@ -80,7 +82,7 @@ class ChatTool(BaseTool):
                     "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
                 },
             },
-            "required": ["prompt"] + (["model"] if IS_AUTO_MODE else []),
+            "required": ["prompt"] + (["model"] if self.is_effective_auto_mode() else []),
         }
 
         return schema
@@ -90,6 +92,12 @@ class ChatTool(BaseTool):
 
     def get_default_temperature(self) -> float:
         return TEMPERATURE_BALANCED
+
+    def get_model_category(self) -> "ToolModelCategory":
+        """Chat prioritizes fast responses and cost efficiency"""
+        from tools.models import ToolModelCategory
+
+        return ToolModelCategory.FAST_RESPONSE
 
     def get_request_model(self):
         return ChatRequest

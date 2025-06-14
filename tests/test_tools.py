@@ -285,6 +285,22 @@ class TestAbsolutePathValidation:
         assert "code.py" in response["content"]
 
     @pytest.mark.asyncio
+    async def test_testgen_tool_relative_path_rejected(self):
+        """Test that testgen tool rejects relative paths"""
+        from tools import TestGenTool
+
+        tool = TestGenTool()
+        result = await tool.execute(
+            {"files": ["src/main.py"], "prompt": "Generate tests for the functions"}  # relative path
+        )
+
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["status"] == "error"
+        assert "must be absolute" in response["content"]
+        assert "src/main.py" in response["content"]
+
+    @pytest.mark.asyncio
     @patch("tools.AnalyzeTool.get_model_provider")
     async def test_analyze_tool_accepts_absolute_paths(self, mock_get_provider):
         """Test that analyze tool accepts absolute paths"""

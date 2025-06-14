@@ -106,6 +106,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env~
 .venv
 env/
 venv/
@@ -165,3 +166,6 @@ test_simulation_files/.claude/
 
 # Temporary test directories
 test-setup/
+
+# Scratch feature documentation files
+FEATURE_*.md

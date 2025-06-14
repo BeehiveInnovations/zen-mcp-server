@@ -26,10 +26,11 @@ class TestServerTools:
         assert "analyze" in tool_names
         assert "chat" in tool_names
         assert "precommit" in tool_names
+        assert "testgen" in tool_names
         assert "get_version" in tool_names
 
-        # Should have exactly 7 tools
-        assert len(tools) == 7
+        # Should have exactly 8 tools (including testgen)
+        assert len(tools) == 8
 
         # Check descriptions are verbose
         for tool in tools:

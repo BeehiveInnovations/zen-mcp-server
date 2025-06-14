@@ -1,7 +1,7 @@
 {
   "comment": "macOS configuration using Docker",
   "comment2": "Ensure Docker is running and containers are started",
-  "comment3": "Run './setup-docker.sh' first to set up the environment",
+  "comment3": "Run './run-server.sh' first to set up the environment",
   "mcpServers": {
     "zen": {
       "command": "docker",

@@ -1,7 +1,7 @@
 {
   "comment": "Windows configuration using WSL with Docker",
   "comment2": "Ensure Docker Desktop is running and WSL integration is enabled",
-  "comment3": "Run './setup-docker.sh' in WSL first to set up the environment",
+  "comment3": "Run './run-server.sh' in WSL first to set up the environment",
   "mcpServers": {
     "zen": {
       "command": "wsl.exe",

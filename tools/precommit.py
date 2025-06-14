@@ -9,12 +9,15 @@ This provides comprehensive context for AI analysis - not a duplication bug.
 """
 
 import os
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from mcp.types import TextContent
 from pydantic import Field
 
-from prompts.tool_prompts import PRECOMMIT_PROMPT
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
+
+from systemprompts import PRECOMMIT_PROMPT
 from utils.file_utils import translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
@@ -96,34 +99,88 @@ class Precommit(BaseTool):
             "whenever the user mentions committing or when changes are complete. "
             "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
             "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
-            "'max' for critical releases or when reviewing extensive changes across multiple systems."
+            "'max' for critical releases or when reviewing extensive changes across multiple systems. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        from config import IS_AUTO_MODE
-
-        schema = self.get_request_model().model_json_schema()
-        # Ensure model parameter has enhanced description
-        if "properties" in schema and "model" in schema["properties"]:
-            schema["properties"]["model"] = self.get_model_field_schema()
-
-        # In auto mode, model is required
-        if IS_AUTO_MODE and "required" in schema:
-            if "model" not in schema["required"]:
-                schema["required"].append("model")
-        # Ensure use_websearch is in the schema with proper description
-        if "properties" in schema and "use_websearch" not in schema["properties"]:
-            schema["properties"]["use_websearch"] = {
-                "type": "boolean",
-                "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
-                "default": True,
-            }
-        # Add continuation_id parameter
-        if "properties" in schema and "continuation_id" not in schema["properties"]:
-            schema["properties"]["continuation_id"] = {
-                "type": "string",
-                "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
-            }
+        schema = {
+            "type": "object",
+            "title": "PrecommitRequest",
+            "description": "Request model for precommit tool",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Starting directory to search for git repositories (must be absolute path).",
+                },
+                "model": self.get_model_field_schema(),
+                "prompt": {
+                    "type": "string",
+                    "description": "The original user request description for the changes. Provides critical context for the review.",
+                },
+                "compare_to": {
+                    "type": "string",
+                    "description": "Optional: A git ref (branch, tag, commit hash) to compare against. If not provided, reviews local staged and unstaged changes.",
+                },
+                "include_staged": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Include staged changes in the review. Only applies if 'compare_to' is not set.",
+                },
+                "include_unstaged": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Include uncommitted (unstaged) changes in the review. Only applies if 'compare_to' is not set.",
+                },
+                "focus_on": {
+                    "type": "string",
+                    "description": "Specific aspects to focus on (e.g., 'logic for user authentication', 'database query efficiency').",
+                },
+                "review_type": {
+                    "type": "string",
+                    "enum": ["full", "security", "performance", "quick"],
+                    "default": "full",
+                    "description": "Type of review to perform on the changes.",
+                },
+                "severity_filter": {
+                    "type": "string",
+                    "enum": ["critical", "high", "medium", "all"],
+                    "default": "all",
+                    "description": "Minimum severity level to report on the changes.",
+                },
+                "max_depth": {
+                    "type": "integer",
+                    "default": 5,
+                    "description": "Maximum depth to search for nested git repositories to prevent excessive recursion.",
+                },
+                "temperature": {
+                    "type": "number",
+                    "description": "Temperature for the response (0.0 to 1.0). Lower values are more focused and deterministic.",
+                    "minimum": 0,
+                    "maximum": 1,
+                },
+                "thinking_mode": {
+                    "type": "string",
+                    "enum": ["minimal", "low", "medium", "high", "max"],
+                    "description": "Thinking depth mode for the assistant.",
+                },
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
+                },
+                "use_websearch": {
+                    "type": "boolean",
+                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "default": True,
+                },
+                "continuation_id": {
+                    "type": "string",
+                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
+                },
+            },
+            "required": ["path"] + (["model"] if self.is_effective_auto_mode() else []),
+        }
         return schema
 
     def get_system_prompt(self) -> str:
@@ -137,6 +194,12 @@ class Precommit(BaseTool):
         from config import TEMPERATURE_ANALYTICAL
 
         return TEMPERATURE_ANALYTICAL
+
+    def get_model_category(self) -> "ToolModelCategory":
+        """Precommit requires thorough analysis and reasoning"""
+        from tools.models import ToolModelCategory
+
+        return ToolModelCategory.EXTENDED_REASONING
 
     async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check original_request size before processing"""

@@ -56,6 +56,8 @@ class TestClaudeContinuationOffers:
 
     def setup_method(self):
         self.tool = ClaudeContinuationTool()
+        # Set default model to avoid effective auto mode
+        self.tool.default_model = "gemini-2.5-flash-preview-05-20"
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -144,8 +146,8 @@ class TestClaudeContinuationOffers:
             # Should still offer continuation since turns remain
             assert response_data["status"] == "continuation_available"
             assert "continuation_offer" in response_data
-            # 10 max - 2 existing - 1 new = 7 remaining
-            assert response_data["continuation_offer"]["remaining_turns"] == 7
+            # MAX_CONVERSATION_TURNS - 2 existing - 1 new = remaining
+            assert response_data["continuation_offer"]["remaining_turns"] == MAX_CONVERSATION_TURNS - 3
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -265,10 +267,10 @@ I'd be happy to examine the error handling patterns in more detail if that would
             # Parse response
             response_data = json.loads(response[0].text)
 
-            # Should offer continuation since there are remaining turns (9 remaining: 10 max - 0 current - 1)
+            # Should offer continuation since there are remaining turns (MAX - 0 current - 1)
             assert response_data["status"] == "continuation_available"
             assert response_data.get("continuation_offer") is not None
-            assert response_data["continuation_offer"]["remaining_turns"] == 9
+            assert response_data["continuation_offer"]["remaining_turns"] == MAX_CONVERSATION_TURNS - 1
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -331,6 +333,8 @@ class TestContinuationIntegration:
 
     def setup_method(self):
         self.tool = ClaudeContinuationTool()
+        # Set default model to avoid effective auto mode
+        self.tool.default_model = "gemini-2.5-flash-preview-05-20"
 
     @patch("utils.conversation_memory.get_redis_client")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -461,8 +465,8 @@ class TestContinuationIntegration:
             # Should still offer continuation if there are remaining turns
             assert response_data2["status"] == "continuation_available"
             assert "continuation_offer" in response_data2
-            # 10 max - 1 existing - 1 new = 8 remaining
-            assert response_data2["continuation_offer"]["remaining_turns"] == 8
+            # MAX_CONVERSATION_TURNS - 1 existing - 1 new = remaining
+            assert response_data2["continuation_offer"]["remaining_turns"] == MAX_CONVERSATION_TURNS - 2
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ This guide covers advanced features, configuration options, and workflows for po
 ## Table of Contents
 
 - [Model Configuration](#model-configuration)
+- [Model Usage Restrictions](#model-usage-restrictions)
 - [Thinking Modes](#thinking-modes)
 - [Tool Parameters](#tool-parameters)
 - [Collaborative Workflows](#collaborative-workflows)
@@ -39,6 +40,8 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
 | **`flash`** (Gemini 2.0 Flash) | Google | 1M tokens | Ultra-fast responses | Quick checks, formatting, simple analysis |
 | **`o3`** | OpenAI | 200K tokens | Strong logical reasoning | Debugging logic errors, systematic analysis |
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
+| **`o4-mini`** | OpenAI | 200K tokens | Latest reasoning model | Optimized for shorter contexts |
+| **`o4-mini-high`** | OpenAI | 200K tokens | Enhanced reasoning | Complex tasks requiring deeper analysis |
 | **`llama`** (Llama 3.2) | Custom/Local | 128K tokens | Local inference, privacy | On-device analysis, cost-free processing |
 | **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
 
@@ -55,16 +58,65 @@ DEFAULT_MODEL=flash                         # Always use Flash
 DEFAULT_MODEL=o3                           # Always use O3
 ```
 
+**Important:** After changing any configuration in `.env` (including `DEFAULT_MODEL`, API keys, or other settings), restart the server with `./run-server.sh` to apply the changes.
+
 **Per-Request Model Override:**
 Regardless of your default setting, you can specify models per request:
 - "Use **pro** for deep security analysis of auth.py"
 - "Use **flash** to quickly format this code"
 - "Use **o3** to debug this logic error"
-- "Review with **o3-mini** for balanced analysis"
+- "Review with **o4-mini** for balanced analysis"
 
 **Model Capabilities:**
 - **Gemini Models**: Support thinking modes (minimal to max), web search, 1M context
 - **O3 Models**: Excellent reasoning, systematic analysis, 200K context
+
+## Model Usage Restrictions
+
+**Limit which models can be used from each provider**
+
+Set environment variables to control model usage:
+
+```env
+# Only allow specific OpenAI models
+OPENAI_ALLOWED_MODELS=o4-mini,o3-mini
+
+# Only allow specific Gemini models  
+GOOGLE_ALLOWED_MODELS=flash
+
+# Only allow specific OpenRouter models
+OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
+
+# Use shorthand names or full model names
+OPENAI_ALLOWED_MODELS=mini,o3-mini  # mini = o4-mini
+```
+
+**How it works:**
+- **Not set or empty**: All models allowed (default)
+- **Comma-separated list**: Only those models allowed
+- **To disable a provider**: Don't set its API key
+
+**Examples:**
+
+```env
+# Cost control - only cheap models
+OPENAI_ALLOWED_MODELS=o4-mini
+GOOGLE_ALLOWED_MODELS=flash
+OPENROUTER_ALLOWED_MODELS=haiku,sonnet
+
+# Single model per provider
+OPENAI_ALLOWED_MODELS=o4-mini
+GOOGLE_ALLOWED_MODELS=pro
+OPENROUTER_ALLOWED_MODELS=opus
+```
+
+**Notes:**
+- Applies to all usage including auto mode
+- Case-insensitive, whitespace tolerant
+- Server warns about typos at startup
+- `OPENAI_ALLOWED_MODELS` and `GOOGLE_ALLOWED_MODELS` only affect native providers
+- `OPENROUTER_ALLOWED_MODELS` affects OpenRouter models accessed via custom provider (where `is_custom: false` in custom_models.json)
+- Custom local models (`is_custom: true`) are not affected by any restrictions
 
 ## Thinking Modes
 
@@ -133,7 +185,7 @@ All tools that work with files support **both individual files and entire direct
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
 - `question`: What to analyze (required)  
-- `model`: auto|pro|flash|o3|o3-mini (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
@@ -148,7 +200,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
-- `model`: auto|pro|flash|o3|o3-mini (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
@@ -164,7 +216,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
-- `model`: auto|pro|flash|o3|o3-mini (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
@@ -180,7 +232,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
-- `model`: auto|pro|flash|o3|o3-mini (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
@@ -191,6 +243,20 @@ All tools that work with files support **both individual files and entire direct
 "Think deeper about my design with reference to src/models/" (auto mode picks best model)
 "Use pro to think deeper about this architecture with extended thinking"
 "Use o3 to think deeper about the logical flow in this algorithm"
+```
+
+**`testgen`** - Comprehensive test generation with edge case coverage
+- `files`: Code files or directories to generate tests for (required)
+- `prompt`: Description of what to test, testing objectives, and scope (required)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `test_examples`: Optional existing test files as style/pattern reference
+- `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
+
+```
+"Generate tests for User.login() method with edge cases" (auto mode picks best model)
+"Use pro to generate comprehensive tests for src/payment.py with max thinking mode"
+"Use o3 to generate tests for algorithm correctness in sort_functions.py"
+"Generate tests following patterns from tests/unit/ for new auth module"
 ```
 
 ## Collaborative Workflows
@@ -225,13 +291,15 @@ To help choose the right tool for your needs:
 1. **Have a specific error/exception?** → Use `debug`
 2. **Want to find bugs/issues in code?** → Use `codereview`
 3. **Want to understand how code works?** → Use `analyze`
-4. **Have analysis that needs extension/validation?** → Use `thinkdeep`
-5. **Want to brainstorm or discuss?** → Use `chat`
+4. **Need comprehensive test coverage?** → Use `testgen`
+5. **Have analysis that needs extension/validation?** → Use `thinkdeep`
+6. **Want to brainstorm or discuss?** → Use `chat`
 
 **Key Distinctions:**
 - `analyze` vs `codereview`: analyze explains, codereview prescribes fixes
 - `chat` vs `thinkdeep`: chat is open-ended, thinkdeep extends specific analysis
 - `debug` vs `codereview`: debug diagnoses runtime errors, review finds static issues
+- `testgen` vs `debug`: testgen creates test suites, debug just finds issues and recommends solutions
 
 ## Working with Large Prompts
 

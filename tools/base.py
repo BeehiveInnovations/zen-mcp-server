@@ -17,10 +17,13 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
 
 from config import MCP_PROMPT_SIZE_LIMIT
 from providers import ModelProvider, ModelProviderRegistry
@@ -156,6 +159,106 @@ class BaseTool(ABC):
         """
         pass
 
+    def is_effective_auto_mode(self) -> bool:
+        """
+        Check if we're in effective auto mode for schema generation.
+
+        This determines whether the model parameter should be required in the tool schema.
+        Used at initialization time when schemas are generated.
+
+        Returns:
+            bool: True if model parameter should be required in the schema
+        """
+        from config import DEFAULT_MODEL, IS_AUTO_MODE
+        from providers.registry import ModelProviderRegistry
+
+        # Case 1: Explicit auto mode
+        if IS_AUTO_MODE:
+            return True
+
+        # Case 2: Model not available
+        if DEFAULT_MODEL.lower() != "auto":
+            provider = ModelProviderRegistry.get_provider_for_model(DEFAULT_MODEL)
+            if not provider:
+                return True
+
+        return False
+
+    def _should_require_model_selection(self, model_name: str) -> bool:
+        """
+        Check if we should require Claude to select a model at runtime.
+
+        This is called during request execution to determine if we need
+        to return an error asking Claude to provide a model parameter.
+
+        Args:
+            model_name: The model name from the request or DEFAULT_MODEL
+
+        Returns:
+            bool: True if we should require model selection
+        """
+        # Case 1: Model is explicitly "auto"
+        if model_name.lower() == "auto":
+            return True
+
+        # Case 2: Requested model is not available
+        from providers.registry import ModelProviderRegistry
+
+        provider = ModelProviderRegistry.get_provider_for_model(model_name)
+        if not provider:
+            logger = logging.getLogger(f"tools.{self.name}")
+            logger.warning(
+                f"Model '{model_name}' is not available with current API keys. " f"Requiring model selection."
+            )
+            return True
+
+        return False
+
+    def _get_available_models(self) -> list[str]:
+        """
+        Get list of models that are actually available with current API keys.
+
+        This respects model restrictions automatically.
+
+        Returns:
+            List of available model names
+        """
+        from config import MODEL_CAPABILITIES_DESC
+        from providers.base import ProviderType
+        from providers.registry import ModelProviderRegistry
+
+        # Get available models from registry (respects restrictions)
+        available_models_map = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+        available_models = list(available_models_map.keys())
+
+        # Add model aliases if their targets are available
+        model_aliases = []
+        for alias, target in MODEL_CAPABILITIES_DESC.items():
+            if alias not in available_models and target in available_models:
+                model_aliases.append(alias)
+
+        available_models.extend(model_aliases)
+
+        # Also check if OpenRouter is available (it accepts any model)
+        openrouter_provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)
+        if openrouter_provider and not available_models:
+            # If only OpenRouter is available, suggest using any model through it
+            available_models.append("any model via OpenRouter")
+
+        if not available_models:
+            # Check if it's due to restrictions
+            from utils.model_restrictions import get_restriction_service
+
+            restriction_service = get_restriction_service()
+            restrictions = restriction_service.get_restriction_summary()
+
+            if restrictions:
+                return ["none - all models blocked by restrictions set in .env"]
+            else:
+                return ["none - please configure API keys"]
+
+        return available_models
+
     def get_model_field_schema(self) -> dict[str, Any]:
         """
         Generate the model field schema based on auto mode configuration.
@@ -168,16 +271,20 @@ class BaseTool(ABC):
         """
         import os
 
-        from config import DEFAULT_MODEL, IS_AUTO_MODE, MODEL_CAPABILITIES_DESC
+        from config import DEFAULT_MODEL, MODEL_CAPABILITIES_DESC
 
         # Check if OpenRouter is configured
         has_openrouter = bool(
             os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here"
         )
 
-        if IS_AUTO_MODE:
+        # Use the centralized effective auto mode check
+        if self.is_effective_auto_mode():
             # In auto mode, model is required and we provide detailed descriptions
-            model_desc_parts = ["Choose the best model for this task based on these capabilities:"]
+            model_desc_parts = [
+                "IMPORTANT: Use the model specified by the user if provided, OR select the most suitable model "
+                "for this specific task based on the requirements and capabilities listed below:"
+            ]
             for model, desc in MODEL_CAPABILITIES_DESC.items():
                 model_desc_parts.append(f"- '{model}': {desc}")
 
@@ -301,6 +408,21 @@ class BaseTool(ABC):
             str: One of "minimal", "low", "medium", "high", "max"
         """
         return "medium"  # Default to medium thinking for better reasoning
+
+    def get_model_category(self) -> "ToolModelCategory":
+        """
+        Return the model category for this tool.
+
+        Model category influences which model is selected in auto mode.
+        Override to specify whether your tool needs extended reasoning,
+        fast response, or balanced capabilities.
+
+        Returns:
+            ToolModelCategory: Category that influences model selection
+        """
+        from tools.models import ToolModelCategory
+
+        return ToolModelCategory.BALANCED
 
     def get_conversation_embedded_files(self, continuation_id: Optional[str]) -> list[str]:
         """
@@ -469,36 +591,82 @@ class BaseTool(ABC):
                 from config import DEFAULT_MODEL
 
                 model_name = getattr(self, "_current_model_name", None) or DEFAULT_MODEL
-                try:
-                    provider = self.get_model_provider(model_name)
-                    capabilities = provider.get_capabilities(model_name)
 
-                    # Calculate content allocation based on model capacity
-                    if capabilities.context_window < 300_000:
-                        # Smaller context models: 60% content, 40% response
-                        model_content_tokens = int(capabilities.context_window * 0.6)
-                    else:
-                        # Larger context models: 80% content, 20% response
-                        model_content_tokens = int(capabilities.context_window * 0.8)
+                # Handle auto mode gracefully
+                if model_name.lower() == "auto":
+                    from providers.registry import ModelProviderRegistry
 
-                    effective_max_tokens = model_content_tokens - reserve_tokens
+                    # Use tool-specific fallback model for capacity estimation
+                    # This properly handles different providers (OpenAI=200K, Gemini=1M)
+                    tool_category = self.get_model_category()
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
                     logger.debug(
-                        f"[FILES] {self.name}: Using model-specific limit for {model_name}: "
-                        f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
+                        f"[FILES] {self.name}: Auto mode detected, using {fallback_model} "
+                        f"for {tool_category.value} tool capacity estimation"
                     )
-                except (ValueError, AttributeError) as e:
-                    # Handle specific errors: provider not found, model not supported, missing attributes
-                    logger.warning(
-                        f"[FILES] {self.name}: Could not get model capabilities for {model_name}: {type(e).__name__}: {e}"
-                    )
-                    # Fall back to conservative default for safety
-                    effective_max_tokens = 100_000 - reserve_tokens
-                except Exception as e:
-                    # Catch any other unexpected errors
-                    logger.error(
-                        f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
-                    )
-                    effective_max_tokens = 100_000 - reserve_tokens
+
+                    try:
+                        provider = self.get_model_provider(fallback_model)
+                        capabilities = provider.get_capabilities(fallback_model)
+
+                        # Calculate content allocation based on model capacity
+                        if capabilities.context_window < 300_000:
+                            # Smaller context models: 60% content, 40% response
+                            model_content_tokens = int(capabilities.context_window * 0.6)
+                        else:
+                            # Larger context models: 80% content, 20% response
+                            model_content_tokens = int(capabilities.context_window * 0.8)
+
+                        effective_max_tokens = model_content_tokens - reserve_tokens
+                        logger.debug(
+                            f"[FILES] {self.name}: Using {fallback_model} capacity for auto mode: "
+                            f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
+                        )
+                    except (ValueError, AttributeError) as e:
+                        # Handle specific errors: provider not found, model not supported, missing attributes
+                        logger.warning(
+                            f"[FILES] {self.name}: Could not get capabilities for fallback model {fallback_model}: {type(e).__name__}: {e}"
+                        )
+                        # Fall back to conservative default for safety
+                        effective_max_tokens = 100_000 - reserve_tokens
+                    except Exception as e:
+                        # Catch any other unexpected errors
+                        logger.error(
+                            f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
+                        )
+                        effective_max_tokens = 100_000 - reserve_tokens
+                else:
+                    # Normal mode - use the specified model
+                    try:
+                        provider = self.get_model_provider(model_name)
+                        capabilities = provider.get_capabilities(model_name)
+
+                        # Calculate content allocation based on model capacity
+                        if capabilities.context_window < 300_000:
+                            # Smaller context models: 60% content, 40% response
+                            model_content_tokens = int(capabilities.context_window * 0.6)
+                        else:
+                            # Larger context models: 80% content, 20% response
+                            model_content_tokens = int(capabilities.context_window * 0.8)
+
+                        effective_max_tokens = model_content_tokens - reserve_tokens
+                        logger.debug(
+                            f"[FILES] {self.name}: Using model-specific limit for {model_name}: "
+                            f"{model_content_tokens:,} content tokens from {capabilities.context_window:,} total"
+                        )
+                    except (ValueError, AttributeError) as e:
+                        # Handle specific errors: provider not found, model not supported, missing attributes
+                        logger.warning(
+                            f"[FILES] {self.name}: Could not get model capabilities for {model_name}: {type(e).__name__}: {e}"
+                        )
+                        # Fall back to conservative default for safety
+                        effective_max_tokens = 100_000 - reserve_tokens
+                    except Exception as e:
+                        # Catch any other unexpected errors
+                        logger.error(
+                            f"[FILES] {self.name}: Unexpected error getting model capabilities: {type(e).__name__}: {e}"
+                        )
+                        effective_max_tokens = 100_000 - reserve_tokens
 
         # Ensure we have a reasonable minimum budget
         effective_max_tokens = max(1000, effective_max_tokens)
@@ -854,18 +1022,45 @@ When recommending searches, be specific about what information you need and why 
 
                 model_name = DEFAULT_MODEL
 
-            # In auto mode, model parameter is required
-            from config import IS_AUTO_MODE
+            # Check if we need Claude to select a model
+            # This happens when:
+            # 1. The model is explicitly "auto"
+            # 2. The requested model is not available
+            if self._should_require_model_selection(model_name):
+                # Get suggested model based on tool category
+                from providers.registry import ModelProviderRegistry
 
-            if IS_AUTO_MODE and model_name.lower() == "auto":
+                tool_category = self.get_model_category()
+                suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
+
+                # Build error message based on why selection is required
+                if model_name.lower() == "auto":
+                    error_message = (
+                        f"Model parameter is required in auto mode. "
+                        f"Suggested model for {self.name}: '{suggested_model}' "
+                        f"(category: {tool_category.value})"
+                    )
+                else:
+                    # Model was specified but not available
+                    # Get list of available models
+                    available_models = self._get_available_models()
+
+                    error_message = (
+                        f"Model '{model_name}' is not available with current API keys. "
+                        f"Available models: {', '.join(available_models)}. "
+                        f"Suggested model for {self.name}: '{suggested_model}' "
+                        f"(category: {tool_category.value})"
+                    )
+
                 error_output = ToolOutput(
                     status="error",
-                    content="Model parameter is required. Please specify which model to use for this task.",
+                    content=error_message,
                     content_type="text",
                 )
                 return [TextContent(type="text", text=error_output.model_dump_json())]
 
             # Store model name for use by helper methods like _prepare_file_content_for_prompt
+            # Only set this after auto mode validation to prevent "auto" being used as a model name
             self._current_model_name = model_name
 
             temperature = getattr(request, "temperature", None)

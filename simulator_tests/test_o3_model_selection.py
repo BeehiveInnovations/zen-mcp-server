@@ -71,6 +71,15 @@ class O3ModelSelectionTest(BaseSimulatorTest):
                 self.logger.info("  ℹ️  Only OpenRouter configured - O3 models will be routed through OpenRouter")
                 return self._run_openrouter_o3_test()
 
+            # If neither OpenAI nor OpenRouter is configured, skip the test
+            if not has_openai and not has_openrouter:
+                self.logger.info("  ⚠️  Neither OpenAI nor OpenRouter API keys configured - skipping test")
+                self.logger.info(
+                    "  ℹ️  This test requires either OPENAI_API_KEY or OPENROUTER_API_KEY to be set in .env"
+                )
+                self.logger.info("  ✅ Test skipped (no API keys configured)")
+                return True  # Return True to indicate test passed/skipped
+
             # Original test for when OpenAI is configured
             self.logger.info("  ℹ️  OpenAI API configured - expecting direct OpenAI API calls")
 
