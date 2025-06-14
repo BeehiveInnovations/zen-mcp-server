@@ -129,7 +129,7 @@ class TestGeminiProvider:
 
     @patch("google.genai.Client")
     def test_generate_content(self, mock_client_class):
-        """Test content generation"""
+        """Test content generation with tools included"""
         # Mock the client
         mock_client = Mock()
         mock_response = Mock()
@@ -152,6 +152,7 @@ class TestGeminiProvider:
             prompt="Test prompt", model_name="gemini-2.5-flash-preview-05-20", temperature=0.7
         )
 
+        # Verify response is correct
         assert isinstance(response, ModelResponse)
         assert response.content == "Generated content"
         assert response.model_name == "gemini-2.5-flash-preview-05-20"
@@ -159,6 +160,57 @@ class TestGeminiProvider:
         assert response.usage["input_tokens"] == 10
         assert response.usage["output_tokens"] == 20
         assert response.usage["total_tokens"] == 30
+
+        # Verify the API was called with tools included
+        mock_client.models.generate_content.assert_called_once()
+        call_args = mock_client.models.generate_content.call_args
+
+        # Check that config contains tools (new functionality)
+        config = call_args.kwargs["config"]
+        assert hasattr(config, "tools")
+        assert config.tools is not None
+        assert len(config.tools) == 2
+
+    @patch("google.genai.Client")
+    @patch("google.genai.types.Tool")
+    @patch("google.genai.types.UrlContext")
+    @patch("google.genai.types.GoogleSearch")
+    def test_tools_configuration(self, mock_google_search, mock_url_context, mock_tool, mock_client_class):
+        """Test that tools are properly configured and instantiated"""
+        # Mock tool instances
+        mock_url_context_instance = Mock()
+        mock_google_search_instance = Mock()
+        mock_url_context.return_value = mock_url_context_instance
+        mock_google_search.return_value = mock_google_search_instance
+
+        mock_url_tool = Mock()
+        mock_search_tool = Mock()
+        mock_tool.side_effect = [mock_url_tool, mock_search_tool]
+
+        # Mock the client and response
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.text = "Test response"
+        mock_response.candidates = [Mock(finish_reason="STOP")]
+        mock_response.usage_metadata = Mock(prompt_token_count=10, candidates_token_count=15)
+        mock_client.models.generate_content.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        provider = GeminiModelProvider(api_key="test-key")
+
+        provider.generate_content(
+            prompt="Test prompt",
+            model_name="gemini-2.5-flash-preview-05-20"
+        )
+
+        # Verify tools were instantiated correctly
+        mock_url_context.assert_called_once()
+        mock_google_search.assert_called_once()
+
+        # Verify Tool objects were created with correct parameters
+        assert mock_tool.call_count == 2
+        mock_tool.assert_any_call(url_context=mock_url_context_instance)
+        mock_tool.assert_any_call(google_search=mock_google_search_instance)
 
 
 class TestOpenAIProvider:
