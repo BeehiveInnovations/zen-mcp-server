@@ -50,6 +50,7 @@ MODEL_CAPABILITIES_DESC = {
     # OpenAI models - Available when OPENAI_API_KEY is configured
     "o3": "Strong reasoning (200K context) - Logical problems, code generation, systematic analysis",
     "o3-mini": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
+    "o3-pro": "Professional-grade reasoning (200K context) - EXTREMELY EXPENSIVE: Only for the most complex problems requiring universe-scale complexity analysis OR when the user explicitly asks for this model. Use sparingly for critical architectural decisions or exceptionally complex debugging that other models cannot handle.",
     "o4-mini": "Latest reasoning model (200K context) - Optimized for shorter contexts, rapid reasoning",
     "o4-mini-high": "Enhanced O4 mini (200K context) - Higher reasoning effort for complex tasks",
     # Full model names also supported (for explicit specification)

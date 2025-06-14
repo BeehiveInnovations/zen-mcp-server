@@ -26,6 +26,10 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
         },
+        "o3-pro": {
+            "context_window": 200_000,  # 200K tokens
+            "supports_extended_thinking": False,
+        },
         "o4-mini": {
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
@@ -66,7 +70,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         config = self.SUPPORTED_MODELS[resolved_name]
 
         # Define temperature constraints per model
-        if resolved_name in ["o3", "o3-mini", "o4-mini", "o4-mini-high"]:
+        if resolved_name in ["o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"]:
             # O3 and O4 reasoning models only support temperature=1.0
             temp_constraint = FixedTemperatureConstraint(1.0)
         else:

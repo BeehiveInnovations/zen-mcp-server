@@ -149,6 +149,15 @@
       "description": "OpenAI's o3-mini with high reasoning effort - optimized for complex problems"
     },
     {
+      "model_name": "openai/o3-pro",
+      "aliases": ["o3-pro", "o3pro"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3-pro model - professional-grade reasoning and analysis"
+    },
+    {
       "model_name": "openai/o4-mini",
       "aliases": ["o4-mini", "o4mini"],
       "context_window": 200000,
