@@ -27,7 +27,13 @@ with context carrying forward seamlessly.
 All within a single conversation thread! Gemini Pro in step 6 _knows_ what was recommended by O3 in step 3! Taking that context
 and review into consideration to aid with its pre-commit review.
 
-**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**. 
+**Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
+
+> **Remember:** Claude stays in full control — but **YOU** call the shots. 
+> Zen is designed to only encourage Claude to talk to other models when necessary.  
+> **You're** the one who crafts the powerful prompt so that Claude brings in Gemini, Flash, O3 — or fly solo.  
+> You're the guide. The prompter. The puppeteer. 
+> ##### You are AI - **Actually Intelligent**.
 
 ## Quick Navigation
 
@@ -238,10 +244,6 @@ Just ask Claude naturally:
 - "Brainstorm scaling strategies with pro. Study the code, pick your preferred strategy and debate with pro to settle on two best approaches" → Uses Gemini Pro specifically
 - "Use local-llama to localize and add missing translations to this project" → Uses local Llama 3.2 via custom URL
 - "First use local-llama for a quick local analysis, then use opus for a thorough security review" → Uses both providers in sequence
-
-> **Remember:** Claude remains in control — but **you** are the true orchestrator.  
-> You're the prompter, the guide, the puppeteer.  
-> Your prompt decides when Claude brings in Gemini, Flash, O3 — or handles it solo.
 
 ## Available Tools
 
