@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
 from config import TEMPERATURE_ANALYTICAL
-from prompts import ANALYZE_PROMPT
+from systemprompts import ANALYZE_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput

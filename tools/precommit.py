@@ -17,7 +17,7 @@ from pydantic import Field
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
-from prompts.tool_prompts import PRECOMMIT_PROMPT
+from systemprompts import PRECOMMIT_PROMPT
 from utils.file_utils import translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
 from config import TEMPERATURE_CREATIVE
-from prompts import THINKDEEP_PROMPT
+from systemprompts import THINKDEEP_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput

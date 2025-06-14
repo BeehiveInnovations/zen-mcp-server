@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
 from config import TEMPERATURE_BALANCED
-from prompts import CHAT_PROMPT
+from systemprompts import CHAT_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput

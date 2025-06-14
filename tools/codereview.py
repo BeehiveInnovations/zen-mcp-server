@@ -20,7 +20,7 @@ from mcp.types import TextContent
 from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
-from prompts import CODEREVIEW_PROMPT
+from systemprompts import CODEREVIEW_PROMPT
 
 from .base import BaseTool, ToolRequest
 from .models import ToolOutput
