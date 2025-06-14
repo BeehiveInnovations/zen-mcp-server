@@ -1,5 +1,7 @@
 """OpenAI model provider implementation."""
 
+import logging
+
 from .base import (
     FixedTemperatureConstraint,
     ModelCapabilities,
@@ -7,6 +9,8 @@ from .base import (
     RangeTemperatureConstraint,
 )
 from .openai_compatible import OpenAICompatibleProvider
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIModelProvider(OpenAICompatibleProvider):
@@ -31,6 +35,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "supports_extended_thinking": False,
         },
         # Shorthands
+        "mini": "o4-mini",  # Default 'mini' to latest mini model
         "o3mini": "o3-mini",
         "o4mini": "o4-mini",
         "o4minihigh": "o4-mini-high",
@@ -50,6 +55,13 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
         if resolved_name not in self.SUPPORTED_MODELS or isinstance(self.SUPPORTED_MODELS[resolved_name], str):
             raise ValueError(f"Unsupported OpenAI model: {model_name}")
+
+        # Check if model is allowed by restrictions
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
+            raise ValueError(f"OpenAI model '{model_name}' is not allowed by restriction policy.")
 
         config = self.SUPPORTED_MODELS[resolved_name]
 
@@ -78,9 +90,22 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         return ProviderType.OPENAI
 
     def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported."""
+        """Validate if the model name is supported and allowed."""
         resolved_name = self._resolve_model_name(model_name)
-        return resolved_name in self.SUPPORTED_MODELS and isinstance(self.SUPPORTED_MODELS[resolved_name], dict)
+
+        # First check if model is supported
+        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
+            return False
+
+        # Then check if model is allowed by restrictions
+        from utils.model_restrictions import get_restriction_service
+
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
+            logger.debug(f"OpenAI model '{model_name}' -> '{resolved_name}' blocked by restrictions")
+            return False
+
+        return True
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""

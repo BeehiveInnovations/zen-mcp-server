@@ -164,6 +164,18 @@ class TestGeminiProvider:
 class TestOpenAIProvider:
     """Test OpenAI model provider"""
 
+    def setup_method(self):
+        """Clear restriction service cache before each test"""
+        import utils.model_restrictions
+
+        utils.model_restrictions._restriction_service = None
+
+    def teardown_method(self):
+        """Clear restriction service cache after each test"""
+        import utils.model_restrictions
+
+        utils.model_restrictions._restriction_service = None
+
     def test_provider_initialization(self):
         """Test provider initialization"""
         provider = OpenAIModelProvider(api_key="test-key", organization="test-org")

@@ -218,6 +218,8 @@ class BaseTool(ABC):
         """
         Get list of models that are actually available with current API keys.
 
+        This respects model restrictions automatically.
+
         Returns:
             List of available model names
         """
@@ -225,13 +227,17 @@ class BaseTool(ABC):
         from providers.base import ProviderType
         from providers.registry import ModelProviderRegistry
 
-        available_models = []
+        # Get available models from registry (respects restrictions)
+        available_models_map = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+        available_models = list(available_models_map.keys())
 
-        # Check each model in our capabilities list
-        for model_name in MODEL_CAPABILITIES_DESC.keys():
-            provider = ModelProviderRegistry.get_provider_for_model(model_name)
-            if provider:
-                available_models.append(model_name)
+        # Add model aliases if their targets are available
+        model_aliases = []
+        for alias, target in MODEL_CAPABILITIES_DESC.items():
+            if alias not in available_models and target in available_models:
+                model_aliases.append(alias)
+
+        available_models.extend(model_aliases)
 
         # Also check if OpenRouter is available (it accepts any model)
         openrouter_provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)
@@ -239,7 +245,19 @@ class BaseTool(ABC):
             # If only OpenRouter is available, suggest using any model through it
             available_models.append("any model via OpenRouter")
 
-        return available_models if available_models else ["none - please configure API keys"]
+        if not available_models:
+            # Check if it's due to restrictions
+            from utils.model_restrictions import get_restriction_service
+
+            restriction_service = get_restriction_service()
+            restrictions = restriction_service.get_restriction_summary()
+
+            if restrictions:
+                return ["none - all models blocked by restrictions set in .env"]
+            else:
+                return ["none - please configure API keys"]
+
+        return available_models
 
     def get_model_field_schema(self) -> dict[str, Any]:
         """

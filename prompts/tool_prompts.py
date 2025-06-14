@@ -172,7 +172,6 @@ Steps to take regardless of which hypothesis is correct (e.g., extra logging).
 Targeted measures to prevent this exact issue from recurring.
 """
 
-
 ANALYZE_PROMPT = """
 ROLE
 You are a senior software analyst performing a holistic technical audit of the given code or project. Your mission is
@@ -185,6 +184,15 @@ MUST respond ONLY with this JSON format (and nothing else). Do NOT ask for the s
 for some reason its content is missing or incomplete:
 {"status": "clarification_required", "question": "<your brief question>",
  "files_needed": ["[file name here]", "[or some folder/]"]}
+
+ESCALATE TO A FULL CODEREVIEW IF REQUIRED
+If, after thoroughly analysing the question and the provided code, you determine that a comprehensive, code-base–wide
+review is essential - e.g., the issue spans multiple modules or exposes a systemic architectural flaw — do not proceed
+with partial analysis. Instead, respond ONLY with the JSON below (and nothing else). Clearly state the reason why
+you strongly feel this is necessary and ask Claude to inform the user why you're switching to a different tool:
+{"status": "full_codereview_required",
+ "important": "Please use zen's codereview tool instead",
+ "reason": "<brief, specific rationale for escalation>"}
 
 SCOPE & FOCUS
 • Understand the code's purpose and architecture and the overall scope and scale of the project

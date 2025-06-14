@@ -163,6 +163,7 @@ def configure_providers():
     from providers.gemini import GeminiModelProvider
     from providers.openai import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
+    from utils.model_restrictions import get_restriction_service
 
     valid_providers = []
     has_native_apis = False
@@ -252,6 +253,45 @@ def configure_providers():
 
     if len(priority_info) > 1:
         logger.info(f"Provider priority: {' → '.join(priority_info)}")
+
+    # Check and log model restrictions
+    restriction_service = get_restriction_service()
+    restrictions = restriction_service.get_restriction_summary()
+
+    if restrictions:
+        logger.info("Model restrictions configured:")
+        for provider_name, allowed_models in restrictions.items():
+            if isinstance(allowed_models, list):
+                logger.info(f"  {provider_name}: {', '.join(allowed_models)}")
+            else:
+                logger.info(f"  {provider_name}: {allowed_models}")
+
+        # Validate restrictions against known models
+        provider_instances = {}
+        for provider_type in [ProviderType.GOOGLE, ProviderType.OPENAI]:
+            provider = ModelProviderRegistry.get_provider(provider_type)
+            if provider:
+                provider_instances[provider_type] = provider
+
+        if provider_instances:
+            restriction_service.validate_against_known_models(provider_instances)
+    else:
+        logger.info("No model restrictions configured - all models allowed")
+
+    # Check if auto mode has any models available after restrictions
+    from config import IS_AUTO_MODE
+
+    if IS_AUTO_MODE:
+        available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+        if not available_models:
+            logger.error(
+                "Auto mode is enabled but no models are available after applying restrictions. "
+                "Please check your OPENAI_ALLOWED_MODELS and GOOGLE_ALLOWED_MODELS settings."
+            )
+            raise ValueError(
+                "No models available for auto mode due to restrictions. "
+                "Please adjust your allowed model settings or disable auto mode."
+            )
 
 
 @server.list_tools()
