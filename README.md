@@ -31,7 +31,7 @@ and review into consideration to aid with its pre-commit review.
 
 > **Remember:** Claude stays in full control — but **YOU** call the shots. 
 > Zen is designed to only encourage Claude to talk to other models when necessary.  
-> **You're** the one who crafts the powerful prompt so that Claude brings in Gemini, Flash, O3 — or fly solo.  
+> **You're** the one who crafts the powerful prompt that makes Claude bring in Gemini, Flash, O3 — or fly solo.  
 > You're the guide. The prompter. The puppeteer. 
 > ### You are AI - **Actually Intelligent**.
 
