@@ -30,7 +30,7 @@ and review into consideration to aid with its pre-commit review.
 **Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
 
 > **Remember:** Claude stays in full control — but **YOU** call the shots. 
-> Zen is designed to only encourage Claude to talk to other models when necessary.  
+> Zen is designed to have Claude engage other models only when needed — and to follow through with meaningful back-and-forth. 
 > **You're** the one who crafts the powerful prompt that makes Claude bring in Gemini, Flash, O3 — or fly solo.  
 > You're the guide. The prompter. The puppeteer. 
 > ### You are AI - **Actually Intelligent**.
