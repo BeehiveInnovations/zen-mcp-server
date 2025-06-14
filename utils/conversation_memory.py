@@ -59,6 +59,22 @@ logger = logging.getLogger(__name__)
 # Configuration constants
 MAX_CONVERSATION_TURNS = 10  # Maximum turns allowed per conversation thread
 
+# Get conversation timeout from environment (in hours), default to 3 hours
+try:
+    CONVERSATION_TIMEOUT_HOURS = int(os.getenv("CONVERSATION_TIMEOUT_HOURS", "3"))
+    if CONVERSATION_TIMEOUT_HOURS <= 0:
+        logger.warning(
+            f"Invalid CONVERSATION_TIMEOUT_HOURS value ({CONVERSATION_TIMEOUT_HOURS}), using default of 3 hours"
+        )
+        CONVERSATION_TIMEOUT_HOURS = 3
+except ValueError:
+    logger.warning(
+        f"Invalid CONVERSATION_TIMEOUT_HOURS value ('{os.getenv('CONVERSATION_TIMEOUT_HOURS')}'), using default of 3 hours"
+    )
+    CONVERSATION_TIMEOUT_HOURS = 3
+
+CONVERSATION_TIMEOUT_SECONDS = CONVERSATION_TIMEOUT_HOURS * 3600
+
 
 class ConversationTurn(BaseModel):
     """
@@ -154,7 +170,7 @@ def create_thread(tool_name: str, initial_request: dict[str, Any], parent_thread
         str: UUID thread identifier that can be used for continuation
 
     Note:
-        - Thread expires after 1 hour (3600 seconds)
+        - Thread expires after the configured timeout (default: 3 hours)
         - Non-serializable parameters are filtered out automatically
         - Thread can be continued by any tool using the returned UUID
         - Parent thread creates a chain for conversation history traversal
@@ -179,10 +195,10 @@ def create_thread(tool_name: str, initial_request: dict[str, Any], parent_thread
         initial_context=filtered_context,
     )
 
-    # Store in Redis with 1 hour TTL to prevent indefinite accumulation
+    # Store in Redis with configurable TTL to prevent indefinite accumulation
     client = get_redis_client()
     key = f"thread:{thread_id}"
-    client.setex(key, 3600, context.model_dump_json())
+    client.setex(key, CONVERSATION_TIMEOUT_SECONDS, context.model_dump_json())
 
     logger.debug(f"[THREAD] Created new thread {thread_id} with parent {parent_thread_id}")
 
@@ -261,7 +277,7 @@ def add_turn(
         - Redis connection failure
 
     Note:
-        - Refreshes thread TTL to 1 hour on successful update
+        - Refreshes thread TTL to configured timeout on successful update
         - Turn limits prevent runaway conversations
         - File references are preserved for cross-tool access
         - Model information enables cross-provider conversations
@@ -297,7 +313,7 @@ def add_turn(
     try:
         client = get_redis_client()
         key = f"thread:{thread_id}"
-        client.setex(key, 3600, context.model_dump_json())  # Refresh TTL to 1 hour
+        client.setex(key, CONVERSATION_TIMEOUT_SECONDS, context.model_dump_json())  # Refresh TTL to configured timeout
         return True
     except Exception as e:
         logger.debug(f"[FLOW] Failed to save turn to Redis: {type(e).__name__}")

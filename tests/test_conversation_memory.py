@@ -12,6 +12,7 @@ import pytest
 
 from server import get_follow_up_instructions
 from utils.conversation_memory import (
+    CONVERSATION_TIMEOUT_SECONDS,
     MAX_CONVERSATION_TURNS,
     ConversationTurn,
     ThreadContext,
@@ -40,7 +41,7 @@ class TestConversationMemory:
         mock_client.setex.assert_called_once()
         call_args = mock_client.setex.call_args
         assert call_args[0][0] == f"thread:{thread_id}"  # key
-        assert call_args[0][1] == 3600  # TTL
+        assert call_args[0][1] == CONVERSATION_TIMEOUT_SECONDS  # TTL from configuration
 
     @patch("utils.conversation_memory.get_redis_client")
     def test_get_thread_valid(self, mock_redis):
