@@ -44,6 +44,7 @@ from tools import (
     CodeReviewTool,
     DebugIssueTool,
     Precommit,
+    TestGenTool,
     ThinkDeepTool,
 )
 from tools.models import ToolOutput
@@ -144,6 +145,7 @@ TOOLS = {
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "precommit": Precommit(),  # Pre-commit validation of git changes
+    "testgen": TestGenTool(),  # Comprehensive test generation with edge case coverage
 }
 
 

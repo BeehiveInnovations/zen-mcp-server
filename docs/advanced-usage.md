@@ -245,6 +245,20 @@ All tools that work with files support **both individual files and entire direct
 "Use o3 to think deeper about the logical flow in this algorithm"
 ```
 
+**`testgen`** - Comprehensive test generation with edge case coverage
+- `files`: Code files or directories to generate tests for (required)
+- `prompt`: Description of what to test, testing objectives, and scope (required)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `test_examples`: Optional existing test files as style/pattern reference
+- `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
+
+```
+"Generate tests for User.login() method with edge cases" (auto mode picks best model)
+"Use pro to generate comprehensive tests for src/payment.py with max thinking mode"
+"Use o3 to generate tests for algorithm correctness in sort_functions.py"
+"Generate tests following patterns from tests/unit/ for new auth module"
+```
+
 ## Collaborative Workflows
 
 ### Design → Review → Implement
@@ -277,13 +291,15 @@ To help choose the right tool for your needs:
 1. **Have a specific error/exception?** → Use `debug`
 2. **Want to find bugs/issues in code?** → Use `codereview`
 3. **Want to understand how code works?** → Use `analyze`
-4. **Have analysis that needs extension/validation?** → Use `thinkdeep`
-5. **Want to brainstorm or discuss?** → Use `chat`
+4. **Need comprehensive test coverage?** → Use `testgen`
+5. **Have analysis that needs extension/validation?** → Use `thinkdeep`
+6. **Want to brainstorm or discuss?** → Use `chat`
 
 **Key Distinctions:**
 - `analyze` vs `codereview`: analyze explains, codereview prescribes fixes
 - `chat` vs `thinkdeep`: chat is open-ended, thinkdeep extends specific analysis
 - `debug` vs `codereview`: debug diagnoses runtime errors, review finds static issues
+- `testgen` vs `debug`: testgen creates test suites, debug just finds issues and recommends solutions
 
 ## Working with Large Prompts
 

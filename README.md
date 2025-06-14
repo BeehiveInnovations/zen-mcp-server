@@ -49,6 +49,7 @@ and review into consideration to aid with its pre-commit review.
   - [`precommit`](#4-precommit---pre-commit-validation) - Pre-commit validation
   - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
+  - [`testgen`](#7-testgen---comprehensive-test-generation) - Test generation with edge cases
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -254,6 +255,7 @@ Just ask Claude naturally:
 - **Pre-commit validation?** → `precommit` (validate git changes before committing)
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
+- **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
 - **Server info?** → `get_version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
@@ -274,7 +276,8 @@ Just ask Claude naturally:
 4. [`precommit`](#4-precommit---pre-commit-validation) - Validate git changes before committing
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
-7. [`get_version`](#7-get_version---server-information) - Get server version and configuration
+7. [`testgen`](#7-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
+8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -421,7 +424,30 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
 - **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
-### 7. `get_version` - Server Information
+### 7. `testgen` - Comprehensive Test Generation
+**Generates thorough test suites with edge case coverage** based on existing code and test framework used.
+
+**Thinking Mode (Extended thinking models):** Default is `medium` (8,192 tokens). Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
+
+#### Example Prompts:
+
+**Basic Usage:**
+```
+"Use zen to generate tests for User.login() method"
+"Generate comprehensive tests for the sorting method in src/new_sort.py using o3"
+"Create tests for edge cases not already covered in our tests using gemini pro"
+```
+
+**Key Features:**
+- Multi-agent workflow analyzing code paths and identifying realistic failure modes
+- Generates framework-specific tests following project conventions
+- Supports test pattern following when examples are provided
+- Dynamic token allocation (25% for test examples, 75% for main code)
+- Prioritizes smallest test files for pattern detection
+- Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
+- Specific code coverage - target specific functions/classes rather than testing everything
+
+### 8. `get_version` - Server Information
 ```
 "Get zen to show its version"
 ```

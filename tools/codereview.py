@@ -2,7 +2,7 @@
 Code Review tool - Comprehensive code analysis and review
 
 This tool provides professional-grade code review capabilities using
-Gemini's understanding of code patterns, best practices, and common issues.
+the chosen model's understanding of code patterns, best practices, and common issues.
 It can analyze individual files or entire codebases, providing actionable
 feedback categorized by severity.
 
@@ -177,7 +177,7 @@ class CodeReviewTool(BaseTool):
             request: The validated review request
 
         Returns:
-            str: Complete prompt for the Gemini model
+            str: Complete prompt for the model
 
         Raises:
             ValueError: If the code exceeds token limits
