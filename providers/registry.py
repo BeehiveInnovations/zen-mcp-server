@@ -183,6 +183,16 @@ class ModelProviderRegistry:
                             continue
 
                         models[model_name] = provider_type
+                elif provider_type == ProviderType.OPENROUTER:
+                    # OpenRouter uses a registry system instead of SUPPORTED_MODELS
+                    if hasattr(provider, "_registry") and provider._registry:
+                        for model_name in provider._registry.list_models():
+                            # Check restrictions if enabled
+                            if restriction_service and not restriction_service.is_allowed(provider_type, model_name):
+                                logging.debug(f"Model {model_name} filtered by restrictions")
+                                continue
+
+                            models[model_name] = provider_type
 
         return models
 
