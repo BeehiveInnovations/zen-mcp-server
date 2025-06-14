@@ -285,8 +285,8 @@ class TestComprehensive(unittest.TestCase):
         # Check formatting includes next steps
         assert raw_response in formatted
         assert "**Next Steps:**" in formatted
-        assert "Review Generated Tests" in formatted
-        assert "Setup Test Environment" in formatted
+        assert "Create and save the test files" in formatted
+        assert "Run the tests" in formatted
 
     @pytest.mark.asyncio
     async def test_error_handling_invalid_files(self, tool):

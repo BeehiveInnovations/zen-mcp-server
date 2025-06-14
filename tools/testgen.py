@@ -412,18 +412,16 @@ class TestGenTool(BaseTool):
 
 **Next Steps:**
 
-1. **Review Generated Tests**: Check if the structure, coverage, and edge cases are valid and useful. Ensure they meet your requirements.
-   Confirm the tests cover missing scenarios, follow project conventions, and can be safely added without duplication.
+Claude must now:
 
-2. **Setup Test Environment**: Ensure the testing framework and dependencies identified are properly configured in your project.
+1. **Create and save the test files** - Write the generated tests to appropriate test files in your project structure
 
-3. **Run Initial Tests**: Execute the generated tests to verify they work correctly with your code.
+2. **Display to the user** - Show each new test file/function created with a brief line explaining what it covers
 
-4. **Customize as Needed**: Modify generated test code, add project-specific edge cases, refine or adjust test structure based on your specific needs if deemed necessary
-based on your existing knowledge of the code.
+3. **Install any missing test dependencies** - Set up required testing frameworks if not already available
 
-5. **Integrate with CI/CD**: Add the tests to your continuous integration pipeline to maintain code quality if this has already been setup and available.
+4. **Run the tests** - Execute the test suite to verify functionality and fix any issues
 
-6. Refine requirements and continue the conversation if additional coverage or improvements are needed.
+5. **Integrate the tests** - Ensure tests are properly connected to your existing test infrastructure
 
-Remember: Review the generated tests for completeness and adapt and integrate them to your specific project requirements and testing standards. Continue with your next step in implementation."""
+The tests are ready for immediate implementation and integration into your codebase."""
