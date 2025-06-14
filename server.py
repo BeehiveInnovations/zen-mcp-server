@@ -117,8 +117,6 @@ try:
 
     # Also keep a size-based rotation as backup (100MB max per file)
     # This prevents any single day's log from growing too large
-    from logging.handlers import RotatingFileHandler
-
     size_handler = RotatingFileHandler(
         "/tmp/mcp_server_overflow.log", maxBytes=100 * 1024 * 1024, backupCount=3  # 100MB
     )

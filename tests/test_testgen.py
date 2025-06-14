@@ -284,7 +284,7 @@ class TestComprehensive(unittest.TestCase):
 
         # Check formatting includes new action-oriented next steps
         assert raw_response in formatted
-        assert "IMMEDIATE ACTION REQUIRED" in formatted
+        assert "IMMEDIATE NEXT ACTION" in formatted
         assert "ULTRATHINK" in formatted
         assert "CREATE" in formatted
         assert "VALIDATE BY EXECUTION" in formatted

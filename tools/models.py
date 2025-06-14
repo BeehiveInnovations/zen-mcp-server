@@ -36,6 +36,10 @@ class ToolOutput(BaseModel):
         "success",
         "error",
         "clarification_required",
+        "full_codereview_required",
+        "focused_review_required",
+        "test_sample_needed",
+        "more_tests_required",
         "resend_prompt",
         "continuation_available",
     ] = "success"
@@ -50,6 +54,7 @@ class ToolOutput(BaseModel):
 class ClarificationRequest(BaseModel):
     """Request for additional context or clarification"""
 
+    status: Literal["clarification_required"] = "clarification_required"
     question: str = Field(..., description="Question to ask Claude for more context")
     files_needed: Optional[list[str]] = Field(
         default_factory=list, description="Specific files that are needed for analysis"
@@ -58,6 +63,48 @@ class ClarificationRequest(BaseModel):
         None,
         description="Suggested tool call with parameters after getting clarification",
     )
+
+
+class FullCodereviewRequired(BaseModel):
+    """Request for full code review when scope is too large for quick review"""
+
+    status: Literal["full_codereview_required"] = "full_codereview_required"
+    important: Optional[str] = Field(None, description="Important message about escalation")
+    reason: Optional[str] = Field(None, description="Reason why full review is needed")
+
+
+class FocusedReviewRequired(BaseModel):
+    """Request for Claude to provide smaller, focused subsets of code for review"""
+
+    status: Literal["focused_review_required"] = "focused_review_required"
+    reason: str = Field(..., description="Why the current scope is too large for effective review")
+    suggestion: str = Field(
+        ..., description="Suggested approach for breaking down the review into smaller, focused parts"
+    )
+
+
+class TestSampleNeeded(BaseModel):
+    """Request for additional test samples to determine testing framework"""
+
+    status: Literal["test_sample_needed"] = "test_sample_needed"
+    reason: str = Field(..., description="Reason why additional test samples are required")
+
+
+class MoreTestsRequired(BaseModel):
+    """Request for continuation to generate additional tests"""
+
+    status: Literal["more_tests_required"] = "more_tests_required"
+    pending_tests: str = Field(..., description="List of pending tests to be generated")
+
+
+# Registry mapping status strings to their corresponding Pydantic models
+SPECIAL_STATUS_MODELS = {
+    "clarification_required": ClarificationRequest,
+    "full_codereview_required": FullCodereviewRequired,
+    "focused_review_required": FocusedReviewRequired,
+    "test_sample_needed": TestSampleNeeded,
+    "more_tests_required": MoreTestsRequired,
+}
 
 
 class DiagnosticHypothesis(BaseModel):

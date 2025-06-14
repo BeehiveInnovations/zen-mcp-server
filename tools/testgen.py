@@ -117,7 +117,10 @@ class TestGenTool(BaseTool):
                 },
                 "continuation_id": {
                     "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
+                    "description": (
+                        "Thread continuation ID for multi-turn conversations. Can be used to continue conversations "
+                        "across different tools. Only provide this if continuing a previous conversation thread."
+                    ),
                 },
             },
             "required": ["files", "prompt"] + (["model"] if self.is_effective_auto_mode() else []),
@@ -436,7 +439,7 @@ class TestGenTool(BaseTool):
 
 ---
 
-# IMMEDIATE ACTION REQUIRED
+# IMMEDIATE NEXT ACTION
 
 Claude, you are now in EXECUTION MODE. Take immediate action:
 
@@ -472,5 +475,6 @@ After creating each test file, show the user:
 ## Step 5: MOVE TO NEXT ACTION
 Once tests are confirmed working, immediately proceed to the next logical step for the project.
 
-**CRITICAL**: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work.
-Take full ownership of the testing implementation and move to your next work."""
+**CRITICAL**: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work. Take full
+ownership of the testing implementation and move to your next work. If you were supplied a more_work_required request
+in the response above, you MUST honor it."""
