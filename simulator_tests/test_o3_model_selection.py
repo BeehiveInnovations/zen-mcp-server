@@ -125,6 +125,24 @@ class O3ModelSelectionTest(BaseSimulatorTest):
 
             self.logger.info("  ✅ O3-mini model call completed")
 
+            # Test 2.5: Explicit O3-pro model selection
+            self.logger.info("  2.5: Testing explicit O3-pro model selection")
+
+            response2_5, _ = self.call_mcp_tool(
+                "chat",
+                {
+                    "prompt": "Simple test: What is 4 + 4? Just give a brief answer.",
+                    "model": "o3-pro",
+                    "temperature": 1.0,  # O3-pro only supports default temperature of 1.0
+                },
+            )
+
+            if not response2_5:
+                self.logger.error("  ❌ O3-pro model test failed")
+                return False
+
+            self.logger.info("  ✅ O3-pro model call completed")
+
             # Test 3: Another tool with O3 to ensure it works across tools
             self.logger.info("  3: Testing O3 with different tool (codereview)")
 
@@ -177,11 +195,11 @@ def multiply(x, y):
                 line for line in logs.split("\n") if "Sending request to openai API for codereview" in line
             ]
 
-            # Validation criteria - we expect 3 OpenAI calls (2 chat + 1 codereview)
-            openai_api_called = len(openai_api_logs) >= 3  # Should see 3 OpenAI API calls
-            openai_model_usage = len(openai_model_logs) >= 3  # Should see 3 model usage logs
-            openai_responses_received = len(openai_response_logs) >= 3  # Should see 3 responses
-            chat_calls_to_openai = len(chat_openai_logs) >= 2  # Should see 2 chat calls (o3 + o3-mini)
+            # Validation criteria - we expect 4 OpenAI calls (3 chat + 1 codereview)
+            openai_api_called = len(openai_api_logs) >= 4  # Should see 4 OpenAI API calls
+            openai_model_usage = len(openai_model_logs) >= 4  # Should see 4 model usage logs
+            openai_responses_received = len(openai_response_logs) >= 4  # Should see 4 responses
+            chat_calls_to_openai = len(chat_openai_logs) >= 3  # Should see 3 chat calls (o3 + o3-mini + o3-pro)
             codereview_calls_to_openai = len(codereview_openai_logs) >= 1  # Should see 1 codereview call
 
             self.logger.info(f"   OpenAI API call logs: {len(openai_api_logs)}")
@@ -272,6 +290,24 @@ def multiply(x, y):
 
             self.logger.info("  ✅ O3-mini model call via OpenRouter completed")
 
+            # Test 2.5: O3-pro model via OpenRouter
+            self.logger.info("  2.5: Testing O3-pro model via OpenRouter")
+
+            response2_5, _ = self.call_mcp_tool(
+                "chat",
+                {
+                    "prompt": "Simple test: What is 4 + 4? Just give a brief answer.",
+                    "model": "o3-pro",
+                    "temperature": 1.0,
+                },
+            )
+
+            if not response2_5:
+                self.logger.error("  ❌ O3-pro model test via OpenRouter failed")
+                return False
+
+            self.logger.info("  ✅ O3-pro model call via OpenRouter completed")
+
             # Test 3: Codereview with O3 via OpenRouter
             self.logger.info("  3: Testing O3 with codereview tool via OpenRouter")
 
@@ -325,8 +361,8 @@ def multiply(x, y):
             self.logger.info(f"   OpenRouter response logs: {len(openrouter_response_logs)}")
 
             # Success criteria for OpenRouter
-            openrouter_used = len(openrouter_api_logs) >= 3 or len(openrouter_model_logs) >= 3
-            all_calls_succeeded = response1 and response2 and response3
+            openrouter_used = len(openrouter_api_logs) >= 4 or len(openrouter_model_logs) >= 4
+            all_calls_succeeded = response1 and response2 and response2_5 and response3
 
             success_criteria = [
                 ("All O3 model calls succeeded", all_calls_succeeded),

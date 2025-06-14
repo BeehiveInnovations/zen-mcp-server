@@ -47,7 +47,7 @@ class TestAutoMode:
         from config import MODEL_CAPABILITIES_DESC
 
         # Check all expected models are present
-        expected_models = ["flash", "pro", "o3", "o3-mini"]
+        expected_models = ["flash", "pro", "o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"]
         for model in expected_models:
             assert model in MODEL_CAPABILITIES_DESC
             assert isinstance(MODEL_CAPABILITIES_DESC[model], str)
@@ -225,7 +225,7 @@ class TestAutoMode:
 
             schema = tool.get_model_field_schema()
             assert "enum" in schema
-            assert all(model in schema["enum"] for model in ["flash", "pro", "o3"])
+            assert all(model in schema["enum"] for model in ["flash", "pro", "o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"])
             assert "select the most suitable model" in schema["description"]
 
             # Test normal mode
