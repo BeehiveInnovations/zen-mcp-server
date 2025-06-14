@@ -36,10 +36,32 @@ Please provide a clear and concise description of what this PR does.
 
 ## Testing
 
-- [ ] Unit tests pass
-- [ ] Integration tests pass (if applicable)
-- [ ] Manual testing completed
-- [ ] Documentation updated (if needed)
+**Please review our [Testing Guide](../docs/testing.md) before submitting.**
+
+### Run all linting and tests (required):
+```bash
+# Activate virtual environment first
+source venv/bin/activate
+
+# Run all linting checks
+ruff check .
+black --check .
+isort --check-only .
+
+# Run all unit tests
+python -m pytest -xvs
+
+# If you made tool changes, also run simulator tests
+python communication_simulator_test.py
+```
+
+- [ ] All linting passes (ruff, black, isort)
+- [ ] All unit tests pass
+- [ ] **For new features**: Unit tests added in `tests/`
+- [ ] **For tool changes**: Simulator tests added in `simulator_tests/`
+- [ ] **For bug fixes**: Tests added to prevent regression
+- [ ] Simulator tests pass (if applicable)
+- [ ] Manual testing completed with realistic scenarios
 
 ## Related Issues
 
@@ -48,11 +70,12 @@ Fixes #(issue number)
 ## Checklist
 
 - [ ] PR title follows the format guidelines above
-- [ ] Code follows the project's style guidelines
+- [ ] Activated venv and ran all linting: `source venv/bin/activate && ruff check . && black --check . && isort --check-only .`
 - [ ] Self-review completed
-- [ ] Tests added/updated as needed
+- [ ] **Tests added for ALL changes** (see Testing section above)
 - [ ] Documentation updated as needed
-- [ ] All tests passing
+- [ ] All unit tests passing: `python -m pytest -xvs`
+- [ ] Relevant simulator tests passing (if tool changes)
 - [ ] Ready for review
 
 ## Additional Notes

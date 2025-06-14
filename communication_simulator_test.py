@@ -17,7 +17,7 @@ Usage:
     --tests: Run specific tests only (space-separated)
     --list-tests: List all available tests
     --individual: Run a single test individually
-    --rebuild: Force rebuild Docker environment using setup-docker.sh
+    --rebuild: Force rebuild Docker environment using run-server.sh
 
 Available tests:
     basic_conversation          - Basic conversation flow with chat tool
@@ -115,9 +115,9 @@ class CommunicationSimulator:
             self.temp_dir = tempfile.mkdtemp(prefix="mcp_test_")
             self.logger.debug(f"Created temp directory: {self.temp_dir}")
 
-            # Only run setup-docker.sh if rebuild is requested
+            # Only run run-server.sh if rebuild is requested
             if self.rebuild:
-                if not self._run_setup_docker():
+                if not self._run_server_script():
                     return False
 
             # Always verify containers are running (regardless of rebuild)
@@ -127,34 +127,34 @@ class CommunicationSimulator:
             self.logger.error(f"Failed to setup test environment: {e}")
             return False
 
-    def _run_setup_docker(self) -> bool:
-        """Run the setup-docker.sh script"""
+    def _run_server_script(self) -> bool:
+        """Run the run-server.sh script"""
         try:
-            self.logger.info("Running setup-docker.sh...")
+            self.logger.info("Running run-server.sh...")
 
-            # Check if setup-docker.sh exists
-            setup_script = "./setup-docker.sh"
+            # Check if run-server.sh exists
+            setup_script = "./run-server.sh"
             if not os.path.exists(setup_script):
-                self.logger.error(f"setup-docker.sh not found at {setup_script}")
+                self.logger.error(f"run-server.sh not found at {setup_script}")
                 return False
 
             # Make sure it's executable
             result = self._run_command(["chmod", "+x", setup_script], capture_output=True)
             if result.returncode != 0:
-                self.logger.error(f"Failed to make setup-docker.sh executable: {result.stderr}")
+                self.logger.error(f"Failed to make run-server.sh executable: {result.stderr}")
                 return False
 
             # Run the setup script
             result = self._run_command([setup_script], capture_output=True)
             if result.returncode != 0:
-                self.logger.error(f"setup-docker.sh failed: {result.stderr}")
+                self.logger.error(f"run-server.sh failed: {result.stderr}")
                 return False
 
-            self.logger.info("setup-docker.sh completed successfully")
+            self.logger.info("run-server.sh completed successfully")
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to run setup-docker.sh: {e}")
+            self.logger.error(f"Failed to run run-server.sh: {e}")
             return False
 
     def _verify_existing_containers(self) -> bool:
@@ -345,9 +345,9 @@ class CommunicationSimulator:
         try:
             self.logger.info("Cleaning up test environment...")
 
-            # Note: We don't stop Docker services ourselves - let setup-docker.sh handle Docker lifecycle
+            # Note: We don't stop Docker services ourselves - let run-server.sh handle Docker lifecycle
             if not self.keep_logs:
-                self.logger.info("Test completed. Docker containers left running (use setup-docker.sh to manage)")
+                self.logger.info("Test completed. Docker containers left running (use run-server.sh to manage)")
             else:
                 self.logger.info("Keeping logs and Docker services running for inspection")
 
@@ -375,7 +375,7 @@ def parse_arguments():
     parser.add_argument("--tests", "-t", nargs="+", help="Specific tests to run (space-separated)")
     parser.add_argument("--list-tests", action="store_true", help="List available tests and exit")
     parser.add_argument("--individual", "-i", help="Run a single test individually")
-    parser.add_argument("--rebuild", action="store_true", help="Force rebuild Docker environment using setup-docker.sh")
+    parser.add_argument("--rebuild", action="store_true", help="Force rebuild Docker environment using run-server.sh")
 
     return parser.parse_args()
 

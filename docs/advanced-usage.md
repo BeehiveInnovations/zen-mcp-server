@@ -55,6 +55,8 @@ DEFAULT_MODEL=flash                         # Always use Flash
 DEFAULT_MODEL=o3                           # Always use O3
 ```
 
+**Important:** After changing any configuration in `.env` (including `DEFAULT_MODEL`, API keys, or other settings), restart the server with `./run-server.sh` to apply the changes.
+
 **Per-Request Model Override:**
 Regardless of your default setting, you can specify models per request:
 - "Use **pro** for deep security analysis of auth.py"

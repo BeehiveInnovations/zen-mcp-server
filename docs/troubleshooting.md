@@ -43,7 +43,7 @@ cat .env
 If you need to update your API keys, edit the `.env` file and then run:
 
 ```bash
-./setup-docker.sh
+./run-server.sh
 ```
 
 This will validate your configuration and restart the services.
@@ -73,7 +73,7 @@ See [Logging Documentation](logging.md) for more details on accessing logs.
 
 **"API key environment variable is required"**
 - Add your API key to the `.env` file
-- Run: `./setup-docker.sh` to validate and restart
+- Run: `./run-server.sh` to validate and restart
 
 **File path errors**
 - Always use absolute paths: `/Users/you/project/file.py`

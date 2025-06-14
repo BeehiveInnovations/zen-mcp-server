@@ -22,6 +22,19 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
         },
+        "o4-mini": {
+            "context_window": 200_000,  # 200K tokens
+            "supports_extended_thinking": False,
+        },
+        "o4-mini-high": {
+            "context_window": 200_000,  # 200K tokens
+            "supports_extended_thinking": False,
+        },
+        # Shorthands
+        "o3mini": "o3-mini",
+        "o4mini": "o4-mini",
+        "o4minihigh": "o4-mini-high",
+        "o4minihi": "o4-mini-high",
     }
 
     def __init__(self, api_key: str, **kwargs):
@@ -32,14 +45,17 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         """Get capabilities for a specific OpenAI model."""
-        if model_name not in self.SUPPORTED_MODELS:
+        # Resolve shorthand
+        resolved_name = self._resolve_model_name(model_name)
+
+        if resolved_name not in self.SUPPORTED_MODELS or isinstance(self.SUPPORTED_MODELS[resolved_name], str):
             raise ValueError(f"Unsupported OpenAI model: {model_name}")
 
-        config = self.SUPPORTED_MODELS[model_name]
+        config = self.SUPPORTED_MODELS[resolved_name]
 
         # Define temperature constraints per model
-        if model_name in ["o3", "o3-mini"]:
-            # O3 models only support temperature=1.0
+        if resolved_name in ["o3", "o3-mini", "o4-mini", "o4-mini-high"]:
+            # O3 and O4 reasoning models only support temperature=1.0
             temp_constraint = FixedTemperatureConstraint(1.0)
         else:
             # Other OpenAI models support 0.0-2.0 range
@@ -63,10 +79,19 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
     def validate_model_name(self, model_name: str) -> bool:
         """Validate if the model name is supported."""
-        return model_name in self.SUPPORTED_MODELS
+        resolved_name = self._resolve_model_name(model_name)
+        return resolved_name in self.SUPPORTED_MODELS and isinstance(self.SUPPORTED_MODELS[resolved_name], dict)
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
         # Currently no OpenAI models support extended thinking
         # This may change with future O3 models
         return False
+
+    def _resolve_model_name(self, model_name: str) -> str:
+        """Resolve model shorthand to full name."""
+        # Check if it's a shorthand
+        shorthand_value = self.SUPPORTED_MODELS.get(model_name)
+        if isinstance(shorthand_value, str):
+            return shorthand_value
+        return model_name

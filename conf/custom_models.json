@@ -131,13 +131,40 @@
       "description": "OpenAI's o3 model - well-rounded and powerful across domains"
     },
     {
+      "model_name": "openai/o3-mini",
+      "aliases": ["o3-mini", "o3mini"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o3-mini model - balanced performance and speed"
+    },
+    {
       "model_name": "openai/o3-mini-high",
-      "aliases": ["o3-mini", "o3mini", "o3-mini-high", "o3mini-high"],
+      "aliases": ["o3-mini-high", "o3mini-high"],
       "context_window": 200000,
       "supports_extended_thinking": false,
       "supports_json_mode": true,
       "supports_function_calling": true,
       "description": "OpenAI's o3-mini with high reasoning effort - optimized for complex problems"
+    },
+    {
+      "model_name": "openai/o4-mini",
+      "aliases": ["o4-mini", "o4mini"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o4-mini model - optimized for shorter contexts with rapid reasoning"
+    },
+    {
+      "model_name": "openai/o4-mini-high",
+      "aliases": ["o4-mini-high", "o4mini-high", "o4minihigh", "o4minihi"],
+      "context_window": 200000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "description": "OpenAI's o4-mini with high reasoning effort - enhanced for complex tasks"
     },
     {
       "model_name": "llama3.2",

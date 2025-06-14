@@ -124,7 +124,7 @@ git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
 cd zen-mcp-server
 
 # One-command setup (includes Redis for AI conversations)
-./setup-docker.sh
+./run-server.sh
 ```
 
 **What this does:**
@@ -153,6 +153,9 @@ nano .env
 # WORKSPACE_ROOT=/Users/your-username  (automatically configured)
 
 # Note: At least one API key OR custom URL is required
+
+# After making changes to .env, restart the server:
+# ./run-server.sh
 ```
 
 ### 4. Configure Claude
@@ -184,7 +187,7 @@ This will open a folder revealing `claude_desktop_config.json`.
 
 2. ** Update Docker Configuration**
 
-The setup script shows you the exact configuration. It looks like this. When you ran `setup-docker.sh` it should
+The setup script shows you the exact configuration. It looks like this. When you ran `run-server.sh` it should
 have produced a configuration for you to copy:
 
 ```json
@@ -500,17 +503,23 @@ DEFAULT_MODEL=auto  # Claude picks the best model automatically
 
 # API Keys (at least one required)
 GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high
 ```
 
 **Available Models:**
 - **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
 - **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
 - **`o3`**: Strong logical reasoning  
-- **`o3-mini`**: Balanced speed/quality
+- **`o3mini`**: Balanced speed/quality
+- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
+- **`o4-mini-high`**: Enhanced O4 with higher reasoning effort
 - **Custom models**: via OpenRouter or local APIs (Ollama, vLLM, etc.)
 
 For detailed configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).
+
+## Testing
+
+For information on running tests and contributing, see the [Testing Guide](docs/testing.md).
 
 ## License
 

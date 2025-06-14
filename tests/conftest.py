@@ -85,8 +85,10 @@ def mock_provider_availability(request, monkeypatch):
     the tools don't require model selection unless explicitly testing auto mode.
     """
     # Skip this fixture for tests that need real providers
-    if hasattr(request, "node") and request.node.get_closest_marker("no_mock_provider"):
-        return
+    if hasattr(request, "node"):
+        marker = request.node.get_closest_marker("no_mock_provider")
+        if marker:
+            return
 
     from unittest.mock import MagicMock
 

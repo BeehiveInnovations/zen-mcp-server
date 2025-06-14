@@ -2,7 +2,6 @@
 Test that conversation history is correctly mapped to tool-specific fields
 """
 
-import os
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -130,8 +129,7 @@ async def test_unknown_tool_defaults_to_prompt():
     with patch("utils.conversation_memory.get_thread", return_value=mock_context):
         with patch("utils.conversation_memory.add_turn", return_value=True):
             with patch("utils.conversation_memory.build_conversation_history", return_value=("History", 500)):
-                # The test uses the conftest fixture which should handle provider mocking
-                # We just need to ensure the arguments are correct
+                # The autouse fixture should handle provider mocking
                 arguments = {
                     "continuation_id": "test-thread-456",
                     "prompt": "User input",
