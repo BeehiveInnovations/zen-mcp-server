@@ -225,7 +225,10 @@ class TestAutoMode:
 
             schema = tool.get_model_field_schema()
             assert "enum" in schema
-            assert all(model in schema["enum"] for model in ["flash", "pro", "o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"])
+            assert all(
+                model in schema["enum"]
+                for model in ["flash", "pro", "o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"]
+            )
             assert "select the most suitable model" in schema["description"]
 
             # Test normal mode
