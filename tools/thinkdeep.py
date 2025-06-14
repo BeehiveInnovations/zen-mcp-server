@@ -215,6 +215,8 @@ Claude, please critically evaluate {model_name}'s analysis by thinking hard abou
 1. **Technical merit** - Which suggestions are valuable vs. have limitations?
 2. **Constraints** - Fit with codebase patterns, performance, security, architecture
 3. **Risks** - Hidden complexities, edge cases, potential failure modes
-4. **Final recommendation** - Synthesize both perspectives, then think deeply further to explore additional considerations and arrive at the best technical solution
+4. **Final recommendation** - Synthesize both perspectives, then ultrathink on your own to explore additional
+considerations and arrive at the best technical solution. Feel free to use zen's chat tool for a follow-up discussion
+if needed.
 
 Remember: Use {model_name}'s insights to enhance, not replace, your analysis."""
