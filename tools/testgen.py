@@ -472,5 +472,5 @@ After creating each test file, show the user:
 ## Step 5: MOVE TO NEXT ACTION
 Once tests are confirmed working, immediately proceed to the next logical step for the project.
 
-**CRITICAL**: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work. 
+**CRITICAL**: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work.
 Take full ownership of the testing implementation and move to your next work."""
