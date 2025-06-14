@@ -143,6 +143,33 @@ class O3ModelSelectionTest(BaseSimulatorTest):
 
             self.logger.info("  ✅ O3-pro model call completed")
 
+            # Test 2.6: O3-pro with codereview tool
+            self.logger.info("  2.6: Testing O3-pro with codereview tool")
+
+            test_code_pro = """def calculate_tax(amount, rate):
+    return amount * rate
+
+def format_currency(value):
+    return f"${value:.2f}"
+"""
+            test_file_pro = self.create_additional_test_file("tax_calc.py", test_code_pro)
+
+            response2_6, _ = self.call_mcp_tool(
+                "codereview",
+                {
+                    "files": [test_file_pro],
+                    "prompt": "Quick review of this tax calculation code",
+                    "model": "o3-pro",
+                    "temperature": 1.0,  # O3-pro only supports default temperature of 1.0
+                },
+            )
+
+            if not response2_6:
+                self.logger.error("  ❌ O3-pro with codereview tool failed")
+                return False
+
+            self.logger.info("  ✅ O3-pro with codereview tool completed")
+
             # Test 3: Another tool with O3 to ensure it works across tools
             self.logger.info("  3: Testing O3 with different tool (codereview)")
 
@@ -195,12 +222,12 @@ def multiply(x, y):
                 line for line in logs.split("\n") if "Sending request to openai API for codereview" in line
             ]
 
-            # Validation criteria - we expect 4 OpenAI calls (3 chat + 1 codereview)
-            openai_api_called = len(openai_api_logs) >= 4  # Should see 4 OpenAI API calls
-            openai_model_usage = len(openai_model_logs) >= 4  # Should see 4 model usage logs
-            openai_responses_received = len(openai_response_logs) >= 4  # Should see 4 responses
+            # Validation criteria - we expect 5 OpenAI calls (3 chat + 2 codereview)
+            openai_api_called = len(openai_api_logs) >= 5  # Should see 5 OpenAI API calls
+            openai_model_usage = len(openai_model_logs) >= 5  # Should see 5 model usage logs
+            openai_responses_received = len(openai_response_logs) >= 5  # Should see 5 responses
             chat_calls_to_openai = len(chat_openai_logs) >= 3  # Should see 3 chat calls (o3 + o3-mini + o3-pro)
-            codereview_calls_to_openai = len(codereview_openai_logs) >= 1  # Should see 1 codereview call
+            codereview_calls_to_openai = len(codereview_openai_logs) >= 2  # Should see 2 codereview calls (o3-pro + o3)
 
             self.logger.info(f"   OpenAI API call logs: {len(openai_api_logs)}")
             self.logger.info(f"   OpenAI model usage logs: {len(openai_model_logs)}")
@@ -308,6 +335,33 @@ def multiply(x, y):
 
             self.logger.info("  ✅ O3-pro model call via OpenRouter completed")
 
+            # Test 2.6: O3-pro with codereview tool via OpenRouter
+            self.logger.info("  2.6: Testing O3-pro with codereview tool via OpenRouter")
+
+            test_code_pro_or = """def calculate_discount(price, discount_rate):
+    return price * (1 - discount_rate)
+
+def validate_price(price):
+    return price > 0
+"""
+            test_file_pro_or = self.create_additional_test_file("discount_calc.py", test_code_pro_or)
+
+            response2_6, _ = self.call_mcp_tool(
+                "codereview",
+                {
+                    "files": [test_file_pro_or],
+                    "prompt": "Quick review of this discount calculation code",
+                    "model": "o3-pro",
+                    "temperature": 1.0,
+                },
+            )
+
+            if not response2_6:
+                self.logger.error("  ❌ O3-pro with codereview tool via OpenRouter failed")
+                return False
+
+            self.logger.info("  ✅ O3-pro with codereview tool via OpenRouter completed")
+
             # Test 3: Codereview with O3 via OpenRouter
             self.logger.info("  3: Testing O3 with codereview tool via OpenRouter")
 
@@ -361,8 +415,8 @@ def multiply(x, y):
             self.logger.info(f"   OpenRouter response logs: {len(openrouter_response_logs)}")
 
             # Success criteria for OpenRouter
-            openrouter_used = len(openrouter_api_logs) >= 4 or len(openrouter_model_logs) >= 4
-            all_calls_succeeded = response1 and response2 and response2_5 and response3
+            openrouter_used = len(openrouter_api_logs) >= 5 or len(openrouter_model_logs) >= 5
+            all_calls_succeeded = response1 and response2 and response2_5 and response2_6 and response3
 
             success_criteria = [
                 ("All O3 model calls succeeded", all_calls_succeeded),
