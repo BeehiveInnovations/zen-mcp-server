@@ -9,10 +9,12 @@ standardization purposes.
 Environment Variables:
 - OPENAI_ALLOWED_MODELS: Comma-separated list of allowed OpenAI models
 - GOOGLE_ALLOWED_MODELS: Comma-separated list of allowed Gemini models
+- OPENROUTER_ALLOWED_MODELS: Comma-separated list of allowed OpenRouter models
 
 Example:
     OPENAI_ALLOWED_MODELS=o3-mini,o4-mini
     GOOGLE_ALLOWED_MODELS=flash
+    OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 """
 
 import logging
@@ -38,6 +40,7 @@ class ModelRestrictionService:
     ENV_VARS = {
         ProviderType.OPENAI: "OPENAI_ALLOWED_MODELS",
         ProviderType.GOOGLE: "GOOGLE_ALLOWED_MODELS",
+        ProviderType.OPENROUTER: "OPENROUTER_ALLOWED_MODELS",
     }
 
     def __init__(self):

@@ -128,8 +128,21 @@ class CustomProvider(OpenAICompatibleProvider):
         capabilities = self._registry.get_capabilities(model_name)
 
         if capabilities:
-            # Update provider type to CUSTOM
-            capabilities.provider = ProviderType.CUSTOM
+            # Check if this is an OpenRouter model and apply restrictions
+            config = self._registry.resolve(model_name)
+            if config and not config.is_custom:
+                # This is an OpenRouter model, check restrictions
+                from utils.model_restrictions import get_restriction_service
+
+                restriction_service = get_restriction_service()
+                if not restriction_service.is_allowed(ProviderType.OPENROUTER, config.model_name, model_name):
+                    raise ValueError(f"OpenRouter model '{model_name}' is not allowed by restriction policy.")
+
+                # Update provider type to OPENROUTER for OpenRouter models
+                capabilities.provider = ProviderType.OPENROUTER
+            else:
+                # Update provider type to CUSTOM for local custom models
+                capabilities.provider = ProviderType.CUSTOM
             return capabilities
         else:
             # Resolve any potential aliases and create generic capabilities
@@ -188,12 +201,23 @@ class CustomProvider(OpenAICompatibleProvider):
                 logging.debug(f"Model '{model_name}' -> '{model_id}' validated via registry (custom model)")
                 return True
             else:
-                # This is a cloud/OpenRouter model - if OpenRouter is available, defer to it
+                # This is a cloud/OpenRouter model - check restrictions if available
                 if openrouter_available:
-                    logging.debug(f"Model '{model_name}' -> '{model_id}' deferred to OpenRouter (cloud model)")
+                    # Check if OpenRouter model is allowed by restrictions
+                    from utils.model_restrictions import get_restriction_service
+
+                    restriction_service = get_restriction_service()
+                    if not restriction_service.is_allowed(ProviderType.OPENROUTER, model_id, model_name):
+                        logging.debug(f"Model '{model_name}' -> '{model_id}' blocked by OpenRouter restrictions")
+                        return False
+
+                    logging.debug(
+                        f"Model '{model_name}' -> '{model_id}' validated via OpenRouter (passes restrictions)"
+                    )
+                    return True
                 else:
                     logging.debug(f"Model '{model_name}' -> '{model_id}' rejected (cloud model, no OpenRouter)")
-                return False
+                    return False
 
         # Handle version tags for unknown models (e.g., "my-model:latest")
         clean_model_name = model_name

@@ -41,7 +41,8 @@ class AnalyzeTool(BaseTool):
             "Supports both individual files and entire directories. "
             "Use this when you need to analyze files, examine code, or understand specific aspects of a codebase. "
             "Perfect for: codebase exploration, dependency analysis, pattern detection. "
-            "Always uses file paths for clean terminal output."
+            "Always uses file paths for clean terminal output. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:

@@ -49,7 +49,8 @@ class DebugIssueTool(BaseTool):
             "code files as absolute paths. The more context, the better the debugging analysis. "
             "Choose thinking_mode based on issue complexity: 'low' for simple errors, "
             "'medium' for standard debugging (default), 'high' for complex system issues, "
-            "'max' for extremely challenging bugs requiring deepest analysis."
+            "'max' for extremely challenging bugs requiring deepest analysis. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:

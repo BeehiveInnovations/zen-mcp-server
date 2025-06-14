@@ -99,7 +99,8 @@ class Precommit(BaseTool):
             "whenever the user mentions committing or when changes are complete. "
             "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
             "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
-            "'max' for critical releases or when reviewing extensive changes across multiple systems."
+            "'max' for critical releases or when reviewing extensive changes across multiple systems. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:

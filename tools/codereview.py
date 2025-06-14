@@ -78,7 +78,8 @@ class CodeReviewTool(BaseTool):
             "Supports focused reviews: security, performance, or quick checks. "
             "Choose thinking_mode based on review scope: 'low' for small code snippets, "
             "'medium' for standard files/modules (default), 'high' for complex systems/architectures, "
-            "'max' for critical security audits or large codebases requiring deepest analysis."
+            "'max' for critical security audits or large codebases requiring deepest analysis. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:

@@ -84,7 +84,7 @@ isort .
 
 ## What Each Test Suite Covers
 
-### Unit Tests (256 tests)
+### Unit Tests
 Test isolated components and functions:
 - **Provider functionality**: Model initialization, API interactions, capability checks
 - **Tool operations**: All MCP tools (chat, analyze, debug, etc.)
@@ -92,7 +92,7 @@ Test isolated components and functions:
 - **File handling**: Path validation, token limits, deduplication
 - **Auto mode**: Model selection logic and fallback behavior
 
-### Simulator Tests (14 tests)
+### Simulator Tests
 Validate real-world usage scenarios by simulating actual Claude prompts:
 - **Basic conversations**: Multi-turn chat functionality with real prompts
 - **Cross-tool continuation**: Context preservation across different tools

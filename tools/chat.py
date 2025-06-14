@@ -43,7 +43,8 @@ class ChatTool(BaseTool):
             "collaborative brainstorming, validating your checklists and approaches, exploring alternatives. "
             "Also great for: explanations, comparisons, general development questions. "
             "Use this when you want to ask questions, brainstorm ideas, get opinions, discuss topics, "
-            "share your thinking, or need explanations about concepts and approaches."
+            "share your thinking, or need explanations about concepts and approaches. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:

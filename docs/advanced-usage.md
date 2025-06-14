@@ -84,6 +84,9 @@ OPENAI_ALLOWED_MODELS=o4-mini,o3-mini
 # Only allow specific Gemini models  
 GOOGLE_ALLOWED_MODELS=flash
 
+# Only allow specific OpenRouter models
+OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
+
 # Use shorthand names or full model names
 OPENAI_ALLOWED_MODELS=mini,o3-mini  # mini = o4-mini
 ```
@@ -99,17 +102,21 @@ OPENAI_ALLOWED_MODELS=mini,o3-mini  # mini = o4-mini
 # Cost control - only cheap models
 OPENAI_ALLOWED_MODELS=o4-mini
 GOOGLE_ALLOWED_MODELS=flash
+OPENROUTER_ALLOWED_MODELS=haiku,sonnet
 
 # Single model per provider
 OPENAI_ALLOWED_MODELS=o4-mini
 GOOGLE_ALLOWED_MODELS=pro
+OPENROUTER_ALLOWED_MODELS=opus
 ```
 
 **Notes:**
 - Applies to all usage including auto mode
 - Case-insensitive, whitespace tolerant
 - Server warns about typos at startup
-- Only affects native providers (not OpenRouter/Custom)
+- `OPENAI_ALLOWED_MODELS` and `GOOGLE_ALLOWED_MODELS` only affect native providers
+- `OPENROUTER_ALLOWED_MODELS` affects OpenRouter models accessed via custom provider (where `is_custom: false` in custom_models.json)
+- Custom local models (`is_custom: true`) are not affected by any restrictions
 
 ## Thinking Modes
 

@@ -47,7 +47,8 @@ class ThinkDeepTool(BaseTool):
             "IMPORTANT: Choose the appropriate thinking_mode based on task complexity - "
             "'low' for quick analysis, 'medium' for standard problems, 'high' for complex issues (default), "
             "'max' for extremely complex challenges requiring deepest analysis. "
-            "When in doubt, err on the side of a higher mode for truly deep thought and evaluation."
+            "When in doubt, err on the side of a higher mode for truly deep thought and evaluation. "
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
