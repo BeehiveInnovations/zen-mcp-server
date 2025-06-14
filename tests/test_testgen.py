@@ -282,11 +282,13 @@ class TestComprehensive(unittest.TestCase):
         raw_response = "Generated test cases with edge cases"
         formatted = tool.format_response(raw_response, request)
 
-        # Check formatting includes next steps
+        # Check formatting includes new action-oriented next steps
         assert raw_response in formatted
-        assert "**Next Steps:**" in formatted
-        assert "Create and save the test files" in formatted
-        assert "Run the tests" in formatted
+        assert "IMMEDIATE ACTION REQUIRED" in formatted
+        assert "ULTRATHINK" in formatted
+        assert "CREATE" in formatted
+        assert "VALIDATE BY EXECUTION" in formatted
+        assert "MANDATORY" in formatted
 
     @pytest.mark.asyncio
     async def test_error_handling_invalid_files(self, tool):
@@ -379,3 +381,98 @@ class TestComprehensive(unittest.TestCase):
             # Should not contain web search instructions
             assert "WEB SEARCH CAPABILITY" not in prompt
             assert "web search" not in prompt.lower()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_file_deduplication(self, tool, temp_files):
+        """Test that duplicate files are removed from code files when they appear in test_examples"""
+        # Create a scenario where the same file appears in both files and test_examples
+        duplicate_file = temp_files["code_file"]
+
+        request = TestGenRequest(
+            files=[duplicate_file, temp_files["large_test"]],  # code_file appears in both
+            prompt="Generate tests",
+            test_examples=[temp_files["small_test"], duplicate_file],  # code_file also here
+        )
+
+        # Track the actual files passed to _prepare_file_content_for_prompt
+        captured_calls = []
+
+        def capture_prepare_calls(files, *args, **kwargs):
+            captured_calls.append(("prepare", files))
+            return "mocked content"
+
+        with patch.object(tool, "_prepare_file_content_for_prompt", side_effect=capture_prepare_calls):
+            await tool.prepare_prompt(request)
+
+            # Should have been called twice: once for test examples, once for code files
+            assert len(captured_calls) == 2
+
+            # First call should be for test examples processing (via _process_test_examples)
+            captured_calls[0][1]
+            # Second call should be for deduplicated code files
+            code_files = captured_calls[1][1]
+
+            # duplicate_file should NOT be in code files (removed due to duplication)
+            assert duplicate_file not in code_files
+            # temp_files["large_test"] should still be there (not duplicated)
+            assert temp_files["large_test"] in code_files
+
+    @pytest.mark.asyncio
+    async def test_no_deduplication_when_no_test_examples(self, tool, temp_files):
+        """Test that no deduplication occurs when test_examples is None/empty"""
+        request = TestGenRequest(
+            files=[temp_files["code_file"], temp_files["large_test"]],
+            prompt="Generate tests",
+            # No test_examples
+        )
+
+        with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare:
+            mock_prepare.return_value = "mocked content"
+
+            await tool.prepare_prompt(request)
+
+            # Should only be called once (for code files, no test examples)
+            assert mock_prepare.call_count == 1
+
+            # All original files should be passed through
+            code_files_call = mock_prepare.call_args_list[0]
+            code_files = code_files_call[0][0]
+            assert temp_files["code_file"] in code_files
+            assert temp_files["large_test"] in code_files
+
+    @pytest.mark.asyncio
+    async def test_path_normalization_in_deduplication(self, tool, temp_files):
+        """Test that path normalization works correctly for deduplication"""
+        import os
+
+        # Create variants of the same path (with and without normalization)
+        base_file = temp_files["code_file"]
+        # Add some path variations that should normalize to the same file
+        variant_path = os.path.join(os.path.dirname(base_file), ".", os.path.basename(base_file))
+
+        request = TestGenRequest(
+            files=[variant_path, temp_files["large_test"]],  # variant path in files
+            prompt="Generate tests",
+            test_examples=[base_file],  # base path in test_examples
+        )
+
+        # Track the actual files passed to _prepare_file_content_for_prompt
+        captured_calls = []
+
+        def capture_prepare_calls(files, *args, **kwargs):
+            captured_calls.append(("prepare", files))
+            return "mocked content"
+
+        with patch.object(tool, "_prepare_file_content_for_prompt", side_effect=capture_prepare_calls):
+            await tool.prepare_prompt(request)
+
+            # Should have been called twice: once for test examples, once for code files
+            assert len(captured_calls) == 2
+
+            # Second call should be for code files
+            code_files = captured_calls[1][1]
+
+            # variant_path should be removed due to normalization matching base_file
+            assert variant_path not in code_files
+            # large_test should still be there
+            assert temp_files["large_test"] in code_files

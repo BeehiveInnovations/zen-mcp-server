@@ -325,6 +325,25 @@ class TestGenTool(BaseTool):
             else:
                 logger.info("[TESTGEN] No test examples content after processing")
 
+        # Remove files that appear in both 'files' and 'test_examples' to avoid duplicate embedding
+        # Files in test_examples take precedence as they're used for pattern reference
+        code_files_to_process = request.files.copy()
+        if request.test_examples:
+            # Normalize paths for comparison (resolve any relative paths, handle case sensitivity)
+            test_example_set = {os.path.normpath(os.path.abspath(f)) for f in request.test_examples}
+            original_count = len(code_files_to_process)
+
+            code_files_to_process = [
+                f for f in code_files_to_process if os.path.normpath(os.path.abspath(f)) not in test_example_set
+            ]
+
+            duplicates_removed = original_count - len(code_files_to_process)
+            if duplicates_removed > 0:
+                logger.info(
+                    f"[TESTGEN] Removed {duplicates_removed} duplicate files from code files list "
+                    f"(already included in test examples for pattern reference)"
+                )
+
         # Calculate remaining tokens for main code after test examples
         if test_examples_content and available_tokens:
             from utils.token_utils import estimate_tokens
@@ -341,10 +360,10 @@ class TestGenTool(BaseTool):
                     f"[TESTGEN] Token allocation: {remaining_tokens:,} tokens available for code files (no test examples)"
                 )
 
-        # Use centralized file processing logic for main code files
-        logger.debug(f"[TESTGEN] Preparing {len(request.files)} code files for analysis")
+        # Use centralized file processing logic for main code files (after deduplication)
+        logger.debug(f"[TESTGEN] Preparing {len(code_files_to_process)} code files for analysis")
         code_content = self._prepare_file_content_for_prompt(
-            request.files, continuation_id, "Code to test", max_tokens=remaining_tokens, reserve_tokens=2000
+            code_files_to_process, continuation_id, "Code to test", max_tokens=remaining_tokens, reserve_tokens=2000
         )
 
         if code_content:
@@ -417,18 +436,41 @@ class TestGenTool(BaseTool):
 
 ---
 
-**Next Steps:**
+# IMMEDIATE ACTION REQUIRED
 
-Claude must now:
+Claude, you are now in EXECUTION MODE. Take immediate action:
 
-1. **Create and save the test files** - Write the generated tests to appropriate test files in your project structure
+## Step 1: ULTRATHINK & CREATE TESTS
+ULTRATHINK while creating these tests. Verify EVERY code reference, import, function name, and logic path is
+100% accurate before saving.
 
-2. **Display to the user** - Show each new test file/function created with a brief line explaining what it covers
+- **CREATE** all test files in the correct project structure
+- **SAVE** each test with proper naming conventions
+- **VALIDATE** all imports, references, and dependencies are correct as required by the current framework
 
-3. **Install any missing test dependencies** - Set up required testing frameworks if not already available
+## Step 2: DISPLAY RESULTS TO USER
+After creating each test file, show the user:
+```
+✅ Created: path/to/test_file.py
+   - test_function_name(): Brief description of what it tests
+   - test_another_function(): Brief description
+   - [Total: X test functions]
+```
 
-4. **Run the tests** - Execute the test suite to verify functionality and fix any issues
+## Step 3: VALIDATE BY EXECUTION
+**MANDATORY**: Run the tests immediately to confirm they work:
+- Install any missing dependencies first
+- Execute the test suite
+- Fix any failures or errors
+- Confirm 100% pass rate
 
-5. **Integrate the tests** - Ensure tests are properly connected to your existing test infrastructure
+## Step 4: INTEGRATION VERIFICATION
+- Verify tests integrate with existing test infrastructure
+- Confirm test discovery works
+- Validate test naming and organization
 
-The tests are ready for immediate implementation and integration into your codebase."""
+## Step 5: MOVE TO NEXT ACTION
+Once tests are confirmed working, immediately proceed to the next logical step for the project.
+
+**CRITICAL**: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work. 
+Take full ownership of the testing implementation and move to your next work."""
