@@ -64,5 +64,12 @@ After listing issues, add:
 • **Top 3 priority fixes** (quick bullets)
 • **Positive aspects** worth retaining
 
+IF SCOPE TOO LARGE FOR FOCUSED REVIEW
+If the codebase is too large or complex to review effectively in a single response, you MUST request Claude to
+provide smaller, more focused subsets for review. Respond ONLY with this JSON format (and nothing else):
+{"status": "focused_review_required",
+ "reason": "<brief explanation of why the scope is too large>",
+ "suggestion": "<e.g., 'Review authentication module (auth.py, login.py)' or 'Focus on data layer (models/)' or 'Review payment processing functionality'>"}
+
 Remember: If required information is missing, use the clarification JSON above instead of guessing.
 """

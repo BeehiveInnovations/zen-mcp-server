@@ -117,8 +117,6 @@ try:
 
     # Also keep a size-based rotation as backup (100MB max per file)
     # This prevents any single day's log from growing too large
-    from logging.handlers import RotatingFileHandler
-
     size_handler = RotatingFileHandler(
         "/tmp/mcp_server_overflow.log", maxBytes=100 * 1024 * 1024, backupCount=3  # 100MB
     )
@@ -328,7 +326,7 @@ async def handle_list_tools() -> list[Tool]:
     tools.extend(
         [
             Tool(
-                name="get_version",
+                name="version",
                 description=(
                     "VERSION & CONFIGURATION - Get server version, configuration details, "
                     "and list of available tools. Useful for debugging and understanding capabilities."
@@ -409,9 +407,9 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         return result
 
     # Route to utility tools that provide server information
-    elif name == "get_version":
+    elif name == "version":
         logger.info(f"Executing utility tool '{name}'")
-        result = await handle_get_version()
+        result = await handle_version()
         logger.info(f"Utility tool '{name}' execution completed")
         return result
 
@@ -611,7 +609,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     return enhanced_arguments
 
 
-async def handle_get_version() -> list[TextContent]:
+async def handle_version() -> list[TextContent]:
     """
     Get comprehensive version and configuration information about the server.
 
@@ -635,7 +633,7 @@ async def handle_get_version() -> list[TextContent]:
         "max_context_tokens": "Dynamic (model-specific)",
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "server_started": datetime.now().isoformat(),
-        "available_tools": list(TOOLS.keys()) + ["get_version"],
+        "available_tools": list(TOOLS.keys()) + ["version"],
     }
 
     # Check configured providers
@@ -671,7 +669,7 @@ Available Tools:
 For updates, visit: https://github.com/BeehiveInnovations/zen-mcp-server"""
 
     # Create standardized tool output
-    tool_output = ToolOutput(status="success", content=text, content_type="text", metadata={"tool_name": "get_version"})
+    tool_output = ToolOutput(status="success", content=text, content_type="text", metadata={"tool_name": "version"})
 
     return [TextContent(type="text", text=tool_output.model_dump_json())]
 

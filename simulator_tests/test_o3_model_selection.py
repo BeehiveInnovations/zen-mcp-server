@@ -182,7 +182,7 @@ def multiply(x, y):
             openai_model_usage = len(openai_model_logs) >= 3  # Should see 3 model usage logs
             openai_responses_received = len(openai_response_logs) >= 3  # Should see 3 responses
             chat_calls_to_openai = len(chat_openai_logs) >= 2  # Should see 2 chat calls (o3 + o3-mini)
-            codereview_calls_to_openai = len(codereview_openai_logs) >= 1  # Should see 1 codereview call
+            codereview_calls_to_openai = len(codereview_openai_logs) >= 1  # Should see 1 codereview call (o3)
 
             self.logger.info(f"   OpenAI API call logs: {len(openai_api_logs)}")
             self.logger.info(f"   OpenAI model usage logs: {len(openai_model_logs)}")

@@ -37,7 +37,7 @@ from utils.conversation_memory import (
 )
 from utils.file_utils import read_file_content, read_files, translate_path_for_environment
 
-from .models import ClarificationRequest, ContinuationOffer, ToolOutput
+from .models import SPECIAL_STATUS_MODELS, ContinuationOffer, ToolOutput
 
 logger = logging.getLogger(__name__)
 
@@ -1183,31 +1183,43 @@ When recommending searches, be specific about what information you need and why 
         logger = logging.getLogger(f"tools.{self.name}")
 
         try:
-            # Try to parse as JSON to check for clarification requests
+            # Try to parse as JSON to check for special status requests
             potential_json = json.loads(raw_text.strip())
 
-            if isinstance(potential_json, dict) and potential_json.get("status") == "clarification_required":
-                # Validate the clarification request structure
-                clarification = ClarificationRequest(**potential_json)
-                logger.debug(f"{self.name} tool requested clarification: {clarification.question}")
-                # Extract model information for metadata
-                metadata = {
-                    "original_request": (request.model_dump() if hasattr(request, "model_dump") else str(request))
-                }
-                if model_info:
-                    model_name = model_info.get("model_name")
-                    if model_name:
-                        metadata["model_used"] = model_name
+            if isinstance(potential_json, dict) and "status" in potential_json:
+                status_key = potential_json.get("status")
+                status_model = SPECIAL_STATUS_MODELS.get(status_key)
 
-                return ToolOutput(
-                    status="clarification_required",
-                    content=clarification.model_dump_json(),
-                    content_type="json",
-                    metadata=metadata,
-                )
+                if status_model:
+                    try:
+                        # Use Pydantic for robust validation of the special status
+                        parsed_status = status_model.model_validate(potential_json)
+                        logger.debug(f"{self.name} tool detected special status: {status_key}")
+
+                        # Extract model information for metadata
+                        metadata = {
+                            "original_request": (
+                                request.model_dump() if hasattr(request, "model_dump") else str(request)
+                            )
+                        }
+                        if model_info:
+                            model_name = model_info.get("model_name")
+                            if model_name:
+                                metadata["model_used"] = model_name
+
+                        return ToolOutput(
+                            status=status_key,
+                            content=parsed_status.model_dump_json(),
+                            content_type="json",
+                            metadata=metadata,
+                        )
+
+                    except Exception as e:
+                        # Invalid payload for known status, log warning and continue as normal response
+                        logger.warning(f"Invalid {status_key} payload: {e}")
 
         except (json.JSONDecodeError, ValueError, TypeError):
-            # Not a JSON clarification request, treat as normal response
+            # Not a JSON special status request, treat as normal response
             pass
 
         # Normal text response - format using tool-specific formatting

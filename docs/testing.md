@@ -118,9 +118,39 @@ When contributing to this project:
    - Unit tests: `test_<feature>_<scenario>.py`
    - Simulator tests: `test_<tool>_<behavior>.py`
 
-4. **Before submitting PR**:
-   - Run all unit tests: `python -m pytest -xvs`
-   - Run relevant simulator tests
-   - Ensure all linting passes
+4. **Before submitting PR - Complete Validation Checklist**:
+   ```bash
+   # Activate virtual environment first as needed
+   source venv/bin/activate
+   
+   # Run all linting tools (must pass 100%)
+   ruff check .
+   black --check .
+   isort --check-only .
+   
+   # Auto-fix issues if needed
+   ruff check . --fix
+   black .
+   isort .
+   
+   # Run complete unit test suite (must pass 100%)
+   python -m pytest -xvs
+   
+   # Run simulator tests for tool changes
+   python communication_simulator_test.py
+   ```
 
-Remember: Tests are documentation. They show how features are intended to be used and help prevent regressions.
+5. **GitHub Actions Compliance**:
+   - **Every single test must pass** - we have zero tolerance for failing tests in CI
+   - All linting must pass cleanly (ruff, black, isort)
+   - Import sorting must be correct
+   - Virtual environment activation is required for consistent results
+   - Tests failing in GitHub Actions will result in PR rejection
+
+6. **Contribution Standards**:
+   - Follow the [PR template](../.github/pull_request_template.md) requirements exactly
+   - Check every box in the template checklist before submitting
+   - Include comprehensive tests for all new functionality
+   - Ensure backward compatibility unless explicitly breaking
+
+Remember: Tests are documentation. They show how features are intended to be used and help prevent regressions. **Quality over speed** - take the time to ensure everything passes locally before pushing.

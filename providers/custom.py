@@ -189,9 +189,6 @@ class CustomProvider(OpenAICompatibleProvider):
         """
         logging.debug(f"Custom provider validating model: '{model_name}'")
 
-        # If OpenRouter is available and this looks like a cloud model, defer to OpenRouter
-        openrouter_available = os.getenv("OPENROUTER_API_KEY") is not None
-
         # Try to resolve through registry first
         config = self._registry.resolve(model_name)
         if config:
@@ -201,23 +198,10 @@ class CustomProvider(OpenAICompatibleProvider):
                 logging.debug(f"Model '{model_name}' -> '{model_id}' validated via registry (custom model)")
                 return True
             else:
-                # This is a cloud/OpenRouter model - check restrictions if available
-                if openrouter_available:
-                    # Check if OpenRouter model is allowed by restrictions
-                    from utils.model_restrictions import get_restriction_service
-
-                    restriction_service = get_restriction_service()
-                    if not restriction_service.is_allowed(ProviderType.OPENROUTER, model_id, model_name):
-                        logging.debug(f"Model '{model_name}' -> '{model_id}' blocked by OpenRouter restrictions")
-                        return False
-
-                    logging.debug(
-                        f"Model '{model_name}' -> '{model_id}' validated via OpenRouter (passes restrictions)"
-                    )
-                    return True
-                else:
-                    logging.debug(f"Model '{model_name}' -> '{model_id}' rejected (cloud model, no OpenRouter)")
-                    return False
+                # This is a cloud/OpenRouter model - CustomProvider should NOT handle these
+                # Let OpenRouter provider handle them instead
+                logging.debug(f"Model '{model_name}' -> '{model_id}' rejected (cloud model, defer to OpenRouter)")
+                return False
 
         # Handle version tags for unknown models (e.g., "my-model:latest")
         clean_model_name = model_name

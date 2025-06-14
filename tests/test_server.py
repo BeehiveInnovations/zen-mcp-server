@@ -27,7 +27,7 @@ class TestServerTools:
         assert "chat" in tool_names
         assert "precommit" in tool_names
         assert "testgen" in tool_names
-        assert "get_version" in tool_names
+        assert "version" in tool_names
 
         # Should have exactly 8 tools (including testgen)
         assert len(tools) == 8
@@ -73,9 +73,9 @@ class TestServerTools:
         assert "Claude's Turn" in response_data["content"]
 
     @pytest.mark.asyncio
-    async def test_handle_get_version(self):
+    async def test_handle_version(self):
         """Test getting version info"""
-        result = await handle_call_tool("get_version", {})
+        result = await handle_call_tool("version", {})
         assert len(result) == 1
 
         response = result[0].text

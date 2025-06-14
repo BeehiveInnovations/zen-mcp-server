@@ -256,7 +256,7 @@ Just ask Claude naturally:
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
-- **Server info?** → `get_version` (version and configuration details)
+- **Server info?** → `version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
 
@@ -277,7 +277,7 @@ Just ask Claude naturally:
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`testgen`](#7-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
-8. [`get_version`](#8-get_version---server-information) - Get server version and configuration
+8. [`version`](#8-version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -332,6 +332,11 @@ with the best architecture for my project
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for security-critical code (worth the extra tokens) or `low` for quick style checks (saves ~6k tokens).
 
+**Model Recommendation:** This tool particularly benefits from Gemini Pro or Flash models due to their 1M context window, 
+which allows comprehensive analysis of large codebases. Claude's context limitations make it challenging to see the
+"big picture" in complex projects - this is a concrete example where utilizing a secondary model with larger context 
+provides significant value beyond just experimenting with different AI capabilities.
+
 #### Example Prompts:
 
 ```
@@ -349,6 +354,12 @@ I need an actionable plan but break it down into smaller quick-wins that we can 
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` or `max` for critical releases when thorough validation justifies the token cost.
+
+**Model Recommendation:** Pre-commit validation benefits significantly from models with
+extended context windows like Gemini Pro, which can analyze extensive changesets across 
+multiple files and repositories simultaneously. This comprehensive view enables detection of
+cross-file dependencies, architectural inconsistencies, and integration issues that might be
+missed when reviewing changes in isolation due to context constraints.
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/584adfa6-d252-49b4-b5b0-0cd6e97fb2c6" width="950">
@@ -429,6 +440,11 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 
 **Thinking Mode (Extended thinking models):** Default is `medium` (8,192 tokens). Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
 
+**Model Recommendation:** Test generation excels with extended reasoning models like Gemini Pro or O3, 
+which can analyze complex code paths, understand intricate dependencies, and identify comprehensive edge
+cases. The combination of large context windows and advanced reasoning enables generation of thorough test
+suites that cover realistic failure scenarios and integration points that shorter-context models might overlook.
+
 #### Example Prompts:
 
 **Basic Usage:**
@@ -447,7 +463,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
 - Specific code coverage - target specific functions/classes rather than testing everything
 
-### 8. `get_version` - Server Information
+### 8. `version` - Server Information
 ```
 "Get zen to show its version"
 ```
