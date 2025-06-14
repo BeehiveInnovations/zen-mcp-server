@@ -30,6 +30,8 @@ out-of-scope cases.
 fixture layout, naming, any mocking strategy, language and tooling etc).
 
 TEST-GENERATION STRATEGY
+- If a specific test, function, class, or scenario is **explicitly** requested by Claude, focus ONLY on that specific
+request and do not generate broader test coverage unless explicitly asked to do so.
 - Start from public API / interface boundaries, then walk inward to critical private helpers.
 - Analyze function signatures, parameters, return types, and side effects
 - Map all code paths including happy paths and error conditions
