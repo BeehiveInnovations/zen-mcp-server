@@ -33,7 +33,7 @@ and review into consideration to aid with its pre-commit review.
 > Zen is designed to only encourage Claude to talk to other models when necessary.  
 > **You're** the one who crafts the powerful prompt so that Claude brings in Gemini, Flash, O3 — or fly solo.  
 > You're the guide. The prompter. The puppeteer. 
-> ##### You are AI - **Actually Intelligent**.
+> ### You are AI - **Actually Intelligent**.
 
 ## Quick Navigation
 
