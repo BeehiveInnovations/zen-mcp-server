@@ -315,22 +315,28 @@ class TestClass:
                     is_valid_length = chain_length >= 2
 
                     # Try to identify which thread this is for better validation
-                    thread_description = "Unknown thread"
-                    if thread_id == continuation_id_a2:
-                        thread_description = "A2 (should be 2-thread chain)"
+                    thread_description = f"Thread {thread_id[:8]}"
+                    if thread_id == continuation_id_a1:
+                        thread_description = "A1 (original thread)"
+                        is_valid_length = chain_length == 1
+                    elif thread_id == continuation_id_a2:
+                        thread_description = "A2 (2-thread chain)"
                         is_valid_length = chain_length == 2
                     elif thread_id == continuation_id_a3:
-                        thread_description = "A3 (should be 3-thread chain)"
+                        thread_description = "A3 (3-thread chain)"
                         is_valid_length = chain_length == 3
+                    elif thread_id == continuation_id_b1:
+                        thread_description = "B1 (original thread)"
+                        is_valid_length = chain_length == 1
                     elif thread_id == continuation_id_b2:
-                        thread_description = "B2 (should be 2-thread chain)"
+                        thread_description = "B2 (2-thread chain)"
                         is_valid_length = chain_length == 2
                     elif thread_id == continuation_id_a1_branch:
-                        thread_description = "A1-Branch (should be 2-thread chain)"
+                        thread_description = "A1-Branch (2-thread chain)"
                         is_valid_length = chain_length == 2
 
                     traversal_validations.append(
-                        (f"{thread_description[:8]}... has valid chain length", is_valid_length)
+                        (f"{thread_description} has valid chain length", is_valid_length)
                     )
 
                 # Also validate we found at least one traversal (shows the system is working)
