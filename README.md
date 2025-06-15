@@ -228,7 +228,7 @@ Paste the above into `claude_desktop_config.json`. If you have several other MCP
 3. **Restart Claude Desktop**
 Completely quit and restart Claude Desktop for the changes to take effect.
 
-### 5. Start Using It!
+### 4. Start Using It!
 
 Just ask Claude naturally:
 - "Think deeper about this architecture design with zen" → Claude picks best model + `thinkdeep`
