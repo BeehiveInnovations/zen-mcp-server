@@ -105,6 +105,7 @@ class BaseTool(ABC):
         self.name = self.get_name()
         self.description = self.get_description()
         self.default_temperature = self.get_default_temperature()
+        # Tool initialization complete
 
     @abstractmethod
     def get_name(self) -> str:
@@ -169,14 +170,14 @@ class BaseTool(ABC):
         Returns:
             bool: True if model parameter should be required in the schema
         """
-        from config import DEFAULT_MODEL, IS_AUTO_MODE
+        from config import DEFAULT_MODEL
         from providers.registry import ModelProviderRegistry
 
         # Case 1: Explicit auto mode
-        if IS_AUTO_MODE:
+        if DEFAULT_MODEL.lower() == "auto":
             return True
 
-        # Case 2: Model not available
+        # Case 2: Model not available (fallback to auto mode)
         if DEFAULT_MODEL.lower() != "auto":
             provider = ModelProviderRegistry.get_provider_for_model(DEFAULT_MODEL)
             if not provider:

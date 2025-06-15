@@ -326,30 +326,3 @@ class TestSpecialStatusParsing:
         # Should fall back to normal response since validation failed
         assert result.status == "success"
         assert result.content_type == "text"
-
-    def test_more_refactor_required_parsing(self):
-        """Test that more_refactor_required status is parsed correctly"""
-        import json
-
-        json_response = {
-            "status": "more_refactor_required",
-            "message": "Large codebase requires extensive decomposition across 15 files. Continuing analysis for remaining modules.",
-        }
-
-        result = self.tool._parse_response(json.dumps(json_response), self.request)
-
-        assert result.status == "more_refactor_required"
-        assert result.content_type == "json"
-        parsed_content = json.loads(result.content)
-        assert parsed_content["status"] == "more_refactor_required"
-        assert "Large codebase requires extensive decomposition" in parsed_content["message"]
-
-    def test_more_refactor_required_missing_message(self):
-        """Test that more_refactor_required without required message field fails validation"""
-        response_json = '{"status": "more_refactor_required"}'
-
-        result = self.tool._parse_response(response_json, self.request)
-
-        # Should fall back to normal processing since validation failed (missing required field)
-        assert result.status == "success"
-        assert result.content_type == "text"

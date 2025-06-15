@@ -71,11 +71,10 @@ class CustomProvider(OpenAICompatibleProvider):
         # Initialize model registry (shared with OpenRouter for consistent aliases)
         if CustomProvider._registry is None:
             CustomProvider._registry = OpenRouterModelRegistry()
-
-        # Log loaded models and aliases
-        models = self._registry.list_models()
-        aliases = self._registry.list_aliases()
-        logging.info(f"Custom provider loaded {len(models)} models with {len(aliases)} aliases")
+            # Log loaded models and aliases only on first load
+            models = self._registry.list_models()
+            aliases = self._registry.list_aliases()
+            logging.info(f"Custom provider loaded {len(models)} models with {len(aliases)} aliases")
 
     def _resolve_model_name(self, model_name: str) -> str:
         """Resolve model aliases to actual model names.

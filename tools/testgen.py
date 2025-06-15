@@ -441,20 +441,18 @@ class TestGenTool(BaseTool):
 
 ---
 
-# IMMEDIATE NEXT ACTION
-
 Claude, you are now in EXECUTION MODE. Take immediate action:
 
-## Step 1: ULTRATHINK & CREATE TESTS
-ULTRATHINK while creating these tests. Verify EVERY code reference, import, function name, and logic path is
+## Step 1: THINK & CREATE TESTS
+ULTRATHINK while creating these in order to verify that every code reference, import, function name, and logic path is
 100% accurate before saving.
 
-- **CREATE** all test files in the correct project structure
-- **SAVE** each test with proper naming conventions
-- **VALIDATE** all imports, references, and dependencies are correct as required by the current framework
+- CREATE all test files in the correct project structure
+- SAVE each test using proper naming conventions
+- VALIDATE all imports, references, and dependencies are correct as required by the current framework / project / file
 
 ## Step 2: DISPLAY RESULTS TO USER
-After creating each test file, show the user:
+After creating each test file, MUST show the user:
 ```
 ✅ Created: path/to/test_file.py
    - test_function_name(): Brief description of what it tests
@@ -463,11 +461,11 @@ After creating each test file, show the user:
 ```
 
 ## Step 3: VALIDATE BY EXECUTION
-**MANDATORY**: Run the tests immediately to confirm they work:
-- Install any missing dependencies first
+CRITICAL: Run the tests immediately to confirm they work:
+- Install any missing dependencies first or request user to perform step if this cannot be automated
 - Execute the test suite
 - Fix any failures or errors
-- Confirm 100% pass rate
+- Confirm 100% pass rate. If there's a failure, re-iterate, go over each test, validate and understand why it's failing
 
 ## Step 4: INTEGRATION VERIFICATION
 - Verify tests integrate with existing test infrastructure
@@ -477,6 +475,6 @@ After creating each test file, show the user:
 ## Step 5: MOVE TO NEXT ACTION
 Once tests are confirmed working, immediately proceed to the next logical step for the project.
 
-**CRITICAL**: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work. Take full
-ownership of the testing implementation and move to your next work. If you were supplied a more_work_required request
-in the response above, you MUST honor it."""
+MANDATORY: Do NOT stop after generating - you MUST create, validate, run, and confirm the tests work and all of the
+steps listed above are carried out correctly. Take full ownership of the testing implementation and move to your
+next work. If you were supplied a more_work_required request in the response above, you MUST honor it."""

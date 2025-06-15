@@ -45,11 +45,10 @@ class OpenRouterProvider(OpenAICompatibleProvider):
         # Initialize model registry
         if OpenRouterProvider._registry is None:
             OpenRouterProvider._registry = OpenRouterModelRegistry()
-
-        # Log loaded models and aliases
-        models = self._registry.list_models()
-        aliases = self._registry.list_aliases()
-        logging.info(f"OpenRouter loaded {len(models)} models with {len(aliases)} aliases")
+            # Log loaded models and aliases only on first load
+            models = self._registry.list_models()
+            aliases = self._registry.list_aliases()
+            logging.info(f"OpenRouter loaded {len(models)} models with {len(aliases)} aliases")
 
     def _parse_allowed_models(self) -> None:
         """Override to disable environment-based allow-list.

@@ -24,7 +24,7 @@ DEFAULT_MODEL=auto  # Claude picks the best model automatically
 
 # API Keys (at least one required)
 GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, O4-mini, O4-mini-high
 ```
 
 **How Auto Mode Works:**

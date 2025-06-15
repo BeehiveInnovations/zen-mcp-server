@@ -563,10 +563,10 @@ class RefactorTool(BaseTool):
 
     def format_response(self, response: str, request: RefactorRequest, model_info: Optional[dict] = None) -> str:
         """
-        Format the refactoring response.
+        Format the refactoring response with immediate implementation directives.
 
         The base tool handles structured response validation via SPECIAL_STATUS_MODELS,
-        so this method focuses on presentation formatting.
+        so this method focuses on ensuring Claude immediately implements the refactorings.
 
         Args:
             response: The raw refactoring analysis from the model
@@ -574,78 +574,52 @@ class RefactorTool(BaseTool):
             model_info: Optional dict with model metadata
 
         Returns:
-            str: The response (base tool will handle structured parsing)
+            str: The response with clear implementation directives
         """
         logger.debug(f"[REFACTOR] Formatting response for {request.refactor_type} refactoring")
 
-        # Check if this is a more_refactor_required response
+        # Check if this response indicates more refactoring is required
         is_more_required = False
         try:
             import json
 
             parsed = json.loads(response)
-            if isinstance(parsed, dict) and parsed.get("status") == "more_refactor_required":
+            if isinstance(parsed, dict) and parsed.get("more_refactor_required") is True:
                 is_more_required = True
         except (json.JSONDecodeError, ValueError):
-            # Not JSON or not more_refactor_required
+            # Not JSON or parsing error
             pass
 
-        # Always add implementation instructions for any refactoring response
-        step4_title = (
-            "## Step 4: CONTINUE WITH MORE REFACTORING" if is_more_required else "## Step 4: COMPLETE REFACTORING"
-        )
-        step4_intro = (
-            "Once all refactorings above are implemented and verified working, IMMEDIATELY continue the analysis:"
-            if is_more_required
-            else "Once all refactorings above are implemented and verified working:"
-        )
-        step4_action = (
-            "Use the refactor tool again with the SAME parameters but include the continuation_id from this response to get additional refactoring opportunities. The model will provide more refactoring suggestions building on what was already completed."
-            if is_more_required
-            else "Review all changes made and ensure the codebase is cleaner, more maintainable, and follows best practices."
-        )
-        critical_msg = (
-            "apply all refactorings, validate they work, then immediately continue with more refactoring analysis. Take full ownership of the refactoring implementation and continue until all opportunities are addressed."
-            if is_more_required
-            else "create, modify, and reorganize files as needed. Take full ownership of the refactoring implementation and ensure all changes work correctly."
-        )
+        continuation_instruction = ""
+        if is_more_required:
+            continuation_instruction = """
 
+AFTER IMPLEMENTING ALL ABOVE: Use the refactor tool again with the SAME parameters but include the continuation_id from this response to get additional refactoring opportunities."""
+        # endif
+
+        # Return response + steps
         return f"""{response}
 
 ---
 
-# IMMEDIATE NEXT ACTION
+MANDATORY NEXT STEPS:
 
-Claude, you are now in EXECUTION MODE. Take immediate action:
+Start executing the refactoring plan immediately:
+1. INFORM USER by displaying a brief summary of required refactorings
+2. CREATE A CHECKLIST of each refactoring to keep a record of what is to change, how and why
+3. IMPLEMENT each refactoring opportunity immediately - think carefully about each change as you implement
+4. CREATE new files as needed where decomposition is suggested
+5. MODIFY existing files to apply improvements as needed
+6. UPDATE all imports, references, and dependencies as needed
+7. VERIFY each change works before moving to the next
 
-## Step 1: ULTRATHINK & IMPLEMENT REFACTORINGS
-ULTRATHINK while implementing these refactorings. Verify EVERY code reference, import, dependency, and access modifier is 100% accurate before making changes.
+After each refactoring is implemented:
+Show: `IMPLEMENTED: [brief description] - Files: [list]` to the user
 
-- **IMPLEMENT** all refactoring opportunities listed above in priority order
-- **CREATE** any new files needed for decomposition or reorganization
-- **MOVE** code to appropriate locations following the refactoring plan
-- **UPDATE** all imports and references to maintain functionality
-- **VALIDATE** that no functionality is broken by the changes
+IMPORTANT:
+- DO NOT SKIP any refactorings - implement them all one after another
+- VALIDATE each change doesn't break functionality
+- UPDATE any imports and references properly and think and search for any other reference that may need updating
+- TEST if possible to ensure changes work where tests are available
 
-## Step 2: VERIFY CHANGES WORK
-**MANDATORY**: After each refactoring step:
-- Ensure all imports are updated correctly
-- Verify access modifiers (private/public/internal) still work
-- Check that all references to moved code are updated
-- Run any existing tests to confirm nothing is broken
-- Fix any issues that arise from the refactoring
-
-## Step 3: DISPLAY RESULTS TO USER
-After implementing each refactoring, show the user:
-```
-✅ Refactored: [refactor-id] - Brief description
-   - Files modified: [list of files]
-   - [Key change summary]
-```
-
-{step4_title}
-{step4_intro}
-
-{step4_action}
-
-**CRITICAL**: Do NOT stop after generating the analysis - you MUST {critical_msg}"""
+MANDATORY: MUST start executing the refactor plan and follow each step listed above{continuation_instruction}"""

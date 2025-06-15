@@ -40,7 +40,6 @@ class ToolOutput(BaseModel):
         "focused_review_required",
         "test_sample_needed",
         "more_tests_required",
-        "more_refactor_required",
         "refactor_analysis_complete",
         "resend_prompt",
         "continuation_available",
@@ -99,13 +98,6 @@ class MoreTestsRequired(BaseModel):
     pending_tests: str = Field(..., description="List of pending tests to be generated")
 
 
-class MoreRefactorRequired(BaseModel):
-    """Request for continuation when refactoring requires extensive changes"""
-
-    status: Literal["more_refactor_required"] = "more_refactor_required"
-    message: str = Field(..., description="Explanation of why more refactoring is needed and what remains to be done")
-
-
 class RefactorOpportunity(BaseModel):
     """A single refactoring opportunity with precise targeting information"""
 
@@ -156,7 +148,6 @@ SPECIAL_STATUS_MODELS = {
     "focused_review_required": FocusedReviewRequired,
     "test_sample_needed": TestSampleNeeded,
     "more_tests_required": MoreTestsRequired,
-    "more_refactor_required": MoreRefactorRequired,
     "refactor_analysis_complete": RefactorAnalysisComplete,
 }
 

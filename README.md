@@ -455,10 +455,16 @@ constraints.
 
 #### Example Prompts:
 
-**Basic Usage:**
 ```
 "Use gemini pro to decompose my_crazy_big_class.m into smaller extensions"
-"Get gemini pro to identify code smells in the authentication module"
+"Using zen's refactor decompose the all_in_one_sync_code.swift into maintainable extensions"
+```
+
+Example of a **powerful prompt** to get the best ouf of both Claude + Flash's 1M Context: 
+```
+"First, think about how the authentication module works, find related classes and find
+ any code smells, then using zen's refactor ask flash to confirm your findings but ask it to 
+ find additional code smells and any other quick-wins and then fix these issues"
 ```
 
 **Key Features:**

@@ -78,7 +78,33 @@ class OpenRouterModelRegistry:
         try:
             configs = self._read_config()
             self._build_maps(configs)
-            logging.info(f"Loaded {len(self.model_map)} OpenRouter models with {len(self.alias_map)} aliases")
+            caller_info = ""
+            try:
+                import inspect
+
+                caller_frame = inspect.currentframe().f_back
+                if caller_frame:
+                    caller_name = caller_frame.f_code.co_name
+                    caller_file = (
+                        caller_frame.f_code.co_filename.split("/")[-1] if caller_frame.f_code.co_filename else "unknown"
+                    )
+                    # Look for tool context
+                    while caller_frame:
+                        frame_locals = caller_frame.f_locals
+                        if "self" in frame_locals and hasattr(frame_locals["self"], "get_name"):
+                            tool_name = frame_locals["self"].get_name()
+                            caller_info = f" (called from {tool_name} tool)"
+                            break
+                        caller_frame = caller_frame.f_back
+                    if not caller_info:
+                        caller_info = f" (called from {caller_name} in {caller_file})"
+            except Exception:
+                # If frame inspection fails, just continue without caller info
+                pass
+
+            logging.debug(
+                f"Loaded {len(self.model_map)} OpenRouter models with {len(self.alias_map)} aliases{caller_info}"
+            )
         except ValueError as e:
             # Re-raise ValueError only for duplicate aliases (critical config errors)
             logging.error(f"Failed to load OpenRouter model configuration: {e}")

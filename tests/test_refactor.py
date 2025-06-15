@@ -225,9 +225,9 @@ class TestRefactorTool:
 
         # Should contain the original response plus implementation instructions
         assert valid_json_response in formatted
-        assert "IMMEDIATE NEXT ACTION" in formatted
-        assert "ULTRATHINK & IMPLEMENT REFACTORINGS" in formatted
-        assert "Step 4: COMPLETE REFACTORING" in formatted  # Not more_required, so should be COMPLETE
+        assert "MANDATORY NEXT STEPS" in formatted
+        assert "Start executing the refactoring plan immediately" in formatted
+        assert "MANDATORY: MUST start executing the refactor plan" in formatted
 
     def test_format_response_invalid_json(self, refactor_tool):
         """Test response formatting with invalid JSON - now handled by base tool"""
@@ -241,8 +241,8 @@ class TestRefactorTool:
 
         # Should contain the original response plus implementation instructions
         assert invalid_response in formatted
-        assert "IMMEDIATE NEXT ACTION" in formatted
-        assert "ULTRATHINK & IMPLEMENT REFACTORINGS" in formatted
+        assert "MANDATORY NEXT STEPS" in formatted
+        assert "Start executing the refactoring plan immediately" in formatted
 
     def test_model_category(self, refactor_tool):
         """Test that the refactor tool uses EXTENDED_REASONING category"""
@@ -259,11 +259,39 @@ class TestRefactorTool:
         assert temp == TEMPERATURE_ANALYTICAL
 
     def test_format_response_more_refactor_required(self, refactor_tool):
-        """Test that format_response handles more_refactor_required status"""
+        """Test that format_response handles more_refactor_required field"""
         more_refactor_response = json.dumps(
             {
-                "status": "more_refactor_required",
-                "message": "Large codebase requires extensive refactoring across multiple files",
+                "status": "refactor_analysis_complete",
+                "refactor_opportunities": [
+                    {
+                        "id": "refactor-001",
+                        "type": "decompose",
+                        "severity": "critical",
+                        "file": "/test/file.py",
+                        "start_line": 1,
+                        "end_line": 10,
+                        "context_start_text": "def test_function():",
+                        "context_end_text": "    return True",
+                        "issue": "Function too large",
+                        "suggestion": "Break into smaller functions",
+                        "rationale": "Improves maintainability",
+                        "code_to_replace": "original code",
+                        "replacement_code_snippet": "refactored code",
+                        "new_code_snippets": [],
+                    }
+                ],
+                "priority_sequence": ["refactor-001"],
+                "next_actions_for_claude": [
+                    {
+                        "action_type": "EXTRACT_METHOD",
+                        "target_file": "/test/file.py",
+                        "source_lines": "1-10",
+                        "description": "Extract method from large function",
+                    }
+                ],
+                "more_refactor_required": True,
+                "continuation_message": "Large codebase requires extensive refactoring across multiple files",
             }
         )
 
@@ -275,12 +303,11 @@ class TestRefactorTool:
 
         # Should contain the original response plus continuation instructions
         assert more_refactor_response in formatted
-        assert "IMMEDIATE NEXT ACTION" in formatted
-        assert "ULTRATHINK & IMPLEMENT REFACTORINGS" in formatted
-        assert "VERIFY CHANGES WORK" in formatted
-        assert "Step 4: CONTINUE WITH MORE REFACTORING" in formatted  # more_required, so should be CONTINUE
+        assert "MANDATORY NEXT STEPS" in formatted
+        assert "Start executing the refactoring plan immediately" in formatted
+        assert "MANDATORY: MUST start executing the refactor plan" in formatted
+        assert "AFTER IMPLEMENTING ALL ABOVE" in formatted  # Special instruction for more_refactor_required
         assert "continuation_id" in formatted
-        assert "immediately continue with more refactoring analysis" in formatted
 
 
 class TestFileUtilsLineNumbers:
