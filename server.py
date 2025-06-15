@@ -240,16 +240,7 @@ def configure_providers():
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
         if azure_openai_key and azure_openai_endpoint:
-            # Factory function for Azure OpenAI provider with additional required parameters
-            def azure_openai_provider_factory(api_key=None):
-                endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-                api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
-                return AzureOpenAIProvider(
-                    api_key=api_key or azure_openai_key,
-                    azure_endpoint=endpoint,
-                    api_version=api_version
-                )
-            ModelProviderRegistry.register_provider(ProviderType.AZURE_OPENAI, azure_openai_provider_factory)
+            ModelProviderRegistry.register_provider(ProviderType.AZURE_OPENAI, AzureOpenAIProvider)
 
     # 2. Custom provider second (for local/private models)
     if has_custom:

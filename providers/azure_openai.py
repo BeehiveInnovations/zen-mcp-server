@@ -1,6 +1,7 @@
 """Azure OpenAI model provider implementation."""
 
 import logging
+import os
 from typing import Optional
 
 from openai import AzureOpenAI
@@ -63,18 +64,20 @@ class AzureOpenAIProvider(OpenAICompatibleProvider):
         "gpt4omini": "gpt-4o-mini",
     }
 
-    def __init__(self, api_key: str, azure_endpoint: str, api_version: str = "2024-02-01", **kwargs):
-        """Initialize Azure OpenAI provider with required Azure-specific parameters.
+    def __init__(self, api_key: str, **kwargs):
+        """Initialize Azure OpenAI provider.
 
         Args:
             api_key: Azure OpenAI API key
-            azure_endpoint: Azure OpenAI endpoint URL (e.g., https://your-resource.openai.azure.com/)
-            api_version: Azure OpenAI API version (default: 2024-02-01)
             **kwargs: Additional configuration options
         """
+        # Get Azure-specific configuration from environment
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+
         # Validate Azure endpoint first
         if not azure_endpoint:
-            raise ValueError("Azure OpenAI endpoint is required")
+            raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
 
         if not azure_endpoint.startswith("https://"):
             raise ValueError("Azure OpenAI endpoint must use HTTPS")
@@ -132,8 +135,10 @@ class AzureOpenAIProvider(OpenAICompatibleProvider):
             resolved_name = self._resolve_model_name(model_name)
 
             # For Azure OpenAI, we need deployment name, not model name
-            # If deployment_name is provided in kwargs, use it, otherwise use resolved_name
-            deployment_name = kwargs.get("deployment_name", resolved_name)
+            # Priority: kwargs > env var > resolved model name
+            deployment_name = (
+                kwargs.get("deployment_name") or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME") or resolved_name
+            )
 
             # Validate model before proceeding
             if not self.validate_model_name(model_name):
