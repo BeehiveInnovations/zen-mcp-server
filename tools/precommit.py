@@ -11,7 +11,6 @@ This provides comprehensive context for AI analysis - not a duplication bug.
 import os
 from typing import TYPE_CHECKING, Any, Literal, Optional
 
-from mcp.types import TextContent
 from pydantic import Field
 
 if TYPE_CHECKING:
@@ -23,7 +22,6 @@ from utils.git_utils import find_git_repositories, get_git_status, run_git_comma
 from utils.token_utils import estimate_tokens
 
 from .base import BaseTool, ToolRequest
-from .models import ToolOutput
 
 # Conservative fallback for token limits
 DEFAULT_CONTEXT_WINDOW = 200_000
@@ -201,21 +199,6 @@ class Precommit(BaseTool):
 
         return ToolModelCategory.EXTENDED_REASONING
 
-    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
-        """Override execute to check original_request size before processing"""
-        # First validate request
-        request_model = self.get_request_model()
-        request = request_model(**arguments)
-
-        # Check prompt size if provided
-        if request.prompt:
-            size_check = self.check_prompt_size(request.prompt)
-            if size_check:
-                return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
-
-        # Continue with normal execution
-        return await super().execute(arguments)
-
     async def prepare_prompt(self, request: PrecommitRequest) -> str:
         """Prepare the prompt with git diff information."""
         # Check for prompt.txt in files
@@ -228,6 +211,14 @@ class Precommit(BaseTool):
         # Update request files list
         if updated_files is not None:
             request.files = updated_files
+
+        # Check user input size at MCP transport boundary (before adding internal content)
+        user_content = request.prompt if request.prompt else ""
+        size_check = self.check_prompt_size(user_content)
+        if size_check:
+            from tools.models import ToolOutput
+
+            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
 
         # Translate the path and files if running in Docker
         translated_path = translate_path_for_environment(request.path)

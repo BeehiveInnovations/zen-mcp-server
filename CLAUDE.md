@@ -124,21 +124,26 @@ python communication_simulator_test.py --verbose
 python communication_simulator_test.py --rebuild
 ```
 
-#### Run Individual Simulator Tests
+#### Run Individual Simulator Tests (Recommended)
 ```bash
 # List all available tests
 python communication_simulator_test.py --list-tests
 
-# Run a specific test individually (with full Docker setup)
+# RECOMMENDED: Run tests individually for better isolation and debugging
 python communication_simulator_test.py --individual basic_conversation
 python communication_simulator_test.py --individual content_validation
 python communication_simulator_test.py --individual cross_tool_continuation
+python communication_simulator_test.py --individual logs_validation
+python communication_simulator_test.py --individual redis_validation
 
-# Run multiple specific tests
+# Run multiple specific tests (alternative approach)
 python communication_simulator_test.py --tests basic_conversation content_validation
 
-# Run individual test with verbose output
+# Run individual test with verbose output for debugging
 python communication_simulator_test.py --individual logs_validation --verbose
+
+# Individual tests provide full Docker setup and teardown per test
+# This ensures clean state and better error isolation
 ```
 
 Available simulator tests include:
@@ -146,16 +151,21 @@ Available simulator tests include:
 - `content_validation` - Content validation and duplicate detection
 - `per_tool_deduplication` - File deduplication for individual tools
 - `cross_tool_continuation` - Cross-tool conversation continuation scenarios
-- `cross_tool_comprehensive` - Comprehensive cross-tool integration testing
+- `cross_tool_comprehensive` - Comprehensive cross-tool file deduplication and continuation
+- `line_number_validation` - Line number handling validation across tools
 - `logs_validation` - Docker logs validation
 - `redis_validation` - Redis conversation memory validation
-- `model_thinking_config` - Model thinking configuration testing
-- `o3_model_selection` - O3 model selection and routing testing
-- `ollama_custom_url` - Ollama custom URL configuration testing
-- `openrouter_fallback` - OpenRouter fallback mechanism testing
-- `openrouter_models` - OpenRouter models availability testing
-- `token_allocation_validation` - Token allocation and limits validation
-- `conversation_chain_validation` - Conversation chain continuity validation
+- `model_thinking_config` - Model-specific thinking configuration behavior
+- `o3_model_selection` - O3 model selection and usage validation
+- `ollama_custom_url` - Ollama custom URL endpoint functionality
+- `openrouter_fallback` - OpenRouter fallback behavior when only provider
+- `openrouter_models` - OpenRouter model functionality and alias mapping
+- `token_allocation_validation` - Token allocation and conversation history validation
+- `testgen_validation` - TestGen tool validation with specific test function
+- `refactor_validation` - Refactor tool validation with codesmells
+- `conversation_chain_validation` - Conversation chain and threading validation
+
+**Note**: All simulator tests should be run individually for optimal testing and better error isolation.
 
 #### Run Unit Tests Only
 ```bash

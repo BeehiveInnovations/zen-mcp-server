@@ -4,7 +4,6 @@ ThinkDeep tool - Extended reasoning and problem-solving
 
 from typing import TYPE_CHECKING, Any, Optional
 
-from mcp.types import TextContent
 from pydantic import Field
 
 if TYPE_CHECKING:
@@ -14,7 +13,6 @@ from config import TEMPERATURE_CREATIVE
 from systemprompts import THINKDEEP_PROMPT
 
 from .base import BaseTool, ToolRequest
-from .models import ToolOutput
 
 
 class ThinkDeepRequest(ToolRequest):
@@ -121,20 +119,6 @@ class ThinkDeepTool(BaseTool):
     def get_request_model(self):
         return ThinkDeepRequest
 
-    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
-        """Override execute to check current_analysis size before processing"""
-        # First validate request
-        request_model = self.get_request_model()
-        request = request_model(**arguments)
-
-        # Check prompt size
-        size_check = self.check_prompt_size(request.prompt)
-        if size_check:
-            return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
-
-        # Continue with normal execution
-        return await super().execute(arguments)
-
     async def prepare_prompt(self, request: ThinkDeepRequest) -> str:
         """Prepare the full prompt for extended thinking"""
         # Check for prompt.txt in files
@@ -142,6 +126,13 @@ class ThinkDeepTool(BaseTool):
 
         # Use prompt.txt content if available, otherwise use the prompt field
         current_analysis = prompt_content if prompt_content else request.prompt
+
+        # Check user input size at MCP transport boundary (before adding internal content)
+        size_check = self.check_prompt_size(current_analysis)
+        if size_check:
+            from tools.models import ToolOutput
+
+            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
 
         # Update request files list
         if updated_files is not None:

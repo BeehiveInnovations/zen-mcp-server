@@ -862,16 +862,36 @@ When recommending searches, be specific about what information you need and why 
 
     def check_prompt_size(self, text: str) -> Optional[dict[str, Any]]:
         """
-        Check if a text field is too large for MCP's token limits.
+        Check if USER INPUT text is too large for MCP transport boundary.
+
+        IMPORTANT: This method should ONLY be used to validate user input that crosses
+        the Claude CLI ↔ MCP Server transport boundary. It should NOT be used to limit
+        internal MCP Server operations.
+
+        MCP Protocol Boundaries:
+        Claude CLI ←→ MCP Server ←→ External Model
+            ↑                              ↑
+        This limit applies here      This is NOT limited
 
         The MCP protocol has a combined request+response limit of ~25K tokens.
-        To ensure adequate space for responses, we limit prompt input to a
-        configurable character limit (default 50K chars ~= 10-12K tokens).
-        Larger prompts are handled by having Claude save them to a file,
-        bypassing MCP's token constraints while preserving response capacity.
+        To ensure adequate space for MCP Server → Claude CLI responses, we limit
+        user input to 50K characters (roughly ~10-12K tokens). Larger user prompts
+        are handled by having Claude save them to prompt.txt files, bypassing MCP's
+        transport constraints while preserving response capacity.
+
+        What should be checked with this method:
+        - request.prompt field (user input from Claude CLI)
+        - prompt.txt file content (alternative user input)
+        - Other direct user input fields
+
+        What should NOT be checked with this method:
+        - System prompts added internally
+        - File content embedded by tools
+        - Conversation history from Redis
+        - Complete prompts sent to external models
 
         Args:
-            text: The text to check
+            text: The user input text to check (NOT internal prompt content)
 
         Returns:
             Optional[Dict[str, Any]]: Response asking for file handling if too large, None otherwise
@@ -1152,6 +1172,12 @@ When recommending searches, be specific about what information you need and why 
             # Return error information in standardized format
             logger = logging.getLogger(f"tools.{self.name}")
             error_msg = str(e)
+
+            # Check if this is an MCP size check error from prepare_prompt
+            if error_msg.startswith("MCP_SIZE_CHECK:"):
+                logger.info(f"MCP prompt size limit exceeded in {self.name}")
+                tool_output_json = error_msg[15:]  # Remove "MCP_SIZE_CHECK:" prefix
+                return [TextContent(type="text", text=tool_output_json)]
 
             # Check if this is a 500 INTERNAL error that asks for retry
             if "500 INTERNAL" in error_msg and "Please retry" in error_msg:

@@ -14,9 +14,9 @@ import os
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "4.5.0"
+__version__ = "4.5.1"
 # Last update date in ISO format
-__updated__ = "2025-06-14"
+__updated__ = "2025-06-15"
 # Primary maintainer
 __author__ = "Fahad Gilani"
 
@@ -95,13 +95,40 @@ TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
 # Higher modes use more computational budget but provide deeper analysis
 DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "high")
 
-# MCP Protocol Limits
-# MCP_PROMPT_SIZE_LIMIT: Maximum character size for prompts sent directly through MCP
-# The MCP protocol has a combined request+response limit of ~25K tokens.
-# To ensure we have enough space for responses, we limit direct prompt input
-# to 50K characters (roughly ~10-12K tokens). Larger prompts must be sent
-# as files to bypass MCP's token constraints.
-MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters
+# MCP Protocol Transport Limits
+#
+# IMPORTANT: This limit ONLY applies to the Claude CLI ↔ MCP Server transport boundary.
+# It does NOT limit internal MCP Server operations like system prompts, file embeddings,
+# conversation history, or content sent to external models (Gemini/O3/OpenRouter).
+#
+# MCP Protocol Architecture:
+# Claude CLI ←→ MCP Server ←→ External Model (Gemini/O3/etc.)
+#     ↑                              ↑
+#     │                              │
+# MCP transport                Internal processing
+# (25K token limit)            (No MCP limit - can be 1M+ tokens)
+#
+# MCP_PROMPT_SIZE_LIMIT: Maximum character size for USER INPUT crossing MCP transport
+# The MCP protocol has a combined request+response limit of ~25K tokens total.
+# To ensure adequate space for MCP Server → Claude CLI responses, we limit user input
+# to 50K characters (roughly ~10-12K tokens). Larger user prompts must be sent
+# as prompt.txt files to bypass MCP's transport constraints.
+#
+# What IS limited by this constant:
+# - request.prompt field content (user input from Claude CLI)
+# - prompt.txt file content (alternative user input method)
+# - Any other direct user input fields
+#
+# What is NOT limited by this constant:
+# - System prompts added internally by tools
+# - File content embedded by tools
+# - Conversation history loaded from Redis
+# - Web search instructions or other internal additions
+# - Complete prompts sent to external models (managed by model-specific token limits)
+#
+# This ensures MCP transport stays within protocol limits while allowing internal
+# processing to use full model context windows (200K-1M+ tokens).
+MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
 
 # Threading configuration
 # Simple Redis-based conversation threading for stateless MCP environment

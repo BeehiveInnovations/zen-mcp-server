@@ -141,6 +141,15 @@ class RefactorAnalysisComplete(BaseModel):
     next_actions_for_claude: list[RefactorAction] = Field(..., description="Specific actions for Claude to implement")
 
 
+class ResendPromptRequest(BaseModel):
+    """Request to resend prompt via file due to size limits"""
+
+    status: Literal["resend_prompt"] = "resend_prompt"
+    content: str = Field(..., description="Instructions for handling large prompt")
+    content_type: Literal["text"] = "text"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 # Registry mapping status strings to their corresponding Pydantic models
 SPECIAL_STATUS_MODELS = {
     "clarification_required": ClarificationRequest,
@@ -149,6 +158,7 @@ SPECIAL_STATUS_MODELS = {
     "test_sample_needed": TestSampleNeeded,
     "more_tests_required": MoreTestsRequired,
     "refactor_analysis_complete": RefactorAnalysisComplete,
+    "resend_prompt": ResendPromptRequest,
 }
 
 

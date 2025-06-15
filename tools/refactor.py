@@ -19,7 +19,6 @@ import logging
 import os
 from typing import Any, Literal, Optional
 
-from mcp.types import TextContent
 from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
@@ -27,7 +26,6 @@ from systemprompts import REFACTOR_PROMPT
 from utils.file_utils import translate_file_paths
 
 from .base import BaseTool, ToolRequest
-from .models import ToolOutput
 
 logger = logging.getLogger(__name__)
 
@@ -153,25 +151,6 @@ class RefactorTool(BaseTool):
 
     def get_request_model(self):
         return RefactorRequest
-
-    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
-        """Override execute to check prompt size before processing"""
-        logger.info(f"[REFACTOR] execute called with arguments: {list(arguments.keys())}")
-
-        # First validate request
-        request_model = self.get_request_model()
-        request = request_model(**arguments)
-
-        # Check prompt size if provided
-        if request.prompt:
-            size_check = self.check_prompt_size(request.prompt)
-            if size_check:
-                logger.info("[REFACTOR] Prompt size check triggered, returning early")
-                return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
-
-        logger.info("[REFACTOR] Prompt size OK, calling super().execute()")
-        # Continue with normal execution
-        return await super().execute(arguments)
 
     def detect_primary_language(self, file_paths: list[str]) -> str:
         """
@@ -416,6 +395,14 @@ class RefactorTool(BaseTool):
         if updated_files is not None:
             logger.debug(f"[REFACTOR] Updated files list after prompt.txt processing: {len(updated_files)} files")
             request.files = updated_files
+
+        # Check user input size at MCP transport boundary (before adding internal content)
+        user_content = request.prompt
+        size_check = self.check_prompt_size(user_content)
+        if size_check:
+            from tools.models import ToolOutput
+
+            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
 
         # Calculate available token budget for dynamic allocation
         continuation_id = getattr(request, "continuation_id", None)

@@ -4,7 +4,6 @@ Analyze tool - General-purpose code and file analysis
 
 from typing import TYPE_CHECKING, Any, Optional
 
-from mcp.types import TextContent
 from pydantic import Field
 
 if TYPE_CHECKING:
@@ -14,7 +13,6 @@ from config import TEMPERATURE_ANALYTICAL
 from systemprompts import ANALYZE_PROMPT
 
 from .base import BaseTool, ToolRequest
-from .models import ToolOutput
 
 
 class AnalyzeRequest(ToolRequest):
@@ -117,20 +115,6 @@ class AnalyzeTool(BaseTool):
     def get_request_model(self):
         return AnalyzeRequest
 
-    async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
-        """Override execute to check question size before processing"""
-        # First validate request
-        request_model = self.get_request_model()
-        request = request_model(**arguments)
-
-        # Check prompt size
-        size_check = self.check_prompt_size(request.prompt)
-        if size_check:
-            return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
-
-        # Continue with normal execution
-        return await super().execute(arguments)
-
     async def prepare_prompt(self, request: AnalyzeRequest) -> str:
         """Prepare the analysis prompt"""
         # Check for prompt.txt in files
@@ -139,6 +123,13 @@ class AnalyzeTool(BaseTool):
         # If prompt.txt was found, use it as the prompt
         if prompt_content:
             request.prompt = prompt_content
+
+        # Check user input size at MCP transport boundary (before adding internal content)
+        size_check = self.check_prompt_size(request.prompt)
+        if size_check:
+            from tools.models import ToolOutput
+
+            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
 
         # Update request files list
         if updated_files is not None:
