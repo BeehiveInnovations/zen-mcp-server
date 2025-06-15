@@ -36,7 +36,8 @@ IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
 # IMPORTANT: These are the built-in natively supported models:
 # - When GEMINI_API_KEY is set: Enables "flash", "pro" (and their full names)
 # - When OPENAI_API_KEY is set: Enables "o3", "o3mini", "o4-mini", "o4-mini-high"
-# - When both are set: All models below are available
+# - When AZURE_OPENAI_API_KEY is set: Enables Azure OpenAI models with same aliases as OpenAI
+# - When multiple are set: All supported models below are available
 # - When neither is set but OpenRouter/Custom API is configured: These model
 #   aliases will automatically map to equivalent models via the proxy provider
 #
