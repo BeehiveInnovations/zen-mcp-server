@@ -460,7 +460,7 @@ constraints.
 "Using zen's refactor decompose the all_in_one_sync_code.swift into maintainable extensions"
 ```
 
-Example of a **powerful prompt** to get the best ouf of both Claude + Flash's 1M Context: 
+Example of a **powerful prompt** to get the best out of both Claude + Flash's 1M Context: 
 ```
 "First, think about how the authentication module works, find related classes and find
  any code smells, then using zen's refactor ask flash to confirm your findings but ask it to 
