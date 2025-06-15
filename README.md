@@ -467,9 +467,10 @@ constraints.
  it to find additional code smells and any other quick-wins and then fix these issues"
 ```
 
-This results in Claude first performing its own expert analysis, encourages it to think and find links 
-within project code and then prompts `flash` to review the provided code, giving it a hint (thus preventing
-it from finding the same code smells) and encouraging it to think about other areas claude did _not_ discover.
+This results in Claude first performing its own expert analysis, encouraging it to think critically
+and identify links within the project code. It then prompts `flash` to review the same code with a
+hint—preventing it from duplicating Claude's findings and encouraging it to explore other areas that Claude
+did *not* discover.
 
 **Key Features:**
 - **Intelligent prioritization** - Will refuse to work on low priority issues if code is unwieldy large and requires decomposition first, helps identify poorly managed classes and files that need structural improvements before detail work
