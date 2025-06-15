@@ -224,7 +224,7 @@ class TestLargePromptHandling:
 
             # Mock the centralized file preparation method to avoid file system access
             with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
-                mock_prepare_files.return_value = "File content"
+                mock_prepare_files.return_value = ("File content", [other_file])
 
                 await tool.execute({"prompt": "", "files": [temp_prompt_file, other_file]})
 

@@ -143,7 +143,7 @@ class TestRefactorTool:
 
             # Mock file processing
             with patch.object(refactor_tool, "_prepare_file_content_for_prompt") as mock_prepare:
-                mock_prepare.return_value = "def test(): pass"
+                mock_prepare.return_value = ("def test(): pass", ["/test/file.py"])
 
                 result = await refactor_tool.execute(
                     {
@@ -172,7 +172,7 @@ class TestRefactorTool:
 
             # Mock file processing
             with patch.object(refactor_tool, "_prepare_file_content_for_prompt") as mock_prepare:
-                mock_prepare.return_value = "def example(): pass"
+                mock_prepare.return_value = ("def example(): pass", ["/test/file.py"])
 
             with patch.object(refactor_tool, "_process_style_guide_examples") as mock_style:
                 mock_style.return_value = ("# style guide content", "")

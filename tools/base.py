@@ -719,9 +719,12 @@ class BaseTool(ABC):
             try:
                 # Before calling read_files, expand directories to get individual file paths
                 from utils.file_utils import expand_paths
+
                 expanded_files = expand_paths(files_to_embed)
-                logger.debug(f"[FILES] {self.name}: Expanded {len(files_to_embed)} paths to {len(expanded_files)} individual files")
-                
+                logger.debug(
+                    f"[FILES] {self.name}: Expanded {len(files_to_embed)} paths to {len(expanded_files)} individual files"
+                )
+
                 file_content = read_files(
                     files_to_embed,
                     max_tokens=effective_max_tokens + reserve_tokens,
@@ -730,7 +733,7 @@ class BaseTool(ABC):
                 )
                 self._validate_token_limit(file_content, context_description)
                 content_parts.append(file_content)
-                
+
                 # Track the expanded files as actually processed
                 actually_processed_files.extend(expanded_files)
 
@@ -742,7 +745,9 @@ class BaseTool(ABC):
                     f"{self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
                 )
                 logger.debug(f"[FILES] {self.name}: Successfully embedded files - {content_tokens:,} tokens used")
-                logger.debug(f"[FILES] {self.name}: Actually processed {len(actually_processed_files)} individual files")
+                logger.debug(
+                    f"[FILES] {self.name}: Actually processed {len(actually_processed_files)} individual files"
+                )
             except Exception as e:
                 logger.error(f"{self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
                 logger.debug(f"[FILES] {self.name}: File embedding failed - {type(e).__name__}: {e}")
@@ -772,7 +777,9 @@ class BaseTool(ABC):
                 logger.debug(f"[FILES] {self.name}: No skipped files to note")
 
         result = "".join(content_parts) if content_parts else ""
-        logger.debug(f"[FILES] {self.name}: _prepare_file_content_for_prompt returning {len(result)} chars, {len(actually_processed_files)} processed files")
+        logger.debug(
+            f"[FILES] {self.name}: _prepare_file_content_for_prompt returning {len(result)} chars, {len(actually_processed_files)} processed files"
+        )
         return result, actually_processed_files
 
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:

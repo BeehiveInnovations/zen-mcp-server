@@ -150,20 +150,39 @@ class TestAutoMode:
 
             tool = AnalyzeTool()
 
-            # Mock the provider to simulate o3 not being available
-            with patch("providers.registry.ModelProviderRegistry.get_provider_for_model") as mock_provider:
-                # Mock that o3 is not available but flash/pro are
+            # Get currently available models to use in the test
+            from providers.registry import ModelProviderRegistry
+
+            available_models = ModelProviderRegistry.get_available_model_names()
+
+            # Mock the provider to simulate o3 not being available but keep actual available models
+            with (
+                patch("providers.registry.ModelProviderRegistry.get_provider_for_model") as mock_provider,
+                patch("providers.registry.ModelProviderRegistry.get_available_models") as mock_available,
+                patch.object(tool, "_get_available_models") as mock_tool_available,
+            ):
+
+                # Mock that o3 is not available but actual available models are
                 def mock_get_provider(model_name):
-                    if model_name in ["flash", "pro", "gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-06-05"]:
-                        # Return a mock provider for available models
+                    if model_name == "o3":
+                        # o3 is specifically not available
+                        return None
+                    elif model_name in available_models:
+                        # Return a mock provider for actually available models
                         from unittest.mock import MagicMock
 
                         return MagicMock()
                     else:
-                        # o3 and others are not available
+                        # Other unknown models are not available
                         return None
 
                 mock_provider.side_effect = mock_get_provider
+
+                # Mock available models to return the actual available models
+                mock_available.return_value = dict.fromkeys(available_models, "test")
+
+                # Mock the tool's available models method to return the actual available models
+                mock_tool_available.return_value = available_models
 
                 # Execute with unavailable model
                 result = await tool.execute(
@@ -176,8 +195,10 @@ class TestAutoMode:
             assert "error" in response
             assert "Model 'o3' is not available" in response
             assert "Available models:" in response
-            # Should list the available models
-            assert "flash" in response or "pro" in response
+
+            # Should list at least one of the actually available models
+            has_available_model = any(model in response for model in available_models)
+            assert has_available_model, f"Expected one of {available_models} to be in response: {response}"
 
         finally:
             # Restore
