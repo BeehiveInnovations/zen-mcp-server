@@ -460,12 +460,16 @@ constraints.
 "Using zen's refactor decompose the all_in_one_sync_code.swift into maintainable extensions"
 ```
 
-Example of a **powerful prompt** to get the best out of both Claude + Flash's 1M Context: 
+💡Example of a **powerful prompt** to get the best out of both Claude + Flash's 1M Context: 
 ```
 "First, think about how the authentication module works, find related classes and find
- any code smells, then using zen's refactor ask flash to confirm your findings but ask it to 
- find additional code smells and any other quick-wins and then fix these issues"
+ any code smells, then using zen's refactor ask flash to confirm your findings but ask 
+ it to find additional code smells and any other quick-wins and then fix these issues"
 ```
+
+This results in Claude first performing its own expert analysis, encourages it to think and find links 
+within project code and then prompts the `flash` to review the provided code, giving it a hint (thus preventing
+it from finding the same code smells) and encouraging it to think about other areas claude did _not_ discover.
 
 **Key Features:**
 - **Intelligent prioritization** - Will refuse to work on low priority issues if code is unwieldy large and requires decomposition first, helps identify poorly managed classes and files that need structural improvements before detail work
