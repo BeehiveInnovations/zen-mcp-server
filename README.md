@@ -132,21 +132,13 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ### 2. Clone and Set Up
 
+Using the Terminal:
+
 ```bash
 # Clone to your preferred location
 git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
 cd zen-mcp-server
-
-# One-command setup (includes Redis for AI conversations)
-./run-server.sh
 ```
-
-**What this does:**
-- **Builds Docker images** with all dependencies (including Redis for conversation threading)
-- **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
-- **Starts Redis service** for AI-to-AI conversation memory
-- **Starts MCP server** with providers based on available API keys
-- **Adds Zen to Claude Code automatically**
 
 ### 3. Add Your API Keys
 
@@ -172,23 +164,20 @@ nano .env
 # ./run-server.sh
 ```
 
-### 4. Configure Claude
+### 4. Start MCP Server
 
-#### If Setting up for Claude Code
-Run the following commands on the terminal to add the MCP directly to Claude Code
 ```bash
-# Add the MCP server directly via Claude Code CLI
-claude mcp add zen -s user -- docker exec -i zen-mcp-server python server.py
-
-# List your MCP servers to verify
-claude mcp list
-
-# Remove when needed
-claude mcp remove zen -s user
-
-# You may need to remove an older version of this MCP after it was renamed:
-claude mcp remove gemini -s user
+# One-command setup (includes Redis for AI conversations)
+./run-server.sh
 ```
+
+**What this does:**
+- **Builds Docker images** with all dependencies (including Redis for conversation threading)
+- **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
+- **Starts Redis service** for AI-to-AI conversation memory
+- **Starts MCP server** with providers based on available API keys
+- **Adds Zen to Claude Code automatically**
+
 Now run `claude` on the terminal for it to connect to the newly added mcp server. If you were already running a `claude` code session,
 please exit and start a new session.
 
