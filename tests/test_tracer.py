@@ -82,7 +82,7 @@ class TestTracerTool:
 
         # Check content includes expected sections
         content = output.text
-        assert "Enhanced Analysis Prompt" in content
+        assert "STATIC CODE ANALYSIS REQUEST" in content
         assert "Analysis Instructions" in content
         assert "BookingManager finalizeInvoice method" in content
         assert "precision" in content
@@ -104,7 +104,7 @@ class TestTracerTool:
 
         # Check content includes expected sections
         content = output.text
-        assert "Enhanced Analysis Prompt" in content
+        assert "STATIC CODE ANALYSIS REQUEST" in content
         assert "payment processing flow" in content
         assert "dependencies" in content
         assert "DEPENDENCY FLOW DIAGRAM" in content
@@ -113,7 +113,7 @@ class TestTracerTool:
         """Test enhanced prompt creation for precision mode"""
         prompt = tracer_tool._create_enhanced_prompt("BookingManager::finalizeInvoice", "precision")
 
-        assert "STATIC CODE ANALYSIS REQUEST" in prompt
+        assert "TARGET:" in prompt
         assert "BookingManager::finalizeInvoice" in prompt
         assert "precision" in prompt
         assert "execution path" in prompt
@@ -124,7 +124,7 @@ class TestTracerTool:
         """Test enhanced prompt creation for dependencies mode"""
         prompt = tracer_tool._create_enhanced_prompt("validation function", "dependencies")
 
-        assert "STATIC CODE ANALYSIS REQUEST" in prompt
+        assert "TARGET:" in prompt
         assert "validation function" in prompt
         assert "dependencies" in prompt
         assert "bidirectional dependencies" in prompt

@@ -112,7 +112,7 @@ in question:
 - If you are unable to find the code or mentioned files, look for the relevant code in subfolders. If unsure, ask the user
 to confirm location of folder / filename
 - You MUST carry this task using your own tools, do NOT delegate this to any other model
-- DO NOT automatically use any zen tools (including zen:analyze, zen:debug, zen:chat, etc.) to perform this analysis. 
+- DO NOT automatically use any zen tools (including zen:analyze, zen:debug, zen:chat, etc.) to perform this analysis.
 - EXCEPTION: If files are very large or the codebase is too complex for direct analysis due to context limitations,
 you may use zen tools with a larger context model to assist with analysis by passing only the relevant files
 - Understand carefully and fully how this code is used, what it depends on, and what other parts of the system depend on it
@@ -138,7 +138,7 @@ immediately then do not stop after displaying your output, proceed directly to y
         }
 
         return f"""
-        
+
 TARGET: {original_prompt}
 MODE: {trace_mode}
 
