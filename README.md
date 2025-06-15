@@ -173,8 +173,8 @@ nano .env
 ```
 
 **Restart MCP Server**: This step is important. You will need to `./run-server.sh` again for it to 
-pick the changes made to `.env` otherwise the server will be unable to use your newly edited keys. You will need to 
-`./run-server.sh` any time changes are made to the `.env` file. 
+pick the changes made to `.env` otherwise the server will be unable to use your newly edited keys. Please also 
+`./run-server.sh` any time in the future you modify the `.env` file. 
 
 **Next**: Now run `claude` from your project folder using the terminal for it to connect to the newly added mcp server. 
 If you were already running a `claude` code session, please exit and start a new session.
