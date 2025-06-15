@@ -321,3 +321,83 @@ class TestAbsolutePathValidation:
         response = json.loads(result[0].text)
         assert response["status"] == "success"
         assert "Analysis complete" in response["content"]
+
+
+class TestSpecialStatusModels:
+    """Test SPECIAL_STATUS_MODELS registry and structured response handling"""
+
+    def test_trace_complete_status_in_registry(self):
+        """Test that trace_complete status is properly registered"""
+        from tools.models import SPECIAL_STATUS_MODELS, TraceComplete
+
+        assert "trace_complete" in SPECIAL_STATUS_MODELS
+        assert SPECIAL_STATUS_MODELS["trace_complete"] == TraceComplete
+
+    def test_trace_complete_model_validation(self):
+        """Test TraceComplete model validation"""
+        from tools.models import TraceComplete
+
+        # Test precision mode
+        precision_data = {
+            "status": "trace_complete",
+            "trace_type": "precision",
+            "entry_point": {
+                "file": "/path/to/file.py",
+                "class_or_struct": "MyClass",
+                "method": "myMethod",
+                "signature": "def myMethod(self, param1: str) -> bool",
+                "parameters": {"param1": "test"},
+            },
+            "call_path": [
+                {
+                    "from": {"file": "/path/to/file.py", "class": "MyClass", "method": "myMethod", "line": 10},
+                    "to": {"file": "/path/to/other.py", "class": "OtherClass", "method": "otherMethod", "line": 20},
+                    "reason": "direct call",
+                    "condition": None,
+                    "ambiguous": False,
+                }
+            ],
+        }
+
+        model = TraceComplete(**precision_data)
+        assert model.status == "trace_complete"
+        assert model.trace_type == "precision"
+        assert model.entry_point.file == "/path/to/file.py"
+        assert len(model.call_path) == 1
+
+        # Test dependencies mode
+        dependencies_data = {
+            "status": "trace_complete",
+            "trace_type": "dependencies",
+            "target": {
+                "file": "/path/to/file.py",
+                "class_or_struct": "MyClass",
+                "method": "myMethod",
+                "signature": "def myMethod(self, param1: str) -> bool",
+            },
+            "incoming_dependencies": [
+                {
+                    "from_file": "/path/to/caller.py",
+                    "from_class": "CallerClass",
+                    "from_method": "callerMethod",
+                    "line": 15,
+                    "type": "direct_call",
+                }
+            ],
+            "outgoing_dependencies": [
+                {
+                    "to_file": "/path/to/dependency.py",
+                    "to_class": "DepClass",
+                    "to_method": "depMethod",
+                    "line": 25,
+                    "type": "method_call",
+                }
+            ],
+        }
+
+        model = TraceComplete(**dependencies_data)
+        assert model.status == "trace_complete"
+        assert model.trace_type == "dependencies"
+        assert model.target.file == "/path/to/file.py"
+        assert len(model.incoming_dependencies) == 1
+        assert len(model.outgoing_dependencies) == 1

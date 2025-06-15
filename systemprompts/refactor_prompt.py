@@ -19,10 +19,9 @@ snippets.
 
 IF MORE INFORMATION IS NEEDED
 If you need additional context (e.g., related files, configuration, dependencies) to provide accurate refactoring
-recommendations, you MUST respond ONLY with this JSON format (and ABSOLUTELY nothing else - no text before or after):
+recommendations, you MUST respond ONLY with this JSON format (and ABSOLUTELY nothing else - no text before or after).
+Do NOT ask for the same file you've been provided unless its content is missing or incomplete:
 {"status": "clarification_required", "question": "<your brief question>", "files_needed": ["[file name here]", "[or some folder/]"]}
-
-Do NOT ask for the same file you've been provided unless its content is missing or incomplete.
 
 REFACTOR TYPES (PRIORITY ORDER)
 

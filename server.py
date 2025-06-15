@@ -47,7 +47,7 @@ from tools import (
     RefactorTool,
     TestGenTool,
     ThinkDeepTool,
-    TracePathTool,
+    TracerTool,
 )
 from tools.models import ToolOutput
 
@@ -151,7 +151,7 @@ TOOLS = {
     "precommit": Precommit(),  # Pre-commit validation of git changes
     "testgen": TestGenTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
-    "tracepath": TracePathTool(),  # Static call path prediction and control flow analysis
+    "tracer": TracerTool(),  # Static call path prediction and control flow analysis
 }
 
 
