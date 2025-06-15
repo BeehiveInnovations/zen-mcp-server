@@ -18,8 +18,13 @@ from .base import BaseTool, ToolRequest
 class ThinkDeepRequest(ToolRequest):
     """Request model for thinkdeep tool"""
 
-    prompt: str = Field(..., description="Your current thinking/analysis to extend and validate")
-    problem_context: Optional[str] = Field(None, description="Additional context about the problem or goal")
+    prompt: str = Field(
+        ...,
+        description="Your current thinking/analysis to extend and validate. IMPORTANT: Before using this tool, Claude MUST first think hard and establish a deep understanding of the topic and question by thinking through all relevant details, context, constraints, and implications. Share these extended thoughts and ideas in the prompt so the model has comprehensive information to work with for the best analysis.",
+    )
+    problem_context: Optional[str] = Field(
+        None, description="Additional context about the problem or goal. Be as expressive as possible."
+    )
     focus_areas: Optional[list[str]] = Field(
         None,
         description="Specific aspects to focus on (architecture, performance, security, etc.)",
@@ -55,12 +60,12 @@ class ThinkDeepTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Your current thinking/analysis to extend and validate",
+                    "description": "Your current thinking/analysis to extend and validate. IMPORTANT: Before using this tool, Claude MUST first think deeply and establish a deep understanding of the topic and question by thinking through all relevant details, context, constraints, and implications. Share these extended thoughts and ideas in the prompt so the model has comprehensive information to work with for the best analysis.",
                 },
                 "model": self.get_model_field_schema(),
                 "problem_context": {
                     "type": "string",
-                    "description": "Additional context about the problem or goal",
+                    "description": "Additional context about the problem or goal. Be as expressive as possible.",
                 },
                 "focus_areas": {
                     "type": "array",
