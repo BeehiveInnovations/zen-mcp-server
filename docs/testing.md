@@ -124,56 +124,24 @@ Validate real-world usage scenarios by simulating actual Claude prompts:
 - **Token allocation**: Context window management in practice
 - **Redis validation**: Conversation persistence and retrieval
 
-## Contributing: Test Requirements
+## Contributing
 
-When contributing to this project:
+For detailed contribution guidelines, testing requirements, and code quality standards, please see our [Contributing Guide](./contributions.md).
 
-1. **New features MUST include tests**:
-   - Add unit tests in `tests/` for new functions or classes
-   - Test both success and error cases
-   
-2. **Tool changes require simulator tests**:
-   - Add simulator tests in `simulator_tests/` for new or modified tools
-   - Use realistic prompts that demonstrate the feature
-   - Validate output through Docker logs
-   
-3. **Test naming conventions**:
-   - Unit tests: `test_<feature>_<scenario>.py`
-   - Simulator tests: `test_<tool>_<behavior>.py`
+### Quick Testing Reference
 
-4. **Before submitting PR - Complete Validation Checklist**:
-   ```bash
-   # Activate virtual environment first as needed
-   source venv/bin/activate
-   
-   # Run all linting tools (must pass 100%)
-   ruff check .
-   black --check .
-   isort --check-only .
-   
-   # Auto-fix issues if needed
-   ruff check . --fix
-   black .
-   isort .
-   
-   # Run complete unit test suite (must pass 100%)
-   python -m pytest -xvs
-   
-   # Run simulator tests for tool changes
-   python communication_simulator_test.py
-   ```
+```bash
+# Activate virtual environment
+source venv/bin/activate
 
-5. **GitHub Actions Compliance**:
-   - **Every single test must pass** - we have zero tolerance for failing tests in CI
-   - All linting must pass cleanly (ruff, black, isort)
-   - Import sorting must be correct
-   - Virtual environment activation is required for consistent results
-   - Tests failing in GitHub Actions will result in PR rejection
+# Run linting checks
+ruff check . && black --check . && isort --check-only .
 
-6. **Contribution Standards**:
-   - Follow the [PR template](../.github/pull_request_template.md) requirements exactly
-   - Check every box in the template checklist before submitting
-   - Include comprehensive tests for all new functionality
-   - Ensure backward compatibility unless explicitly breaking
+# Run unit tests
+python -m pytest -xvs
 
-Remember: Tests are documentation. They show how features are intended to be used and help prevent regressions. **Quality over speed** - take the time to ensure everything passes locally before pushing.
+# Run simulator tests (for tool changes)
+python communication_simulator_test.py
+```
+
+Remember: All tests must pass before submitting a PR. See the [Contributing Guide](./contributions.md) for complete requirements.

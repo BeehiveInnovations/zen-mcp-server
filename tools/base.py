@@ -399,20 +399,22 @@ class BaseTool(ABC):
         """
         Return whether this tool wants line numbers added to code files by default.
 
-        Tools that benefit from precise line references (refactor, codereview, debug)
-        should return True. Tools that prioritize token efficiency or don't need
-        precise references can return False.
+        By default, ALL tools get line numbers for precise code references.
+        Line numbers are essential for accurate communication about code locations.
 
         Line numbers add ~8-10% token overhead but provide precise targeting for:
         - Code review feedback ("SQL injection on line 45")
         - Debug error locations ("Memory leak in loop at lines 123-156")
         - Test generation targets ("Generate tests for method at lines 78-95")
         - Refactoring guidance ("Extract method from lines 67-89")
+        - General code discussions ("Where is X defined?" -> "Line 42")
+
+        The only exception is when reading diffs, which have their own line markers.
 
         Returns:
             bool: True if line numbers should be added by default for this tool
         """
-        return False  # Conservative default - tools opt-in as needed
+        return True  # All tools get line numbers by default for consistency
 
     def get_default_thinking_mode(self) -> str:
         """

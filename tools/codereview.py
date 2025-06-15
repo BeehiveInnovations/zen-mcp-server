@@ -148,9 +148,7 @@ class CodeReviewTool(BaseTool):
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
-    def wants_line_numbers_by_default(self) -> bool:
-        """Code review tool needs line numbers for precise feedback"""
-        return True
+    # Line numbers are enabled by default from base class for precise feedback
 
     def get_request_model(self):
         return CodeReviewRequest

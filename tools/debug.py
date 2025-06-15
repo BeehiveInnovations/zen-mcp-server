@@ -111,9 +111,7 @@ class DebugIssueTool(BaseTool):
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
-    def wants_line_numbers_by_default(self) -> bool:
-        """Debug tool needs line numbers for precise error location"""
-        return True
+    # Line numbers are enabled by default from base class for precise error location
 
     def get_model_category(self) -> "ToolModelCategory":
         """Debug requires deep analysis and reasoning"""

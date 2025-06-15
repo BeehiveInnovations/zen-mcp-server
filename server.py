@@ -24,7 +24,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from typing import Any
 
 from mcp.server import Server

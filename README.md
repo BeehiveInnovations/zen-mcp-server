@@ -606,7 +606,14 @@ For detailed configuration options, see the [Advanced Usage Guide](docs/advanced
 
 ## Testing
 
-For information on running tests and contributing, see the [Testing Guide](docs/testing.md).
+For information on running tests, see the [Testing Guide](docs/testing.md).
+
+## Contributing
+
+We welcome contributions! Please see our comprehensive guides:
+- [Contributing Guide](docs/contributions.md) - Code standards, PR process, and requirements
+- [Adding a New Provider](docs/adding_providers.md) - Step-by-step guide for adding AI providers
+- [Adding a New Tool](docs/adding_tools.md) - Step-by-step guide for creating new tools
 
 ## License
 

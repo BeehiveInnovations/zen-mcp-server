@@ -143,9 +143,7 @@ class RefactorTool(BaseTool):
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
-    def wants_line_numbers_by_default(self) -> bool:
-        """Refactor tool needs line numbers for precise targeting"""
-        return True
+    # Line numbers are enabled by default from base class for precise targeting
 
     def get_model_category(self):
         """Refactor tool requires extended reasoning for comprehensive analysis"""
@@ -159,7 +157,7 @@ class RefactorTool(BaseTool):
     async def execute(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Override execute to check prompt size before processing"""
         logger.info(f"[REFACTOR] execute called with arguments: {list(arguments.keys())}")
-        
+
         # First validate request
         request_model = self.get_request_model()
         request = request_model(**arguments)
@@ -168,10 +166,10 @@ class RefactorTool(BaseTool):
         if request.prompt:
             size_check = self.check_prompt_size(request.prompt)
             if size_check:
-                logger.info(f"[REFACTOR] Prompt size check triggered, returning early")
+                logger.info("[REFACTOR] Prompt size check triggered, returning early")
                 return [TextContent(type="text", text=ToolOutput(**size_check).model_dump_json())]
 
-        logger.info(f"[REFACTOR] Prompt size OK, calling super().execute()")
+        logger.info("[REFACTOR] Prompt size OK, calling super().execute()")
         # Continue with normal execution
         return await super().execute(arguments)
 

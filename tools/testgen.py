@@ -134,9 +134,7 @@ class TestGenTool(BaseTool):
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
-    def wants_line_numbers_by_default(self) -> bool:
-        """Test generation tool needs line numbers for precise targeting"""
-        return True
+    # Line numbers are enabled by default from base class for precise targeting
 
     def get_model_category(self):
         """TestGen requires extended reasoning for comprehensive test analysis"""
