@@ -468,7 +468,7 @@ constraints.
 ```
 
 This results in Claude first performing its own expert analysis, encourages it to think and find links 
-within project code and then prompts the `flash` to review the provided code, giving it a hint (thus preventing
+within project code and then prompts `flash` to review the provided code, giving it a hint (thus preventing
 it from finding the same code smells) and encouraging it to think about other areas claude did _not_ discover.
 
 **Key Features:**
