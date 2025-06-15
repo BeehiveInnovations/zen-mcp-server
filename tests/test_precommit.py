@@ -256,7 +256,10 @@ class TestPrecommitTool:
 
         # Mock the centralized file preparation method
         with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
-            mock_prepare_files.return_value = "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ==="
+            mock_prepare_files.return_value = (
+                "=== FILE: config.py ===\nCONFIG_VALUE = 42\n=== END FILE ===",
+                ["/test/path/config.py"],
+            )
 
             request = PrecommitRequest(
                 path="/absolute/repo/path",
@@ -320,7 +323,7 @@ class TestPrecommitTool:
 
         # Mock the centralized file preparation method to return empty (file not found)
         with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
-            mock_prepare_files.return_value = ""
+            mock_prepare_files.return_value = ("", [])
             result_with_files = await tool.prepare_prompt(request_with_files)
 
         assert "If you need additional context files" not in result_with_files

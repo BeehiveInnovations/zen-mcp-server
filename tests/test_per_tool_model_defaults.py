@@ -292,7 +292,7 @@ class TestFileContentPreparation:
             tool._current_model_name = "auto"
 
             # Call the method
-            tool._prepare_file_content_for_prompt(["/test/file.py"], None, "test")
+            content, processed_files = tool._prepare_file_content_for_prompt(["/test/file.py"], None, "test")
 
             # Check that it logged the correct message
             debug_calls = [call for call in mock_logger.debug.call_args_list if "Auto mode detected" in str(call)]
