@@ -3,16 +3,12 @@ services:
     image: redis:7-alpine
     container_name: zen-mcp-redis
     restart: unless-stopped
+    stop_grace_period: 3s
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --save 60 1 --loglevel warning --maxmemory 64mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
     deploy:
       resources:
         limits:
@@ -25,9 +21,9 @@ services:
     image: zen-mcp-server:latest
     container_name: zen-mcp-server
     restart: unless-stopped
+    stop_grace_period: 5s
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -69,6 +65,7 @@ services:
     image: zen-mcp-server:latest
     container_name: zen-mcp-log-monitor
     restart: unless-stopped
+    stop_grace_period: 3s
     depends_on:
       - zen-mcp
     environment:

@@ -53,7 +53,8 @@ and review into consideration to aid with its pre-commit review.
   - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
   - [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
-  - [`testgen`](#8-testgen---comprehensive-test-generation) - Test generation with edge cases
+  - [`tracer`](#8-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
+  - [`testgen`](#9-testgen---comprehensive-test-generation) - Test generation with edge cases
   - [`your custom tool`](#add-your-own-tools) - Create custom tools for specialized workflows
 
 - **Advanced Usage**
@@ -261,8 +262,9 @@ Just ask Claude naturally:
 - **Pre-commit validation?** → `precommit` (validate git changes before committing)
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
-- **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
 - **Code needs refactoring?** → `refactor` (intelligent refactoring with decomposition focus)
+- **Need call-flow analysis?** → `tracer` (generates prompts for execution tracing and dependency mapping)
+- **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
 - **Server info?** → `version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
@@ -284,8 +286,9 @@ Just ask Claude naturally:
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
 7. [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
-8. [`testgen`](#8-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
-9. [`version`](#9-version---server-information) - Get server version and configuration
+8. [`tracer`](#8-tracer---static-code-analysis-prompt-generator) - Static code analysis prompt generator for call-flow mapping
+9. [`testgen`](#9-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
+10. [`version`](#10-version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -507,7 +510,32 @@ did *not* discover.
 
 **Progressive Analysis:** The tool performs a top-down check (worse → bad → better) and refuses to work on lower-priority issues if critical decomposition is needed first. It understands that massive files and classes create cognitive overload that must be addressed before detail work can be effective. Legacy code that cannot be safely decomposed is handled with higher tolerance thresholds and context-sensitive exemptions.
 
-### 8. `testgen` - Comprehensive Test Generation
+### 8. `tracer` - Static Code Analysis Prompt Generator
+**Creates detailed analysis prompts for call-flow mapping and dependency tracing**
+
+This is a specialized prompt-generation tool that creates structured analysis requests for Claude to perform comprehensive static code analysis. 
+Rather than passing entire projects to another model, this tool generates focused prompts that 
+Claude can use to efficiently trace execution flows and map dependencies within the codebase.
+
+**Two Analysis Modes:**
+- **`precision`**: For methods/functions - traces execution flow, call chains, and usage patterns with detailed branching analysis and side effects
+- **`dependencies`**: For classes/modules/protocols - maps bidirectional dependencies and structural relationships
+
+**Key Features:**
+- Generates comprehensive analysis prompts instead of performing analysis directly
+- Faster and more efficient than full project analysis by external models
+- Creates structured instructions for call-flow graph generation
+- Provides detailed formatting requirements for consistent output
+- Supports any programming language with automatic convention detection
+- Output can be used as an input into another tool, such as `chat` along with related code files to perform a logical call-flow analysis 
+
+#### Example Prompts:
+```
+"Use zen tracer to analyze how UserAuthManager.authenticate is used and why" -> uses `precision` mode 
+"Use zen to generate a dependency trace for the PaymentProcessor class to understand its relationships" -> uses `dependencies` mode
+```
+
+### 9. `testgen` - Comprehensive Test Generation
 **Generates thorough test suites with edge case coverage** based on existing code and test framework used.
 
 **Thinking Mode (Extended thinking models):** Default is `medium` (8,192 tokens). Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
@@ -535,7 +563,7 @@ suites that cover realistic failure scenarios and integration points that shorte
 - Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
 - Specific code coverage - target specific functions/classes rather than testing everything
 
-### 9. `version` - Server Information
+### 10. `version` - Server Information
 ```
 "Get zen to show its version"
 ```

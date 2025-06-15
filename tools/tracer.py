@@ -1,51 +1,32 @@
 """
-Tracer tool - Static call path prediction and control flow analysis
+Tracer tool - Prompt generator for static code analysis workflows
 
-This tool analyzes code to predict and explain full call paths and control flow without executing code.
-Given a method name, its owning class/module, and parameter combinations or runtime values, it predicts
-the complete chain of method/function calls that would be triggered.
-
-Key Features:
-- Static call path prediction with confidence levels
-- Polymorphism and dynamic dispatch analysis
-- Value-driven flow analysis based on parameter combinations
-- Side effects identification (database, network, filesystem)
-- Branching analysis for conditional logic
-- Hybrid AI-first approach with optional AST preprocessing for enhanced accuracy
+This tool generates structured prompts and instructions for static code analysis.
+It helps Claude create focused analysis requests and provides detailed rendering
+instructions for visualizing call paths and dependency mappings.
 """
 
-import logging
-import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import Field
 
-from config import TEMPERATURE_ANALYTICAL
-from systemprompts import TRACER_PROMPT
-
 from .base import BaseTool, ToolRequest
-
-logger = logging.getLogger(__name__)
 
 
 class TracerRequest(ToolRequest):
     """
     Request model for the tracer tool.
 
-    This model defines the simplified parameters for static code analysis.
+    This model defines the parameters for generating analysis prompts.
     """
 
     prompt: str = Field(
         ...,
-        description="Description of what to trace including method/function name and class/file context (e.g., 'Trace BookingManager::finalizeInvoice method' or 'Analyze dependencies for validate_input function in utils module')",
-    )
-    files: list[str] = Field(
-        ...,
-        description="Code files or directories to analyze (must be absolute paths)",
+        description="Detailed description of what to trace and WHY you need this analysis. Include context about what you're trying to understand, debug, or analyze. For precision mode: describe the specific method/function and what aspect of its execution flow you need to understand. For dependencies mode: describe the class/module and what relationships you need to map. Example: 'I need to understand how BookingManager.finalizeInvoice method is called throughout the system and what side effects it has, as I'm debugging payment processing issues' rather than just 'BookingManager finalizeInvoice method'",
     )
     trace_mode: Literal["precision", "dependencies"] = Field(
         ...,
-        description="Trace mode: 'precision' (follows actual code execution path from entry point) or 'dependencies' (analyzes bidirectional dependency mapping showing what calls this target and what it calls)",
+        description="Trace mode: 'precision' (for methods/functions - shows execution flow and usage patterns) or 'dependencies' (for classes/modules/protocols - shows structural relationships)",
     )
 
 
@@ -53,8 +34,8 @@ class TracerTool(BaseTool):
     """
     Tracer tool implementation.
 
-    This tool analyzes code to predict static call paths and control flow without execution.
-    Uses a hybrid AI-first approach with optional AST preprocessing for enhanced accuracy.
+    This tool generates structured prompts and instructions for static code analysis.
+    It creates detailed requests and provides rendering instructions for Claude.
     """
 
     def get_name(self) -> str:
@@ -62,278 +43,131 @@ class TracerTool(BaseTool):
 
     def get_description(self) -> str:
         return (
-            "STATIC CODE ANALYSIS - Analyzes code to provide either execution flow traces or dependency mappings without executing code. "
-            "Type 'precision': Follows the actual code path from a specified method/function, resolving calls, branching, and side effects. "
-            "Type 'dependencies': Analyzes bidirectional dependencies showing what calls the target and what it calls, including imports and inheritance. "
-            "Perfect for: understanding complex code flows, impact analysis, debugging assistance, architecture review. "
-            "Responds in structured JSON format for easy parsing and visualization. "
-            "Choose thinking_mode based on code complexity: 'medium' for standard analysis (default), "
-            "'high' for complex systems, 'max' for legacy codebases requiring deep analysis. "
-            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
+            "ANALYSIS PROMPT GENERATOR - Creates structured prompts for static code analysis. "
+            "Helps generate detailed analysis requests with specific method/function names, file paths, and component context. "
+            "Type 'precision': For methods/functions - traces execution flow, call chains, call stacks, and shows when/how they are used. "
+            "Type 'dependencies': For classes/modules/protocols - maps structural relationships and bidirectional dependencies. "
+            "Returns detailed instructions on how to perform the analysis and format the results. "
+            "Use this to create focused analysis requests that can be fed back to Claude with the appropriate code files. "
         )
 
     def get_input_schema(self) -> dict[str, Any]:
-        schema = {
+        return {
             "type": "object",
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Description of what to trace including method/function name and class/file context (e.g., 'Trace BookingManager::finalizeInvoice method' or 'Analyze dependencies for validate_input function in utils module')",
-                },
-                "files": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Code files or directories to analyze (must be absolute paths)",
+                    "description": "Detailed description of what to trace and WHY you need this analysis. Include context about what you're trying to understand, debug, or analyze. For precision mode: describe the specific method/function and what aspect of its execution flow you need to understand. For dependencies mode: describe the class/module and what relationships you need to map. Example: 'I need to understand how BookingManager.finalizeInvoice method is called throughout the system and what side effects it has, as I'm debugging payment processing issues' rather than just 'BookingManager finalizeInvoice method'",
                 },
                 "trace_mode": {
                     "type": "string",
                     "enum": ["precision", "dependencies"],
-                    "description": "Trace mode: 'precision' (follows actual code execution path from entry point) or 'dependencies' (analyzes bidirectional dependency mapping showing what calls this target and what it calls)",
-                },
-                "model": self.get_model_field_schema(),
-                "temperature": {
-                    "type": "number",
-                    "description": "Temperature (0-1, default 0.2 for analytical precision)",
-                    "minimum": 0,
-                    "maximum": 1,
-                },
-                "thinking_mode": {
-                    "type": "string",
-                    "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
-                },
-                "use_websearch": {
-                    "type": "boolean",
-                    "description": "Enable web search for framework documentation and patterns",
-                    "default": True,
-                },
-                "continuation_id": {
-                    "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations across tools",
+                    "description": "Trace mode: 'precision' (for methods/functions - shows execution flow and usage patterns) or 'dependencies' (for classes/modules/protocols - shows structural relationships)",
                 },
             },
-            "required": ["prompt", "files", "trace_mode"] + (["model"] if self.is_effective_auto_mode() else []),
+            "required": ["prompt", "trace_mode"],
         }
 
-        return schema
-
-    def get_system_prompt(self) -> str:
-        return TRACER_PROMPT
-
-    def get_default_temperature(self) -> float:
-        return TEMPERATURE_ANALYTICAL
-
-    # Line numbers are enabled by default for precise code references
-
     def get_model_category(self):
-        """Tracer requires extended reasoning for complex flow analysis"""
+        """Tracer is a simple prompt generator"""
         from tools.models import ToolModelCategory
 
-        return ToolModelCategory.EXTENDED_REASONING
+        return ToolModelCategory.FAST_RESPONSE
 
     def get_request_model(self):
         return TracerRequest
 
-    def detect_primary_language(self, file_paths: list[str]) -> str:
-        """
-        Detect the primary programming language from file extensions.
-
-        Args:
-            file_paths: List of file paths to analyze
-
-        Returns:
-            str: Detected language or "mixed" if multiple languages found
-        """
-        # Language detection based on file extensions
-        language_extensions = {
-            "python": {".py", ".pyx", ".pyi"},
-            "javascript": {".js", ".jsx", ".mjs", ".cjs"},
-            "typescript": {".ts", ".tsx", ".mts", ".cts"},
-            "java": {".java"},
-            "csharp": {".cs"},
-            "cpp": {".cpp", ".cc", ".cxx", ".c", ".h", ".hpp"},
-            "go": {".go"},
-            "rust": {".rs"},
-            "swift": {".swift"},
-            "kotlin": {".kt", ".kts"},
-            "ruby": {".rb"},
-            "php": {".php"},
-            "scala": {".scala"},
-        }
-
-        # Count files by language
-        language_counts = {}
-        for file_path in file_paths:
-            extension = os.path.splitext(file_path.lower())[1]
-            for lang, exts in language_extensions.items():
-                if extension in exts:
-                    language_counts[lang] = language_counts.get(lang, 0) + 1
-                    break
-
-        if not language_counts:
-            return "unknown"
-
-        # Return most common language, or "mixed" if multiple languages
-        max_count = max(language_counts.values())
-        dominant_languages = [lang for lang, count in language_counts.items() if count == max_count]
-
-        if len(dominant_languages) == 1:
-            return dominant_languages[0]
-        else:
-            return "mixed"
+    def get_system_prompt(self) -> str:
+        """Not used in this simplified tool."""
+        return ""
 
     async def prepare_prompt(self, request: TracerRequest) -> str:
-        """
-        Prepare the complete prompt for code analysis.
+        """Not used in this simplified tool."""
+        return ""
 
-        This method combines:
-        - System prompt with analysis instructions
-        - User request and trace type
-        - File contents with line numbers
-        - Analysis parameters
+    async def execute(self, arguments: dict[str, Any]) -> list:
+        """Generate analysis prompt and instructions."""
 
-        Args:
-            request: The validated tracer request
+        request = TracerRequest(**arguments)
 
-        Returns:
-            str: Complete prompt for the model
+        # Create enhanced prompt with specific instructions
+        enhanced_prompt = self._create_enhanced_prompt(request.prompt, request.trace_mode)
 
-        Raises:
-            ValueError: If the prompt exceeds token limits
-        """
-        logger.info(
-            f"[TRACER] Preparing prompt for {request.trace_mode} trace analysis with {len(request.files)} files"
-        )
-        logger.debug(f"[TRACER] User request: {request.prompt[:100]}...")
-
-        # Check for prompt.txt in files
-        prompt_content, updated_files = self.handle_prompt_file(request.files)
-
-        # If prompt.txt was found, incorporate it into the request prompt
-        if prompt_content:
-            logger.debug("[TRACER] Found prompt.txt file, incorporating content")
-            request.prompt = prompt_content + "\n\n" + request.prompt
-
-        # Update request files list
-        if updated_files is not None:
-            logger.debug(f"[TRACER] Updated files list after prompt.txt processing: {len(updated_files)} files")
-            request.files = updated_files
-
-        # Check user input size at MCP transport boundary (before adding internal content)
-        size_check = self.check_prompt_size(request.prompt)
-        if size_check:
-            from tools.models import ToolOutput
-
-            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
-
-        # Detect primary language
-        primary_language = self.detect_primary_language(request.files)
-        logger.debug(f"[TRACER] Detected primary language: {primary_language}")
-
-        # Use centralized file processing logic for main code files (with line numbers enabled)
-        continuation_id = getattr(request, "continuation_id", None)
-        logger.debug(f"[TRACER] Preparing {len(request.files)} code files for analysis")
-        code_content, processed_files = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code to analyze")
-        
-        # Store processed files for conversation tracking
-        self._actually_processed_files = processed_files
-
-        if code_content:
-            from utils.token_utils import estimate_tokens
-
-            code_tokens = estimate_tokens(code_content)
-            logger.info(f"[TRACER] Code files embedded successfully: {code_tokens:,} tokens")
-        else:
-            logger.warning("[TRACER] No code content after file processing")
-
-        # Build the complete prompt
-        prompt_parts = []
-
-        # Add system prompt
-        prompt_parts.append(self.get_system_prompt())
-
-        # Add user request and analysis parameters
-        prompt_parts.append("\n=== ANALYSIS REQUEST ===")
-        prompt_parts.append(f"User Request: {request.prompt}")
-        prompt_parts.append(f"Trace Mode: {request.trace_mode}")
-        prompt_parts.append(f"Language: {primary_language}")
-        prompt_parts.append("=== END REQUEST ===")
-
-        # Add web search instruction if enabled
-        websearch_instruction = self.get_websearch_instruction(
-            getattr(request, "use_websearch", True),
-            f"""When analyzing code for {primary_language}, consider if searches for these would help:
-- Framework-specific call patterns and lifecycle methods
-- Language-specific dispatch mechanisms and polymorphism
-- Common side-effect patterns for libraries used in the code
-- Documentation for external APIs and services called
-- Known design patterns that affect call flow""",
-        )
-        if websearch_instruction:
-            prompt_parts.append(websearch_instruction)
-
-        # Add main code to analyze
-        prompt_parts.append("\n=== CODE TO ANALYZE ===")
-        prompt_parts.append(code_content)
-        prompt_parts.append("=== END CODE ===")
-
-        # Add analysis instructions
-        prompt_parts.append(f"\nPlease perform a {request.trace_mode} trace analysis based on the user request.")
-
-        full_prompt = "\n".join(prompt_parts)
-
-        # Log final prompt statistics
-        from utils.token_utils import estimate_tokens
-
-        total_tokens = estimate_tokens(full_prompt)
-        logger.info(f"[TRACER] Complete prompt prepared: {total_tokens:,} tokens, {len(full_prompt):,} characters")
-
-        return full_prompt
-
-    def format_response(self, response: str, request: TracerRequest, model_info: Optional[dict] = None) -> str:
-        """
-        Format the code analysis response with mode-specific rendering instructions.
-
-        The base tool handles structured response validation via SPECIAL_STATUS_MODELS,
-        so this method focuses on providing clear rendering instructions for Claude.
-
-        Args:
-            response: The raw analysis from the model
-            request: The original request for context
-            model_info: Optional dict with model metadata
-
-        Returns:
-            str: The response with mode-specific rendering instructions
-        """
-        logger.debug(f"[TRACER] Formatting response for {request.trace_mode} trace analysis")
-
-        # Get the friendly model name
-        model_name = "the model"
-        if model_info and model_info.get("model_response"):
-            model_name = model_info["model_response"].friendly_name or "the model"
-
-        # Base tool will handle trace_complete JSON responses via SPECIAL_STATUS_MODELS
-        # No need for manual JSON parsing here
-
-        # Generate mode-specific rendering instructions
+        # Get rendering instructions
         rendering_instructions = self._get_rendering_instructions(request.trace_mode)
 
-        # Create the complete response with rendering instructions
-        footer = f"""
----
+        # Create response with both the enhanced prompt and instructions
+        response_content = f"""THIS IS A STATIC CODE ANALYSIS REQUEST:
 
-**Analysis Complete**: {model_name} has completed a {request.trace_mode} analysis as requested.
+{enhanced_prompt}
+
+## Analysis Instructions
 
 {rendering_instructions}
 
-**GENERAL REQUIREMENTS:**
-- Follow the rendering instructions EXACTLY as specified above
-- Use only the data provided in the JSON response
-- Maintain exact formatting for readability
-- Include file paths and line numbers as provided
-- Do not add explanations or commentary outside the specified format"""
+CRITICAL: Comprehensive Search and Call-Graph Generation:
+First, think and identify and collect all relevant code, files, and declarations connected to the method, class, or module
+in question:
 
-        return f"{response}{footer}"
+- If you are unable to find the code or mentioned files, look for the relevant code in subfolders. If unsure, ask the user
+to confirm location of folder / filename
+- You MUST carry this task using your own tools, do NOT delegate this to any other model
+- DO NOT automatically use any zen tools (including zen:analyze, zen:debug, zen:chat, etc.) to perform this analysis. 
+- EXCEPTION: If files are very large or the codebase is too complex for direct analysis due to context limitations,
+you may use zen tools with a larger context model to assist with analysis by passing only the relevant files
+- Understand carefully and fully how this code is used, what it depends on, and what other parts of the system depend on it
+- Think through what other components or services are affected by this code's execution — directly or indirectly.
+- Consider what happens when the code succeeds or fails, and what ripple effects a change to it would cause.
+
+
+Finally, present your output in a clearly structured format, following rendering guidelines exactly.
+
+IMPORTANT: If using this tool in conjunction with other work, another tool or another checklist item must be completed
+immediately then do not stop after displaying your output, proceed directly to your next step.
+"""
+
+        from mcp.types import TextContent
+
+        return [TextContent(type="text", text=response_content)]
+
+    def _create_enhanced_prompt(self, original_prompt: str, trace_mode: str) -> str:
+        """Create an enhanced, specific prompt for analysis."""
+        mode_guidance = {
+            "precision": "Follow the exact execution path from the specified method/function, including all method calls, branching logic, and side effects. Track the complete flow from entry point through all called functions. Show when and how this method/function is used throughout the codebase.",
+            "dependencies": "Map all bidirectional dependencies for the specified class/module/protocol: what calls this target (incoming) and what it calls (outgoing). Include imports, inheritance, state access, type relationships, and structural connections.",
+        }
+
+        return f"""
+        
+TARGET: {original_prompt}
+MODE: {trace_mode}
+
+**Specific Instructions**:
+{mode_guidance[trace_mode]}
+
+**CRITICAL: Comprehensive File Search Requirements**:
+- If you are unable to find the code or mentioned files, look for the relevant code in subfolders. If unsure, ask the user
+to confirm location of folder / filename
+- DO NOT automatically use any zen tools (including zen:analyze, zen:debug, zen:chat, etc.) to perform this analysis
+- EXCEPTION: If files are very large or the codebase is too complex for direct analysis due to context limitations,
+you may use zen tools with a larger context model to assist with analysis by passing only the relevant files
+
+**What to identify** (works with any programming language/project):
+- Exact method/function names with full signatures and parameter types
+- Complete file paths and line numbers for all references
+- Class/module context, namespace, and package relationships
+- Conditional branches, their conditions, and execution paths
+- Side effects (database, network, filesystem, state changes, logging)
+- Type relationships, inheritance, polymorphic dispatch, and interfaces
+- Cross-module/cross-service dependencies and API boundaries
+- Configuration dependencies, environment variables, and external resources
+- Error handling paths, exception propagation, and recovery mechanisms
+- Async/concurrent execution patterns and synchronization points
+- Memory allocation patterns and resource lifecycle management
+
+**Analysis Focus**:
+Provide concrete, code-based evidence for all findings. Reference specific line numbers and include exact method signatures. Identify uncertain paths where parameters or runtime context affects flow. Consider project scope and architectural patterns (monolith, microservices, layered, etc.).
+"""
 
     def _get_rendering_instructions(self, trace_mode: str) -> str:
         """
@@ -355,105 +189,181 @@ class TracerTool(BaseTool):
         return """
 ## MANDATORY RENDERING INSTRUCTIONS FOR PRECISION TRACE
 
-You MUST render the trace analysis in exactly two views:
+You MUST render the trace analysis using ONLY the Vertical Indented Flow Style:
 
-### 1. CALL FLOW DIAGRAM (TOP-DOWN)
+### CALL FLOW DIAGRAM - Vertical Indented Style
 
-Use this exact format:
+**EXACT FORMAT TO FOLLOW:**
 ```
-[Class::Method] (file: /path, line: ##)
+[ClassName::MethodName] (file: /complete/file/path.ext, line: ##)
 ↓
-[Class::CalledMethod] (file: /path, line: ##)
+[AnotherClass::calledMethod] (file: /path/to/file.ext, line: ##)
 ↓
-...
+[ThirdClass::nestedMethod] (file: /path/file.ext, line: ##)
+  ↓
+  [DeeperClass::innerCall] (file: /path/inner.ext, line: ##) ? if some_condition
+  ↓
+  [ServiceClass::processData] (file: /services/service.ext, line: ##)
+    ↓
+    [RepositoryClass::saveData] (file: /data/repo.ext, line: ##)
+    ↓
+    [ClientClass::sendRequest] (file: /clients/client.ext, line: ##)
+      ↓
+      [EmailService::sendEmail] (file: /email/service.ext, line: ##) ⚠️ ambiguous branch
+      →
+      [SMSService::sendSMS] (file: /sms/service.ext, line: ##) ⚠️ ambiguous branch
 ```
 
-**Rules:**
-- Chain each call using ↓ or → for readability
-- Include file name and line number per method
-- If the call is conditional, append `? if condition`
-- If ambiguous, mark with `⚠️ ambiguous branch`
-- Indent nested calls appropriately
+**CRITICAL FORMATTING RULES:**
 
-### 2. BRANCHING & SIDE EFFECT TABLE
+1. **Method Names**: Use the actual naming convention of the project language you're analyzing. Automatically detect and adapt to the project's conventions (camelCase, snake_case, PascalCase, etc.) based on the codebase structure and file extensions.
 
-Render exactly this table format:
+2. **Vertical Flow Arrows**:
+   - Use `↓` for standard sequential calls (vertical flow)
+   - Use `→` for parallel/alternative calls (horizontal branch)
+   - NEVER use other arrow types
 
-| Location | Condition | Branches | Ambiguous |
+3. **Indentation Logic**:
+   - Start at column 0 for entry point
+   - Indent 2 spaces for each nesting level
+   - Maintain consistent indentation for same call depth
+   - Sibling calls at same level should have same indentation
+
+4. **Conditional Calls**:
+   - Add `? if condition_description` after method for conditional execution
+   - Use actual condition names from code when possible
+
+5. **Ambiguous Branches**:
+   - Mark with `⚠️ ambiguous branch` when execution path is uncertain
+   - Use `→` to show alternative paths at same indentation level
+
+6. **File Path Format**:
+   - Use complete relative paths from project root
+   - Include actual file extensions from the project
+   - Show exact line numbers where method is defined
+
+### ADDITIONAL ANALYSIS VIEWS
+
+**1. BRANCHING & SIDE EFFECT TABLE**
+
+| Location | Condition | Branches | Uncertain |
 |----------|-----------|----------|-----------|
-| /file/path:## | if condition | method1(), method2() | ✅/❌ |
+| CompleteFileName.ext:## | if actual_condition_from_code | method1(), method2(), else skip | No |
+| AnotherFile.ext:## | if boolean_check | callMethod(), else return | No |
+| ThirdFile.ext:## | if validation_passes | processData(), else throw | Yes |
 
-**Side Effects section:**
+**2. SIDE EFFECTS**
 ```
 Side Effects:
-- [database] description (File.ext:##)
-- [network] description (File.ext:##)
-- [filesystem] description (File.ext:##)
+- [database] Specific database operation description (CompleteFileName.ext:##)
+- [network] Specific network call description (CompleteFileName.ext:##)
+- [filesystem] Specific file operation description (CompleteFileName.ext:##)
+- [state] State changes or property modifications (CompleteFileName.ext:##)
+- [memory] Memory allocation or cache operations (CompleteFileName.ext:##)
 ```
 
-**CRITICAL RULES:**
-- ALWAYS render both views unless data is missing
-- Use exact filenames, class names, and line numbers from JSON
-- DO NOT invent function names or examples
-- Mark ambiguous branches with ⚠️ or ✅
-- If sections are empty, omit them cleanly"""
+**3. USAGE POINTS**
+```
+Usage Points:
+1. FileName.ext:## - Context description of where/why it's called
+2. AnotherFile.ext:## - Context description of usage scenario
+3. ThirdFile.ext:## - Context description of calling pattern
+4. FourthFile.ext:## - Context description of integration point
+```
+
+**4. ENTRY POINTS**
+```
+Entry Points:
+- ClassName::methodName (context: where this flow typically starts)
+- AnotherClass::entryMethod (context: alternative entry scenario)
+- ThirdClass::triggerMethod (context: event-driven entry point)
+```
+
+**ABSOLUTE REQUIREMENTS:**
+- Use ONLY the vertical indented style for the call flow diagram
+- Present ALL FOUR additional analysis views (Branching Table, Side Effects, Usage Points, Entry Points)
+- Adapt method naming to match the project's programming language conventions
+- Use exact file paths and line numbers from the actual codebase
+- DO NOT invent or guess method names or locations
+- Follow indentation rules precisely for call hierarchy
+- Mark uncertain execution paths clearly
+- Provide contextual descriptions in Usage Points and Entry Points sections
+- Include comprehensive side effects categorization (database, network, filesystem, state, memory)"""
 
     def _get_dependencies_rendering_instructions(self) -> str:
         """Get rendering instructions for dependencies trace mode."""
         return """
 ## MANDATORY RENDERING INSTRUCTIONS FOR DEPENDENCIES TRACE
 
-You MUST render the trace analysis in exactly two views:
+You MUST render the trace analysis using ONLY the Bidirectional Arrow Flow Style:
 
-### 1. DEPENDENCY FLOW GRAPH
+### DEPENDENCY FLOW DIAGRAM - Bidirectional Arrow Style
 
-Use this exact format:
+**EXACT FORMAT TO FOLLOW:**
+```
+INCOMING DEPENDENCIES → [TARGET_CLASS/MODULE] → OUTGOING DEPENDENCIES
 
-**Incoming:**
-```
-Called by:
-- [CallerClass::callerMethod] ← /path/file.ext:##
-- [ServiceImpl::run]          ← /path/file.ext:##
-```
+CallerClass::callerMethod ←────┐
+AnotherCaller::anotherMethod ←─┤
+ThirdCaller::thirdMethod ←─────┤
+                               │
+                    [TARGET_CLASS/MODULE]
+                               │
+                               ├────→ FirstDependency::method
+                               ├────→ SecondDependency::method
+                               └────→ ThirdDependency::method
 
-**Outgoing:**
-```
-Calls:
-- [Logger::logAction]    → /utils/log.ext:##
-- [PaymentClient::send]  → /clients/pay.ext:##
-```
-
-**Type Dependencies:**
-```
-- conforms_to: ProtocolName
-- implements: InterfaceName
-- imports: ModuleName, LibraryName
+TYPE RELATIONSHIPS:
+InterfaceName ──implements──→ [TARGET_CLASS] ──extends──→ BaseClass
+DTOClass ──uses──→ [TARGET_CLASS] ──uses──→ EntityClass
 ```
 
-**State Access:**
-```
-- reads: property.name (line ##)
-- writes: object.field (line ##)
-```
+**CRITICAL FORMATTING RULES:**
 
-**Arrow Rules:**
-- `←` for incoming (who calls this)
-- `→` for outgoing (what this calls)
+1. **Target Placement**: Always place the target class/module in square brackets `[TARGET_NAME]` at the center
+2. **Incoming Dependencies**: Show on the left side with `←` arrows pointing INTO the target
+3. **Outgoing Dependencies**: Show on the right side with `→` arrows pointing OUT FROM the target
+4. **Arrow Alignment**: Use consistent spacing and alignment for visual clarity
+5. **Method Naming**: Use the project's actual naming conventions detected from the codebase
+6. **File References**: Include complete file paths and line numbers
 
-### 2. DEPENDENCY TABLE
+**VISUAL LAYOUT RULES:**
 
-Render exactly this table format:
+1. **Header Format**: Always start with the flow direction indicator
+2. **Left Side (Incoming)**:
+   - List all callers with `←` arrows
+   - Use `┐`, `┤`, `┘` box drawing characters for clean connection lines
+   - Align arrows consistently
+
+3. **Center (Target)**:
+   - Enclose target in square brackets
+   - Position centrally between incoming and outgoing
+
+4. **Right Side (Outgoing)**:
+   - List all dependencies with `→` arrows
+   - Use `├`, `└` box drawing characters for branching
+   - Maintain consistent spacing
+
+5. **Type Relationships Section**:
+   - Use `──relationship──→` format with double hyphens
+   - Show inheritance, implementation, and usage relationships
+   - Place below the main flow diagram
+
+**DEPENDENCY TABLE:**
 
 | Type | From/To | Method | File | Line |
 |------|---------|--------|------|------|
-| direct_call | From: CallerClass | callerMethod | /path/file.ext | ## |
-| method_call | To: TargetClass | targetMethod | /path/file.ext | ## |
-| uses_property | To: ObjectClass | .propertyName | /path/file.ext | ## |
-| conforms_to | Self: ThisClass | — | /path/file.ext | — |
+| incoming_call | From: CallerClass | callerMethod | /complete/path/file.ext | ## |
+| outgoing_call | To: TargetClass | targetMethod | /complete/path/file.ext | ## |
+| implements | Self: ThisClass | — | /complete/path/file.ext | — |
+| extends | Self: ThisClass | — | /complete/path/file.ext | — |
+| uses_type | Self: ThisClass | — | /complete/path/file.ext | — |
 
-**CRITICAL RULES:**
-- ALWAYS render both views unless data is missing
-- Use exact filenames, class names, and line numbers from JSON
-- DO NOT invent function names or examples
-- If sections (state access, type dependencies) are empty, omit them cleanly
-- Show directional dependencies with proper arrows"""
+**ABSOLUTE REQUIREMENTS:**
+- Use ONLY the bidirectional arrow flow style shown above
+- Automatically detect and use the project's naming conventions
+- Use exact file paths and line numbers from the actual codebase
+- DO NOT invent or guess method/class names
+- Maintain visual alignment and consistent spacing
+- Include type relationships section when applicable
+- Show clear directional flow with proper arrows"""

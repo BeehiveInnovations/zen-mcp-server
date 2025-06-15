@@ -2,8 +2,6 @@
 Tests for the tracer tool functionality
 """
 
-from unittest.mock import Mock, patch
-
 import pytest
 
 from tools.models import ToolModelCategory
@@ -18,47 +16,6 @@ class TestTracerTool:
         """Create a tracer tool instance for testing"""
         return TracerTool()
 
-    @pytest.fixture
-    def mock_model_response(self):
-        """Create a mock model response for call path analysis"""
-
-        def _create_response(content=None):
-            if content is None:
-                content = """## Call Path Summary
-
-1. 🟢 `BookingManager::finalizeInvoice()` at booking.py:45 → calls `PaymentProcessor.process()`
-2. 🟢 `PaymentProcessor::process()` at payment.py:123 → calls `validation.validate_payment()`
-3. 🟡 `validation.validate_payment()` at validation.py:67 → conditionally calls `Logger.log()`
-
-## Value-Driven Flow Analysis
-
-**Scenario 1**: `invoice_id=123, payment_method="credit_card"`
-- Path: BookingManager → PaymentProcessor → CreditCardValidator → StripeGateway
-- Key decision at payment.py:156: routes to Stripe integration
-
-## Side Effects & External Dependencies
-
-### Database Interactions
-- **Transaction.save()** at models.py:234 → inserts payment record
-
-### Network Calls
-- **StripeGateway.charge()** → HTTPS POST to Stripe API
-
-## Code Anchors
-
-- Entry point: `BookingManager::finalizeInvoice` at booking.py:45
-- Critical branch: Payment method selection at payment.py:156
-"""
-
-            return Mock(
-                content=content,
-                usage={"input_tokens": 150, "output_tokens": 300, "total_tokens": 450},
-                model_name="test-model",
-                metadata={"finish_reason": "STOP"},
-            )
-
-        return _create_response
-
     def test_get_name(self, tracer_tool):
         """Test that the tool returns the correct name"""
         assert tracer_tool.get_name() == "tracer"
@@ -66,355 +23,266 @@ class TestTracerTool:
     def test_get_description(self, tracer_tool):
         """Test that the tool returns a comprehensive description"""
         description = tracer_tool.get_description()
-        assert "STATIC CODE ANALYSIS" in description
-        assert "execution flow" in description
-        assert "dependency mappings" in description
+        assert "ANALYSIS PROMPT GENERATOR" in description
         assert "precision" in description
         assert "dependencies" in description
+        assert "static code analysis" in description
 
     def test_get_input_schema(self, tracer_tool):
-        """Test that the input schema includes all required fields"""
+        """Test that the input schema includes required fields"""
         schema = tracer_tool.get_input_schema()
 
         assert schema["type"] == "object"
         assert "prompt" in schema["properties"]
-        assert "files" in schema["properties"]
         assert "trace_mode" in schema["properties"]
 
-        # Check required fields
-        required_fields = schema["required"]
-        assert "prompt" in required_fields
-        assert "files" in required_fields
-        assert "trace_mode" in required_fields
+        # Check trace_mode enum values
+        trace_enum = schema["properties"]["trace_mode"]["enum"]
+        assert "precision" in trace_enum
+        assert "dependencies" in trace_enum
 
-        # Check enum values for trace_mode
-        trace_mode_enum = schema["properties"]["trace_mode"]["enum"]
-        assert "precision" in trace_mode_enum
-        assert "dependencies" in trace_mode_enum
+        # Check required fields
+        assert set(schema["required"]) == {"prompt", "trace_mode"}
 
     def test_get_model_category(self, tracer_tool):
-        """Test that the tool uses extended reasoning category"""
+        """Test that the tracer tool uses FAST_RESPONSE category"""
         category = tracer_tool.get_model_category()
-        assert category == ToolModelCategory.EXTENDED_REASONING
+        assert category == ToolModelCategory.FAST_RESPONSE
 
-    def test_request_model_validation(self):
-        """Test request model validation"""
+    def test_request_model_validation(self, tracer_tool):
+        """Test TracerRequest model validation"""
         # Valid request
         request = TracerRequest(
-            prompt="Trace BookingManager::finalizeInvoice method with invoice_id=123",
-            files=["/test/booking.py", "/test/payment.py"],
+            prompt="BookingManager finalizeInvoice method",
             trace_mode="precision",
         )
-        assert request.prompt == "Trace BookingManager::finalizeInvoice method with invoice_id=123"
-        assert len(request.files) == 2
+        assert request.prompt == "BookingManager finalizeInvoice method"
         assert request.trace_mode == "precision"
 
-        # Invalid request (missing required fields)
+        # Test invalid trace_mode
         with pytest.raises(ValueError):
-            TracerRequest(files=["/test/file.py"])  # Missing prompt and trace_mode
-
-        # Invalid trace_mode value
-        with pytest.raises(ValueError):
-            TracerRequest(prompt="Test", files=["/test/file.py"], trace_mode="invalid_type")
-
-    def test_language_detection_python(self, tracer_tool):
-        """Test language detection for Python files"""
-        files = ["/test/booking.py", "/test/payment.py", "/test/utils.py"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "python"
-
-    def test_language_detection_javascript(self, tracer_tool):
-        """Test language detection for JavaScript files"""
-        files = ["/test/app.js", "/test/component.jsx", "/test/utils.js"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "javascript"
-
-    def test_language_detection_typescript(self, tracer_tool):
-        """Test language detection for TypeScript files"""
-        files = ["/test/app.ts", "/test/component.tsx", "/test/utils.ts"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "typescript"
-
-    def test_language_detection_csharp(self, tracer_tool):
-        """Test language detection for C# files"""
-        files = ["/test/BookingService.cs", "/test/PaymentProcessor.cs"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "csharp"
-
-    def test_language_detection_java(self, tracer_tool):
-        """Test language detection for Java files"""
-        files = ["/test/BookingManager.java", "/test/PaymentService.java"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "java"
-
-    def test_language_detection_mixed(self, tracer_tool):
-        """Test language detection for mixed language files"""
-        files = ["/test/app.py", "/test/service.js", "/test/model.java"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "mixed"
-
-    def test_language_detection_unknown(self, tracer_tool):
-        """Test language detection for unknown extensions"""
-        files = ["/test/config.xml", "/test/readme.txt"]
-        language = tracer_tool.detect_primary_language(files)
-        assert language == "unknown"
-
-    # Removed parse_entry_point tests as method no longer exists in simplified interface
+            TracerRequest(
+                prompt="Test",
+                trace_mode="invalid_mode",
+            )
 
     @pytest.mark.asyncio
-    async def test_prepare_prompt_basic(self, tracer_tool):
-        """Test basic prompt preparation"""
-        request = TracerRequest(
-            prompt="Trace BookingManager::finalizeInvoice method with invoice_id=123",
-            files=["/test/booking.py"],
-            trace_mode="precision",
-        )
+    async def test_execute_precision_mode(self, tracer_tool):
+        """Test executing tracer with precision mode"""
+        request_args = {
+            "prompt": "BookingManager finalizeInvoice method",
+            "trace_mode": "precision",
+        }
 
-        # Mock file content preparation
-        with patch.object(tracer_tool, "_prepare_file_content_for_prompt") as mock_prep:
-            mock_prep.return_value = "def finalizeInvoice(self, invoice_id):\n    pass"
-            with patch.object(tracer_tool, "check_prompt_size") as mock_check:
-                mock_check.return_value = None
-                prompt = await tracer_tool.prepare_prompt(request)
+        result = await tracer_tool.execute(request_args)
 
-        assert "ANALYSIS REQUEST" in prompt
-        assert "Trace BookingManager::finalizeInvoice method" in prompt
+        assert len(result) == 1
+        output = result[0]
+        assert output.type == "text"
+
+        # Check content includes expected sections
+        content = output.text
+        assert "Enhanced Analysis Prompt" in content
+        assert "Analysis Instructions" in content
+        assert "BookingManager finalizeInvoice method" in content
+        assert "precision" in content
+        assert "CALL FLOW DIAGRAM" in content
+
+    @pytest.mark.asyncio
+    async def test_execute_dependencies_mode(self, tracer_tool):
+        """Test executing tracer with dependencies mode"""
+        request_args = {
+            "prompt": "payment processing flow",
+            "trace_mode": "dependencies",
+        }
+
+        result = await tracer_tool.execute(request_args)
+
+        assert len(result) == 1
+        output = result[0]
+        assert output.type == "text"
+
+        # Check content includes expected sections
+        content = output.text
+        assert "Enhanced Analysis Prompt" in content
+        assert "payment processing flow" in content
+        assert "dependencies" in content
+        assert "DEPENDENCY FLOW DIAGRAM" in content
+
+    def test_create_enhanced_prompt_precision(self, tracer_tool):
+        """Test enhanced prompt creation for precision mode"""
+        prompt = tracer_tool._create_enhanced_prompt("BookingManager::finalizeInvoice", "precision")
+
+        assert "STATIC CODE ANALYSIS REQUEST" in prompt
+        assert "BookingManager::finalizeInvoice" in prompt
         assert "precision" in prompt
-        assert "CODE TO ANALYZE" in prompt
+        assert "execution path" in prompt
+        assert "method calls" in prompt
+        assert "line numbers" in prompt
 
-    @pytest.mark.asyncio
-    async def test_prepare_prompt_with_dependencies(self, tracer_tool):
-        """Test prompt preparation with dependencies type"""
-        request = TracerRequest(
-            prompt="Analyze dependencies for payment.process_payment function with amount=100.50",
-            files=["/test/payment.py"],
-            trace_mode="dependencies",
-        )
+    def test_create_enhanced_prompt_dependencies(self, tracer_tool):
+        """Test enhanced prompt creation for dependencies mode"""
+        prompt = tracer_tool._create_enhanced_prompt("validation function", "dependencies")
 
-        with patch.object(tracer_tool, "_prepare_file_content_for_prompt") as mock_prep:
-            mock_prep.return_value = "def process_payment(amount, method):\n    pass"
-            with patch.object(tracer_tool, "check_prompt_size") as mock_check:
-                mock_check.return_value = None
-                prompt = await tracer_tool.prepare_prompt(request)
+        assert "STATIC CODE ANALYSIS REQUEST" in prompt
+        assert "validation function" in prompt
+        assert "dependencies" in prompt
+        assert "bidirectional dependencies" in prompt
+        assert "incoming" in prompt
+        assert "outgoing" in prompt
 
-        assert "Analyze dependencies for payment.process_payment" in prompt
-        assert "Trace Mode: dependencies" in prompt
+    def test_get_rendering_instructions_precision(self, tracer_tool):
+        """Test rendering instructions for precision mode"""
+        instructions = tracer_tool._get_rendering_instructions("precision")
 
-    @pytest.mark.asyncio
-    async def test_prepare_prompt_with_security_context(self, tracer_tool):
-        """Test prompt preparation with security context"""
-        request = TracerRequest(
-            prompt="Trace UserService::authenticate method focusing on security implications and potential vulnerabilities",
-            files=["/test/auth.py"],
-            trace_mode="precision",
-        )
+        assert "PRECISION TRACE" in instructions
+        assert "CALL FLOW DIAGRAM" in instructions
+        assert "ADDITIONAL ANALYSIS VIEWS" in instructions
+        assert "ClassName::MethodName" in instructions
+        assert "↓" in instructions
 
-        with patch.object(tracer_tool, "_prepare_file_content_for_prompt") as mock_prep:
-            mock_prep.return_value = "def authenticate(self, username, password):\n    pass"
-            with patch.object(tracer_tool, "check_prompt_size") as mock_check:
-                mock_check.return_value = None
-                prompt = await tracer_tool.prepare_prompt(request)
+    def test_get_rendering_instructions_dependencies(self, tracer_tool):
+        """Test rendering instructions for dependencies mode"""
+        instructions = tracer_tool._get_rendering_instructions("dependencies")
 
-        assert "security implications and potential vulnerabilities" in prompt
-        assert "Trace Mode: precision" in prompt
-
-    def test_format_response_precision(self, tracer_tool):
-        """Test response formatting for precision trace"""
-        request = TracerRequest(
-            prompt="Trace BookingManager::finalizeInvoice method", files=["/test/booking.py"], trace_mode="precision"
-        )
-
-        response = '{"status": "trace_complete", "trace_type": "precision"}'
-        model_info = {"model_response": Mock(friendly_name="Gemini Pro")}
-
-        formatted = tracer_tool.format_response(response, request, model_info)
-
-        assert response in formatted
-        assert "Analysis Complete" in formatted
-        assert "Gemini Pro" in formatted
-        assert "precision analysis" in formatted
-        assert "CALL FLOW DIAGRAM" in formatted
-        assert "BRANCHING & SIDE EFFECT TABLE" in formatted
-
-    def test_format_response_dependencies(self, tracer_tool):
-        """Test response formatting for dependencies trace"""
-        request = TracerRequest(
-            prompt="Analyze dependencies for payment.process function",
-            files=["/test/payment.py"],
-            trace_mode="dependencies",
-        )
-
-        response = '{"status": "trace_complete", "trace_type": "dependencies"}'
-
-        formatted = tracer_tool.format_response(response, request)
-
-        assert response in formatted
-        assert "dependencies analysis" in formatted
-        assert "DEPENDENCY FLOW GRAPH" in formatted
-        assert "DEPENDENCY TABLE" in formatted
-
-    # Removed PlantUML test as export_format is no longer a parameter
-
-    def test_get_default_temperature(self, tracer_tool):
-        """Test that the tool uses analytical temperature"""
-        from config import TEMPERATURE_ANALYTICAL
-
-        assert tracer_tool.get_default_temperature() == TEMPERATURE_ANALYTICAL
-
-    def test_wants_line_numbers_by_default(self, tracer_tool):
-        """Test that line numbers are enabled by default"""
-        # The base class should enable line numbers by default for precise references
-        # We test that this isn't overridden to disable them
-        assert hasattr(tracer_tool, "wants_line_numbers_by_default")
-
-    def test_trace_mode_validation(self):
-        """Test trace mode validation"""
-        # Valid trace modes
-        request1 = TracerRequest(prompt="Test precision", files=["/test/file.py"], trace_mode="precision")
-        assert request1.trace_mode == "precision"
-
-        request2 = TracerRequest(prompt="Test dependencies", files=["/test/file.py"], trace_mode="dependencies")
-        assert request2.trace_mode == "dependencies"
-
-        # Invalid trace mode should raise ValidationError
-        with pytest.raises(ValueError):
-            TracerRequest(prompt="Test", files=["/test/file.py"], trace_mode="invalid_type")
-
-    def test_get_rendering_instructions(self, tracer_tool):
-        """Test the main rendering instructions dispatcher method"""
-        # Test precision mode
-        precision_instructions = tracer_tool._get_rendering_instructions("precision")
-        assert "MANDATORY RENDERING INSTRUCTIONS FOR PRECISION TRACE" in precision_instructions
-        assert "CALL FLOW DIAGRAM" in precision_instructions
-        assert "BRANCHING & SIDE EFFECT TABLE" in precision_instructions
-
-        # Test dependencies mode
-        dependencies_instructions = tracer_tool._get_rendering_instructions("dependencies")
-        assert "MANDATORY RENDERING INSTRUCTIONS FOR DEPENDENCIES TRACE" in dependencies_instructions
-        assert "DEPENDENCY FLOW GRAPH" in dependencies_instructions
-        assert "DEPENDENCY TABLE" in dependencies_instructions
+        assert "DEPENDENCIES TRACE" in instructions
+        assert "DEPENDENCY FLOW DIAGRAM" in instructions
+        assert "DEPENDENCY TABLE" in instructions
+        assert "INCOMING DEPENDENCIES" in instructions
+        assert "OUTGOING DEPENDENCIES" in instructions
+        assert "←" in instructions
+        assert "→" in instructions
 
     def test_get_precision_rendering_instructions(self, tracer_tool):
-        """Test precision mode rendering instructions"""
+        """Test precision rendering instructions content"""
         instructions = tracer_tool._get_precision_rendering_instructions()
 
-        # Check for required sections
-        assert "MANDATORY RENDERING INSTRUCTIONS FOR PRECISION TRACE" in instructions
-        assert "1. CALL FLOW DIAGRAM (TOP-DOWN)" in instructions
-        assert "2. BRANCHING & SIDE EFFECT TABLE" in instructions
-
-        # Check for specific formatting requirements
-        assert "[Class::Method] (file: /path, line: ##)" in instructions
-        assert "Chain each call using ↓ or → for readability" in instructions
-        assert "If ambiguous, mark with `⚠️ ambiguous branch`" in instructions
-        assert "Side Effects:" in instructions
-        assert "[database] description (File.ext:##)" in instructions
-
-        # Check for critical rules
-        assert "CRITICAL RULES:" in instructions
-        assert "Use exact filenames, class names, and line numbers from JSON" in instructions
-        assert "DO NOT invent function names or examples" in instructions
+        assert "MANDATORY RENDERING INSTRUCTIONS" in instructions
+        assert "ADDITIONAL ANALYSIS VIEWS" in instructions
+        assert "CALL FLOW DIAGRAM" in instructions
+        assert "line number" in instructions
+        assert "ambiguous branch" in instructions
+        assert "SIDE EFFECTS" in instructions
 
     def test_get_dependencies_rendering_instructions(self, tracer_tool):
-        """Test dependencies mode rendering instructions"""
+        """Test dependencies rendering instructions content"""
         instructions = tracer_tool._get_dependencies_rendering_instructions()
 
-        # Check for required sections
-        assert "MANDATORY RENDERING INSTRUCTIONS FOR DEPENDENCIES TRACE" in instructions
-        assert "1. DEPENDENCY FLOW GRAPH" in instructions
-        assert "2. DEPENDENCY TABLE" in instructions
-
-        # Check for specific formatting requirements
-        assert "Called by:" in instructions
-        assert "[CallerClass::callerMethod] ← /path/file.ext:##" in instructions
-        assert "Calls:" in instructions
-        assert "[Logger::logAction]    → /utils/log.ext:##" in instructions
-        assert "Type Dependencies:" in instructions
-        assert "State Access:" in instructions
-
-        # Check for arrow rules
-        assert "`←` for incoming (who calls this)" in instructions
-        assert "`→` for outgoing (what this calls)" in instructions
-
-        # Check for dependency table format
-        assert "| Type | From/To | Method | File | Line |" in instructions
-        assert "| direct_call | From: CallerClass | callerMethod |" in instructions
-
-        # Check for critical rules
-        assert "CRITICAL RULES:" in instructions
-        assert "Use exact filenames, class names, and line numbers from JSON" in instructions
-        assert "Show directional dependencies with proper arrows" in instructions
-
-    def test_format_response_uses_private_methods(self, tracer_tool):
-        """Test that format_response correctly uses the refactored private methods"""
-        # Test precision mode
-        precision_request = TracerRequest(prompt="Test precision", files=["/test/file.py"], trace_mode="precision")
-        precision_response = tracer_tool.format_response('{"test": "response"}', precision_request)
-
-        # Should contain precision-specific instructions
-        assert "CALL FLOW DIAGRAM" in precision_response
-        assert "BRANCHING & SIDE EFFECT TABLE" in precision_response
-        assert "precision analysis" in precision_response
-
-        # Test dependencies mode
-        dependencies_request = TracerRequest(
-            prompt="Test dependencies", files=["/test/file.py"], trace_mode="dependencies"
-        )
-        dependencies_response = tracer_tool.format_response('{"test": "response"}', dependencies_request)
-
-        # Should contain dependencies-specific instructions
-        assert "DEPENDENCY FLOW GRAPH" in dependencies_response
-        assert "DEPENDENCY TABLE" in dependencies_response
-        assert "dependencies analysis" in dependencies_response
+        assert "MANDATORY RENDERING INSTRUCTIONS" in instructions
+        assert "Bidirectional Arrow Flow Style" in instructions
+        assert "CallerClass::callerMethod" in instructions
+        assert "FirstDependency::method" in instructions
+        assert "TYPE RELATIONSHIPS" in instructions
+        assert "DEPENDENCY TABLE" in instructions
 
     def test_rendering_instructions_consistency(self, tracer_tool):
-        """Test that private methods return consistent instructions"""
-        # Get instructions through both paths
-        precision_direct = tracer_tool._get_precision_rendering_instructions()
-        precision_via_dispatcher = tracer_tool._get_rendering_instructions("precision")
+        """Test that rendering instructions are consistent between modes"""
+        precision_instructions = tracer_tool._get_precision_rendering_instructions()
+        dependencies_instructions = tracer_tool._get_dependencies_rendering_instructions()
 
-        dependencies_direct = tracer_tool._get_dependencies_rendering_instructions()
-        dependencies_via_dispatcher = tracer_tool._get_rendering_instructions("dependencies")
+        # Both should have mandatory instructions
+        assert "MANDATORY RENDERING INSTRUCTIONS" in precision_instructions
+        assert "MANDATORY RENDERING INSTRUCTIONS" in dependencies_instructions
 
-        # Should be identical
-        assert precision_direct == precision_via_dispatcher
-        assert dependencies_direct == dependencies_via_dispatcher
+        # Both should have specific styling requirements
+        assert "ONLY" in precision_instructions
+        assert "ONLY" in dependencies_instructions
+
+        # Both should have absolute requirements
+        assert "ABSOLUTE REQUIREMENTS" in precision_instructions
+        assert "ABSOLUTE REQUIREMENTS" in dependencies_instructions
 
     def test_rendering_instructions_completeness(self, tracer_tool):
-        """Test that rendering instructions contain all required elements"""
-        precision_instructions = tracer_tool._get_precision_rendering_instructions()
-        dependencies_instructions = tracer_tool._get_dependencies_rendering_instructions()
+        """Test that rendering instructions include all necessary elements"""
+        precision = tracer_tool._get_precision_rendering_instructions()
+        dependencies = tracer_tool._get_dependencies_rendering_instructions()
 
-        # Both should have mandatory sections
-        for instructions in [precision_instructions, dependencies_instructions]:
-            assert "MANDATORY RENDERING INSTRUCTIONS" in instructions
-            assert "You MUST render" in instructions
-            assert "exactly two views" in instructions
-            assert "CRITICAL RULES:" in instructions
-            assert "ALWAYS render both views unless data is missing" in instructions
-            assert "Use exact filenames, class names, and line numbers from JSON" in instructions
-            assert "DO NOT invent function names or examples" in instructions
+        # Precision mode should include call flow and additional analysis views
+        assert "CALL FLOW DIAGRAM" in precision
+        assert "ADDITIONAL ANALYSIS VIEWS" in precision
+
+        # Dependencies mode should include flow diagram and table
+        assert "DEPENDENCY FLOW DIAGRAM" in dependencies
+        assert "DEPENDENCY TABLE" in dependencies
 
     def test_rendering_instructions_mode_specific_content(self, tracer_tool):
-        """Test that each mode has unique content"""
-        precision_instructions = tracer_tool._get_precision_rendering_instructions()
-        dependencies_instructions = tracer_tool._get_dependencies_rendering_instructions()
+        """Test that each mode has its specific content requirements"""
+        precision = tracer_tool._get_precision_rendering_instructions()
+        dependencies = tracer_tool._get_dependencies_rendering_instructions()
 
-        # Precision-specific content should not be in dependencies
-        assert "CALL FLOW DIAGRAM" in precision_instructions
-        assert "CALL FLOW DIAGRAM" not in dependencies_instructions
-        assert "BRANCHING & SIDE EFFECT TABLE" in precision_instructions
-        assert "BRANCHING & SIDE EFFECT TABLE" not in dependencies_instructions
+        # Precision-specific content
+        assert "USAGE POINTS" in precision
+        assert "ENTRY POINTS" in precision
 
-        # Dependencies-specific content should not be in precision
-        assert "DEPENDENCY FLOW GRAPH" in dependencies_instructions
-        assert "DEPENDENCY FLOW GRAPH" not in precision_instructions
-        assert "DEPENDENCY TABLE" in dependencies_instructions
-        assert "DEPENDENCY TABLE" not in precision_instructions
+        # Dependencies-specific content
+        assert "INCOMING DEPENDENCIES" in dependencies
+        assert "OUTGOING DEPENDENCIES" in dependencies
+        assert "Bidirectional Arrow" in dependencies
 
-        # Mode-specific symbols and patterns
-        assert "↓" in precision_instructions  # Flow arrows
-        assert "←" in dependencies_instructions  # Incoming arrow
-        assert "→" in dependencies_instructions  # Outgoing arrow
-        assert "Side Effects:" in precision_instructions
-        assert "Called by:" in dependencies_instructions
+    @pytest.mark.asyncio
+    async def test_execute_returns_textcontent_format(self, tracer_tool):
+        """Test that execute returns proper TextContent format for MCP protocol"""
+        from mcp.types import TextContent
+
+        request_args = {
+            "prompt": "test method analysis",
+            "trace_mode": "precision",
+        }
+
+        result = await tracer_tool.execute(request_args)
+
+        # Verify structure
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+        # Verify TextContent format
+        output = result[0]
+        assert isinstance(output, TextContent)
+        assert hasattr(output, "type")
+        assert hasattr(output, "text")
+        assert output.type == "text"
+        assert isinstance(output.text, str)
+        assert len(output.text) > 0
+
+    @pytest.mark.asyncio
+    async def test_mcp_protocol_compatibility(self, tracer_tool):
+        """Test that the tool output is compatible with MCP protocol expectations"""
+        request_args = {
+            "prompt": "analyze method dependencies",
+            "trace_mode": "dependencies",
+        }
+
+        result = await tracer_tool.execute(request_args)
+
+        # Should return list of TextContent objects
+        assert isinstance(result, list)
+
+        for item in result:
+            # Each item should be TextContent with required fields
+            assert hasattr(item, "type")
+            assert hasattr(item, "text")
+
+            # Verify it can be serialized (MCP requirement)
+            serialized = item.model_dump()
+            assert "type" in serialized
+            assert "text" in serialized
+            assert serialized["type"] == "text"
+
+    def test_mode_selection_guidance(self, tracer_tool):
+        """Test that the schema provides clear guidance on when to use each mode"""
+        schema = tracer_tool.get_input_schema()
+        trace_mode_desc = schema["properties"]["trace_mode"]["description"]
+
+        # Should clearly indicate precision is for methods/functions
+        assert "methods/functions" in trace_mode_desc
+        assert "execution flow" in trace_mode_desc
+        assert "usage patterns" in trace_mode_desc
+
+        # Should clearly indicate dependencies is for classes/modules/protocols
+        assert "classes/modules/protocols" in trace_mode_desc
+        assert "structural relationships" in trace_mode_desc
+
+        # Should provide clear examples in prompt description
+        prompt_desc = schema["properties"]["prompt"]["description"]
+        assert "method" in prompt_desc and "precision mode" in prompt_desc
+        assert "class" in prompt_desc and "dependencies mode" in prompt_desc
