@@ -36,7 +36,7 @@ class PrecommitRequest(ToolRequest):
     )
     prompt: Optional[str] = Field(
         None,
-        description="The original user request description for the changes. Provides critical context for the review.",
+        description="The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, Claude MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
     )
     compare_to: Optional[str] = Field(
         None,
@@ -95,6 +95,9 @@ class Precommit(BaseTool):
             "Use this before committing, when reviewing changes, checking your changes, validating changes, "
             "or when you're about to commit or ready to commit. Claude should proactively suggest using this tool "
             "whenever the user mentions committing or when changes are complete. "
+            "When original request context is unavailable, Claude MUST think deeply about implementation intent, "
+            "analyze patterns across modifications, infer business logic and requirements from code changes, "
+            "and provide comprehensive insights about what was accomplished and completion status. "
             "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
             "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
             "'max' for critical releases or when reviewing extensive changes across multiple systems. "
@@ -114,7 +117,7 @@ class Precommit(BaseTool):
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "The original user request description for the changes. Provides critical context for the review.",
+                    "description": "The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, Claude MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
                 },
                 "compare_to": {
                     "type": "string",
