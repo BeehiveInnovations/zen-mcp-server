@@ -40,6 +40,8 @@ class ToolOutput(BaseModel):
         "focused_review_required",
         "test_sample_needed",
         "more_tests_required",
+        "more_refactor_required",
+        "refactor_analysis_complete",
         "resend_prompt",
         "continuation_available",
     ] = "success"
@@ -97,6 +99,56 @@ class MoreTestsRequired(BaseModel):
     pending_tests: str = Field(..., description="List of pending tests to be generated")
 
 
+class MoreRefactorRequired(BaseModel):
+    """Request for continuation when refactoring requires extensive changes"""
+
+    status: Literal["more_refactor_required"] = "more_refactor_required"
+    message: str = Field(..., description="Explanation of why more refactoring is needed and what remains to be done")
+
+
+class RefactorOpportunity(BaseModel):
+    """A single refactoring opportunity with precise targeting information"""
+
+    id: str = Field(..., description="Unique identifier for this refactoring opportunity")
+    type: Literal["decompose", "codesmells", "modernize", "organization"] = Field(
+        ..., description="Type of refactoring"
+    )
+    severity: Literal["critical", "high", "medium", "low"] = Field(..., description="Severity level")
+    file: str = Field(..., description="Absolute path to the file")
+    start_line: int = Field(..., description="Starting line number")
+    end_line: int = Field(..., description="Ending line number")
+    context_start_text: str = Field(..., description="Exact text from start line for verification")
+    context_end_text: str = Field(..., description="Exact text from end line for verification")
+    issue: str = Field(..., description="Clear description of what needs refactoring")
+    suggestion: str = Field(..., description="Specific refactoring action to take")
+    rationale: str = Field(..., description="Why this improves the code")
+    code_to_replace: str = Field(..., description="Original code that should be changed")
+    replacement_code_snippet: str = Field(..., description="Refactored version of the code")
+    new_code_snippets: Optional[list[dict]] = Field(
+        default_factory=list, description="Additional code snippets to be added"
+    )
+
+
+class RefactorAction(BaseModel):
+    """Next action for Claude to implement refactoring"""
+
+    action_type: Literal["EXTRACT_METHOD", "SPLIT_CLASS", "MODERNIZE_SYNTAX", "REORGANIZE_CODE", "DECOMPOSE_FILE"] = (
+        Field(..., description="Type of action to perform")
+    )
+    target_file: str = Field(..., description="Absolute path to target file")
+    source_lines: str = Field(..., description="Line range (e.g., '45-67')")
+    description: str = Field(..., description="Step-by-step action description for Claude")
+
+
+class RefactorAnalysisComplete(BaseModel):
+    """Complete refactor analysis with prioritized opportunities"""
+
+    status: Literal["refactor_analysis_complete"] = "refactor_analysis_complete"
+    refactor_opportunities: list[RefactorOpportunity] = Field(..., description="List of refactoring opportunities")
+    priority_sequence: list[str] = Field(..., description="Recommended order of refactoring IDs")
+    next_actions_for_claude: list[RefactorAction] = Field(..., description="Specific actions for Claude to implement")
+
+
 # Registry mapping status strings to their corresponding Pydantic models
 SPECIAL_STATUS_MODELS = {
     "clarification_required": ClarificationRequest,
@@ -104,6 +156,8 @@ SPECIAL_STATUS_MODELS = {
     "focused_review_required": FocusedReviewRequired,
     "test_sample_needed": TestSampleNeeded,
     "more_tests_required": MoreTestsRequired,
+    "more_refactor_required": MoreRefactorRequired,
+    "refactor_analysis_complete": RefactorAnalysisComplete,
 }
 
 

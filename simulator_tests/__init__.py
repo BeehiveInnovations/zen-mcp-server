@@ -19,6 +19,7 @@ from .test_openrouter_fallback import OpenRouterFallbackTest
 from .test_openrouter_models import OpenRouterModelsTest
 from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_redis_validation import RedisValidationTest
+from .test_refactor_validation import RefactorValidationTest
 from .test_testgen_validation import TestGenValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
 
@@ -38,6 +39,7 @@ TEST_REGISTRY = {
     "openrouter_models": OpenRouterModelsTest,
     "token_allocation_validation": TokenAllocationValidationTest,
     "testgen_validation": TestGenValidationTest,
+    "refactor_validation": RefactorValidationTest,
     "conversation_chain_validation": ConversationChainValidationTest,
 }
 
@@ -57,6 +59,7 @@ __all__ = [
     "OpenRouterModelsTest",
     "TokenAllocationValidationTest",
     "TestGenValidationTest",
+    "RefactorValidationTest",
     "ConversationChainValidationTest",
     "TEST_REGISTRY",
 ]

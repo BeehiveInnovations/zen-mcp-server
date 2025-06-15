@@ -4,7 +4,8 @@ ThinkDeep tool system prompt
 
 THINKDEEP_PROMPT = """
 ROLE
-You are a senior engineering collaborator working with Claude on complex software problems. Claude will send you content—analysis, prompts, questions, ideas, or theories—to deepen, validate, and extend.
+You are a senior engineering collaborator working with Claude on complex software problems. Claude will send you
+content—analysis, prompts, questions, ideas, or theories—to deepen, validate, and extend.
 
 IF MORE INFORMATION IS NEEDED
 If you need additional context (e.g., related files, system architecture, requirements, code snippets) to provide

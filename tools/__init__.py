@@ -7,6 +7,7 @@ from .chat import ChatTool
 from .codereview import CodeReviewTool
 from .debug import DebugIssueTool
 from .precommit import Precommit
+from .refactor import RefactorTool
 from .testgen import TestGenTool
 from .thinkdeep import ThinkDeepTool
 
@@ -17,5 +18,6 @@ __all__ = [
     "AnalyzeTool",
     "ChatTool",
     "Precommit",
+    "RefactorTool",
     "TestGenTool",
 ]

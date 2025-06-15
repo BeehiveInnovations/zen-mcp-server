@@ -13,7 +13,10 @@ problem-solving, and collaborative development.
 
 **Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex
 task and let it orchestrate between models automatically. Claude stays in control, performs the actual work, 
-but gets perspectives from the best AI for each subtask. Claude can switch between different tools _and_ models mid-conversation, 
+but gets perspectives from the best AI for each subtask. With tools like [`analyze`](#6-analyze---smart-file-analysis) for 
+understanding codebases, [`codereview`](#3-codereview---professional-code-review) for audits, [`refactor`](#7-refactor---intelligent-code-refactoring) for 
+improving code structure, [`debug`](#5-debug---expert-debugging-assistant) for solving complex problems, and [`precommit`](#4-precommit---pre-commit-validation) for 
+validating changes, Claude can switch between different tools _and_ models mid-conversation, 
 with context carrying forward seamlessly.
 
 **Example Workflow - Claude Code:**
@@ -49,7 +52,8 @@ and review into consideration to aid with its pre-commit review.
   - [`precommit`](#4-precommit---pre-commit-validation) - Pre-commit validation
   - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
-  - [`testgen`](#7-testgen---comprehensive-test-generation) - Test generation with edge cases
+  - [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
+  - [`testgen`](#8-testgen---comprehensive-test-generation) - Test generation with edge cases
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -256,6 +260,7 @@ Just ask Claude naturally:
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
+- **Code needs refactoring?** → `refactor` (intelligent refactoring with decomposition focus)
 - **Server info?** → `version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
@@ -276,8 +281,9 @@ Just ask Claude naturally:
 4. [`precommit`](#4-precommit---pre-commit-validation) - Validate git changes before committing
 5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
 6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
-7. [`testgen`](#7-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
-8. [`version`](#8-version---server-information) - Get server version and configuration
+7. [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
+8. [`testgen`](#8-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
+9. [`version`](#9-version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -435,7 +441,44 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
 - **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
-### 7. `testgen` - Comprehensive Test Generation
+
+### 7. `refactor` - Intelligent Code Refactoring
+**Comprehensive refactoring analysis with top-down decomposition strategy**
+
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for complex legacy systems (worth the investment for thorough refactoring plans) or `max` for extremely complex codebases requiring deep analysis.
+
+**Model Recommendation:** The refactor tool excels with models that have large context windows like Gemini
+Pro (1M tokens), which can analyze entire files and complex codebases simultaneously. 
+This comprehensive view enables detection of cross-file dependencies, architectural patterns, 
+and refactoring opportunities that might be missed when reviewing code in smaller chunks due to context
+constraints.
+
+#### Example Prompts:
+
+**Basic Usage:**
+```
+"Use gemini pro to decompose my_crazy_big_class.m into smaller extensions"
+"Get gemini pro to identify code smells in the authentication module"
+```
+
+**Key Features:**
+- **Intelligent prioritization** - Will refuse to work on low priority issues if code is unwieldy large and requires decomposition first, helps identify poorly managed classes and files that need structural improvements before detail work
+- **Top-down decomposition strategy** - Analyzes file → class → function levels systematically
+- **Four refactor types**: `codesmells` (detect anti-patterns), `decompose` (break down large components), `modernize` (update language features), `organization` (improve structure)
+- **Precise line-number references** - Provides exact line numbers for Claude to implement changes
+- **Language-specific guidance** - Tailored suggestions for Python, JavaScript, Java, C#, Swift, and more
+- **Style guide integration** - Uses existing project files as pattern references
+- **Conservative approach** - Careful dependency analysis to prevent breaking changes
+- **Multi-file analysis** - Understands cross-file relationships and dependencies
+- **Priority sequencing** - Recommends implementation order for refactoring changes
+
+**Refactor Types:**
+- `codesmells`: Detect long methods, god classes, duplicated code, poor naming
+- `decompose`: Break down large files (>1500 LOC), classes (>300 LOC), functions (>80 LOC) 
+- `modernize`: Update to modern language features (f-strings, async/await, etc.)
+- `organization`: Improve logical grouping, separation of concerns, module structure
+
+### 8. `testgen` - Comprehensive Test Generation
 **Generates thorough test suites with edge case coverage** based on existing code and test framework used.
 
 **Thinking Mode (Extended thinking models):** Default is `medium` (8,192 tokens). Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
@@ -463,7 +506,7 @@ suites that cover realistic failure scenarios and integration points that shorte
 - Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
 - Specific code coverage - target specific functions/classes rather than testing everything
 
-### 8. `version` - Server Information
+### 9. `version` - Server Information
 ```
 "Get zen to show its version"
 ```

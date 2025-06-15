@@ -23,147 +23,11 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from .file_types import BINARY_EXTENSIONS, CODE_EXTENSIONS, IMAGE_EXTENSIONS, TEXT_EXTENSIONS
+from .security_config import CONTAINER_WORKSPACE, EXCLUDED_DIRS, MCP_SIGNATURE_FILES, SECURITY_ROOT, WORKSPACE_ROOT
 from .token_utils import DEFAULT_CONTEXT_WINDOW, estimate_tokens
 
 logger = logging.getLogger(__name__)
-
-# Get workspace root for Docker path translation
-# IMPORTANT: WORKSPACE_ROOT should contain the HOST path (e.g., /Users/john/project)
-# that gets mounted to /workspace in the Docker container. This enables proper
-# path translation between host absolute paths and container workspace paths.
-WORKSPACE_ROOT = os.environ.get("WORKSPACE_ROOT")
-CONTAINER_WORKSPACE = Path("/workspace")
-
-# Dangerous paths that should never be used as WORKSPACE_ROOT
-# These would give overly broad access and pose security risks
-DANGEROUS_WORKSPACE_PATHS = {
-    "/",
-    "/etc",
-    "/usr",
-    "/bin",
-    "/var",
-    "/root",
-    "/home",
-    "/workspace",  # Container path - WORKSPACE_ROOT should be host path
-    "C:\\",
-    "C:\\Windows",
-    "C:\\Program Files",
-    "C:\\Users",
-}
-
-# Validate WORKSPACE_ROOT for security if it's set
-if WORKSPACE_ROOT:
-    # Resolve to canonical path for comparison
-    resolved_workspace = Path(WORKSPACE_ROOT).resolve()
-
-    # Special check for /workspace - common configuration mistake
-    if str(resolved_workspace) == "/workspace":
-        raise RuntimeError(
-            f"Configuration Error: WORKSPACE_ROOT should be set to the HOST path, not the container path. "
-            f"Found: WORKSPACE_ROOT={WORKSPACE_ROOT} "
-            f"Expected: WORKSPACE_ROOT should be set to your host directory path (e.g., $HOME) "
-            f"that contains all files Claude might reference. "
-            f"This path gets mounted to /workspace inside the Docker container."
-        )
-
-    # Check against other dangerous paths
-    if str(resolved_workspace) in DANGEROUS_WORKSPACE_PATHS:
-        raise RuntimeError(
-            f"Security Error: WORKSPACE_ROOT '{WORKSPACE_ROOT}' is set to a dangerous system directory. "
-            f"This would give access to critical system files. "
-            f"Please set WORKSPACE_ROOT to a specific project directory."
-        )
-
-    # Additional check: prevent filesystem root
-    if resolved_workspace.parent == resolved_workspace:
-        raise RuntimeError(
-            f"Security Error: WORKSPACE_ROOT '{WORKSPACE_ROOT}' cannot be the filesystem root. "
-            f"This would give access to the entire filesystem. "
-            f"Please set WORKSPACE_ROOT to a specific project directory."
-        )
-
-# Security boundary
-# In Docker: use /workspace (container directory)
-# In tests/direct mode: use WORKSPACE_ROOT (host directory)
-if CONTAINER_WORKSPACE.exists():
-    # Running in Docker container
-    SECURITY_ROOT = CONTAINER_WORKSPACE
-elif WORKSPACE_ROOT:
-    # Running in tests or direct mode with WORKSPACE_ROOT set
-    SECURITY_ROOT = Path(WORKSPACE_ROOT).resolve()
-else:
-    # Fallback for backward compatibility (should not happen in normal usage)
-    SECURITY_ROOT = Path.home()
-
-
-# Directories to exclude from recursive file search
-# These typically contain generated code, dependencies, or build artifacts
-EXCLUDED_DIRS = {
-    "__pycache__",
-    "node_modules",
-    ".venv",
-    "venv",
-    "env",
-    ".env",
-    ".git",
-    ".svn",
-    ".hg",
-    "build",
-    "dist",
-    "target",
-    ".idea",
-    ".vscode",
-    "__pypackages__",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".tox",
-    "htmlcov",
-    ".coverage",
-    # Additional build and temp directories
-    "out",
-    ".next",
-    ".nuxt",
-    ".cache",
-    ".temp",
-    ".tmp",
-    "bower_components",
-    "vendor",
-    ".sass-cache",
-    ".gradle",
-    ".m2",
-    "coverage",
-    # OS-specific directories
-    ".DS_Store",
-    "Thumbs.db",
-    # Python specific
-    "*.egg-info",
-    ".eggs",
-    "wheels",
-    ".Python",
-    # IDE and editor directories
-    ".sublime",
-    ".atom",
-    ".brackets",
-    "*.swp",
-    "*.swo",
-    "*~",
-    # Documentation build
-    "_build",
-    "site",
-    # Mobile development
-    ".expo",
-    ".flutter",
-}
-
-# MCP signature files - presence of these indicates the MCP's own directory
-# Used to prevent the MCP from scanning its own codebase
-MCP_SIGNATURE_FILES = {
-    "zen_server.py",
-    "server.py",
-    "tools/precommit.py",
-    "utils/file_utils.py",
-    "prompts/tool_prompts.py",
-}
 
 
 def is_mcp_directory(path: Path) -> bool:
@@ -242,7 +106,7 @@ def is_home_directory_root(path: Path) -> bool:
         # Check if this is exactly the home directory
         if resolved_path == resolved_home:
             logger.warning(
-                f"Attempted to scan user home directory root: {path}. " f"Please specify a subdirectory instead."
+                f"Attempted to scan user home directory root: {path}. Please specify a subdirectory instead."
             )
             return True
 
@@ -277,56 +141,105 @@ def is_home_directory_root(path: Path) -> bool:
     return False
 
 
-# Common code file extensions that are automatically included when processing directories
-# This set can be extended to support additional file types
-CODE_EXTENSIONS = {
-    ".py",
-    ".js",
-    ".ts",
-    ".jsx",
-    ".tsx",
-    ".java",
-    ".cpp",
-    ".c",
-    ".h",
-    ".hpp",
-    ".cs",
-    ".go",
-    ".rs",
-    ".rb",
-    ".php",
-    ".swift",
-    ".kt",
-    ".scala",
-    ".r",
-    ".m",
-    ".mm",
-    ".sql",
-    ".sh",
-    ".bash",
-    ".zsh",
-    ".fish",
-    ".ps1",
-    ".bat",
-    ".cmd",
-    ".yml",
-    ".yaml",
-    ".json",
-    ".xml",
-    ".toml",
-    ".ini",
-    ".cfg",
-    ".conf",
-    ".txt",
-    ".md",
-    ".rst",
-    ".tex",
-    ".html",
-    ".css",
-    ".scss",
-    ".sass",
-    ".less",
-}
+def detect_file_type(file_path: str) -> str:
+    """
+    Detect file type for appropriate processing strategy.
+
+    NOTE: This function is currently not used for line number auto-detection
+    due to backward compatibility requirements. It is intended for future
+    features requiring specific file type handling (e.g., image processing,
+    binary file analysis, or enhanced file filtering).
+
+    Args:
+        file_path: Path to the file to analyze
+
+    Returns:
+        str: "text", "binary", or "image"
+    """
+    path = Path(file_path)
+
+    # Check extension first (fast)
+    extension = path.suffix.lower()
+    if extension in TEXT_EXTENSIONS:
+        return "text"
+    elif extension in IMAGE_EXTENSIONS:
+        return "image"
+    elif extension in BINARY_EXTENSIONS:
+        return "binary"
+
+    # Fallback: check magic bytes for text vs binary
+    # This is helpful for files without extensions or unknown extensions
+    try:
+        with open(path, "rb") as f:
+            chunk = f.read(1024)
+            # Simple heuristic: if we can decode as UTF-8, likely text
+            chunk.decode("utf-8")
+            return "text"
+    except UnicodeDecodeError:
+        return "binary"
+    except (FileNotFoundError, PermissionError) as e:
+        logger.warning(f"Could not access file {file_path} for type detection: {e}")
+        return "unknown"
+
+
+def should_add_line_numbers(file_path: str, include_line_numbers: Optional[bool] = None) -> bool:
+    """
+    Determine if line numbers should be added to a file.
+
+    Args:
+        file_path: Path to the file
+        include_line_numbers: Explicit preference, or None for auto-detection
+
+    Returns:
+        bool: True if line numbers should be added
+    """
+    if include_line_numbers is not None:
+        return include_line_numbers
+
+    # Default: DO NOT add line numbers (backwards compatibility)
+    # Tools that want line numbers must explicitly request them
+    return False
+
+
+def _normalize_line_endings(content: str) -> str:
+    """
+    Normalize line endings for consistent line numbering.
+
+    Args:
+        content: File content with potentially mixed line endings
+
+    Returns:
+        str: Content with normalized LF line endings
+    """
+    # Normalize all line endings to LF for consistent counting
+    return content.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _add_line_numbers(content: str) -> str:
+    """
+    Add line numbers to text content for precise referencing.
+
+    Args:
+        content: Text content to number
+
+    Returns:
+        str: Content with line numbers in format "  45│ actual code line"
+        Supports files up to 99,999 lines with dynamic width allocation
+    """
+    # Normalize line endings first
+    normalized_content = _normalize_line_endings(content)
+    lines = normalized_content.split("\n")
+
+    # Dynamic width allocation based on total line count
+    # This supports files of any size by computing required width
+    total_lines = len(lines)
+    width = len(str(total_lines))
+    width = max(width, 4)  # Minimum padding for readability
+
+    # Format with dynamic width and clear separator
+    numbered_lines = [f"{i + 1:{width}d}│ {line}" for i, line in enumerate(lines)]
+
+    return "\n".join(numbered_lines)
 
 
 def translate_path_for_environment(path_str: str) -> str:
@@ -515,15 +428,13 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
 
             # Check 2: Prevent scanning user's home directory root
             if is_home_directory_root(path_obj):
-                logger.warning(
-                    f"Skipping home directory root: {path}. " f"Please specify a project subdirectory instead."
-                )
+                logger.warning(f"Skipping home directory root: {path}. Please specify a project subdirectory instead.")
                 continue
 
             # Check 3: Skip if this is the MCP's own directory
             if is_mcp_directory(path_obj):
                 logger.info(
-                    f"Skipping MCP server directory: {path}. " f"The MCP server code is excluded from project scans."
+                    f"Skipping MCP server directory: {path}. The MCP server code is excluded from project scans."
                 )
                 continue
 
@@ -575,7 +486,9 @@ def expand_paths(paths: list[str], extensions: Optional[set[str]] = None) -> lis
     return expanded_files
 
 
-def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, int]:
+def read_file_content(
+    file_path: str, max_size: int = 1_000_000, *, include_line_numbers: Optional[bool] = None
+) -> tuple[str, int]:
     """
     Read a single file and format it for inclusion in AI prompts.
 
@@ -586,6 +499,7 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
     Args:
         file_path: Path to file (must be absolute)
         max_size: Maximum file size to read (default 1MB to prevent memory issues)
+        include_line_numbers: Whether to add line numbers. If None, auto-detects based on file type
 
     Returns:
         Tuple of (formatted_content, estimated_tokens)
@@ -634,6 +548,10 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
             content = f"\n--- FILE TOO LARGE: {file_path} ---\nFile size: {file_size:,} bytes (max: {max_size:,})\n--- END FILE ---\n"
             return content, estimate_tokens(content)
 
+        # Determine if we should add line numbers
+        add_line_numbers = should_add_line_numbers(file_path, include_line_numbers)
+        logger.debug(f"[FILES] Line numbers for {file_path}: {'enabled' if add_line_numbers else 'disabled'}")
+
         # Read the file with UTF-8 encoding, replacing invalid characters
         # This ensures we can handle files with mixed encodings
         logger.debug(f"[FILES] Reading file content for {file_path}")
@@ -641,6 +559,14 @@ def read_file_content(file_path: str, max_size: int = 1_000_000) -> tuple[str, i
             file_content = f.read()
 
         logger.debug(f"[FILES] Successfully read {len(file_content)} characters from {file_path}")
+
+        # Add line numbers if requested or auto-detected
+        if add_line_numbers:
+            file_content = _add_line_numbers(file_content)
+            logger.debug(f"[FILES] Added line numbers to {file_path}")
+        else:
+            # Still normalize line endings for consistency
+            file_content = _normalize_line_endings(file_content)
 
         # Format with clear delimiters that help the AI understand file boundaries
         # Using consistent markers makes it easier for the model to parse
@@ -665,6 +591,8 @@ def read_files(
     code: Optional[str] = None,
     max_tokens: Optional[int] = None,
     reserve_tokens: int = 50_000,
+    *,
+    include_line_numbers: bool = False,
 ) -> str:
     """
     Read multiple files and optional direct code with smart token management.
@@ -679,6 +607,7 @@ def read_files(
         code: Optional direct code to include (prioritized over files)
         max_tokens: Maximum tokens to use (defaults to DEFAULT_CONTEXT_WINDOW)
         reserve_tokens: Tokens to reserve for prompt and response (default 50K)
+        include_line_numbers: Whether to add line numbers to file content
 
     Returns:
         str: All file contents formatted for AI consumption
@@ -728,7 +657,7 @@ def read_files(
                     files_skipped.extend(all_files[i:])
                     break
 
-                file_content, file_tokens = read_file_content(file_path)
+                file_content, file_tokens = read_file_content(file_path, include_line_numbers=include_line_numbers)
                 logger.debug(f"[FILES] File {file_path}: {file_tokens:,} tokens")
 
                 # Check if adding this file would exceed limit

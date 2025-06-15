@@ -259,6 +259,23 @@ All tools that work with files support **both individual files and entire direct
 "Generate tests following patterns from tests/unit/ for new auth module"
 ```
 
+**`refactor`** - Intelligent code refactoring with decomposition focus
+- `files`: Code files or directories to analyze for refactoring opportunities (required)
+- `prompt`: Description of refactoring goals, context, and specific areas of focus (required)
+- `refactor_type`: codesmells|decompose|modernize|organization (required)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `focus_areas`: Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')
+- `style_guide_examples`: Optional existing code files to use as style/pattern reference
+- `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
+- `continuation_id`: Thread continuation ID for multi-turn conversations
+
+```
+"Analyze legacy codebase for decomposition opportunities" (auto mode picks best model)
+"Use pro to identify code smells in the authentication module with max thinking mode"
+"Use pro to modernize this JavaScript code following examples/modern-patterns.js"
+"Refactor src/ for better organization, focus on maintainability and readability"
+```
+
 ## Collaborative Workflows
 
 ### Design → Review → Implement
@@ -284,6 +301,14 @@ suspect lies the bug and then formulate and implement a bare minimal fix. Must n
 with zen in the end using gemini pro to confirm we're okay to publish the fix 
 ```
 
+### Refactor → Review → Implement → Test
+```
+Use zen to analyze this legacy authentication module for decomposition opportunities. The code is getting hard to 
+maintain and we need to break it down. Use gemini pro with high thinking mode to identify code smells and suggest 
+a modernization strategy. After reviewing the refactoring plan, implement the changes step by step and then 
+generate comprehensive tests with zen to ensure nothing breaks.
+```
+
 ### Tool Selection Guidance
 To help choose the right tool for your needs:
 
@@ -292,14 +317,17 @@ To help choose the right tool for your needs:
 2. **Want to find bugs/issues in code?** → Use `codereview`
 3. **Want to understand how code works?** → Use `analyze`
 4. **Need comprehensive test coverage?** → Use `testgen`
-5. **Have analysis that needs extension/validation?** → Use `thinkdeep`
-6. **Want to brainstorm or discuss?** → Use `chat`
+5. **Want to refactor/modernize code?** → Use `refactor`
+6. **Have analysis that needs extension/validation?** → Use `thinkdeep`
+7. **Want to brainstorm or discuss?** → Use `chat`
 
 **Key Distinctions:**
 - `analyze` vs `codereview`: analyze explains, codereview prescribes fixes
 - `chat` vs `thinkdeep`: chat is open-ended, thinkdeep extends specific analysis
 - `debug` vs `codereview`: debug diagnoses runtime errors, review finds static issues
 - `testgen` vs `debug`: testgen creates test suites, debug just finds issues and recommends solutions
+- `refactor` vs `codereview`: refactor suggests structural improvements, codereview finds bugs/issues
+- `refactor` vs `analyze`: refactor provides actionable refactoring steps, analyze provides understanding
 
 ## Working with Large Prompts
 

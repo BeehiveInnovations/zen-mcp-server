@@ -111,6 +111,10 @@ class DebugIssueTool(BaseTool):
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
+    def wants_line_numbers_by_default(self) -> bool:
+        """Debug tool needs line numbers for precise error location"""
+        return True
+
     def get_model_category(self) -> "ToolModelCategory":
         """Debug requires deep analysis and reasoning"""
         from tools.models import ToolModelCategory

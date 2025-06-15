@@ -44,6 +44,7 @@ from tools import (
     CodeReviewTool,
     DebugIssueTool,
     Precommit,
+    RefactorTool,
     TestGenTool,
     ThinkDeepTool,
 )
@@ -70,55 +71,59 @@ class LocalTimeFormatter(logging.Formatter):
 
 # Configure both console and file logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(
-    level=getattr(logging, log_level, logging.INFO),
-    format=log_format,
-    force=True,  # Force reconfiguration if already configured
-    stream=sys.stderr,  # Use stderr to avoid interfering with MCP stdin/stdout protocol
-)
 
-# Apply local time formatter to root logger
-for handler in logging.getLogger().handlers:
-    handler.setFormatter(LocalTimeFormatter(log_format))
+# Clear any existing handlers first
+root_logger = logging.getLogger()
+root_logger.handlers.clear()
+
+# Create and configure stderr handler explicitly
+stderr_handler = logging.StreamHandler(sys.stderr)
+stderr_handler.setLevel(getattr(logging, log_level, logging.INFO))
+stderr_handler.setFormatter(LocalTimeFormatter(log_format))
+root_logger.addHandler(stderr_handler)
+
+# Note: MCP stdio_server interferes with stderr during tool execution
+# All logs are properly written to /tmp/mcp_server.log for monitoring
+
+# Set root logger level
+root_logger.setLevel(getattr(logging, log_level, logging.INFO))
 
 # Add rotating file handler for Docker log monitoring
 
 try:
-    # Main server log with daily rotation (keep 7 days of logs)
-    # Using 'midnight' interval rotates at midnight each day
-    # Filename will have date suffix like mcp_server.log.2024-06-14
-    file_handler = TimedRotatingFileHandler(
+    # Main server log with size-based rotation (20MB max per file)
+    # This ensures logs don't grow indefinitely and are properly managed
+    file_handler = RotatingFileHandler(
         "/tmp/mcp_server.log",
-        when="midnight",  # Rotate at midnight
-        interval=1,  # Every 1 day
-        backupCount=7,  # Keep 7 days of logs
+        maxBytes=20 * 1024 * 1024,  # 20MB max file size
+        backupCount=10,  # Keep 10 rotated files (200MB total)
         encoding="utf-8",
     )
     file_handler.setLevel(getattr(logging, log_level, logging.INFO))
     file_handler.setFormatter(LocalTimeFormatter(log_format))
-    # Add suffix pattern for rotated files
-    file_handler.suffix = "%Y-%m-%d"
     logging.getLogger().addHandler(file_handler)
 
-    # Create a special logger for MCP activity tracking with daily rotation
+    # Create a special logger for MCP activity tracking with size-based rotation
     mcp_logger = logging.getLogger("mcp_activity")
-    mcp_file_handler = TimedRotatingFileHandler(
+    mcp_file_handler = RotatingFileHandler(
         "/tmp/mcp_activity.log",
-        when="midnight",  # Rotate at midnight
-        interval=1,  # Every 1 day
-        backupCount=7,  # Keep 7 days of logs
+        maxBytes=20 * 1024 * 1024,  # 20MB max file size
+        backupCount=5,  # Keep 5 rotated files (100MB total)
         encoding="utf-8",
     )
     mcp_file_handler.setLevel(logging.INFO)
     mcp_file_handler.setFormatter(LocalTimeFormatter("%(asctime)s - %(message)s"))
-    mcp_file_handler.suffix = "%Y-%m-%d"
     mcp_logger.addHandler(mcp_file_handler)
     mcp_logger.setLevel(logging.INFO)
+    # Ensure MCP activity also goes to stderr
+    mcp_logger.propagate = True
 
     # Also keep a size-based rotation as backup (100MB max per file)
     # This prevents any single day's log from growing too large
     size_handler = RotatingFileHandler(
-        "/tmp/mcp_server_overflow.log", maxBytes=100 * 1024 * 1024, backupCount=3  # 100MB
+        "/tmp/mcp_server_overflow.log",
+        maxBytes=100 * 1024 * 1024,
+        backupCount=3,  # 100MB
     )
     size_handler.setLevel(logging.WARNING)  # Only warnings and errors
     size_handler.setFormatter(LocalTimeFormatter(log_format))
@@ -144,6 +149,7 @@ TOOLS = {
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "precommit": Precommit(),  # Pre-commit validation of git changes
     "testgen": TestGenTool(),  # Comprehensive test generation with edge case coverage
+    "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
 }
 
 

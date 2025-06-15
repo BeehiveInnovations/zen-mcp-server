@@ -261,3 +261,95 @@ class TestSpecialStatusParsing:
         # Should fall back to normal response since validation failed
         assert result.status == "success"
         assert result.content_type == "text"
+
+    def test_refactor_analysis_complete_parsing(self):
+        """Test that RefactorAnalysisComplete status is properly parsed"""
+        import json
+
+        json_response = {
+            "status": "refactor_analysis_complete",
+            "refactor_opportunities": [
+                {
+                    "id": "refactor-001",
+                    "type": "decompose",
+                    "severity": "critical",
+                    "file": "/test.py",
+                    "start_line": 1,
+                    "end_line": 5,
+                    "context_start_text": "def test():",
+                    "context_end_text": "    pass",
+                    "issue": "Large function needs decomposition",
+                    "suggestion": "Extract helper methods",
+                    "rationale": "Improves readability",
+                    "code_to_replace": "old code",
+                    "replacement_code_snippet": "new code",
+                }
+            ],
+            "priority_sequence": ["refactor-001"],
+            "next_actions_for_claude": [
+                {
+                    "action_type": "EXTRACT_METHOD",
+                    "target_file": "/test.py",
+                    "source_lines": "1-5",
+                    "description": "Extract helper method",
+                }
+            ],
+        }
+
+        result = self.tool._parse_response(json.dumps(json_response), self.request)
+
+        assert result.status == "refactor_analysis_complete"
+        assert result.content_type == "json"
+        parsed_content = json.loads(result.content)
+        assert "refactor_opportunities" in parsed_content
+        assert len(parsed_content["refactor_opportunities"]) == 1
+        assert parsed_content["refactor_opportunities"][0]["id"] == "refactor-001"
+
+    def test_refactor_analysis_complete_validation_error(self):
+        """Test that RefactorAnalysisComplete validation catches missing required fields"""
+        import json
+
+        json_response = {
+            "status": "refactor_analysis_complete",
+            "refactor_opportunities": [
+                {
+                    "id": "refactor-001",
+                    # Missing required fields like type, severity, etc.
+                }
+            ],
+            "priority_sequence": ["refactor-001"],
+            "next_actions_for_claude": [],
+        }
+
+        result = self.tool._parse_response(json.dumps(json_response), self.request)
+
+        # Should fall back to normal response since validation failed
+        assert result.status == "success"
+        assert result.content_type == "text"
+
+    def test_more_refactor_required_parsing(self):
+        """Test that more_refactor_required status is parsed correctly"""
+        import json
+
+        json_response = {
+            "status": "more_refactor_required",
+            "message": "Large codebase requires extensive decomposition across 15 files. Continuing analysis for remaining modules.",
+        }
+
+        result = self.tool._parse_response(json.dumps(json_response), self.request)
+
+        assert result.status == "more_refactor_required"
+        assert result.content_type == "json"
+        parsed_content = json.loads(result.content)
+        assert parsed_content["status"] == "more_refactor_required"
+        assert "Large codebase requires extensive decomposition" in parsed_content["message"]
+
+    def test_more_refactor_required_missing_message(self):
+        """Test that more_refactor_required without required message field fails validation"""
+        response_json = '{"status": "more_refactor_required"}'
+
+        result = self.tool._parse_response(response_json, self.request)
+
+        # Should fall back to normal processing since validation failed (missing required field)
+        assert result.status == "success"
+        assert result.content_type == "text"

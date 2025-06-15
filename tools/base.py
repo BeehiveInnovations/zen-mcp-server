@@ -207,9 +207,7 @@ class BaseTool(ABC):
         provider = ModelProviderRegistry.get_provider_for_model(model_name)
         if not provider:
             logger = logging.getLogger(f"tools.{self.name}")
-            logger.warning(
-                f"Model '{model_name}' is not available with current API keys. " f"Requiring model selection."
-            )
+            logger.warning(f"Model '{model_name}' is not available with current API keys. Requiring model selection.")
             return True
 
         return False
@@ -396,6 +394,25 @@ class BaseTool(ABC):
             float: Default temperature between 0.0 and 1.0
         """
         return 0.5
+
+    def wants_line_numbers_by_default(self) -> bool:
+        """
+        Return whether this tool wants line numbers added to code files by default.
+
+        Tools that benefit from precise line references (refactor, codereview, debug)
+        should return True. Tools that prioritize token efficiency or don't need
+        precise references can return False.
+
+        Line numbers add ~8-10% token overhead but provide precise targeting for:
+        - Code review feedback ("SQL injection on line 45")
+        - Debug error locations ("Memory leak in loop at lines 123-156")
+        - Test generation targets ("Generate tests for method at lines 78-95")
+        - Refactoring guidance ("Extract method from lines 67-89")
+
+        Returns:
+            bool: True if line numbers should be added by default for this tool
+        """
+        return False  # Conservative default - tools opt-in as needed
 
     def get_default_thinking_mode(self) -> str:
         """
@@ -694,7 +711,10 @@ class BaseTool(ABC):
             )
             try:
                 file_content = read_files(
-                    files_to_embed, max_tokens=effective_max_tokens + reserve_tokens, reserve_tokens=reserve_tokens
+                    files_to_embed,
+                    max_tokens=effective_max_tokens + reserve_tokens,
+                    reserve_tokens=reserve_tokens,
+                    include_line_numbers=self.wants_line_numbers_by_default(),
                 )
                 self._validate_token_limit(file_content, context_description)
                 content_parts.append(file_content)

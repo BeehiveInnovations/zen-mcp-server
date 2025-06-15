@@ -30,6 +30,29 @@ Simulator tests replicate real-world Claude CLI interactions with the MCP server
 
 **Important**: Simulator tests require `LOG_LEVEL=DEBUG` in your `.env` file to validate detailed execution logs.
 
+#### Monitoring Logs During Tests
+
+**Important**: The MCP stdio protocol interferes with stderr output during tool execution. While server startup logs appear in `docker compose logs`, tool execution logs are only written to file-based logs inside the container. This is a known limitation of the stdio-based MCP protocol and cannot be fixed without changing the MCP implementation.
+
+To monitor logs during test execution:
+
+```bash
+# Monitor main server logs (includes all tool execution details)
+docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
+
+# Monitor MCP activity logs (tool calls and completions)  
+docker exec zen-mcp-server tail -f /tmp/mcp_activity.log
+
+# Check log file sizes (logs rotate at 20MB)
+docker exec zen-mcp-server ls -lh /tmp/mcp_*.log*
+```
+
+**Log Rotation**: All log files are configured with automatic rotation at 20MB to prevent disk space issues. The server keeps:
+- 10 rotated files for mcp_server.log (200MB total)
+- 5 rotated files for mcp_activity.log (100MB total)
+
+**Why logs don't appear in docker compose logs**: The MCP stdio_server captures stderr during tool execution to prevent interference with the JSON-RPC protocol communication. This means that while you'll see startup logs in `docker compose logs`, you won't see tool execution logs there.
+
 #### Running All Simulator Tests
 ```bash
 # Run all simulator tests

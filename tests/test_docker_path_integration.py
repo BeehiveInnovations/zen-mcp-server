@@ -9,6 +9,7 @@ import importlib
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -36,27 +37,33 @@ def test_docker_path_translation_integration():
         try:
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
 
-            # Reload the module to pick up new environment variables
+            # Reload the modules to pick up new environment variables
+            # Need to reload security_config first since it sets WORKSPACE_ROOT
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
 
-            # Mock the CONTAINER_WORKSPACE to point to our test directory
-            utils.file_utils.CONTAINER_WORKSPACE = container_workspace
+            # Properly mock the CONTAINER_WORKSPACE
+            with patch("utils.file_utils.CONTAINER_WORKSPACE", container_workspace):
+                # Test the translation
+                from utils.file_utils import translate_path_for_environment
 
-            # Test the translation
-            from utils.file_utils import translate_path_for_environment
+                # This should translate the host path to container path
+                host_path = str(test_file)
+                result = translate_path_for_environment(host_path)
 
-            # This should translate the host path to container path
-            host_path = str(test_file)
-            result = translate_path_for_environment(host_path)
-
-            # Verify the translation worked
-            expected = str(container_workspace / "src" / "test.py")
-            assert result == expected
+                # Verify the translation worked
+                expected = str(container_workspace / "src" / "test.py")
+                assert result == expected
 
         finally:
             # Restore original environment
             os.environ.clear()
             os.environ.update(original_env)
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
 
 
@@ -80,19 +87,26 @@ def test_docker_security_validation():
         try:
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
 
-            # Reload the module
+            # Reload the modules
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
-            utils.file_utils.CONTAINER_WORKSPACE = Path("/workspace")
 
-            from utils.file_utils import resolve_and_validate_path
+            # Properly mock the CONTAINER_WORKSPACE
+            with patch("utils.file_utils.CONTAINER_WORKSPACE", Path("/workspace")):
+                from utils.file_utils import resolve_and_validate_path
 
-            # Trying to access the symlink should fail
-            with pytest.raises(PermissionError):
-                resolve_and_validate_path(str(symlink))
+                # Trying to access the symlink should fail
+                with pytest.raises(PermissionError):
+                    resolve_and_validate_path(str(symlink))
 
         finally:
             os.environ.clear()
             os.environ.update(original_env)
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
 
 
@@ -150,37 +164,46 @@ def test_review_changes_docker_path_translation():
             # Simulate Docker environment
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
 
-            # Reload the module
+            # Reload the modules
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
-            utils.file_utils.CONTAINER_WORKSPACE = container_workspace
 
-            # Import after reloading to get updated environment
-            from tools.precommit import Precommit
+            # Properly mock the CONTAINER_WORKSPACE and reload precommit module
+            with patch("utils.file_utils.CONTAINER_WORKSPACE", container_workspace):
+                # Need to also patch it in the modules that import it
+                with patch("utils.security_config.CONTAINER_WORKSPACE", container_workspace):
+                    # Import after patching to get updated environment
+                    from tools.precommit import Precommit
 
-            # Create tool instance
-            tool = Precommit()
+                    # Create tool instance
+                    tool = Precommit()
 
-            # Test path translation in prepare_prompt
-            request = tool.get_request_model()(
-                path=str(host_workspace / "project"),  # Host path that needs translation
-                review_type="quick",
-                severity_filter="all",
-            )
+                    # Test path translation in prepare_prompt
+                    request = tool.get_request_model()(
+                        path=str(host_workspace / "project"),  # Host path that needs translation
+                        review_type="quick",
+                        severity_filter="all",
+                    )
 
-            # This should translate the path and find the git repository
-            import asyncio
+                    # This should translate the path and find the git repository
+                    import asyncio
 
-            result = asyncio.run(tool.prepare_prompt(request))
+                    result = asyncio.run(tool.prepare_prompt(request))
 
-            # Should find the repository (not raise an error about inaccessible path)
-            # If we get here without exception, the path was successfully translated
-            assert isinstance(result, str)
-            # The result should contain git diff information or indicate no changes
-            assert "No git repositories found" not in result or "changes" in result.lower()
+                    # Should find the repository (not raise an error about inaccessible path)
+                    # If we get here without exception, the path was successfully translated
+                    assert isinstance(result, str)
+                    # The result should contain git diff information or indicate no changes
+                    assert "No git repositories found" not in result or "changes" in result.lower()
 
         finally:
             os.environ.clear()
             os.environ.update(original_env)
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
 
 
@@ -203,36 +226,44 @@ def test_review_changes_docker_path_error():
             # Simulate Docker environment
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
 
-            # Reload the module
+            # Reload the modules
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
-            utils.file_utils.CONTAINER_WORKSPACE = container_workspace
 
-            # Import after reloading to get updated environment
-            from tools.precommit import Precommit
+            # Properly mock the CONTAINER_WORKSPACE
+            with patch("utils.file_utils.CONTAINER_WORKSPACE", container_workspace):
+                with patch("utils.security_config.CONTAINER_WORKSPACE", container_workspace):
+                    # Import after patching to get updated environment
+                    from tools.precommit import Precommit
 
-            # Create tool instance
-            tool = Precommit()
+                    # Create tool instance
+                    tool = Precommit()
 
-            # Test path translation with an inaccessible path
-            request = tool.get_request_model()(
-                path=str(outside_path),  # Path outside the mounted workspace
-                review_type="quick",
-                severity_filter="all",
-            )
+                    # Test path translation with an inaccessible path
+                    request = tool.get_request_model()(
+                        path=str(outside_path),  # Path outside the mounted workspace
+                        review_type="quick",
+                        severity_filter="all",
+                    )
 
-            # This should raise a ValueError
-            import asyncio
+                    # This should raise a ValueError
+                    import asyncio
 
-            with pytest.raises(ValueError) as exc_info:
-                asyncio.run(tool.prepare_prompt(request))
+                    with pytest.raises(ValueError) as exc_info:
+                        asyncio.run(tool.prepare_prompt(request))
 
-            # Check the error message
-            assert "not accessible from within the Docker container" in str(exc_info.value)
-            assert "mounted workspace" in str(exc_info.value)
+                    # Check the error message
+                    assert "not accessible from within the Docker container" in str(exc_info.value)
+                    assert "mounted workspace" in str(exc_info.value)
 
         finally:
             os.environ.clear()
             os.environ.update(original_env)
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
 
 
@@ -250,31 +281,38 @@ def test_double_translation_prevention():
         try:
             os.environ["WORKSPACE_ROOT"] = str(host_workspace)
 
-            # Reload the module
+            # Reload the modules
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
-            utils.file_utils.CONTAINER_WORKSPACE = container_workspace
 
-            from utils.file_utils import translate_path_for_environment
+            # Properly mock the CONTAINER_WORKSPACE
+            with patch("utils.file_utils.CONTAINER_WORKSPACE", container_workspace):
+                from utils.file_utils import translate_path_for_environment
 
-            # Test 1: Normal translation
-            host_path = str(host_workspace / "src" / "main.py")
-            translated_once = translate_path_for_environment(host_path)
-            expected = str(container_workspace / "src" / "main.py")
-            assert translated_once == expected
+                # Test 1: Normal translation
+                host_path = str(host_workspace / "src" / "main.py")
+                translated_once = translate_path_for_environment(host_path)
+                expected = str(container_workspace / "src" / "main.py")
+                assert translated_once == expected
 
-            # Test 2: Double translation should return the same path
-            translated_twice = translate_path_for_environment(translated_once)
-            assert translated_twice == translated_once
-            assert translated_twice == expected
+                # Test 2: Double translation should return the same path
+                translated_twice = translate_path_for_environment(translated_once)
+                assert translated_twice == translated_once
+                assert translated_twice == expected
 
-            # Test 3: Container workspace root should not be double-translated
-            root_path = str(container_workspace)
-            translated_root = translate_path_for_environment(root_path)
-            assert translated_root == root_path
+                # Test 3: Container workspace root should not be double-translated
+                root_path = str(container_workspace)
+                translated_root = translate_path_for_environment(root_path)
+                assert translated_root == root_path
 
         finally:
             os.environ.clear()
             os.environ.update(original_env)
+            import utils.security_config
+
+            importlib.reload(utils.security_config)
             importlib.reload(utils.file_utils)
 
 
