@@ -181,12 +181,13 @@ If you were already running a `claude` code session, please exit and start a new
 
 #### If Setting up for Claude Desktop
 
+1. **Launch Claude Desktop**
 - Open Claude Desktop
 - Go to **Settings** → **Developer** → **Edit Config**
 
 This will open a folder revealing `claude_desktop_config.json`.
 
-2. ** Update Docker Configuration**
+2. **Update Docker Configuration**
 
 The setup script shows you the exact configuration. It looks like this. When you ran `run-server.sh` it should
 have produced a configuration for you to copy:
