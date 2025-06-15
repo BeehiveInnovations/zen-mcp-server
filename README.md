@@ -132,13 +132,21 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ### 2. Clone and Set Up
 
-Using the Terminal:
-
 ```bash
 # Clone to your preferred location
 git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
 cd zen-mcp-server
+
+# One-command setup (includes Redis for AI conversations)
+./run-server.sh
 ```
+
+**What this does:**
+- **Builds Docker images** with all dependencies (including Redis for conversation threading)
+- **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
+- **Starts Redis service** for AI-to-AI conversation memory
+- **Starts MCP server** with providers based on available API keys
+- **Adds Zen to Claude Code automatically**
 
 ### 3. Add Your API Keys
 
@@ -164,22 +172,12 @@ nano .env
 # ./run-server.sh
 ```
 
-### 4. Start MCP Server
+**Restart MCP Server**: This step is important. You will need to `./run-server.sh` again for it to 
+pick the changes made to `.env` otherwise the server will be unable to use your newly edited keys. You will need to 
+`./run-server.sh` any time changes are made to the `.env` file. 
 
-```bash
-# One-command setup (includes Redis for AI conversations)
-./run-server.sh
-```
-
-**What this does:**
-- **Builds Docker images** with all dependencies (including Redis for conversation threading)
-- **Creates .env file** (automatically uses `$GEMINI_API_KEY` and `$OPENAI_API_KEY` if set in environment)
-- **Starts Redis service** for AI-to-AI conversation memory
-- **Starts MCP server** with providers based on available API keys
-- **Adds Zen to Claude Code automatically**
-
-Now run `claude` on the terminal for it to connect to the newly added mcp server. If you were already running a `claude` code session,
-please exit and start a new session.
+**Next**: Now run `claude` from your project folder using the terminal for it to connect to the newly added mcp server. 
+If you were already running a `claude` code session, please exit and start a new session.
 
 #### If Setting up for Claude Desktop
 
