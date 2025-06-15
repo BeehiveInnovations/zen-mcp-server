@@ -330,13 +330,14 @@ class RefactorTool(BaseTool):
         # Use standard file content preparation with dynamic token budget and line numbers
         try:
             logger.debug(f"[REFACTOR] Preparing file content for {len(examples_to_process)} style examples")
-            content = self._prepare_file_content_for_prompt(
+            content, processed_files = self._prepare_file_content_for_prompt(
                 examples_to_process,
                 continuation_id,
                 "Style guide examples",
                 max_tokens=style_examples_budget,
                 reserve_tokens=1000,
             )
+            # Store processed files for tracking - style examples are tracked separately from main code files
 
             # Determine how many files were actually included
             if content:
@@ -478,9 +479,10 @@ class RefactorTool(BaseTool):
 
         # Use centralized file processing logic for main code files (with line numbers enabled)
         logger.debug(f"[REFACTOR] Preparing {len(code_files_to_process)} code files for analysis")
-        code_content = self._prepare_file_content_for_prompt(
+        code_content, processed_files = self._prepare_file_content_for_prompt(
             code_files_to_process, continuation_id, "Code to analyze", max_tokens=remaining_tokens, reserve_tokens=2000
         )
+        self._actually_processed_files = processed_files
 
         if code_content:
             from utils.token_utils import estimate_tokens

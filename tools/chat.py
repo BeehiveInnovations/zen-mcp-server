@@ -124,9 +124,10 @@ class ChatTool(BaseTool):
 
         # Add context files if provided (using centralized file handling with filtering)
         if request.files:
-            file_content = self._prepare_file_content_for_prompt(
+            file_content, processed_files = self._prepare_file_content_for_prompt(
                 request.files, request.continuation_id, "Context files"
             )
+            self._actually_processed_files = processed_files
             if file_content:
                 user_content = f"{user_content}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ===="
 
