@@ -54,6 +54,7 @@ and review into consideration to aid with its pre-commit review.
   - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
   - [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
   - [`testgen`](#8-testgen---comprehensive-test-generation) - Test generation with edge cases
+  - [`your custom tool`](#add-your-own-tools) - Create custom tools for specialized workflows
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -540,7 +541,17 @@ suites that cover realistic failure scenarios and integration points that shorte
 
 For detailed tool parameters and configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).
 
+### Add Your Own Tools
 
+**Want to create custom tools for your specific workflows?** 
+
+The Zen MCP Server is designed to be extensible - you can easily add your own specialized
+tools for domain-specific tasks, custom analysis workflows, or integration with your favorite 
+services.
+
+**[See Complete Tool Development Guide](docs/adding_tools.md)** - Step-by-step instructions for creating, testing, and integrating new tools
+
+Your custom tools get the same benefits as built-in tools: multi-model support, conversation threading, token management, and automatic model selection.
 
 ## Advanced Features
 
