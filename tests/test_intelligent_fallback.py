@@ -17,51 +17,93 @@ class TestIntelligentFallback:
     """Test intelligent model fallback logic"""
 
     def setup_method(self):
-        """Setup for each test - clear registry cache"""
-        ModelProviderRegistry.clear_cache()
+        """Setup for each test - clear registry and reset providers"""
+        # Store original providers for restoration
+        registry = ModelProviderRegistry()
+        self._original_providers = registry._providers.copy()
+        self._original_initialized = registry._initialized_providers.copy()
+
+        # Clear registry completely
+        ModelProviderRegistry._instance = None
 
     def teardown_method(self):
-        """Cleanup after each test"""
-        ModelProviderRegistry.clear_cache()
+        """Cleanup after each test - restore original providers"""
+        # Restore original registry state
+        registry = ModelProviderRegistry()
+        registry._providers.clear()
+        registry._initialized_providers.clear()
+        registry._providers.update(self._original_providers)
+        registry._initialized_providers.update(self._original_initialized)
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False)
     def test_prefers_openai_o3_mini_when_available(self):
         """Test that o4-mini is preferred when OpenAI API key is available"""
-        ModelProviderRegistry.clear_cache()
+        # Register only OpenAI provider for this test
+        from providers.openai import OpenAIModelProvider
+
+        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+
         fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
         assert fallback_model == "o4-mini"
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-gemini-key"}, clear=False)
     def test_prefers_gemini_flash_when_openai_unavailable(self):
         """Test that gemini-2.5-flash-preview-05-20 is used when only Gemini API key is available"""
-        ModelProviderRegistry.clear_cache()
+        # Register only Gemini provider for this test
+        from providers.gemini import GeminiModelProvider
+
+        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+
         fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
         assert fallback_model == "gemini-2.5-flash-preview-05-20"
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": "test-gemini-key"}, clear=False)
     def test_prefers_openai_when_both_available(self):
         """Test that OpenAI is preferred when both API keys are available"""
-        ModelProviderRegistry.clear_cache()
+        # Register both OpenAI and Gemini providers
+        from providers.gemini import GeminiModelProvider
+        from providers.openai import OpenAIModelProvider
+
+        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+
         fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
         assert fallback_model == "o4-mini"  # OpenAI has priority
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": ""}, clear=False)
     def test_fallback_when_no_keys_available(self):
         """Test fallback behavior when no API keys are available"""
-        ModelProviderRegistry.clear_cache()
+        # Register providers but with no API keys available
+        from providers.gemini import GeminiModelProvider
+        from providers.openai import OpenAIModelProvider
+
+        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+
         fallback_model = ModelProviderRegistry.get_preferred_fallback_model()
         assert fallback_model == "gemini-2.5-flash-preview-05-20"  # Default fallback
 
     def test_available_providers_with_keys(self):
         """Test the get_available_providers_with_keys method"""
+        from providers.gemini import GeminiModelProvider
+        from providers.openai import OpenAIModelProvider
+
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False):
-            ModelProviderRegistry.clear_cache()
+            # Clear and register providers
+            ModelProviderRegistry._instance = None
+            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+
             available = ModelProviderRegistry.get_available_providers_with_keys()
             assert ProviderType.OPENAI in available
             assert ProviderType.GOOGLE not in available
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-key"}, clear=False):
-            ModelProviderRegistry.clear_cache()
+            # Clear and register providers
+            ModelProviderRegistry._instance = None
+            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+
             available = ModelProviderRegistry.get_available_providers_with_keys()
             assert ProviderType.GOOGLE in available
             assert ProviderType.OPENAI not in available
@@ -76,7 +118,10 @@ class TestIntelligentFallback:
             patch("config.DEFAULT_MODEL", "auto"),
             patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False),
         ):
-            ModelProviderRegistry.clear_cache()
+            # Register only OpenAI provider for this test
+            from providers.openai import OpenAIModelProvider
+
+            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 
             # Create a context with at least one turn so it doesn't exit early
             from utils.conversation_memory import ConversationTurn
@@ -114,7 +159,10 @@ class TestIntelligentFallback:
             patch("config.DEFAULT_MODEL", "auto"),
             patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-key"}, clear=False),
         ):
-            ModelProviderRegistry.clear_cache()
+            # Register only Gemini provider for this test
+            from providers.gemini import GeminiModelProvider
+
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
             from utils.conversation_memory import ConversationTurn
 

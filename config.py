@@ -14,7 +14,7 @@ import os
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "4.5.1"
+__version__ = "4.6.0"
 # Last update date in ISO format
 __updated__ = "2025-06-15"
 # Primary maintainer
@@ -53,6 +53,12 @@ MODEL_CAPABILITIES_DESC = {
     "o3-pro": "Professional-grade reasoning (200K context) - EXTREMELY EXPENSIVE: Only for the most complex problems requiring universe-scale complexity analysis OR when the user explicitly asks for this model. Use sparingly for critical architectural decisions or exceptionally complex debugging that other models cannot handle.",
     "o4-mini": "Latest reasoning model (200K context) - Optimized for shorter contexts, rapid reasoning",
     "o4-mini-high": "Enhanced O4 mini (200K context) - Higher reasoning effort for complex tasks",
+    # X.AI GROK models - Available when XAI_API_KEY is configured
+    "grok": "GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
+    "grok-3": "GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
+    "grok-3-fast": "GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
+    "grok3": "GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
+    "grokfast": "GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
     # Full model names also supported (for explicit specification)
     "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
     "gemini-2.5-pro-preview-06-05": (

@@ -535,18 +535,38 @@ class TestAutoModeWithRestrictions:
     @patch.dict(os.environ, {"OPENAI_ALLOWED_MODELS": "mini", "GEMINI_API_KEY": "", "OPENAI_API_KEY": "test-key"})
     def test_fallback_with_shorthand_restrictions(self):
         """Test fallback model selection with shorthand restrictions."""
-        # Clear caches
+        # Clear caches and reset registry
         import utils.model_restrictions
         from providers.registry import ModelProviderRegistry
         from tools.models import ToolModelCategory
 
         utils.model_restrictions._restriction_service = None
-        ModelProviderRegistry.clear_cache()
 
-        # Even with "mini" restriction, fallback should work if provider handles it correctly
-        # This tests the real-world scenario
-        model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.FAST_RESPONSE)
+        # Store original providers for restoration
+        registry = ModelProviderRegistry()
+        original_providers = registry._providers.copy()
+        original_initialized = registry._initialized_providers.copy()
 
-        # The fallback will depend on how get_available_models handles aliases
-        # For now, we accept either behavior and document it
-        assert model in ["o4-mini", "gemini-2.5-flash-preview-05-20"]
+        try:
+            # Clear registry and register only OpenAI and Gemini providers
+            ModelProviderRegistry._instance = None
+            from providers.gemini import GeminiModelProvider
+            from providers.openai import OpenAIModelProvider
+
+            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+
+            # Even with "mini" restriction, fallback should work if provider handles it correctly
+            # This tests the real-world scenario
+            model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.FAST_RESPONSE)
+
+            # The fallback will depend on how get_available_models handles aliases
+            # For now, we accept either behavior and document it
+            assert model in ["o4-mini", "gemini-2.5-flash-preview-05-20"]
+        finally:
+            # Restore original registry state
+            registry = ModelProviderRegistry()
+            registry._providers.clear()
+            registry._initialized_providers.clear()
+            registry._providers.update(original_providers)
+            registry._initialized_providers.update(original_initialized)

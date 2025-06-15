@@ -1,10 +1,9 @@
-"""OpenAI model provider implementation."""
+"""X.AI (GROK) model provider implementation."""
 
 import logging
 from typing import Optional
 
 from .base import (
-    FixedTemperatureConstraint,
     ModelCapabilities,
     ModelResponse,
     ProviderType,
@@ -15,74 +14,59 @@ from .openai_compatible import OpenAICompatibleProvider
 logger = logging.getLogger(__name__)
 
 
-class OpenAIModelProvider(OpenAICompatibleProvider):
-    """Official OpenAI API provider (api.openai.com)."""
+class XAIModelProvider(OpenAICompatibleProvider):
+    """X.AI GROK API provider (api.x.ai)."""
+
+    FRIENDLY_NAME = "X.AI"
 
     # Model configurations
     SUPPORTED_MODELS = {
-        "o3": {
-            "context_window": 200_000,  # 200K tokens
+        "grok-3": {
+            "context_window": 131_072,  # 131K tokens
             "supports_extended_thinking": False,
         },
-        "o3-mini": {
-            "context_window": 200_000,  # 200K tokens
+        "grok-3-fast": {
+            "context_window": 131_072,  # 131K tokens
             "supports_extended_thinking": False,
         },
-        "o3-pro": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-        },
-        "o4-mini": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-        },
-        "o4-mini-high": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-        },
-        # Shorthands
-        "mini": "o4-mini",  # Default 'mini' to latest mini model
-        "o3mini": "o3-mini",
-        "o4mini": "o4-mini",
-        "o4minihigh": "o4-mini-high",
-        "o4minihi": "o4-mini-high",
+        # Shorthands for convenience
+        "grok": "grok-3",  # Default to grok-3
+        "grok3": "grok-3",
+        "grok3fast": "grok-3-fast",
+        "grokfast": "grok-3-fast",
     }
 
     def __init__(self, api_key: str, **kwargs):
-        """Initialize OpenAI provider with API key."""
-        # Set default OpenAI base URL, allow override for regions/custom endpoints
-        kwargs.setdefault("base_url", "https://api.openai.com/v1")
+        """Initialize X.AI provider with API key."""
+        # Set X.AI base URL
+        kwargs.setdefault("base_url", "https://api.x.ai/v1")
         super().__init__(api_key, **kwargs)
 
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        """Get capabilities for a specific OpenAI model."""
+        """Get capabilities for a specific X.AI model."""
         # Resolve shorthand
         resolved_name = self._resolve_model_name(model_name)
 
         if resolved_name not in self.SUPPORTED_MODELS or isinstance(self.SUPPORTED_MODELS[resolved_name], str):
-            raise ValueError(f"Unsupported OpenAI model: {model_name}")
+            raise ValueError(f"Unsupported X.AI model: {model_name}")
 
         # Check if model is allowed by restrictions
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
-            raise ValueError(f"OpenAI model '{model_name}' is not allowed by restriction policy.")
+        if not restriction_service.is_allowed(ProviderType.XAI, resolved_name, model_name):
+            raise ValueError(f"X.AI model '{model_name}' is not allowed by restriction policy.")
 
         config = self.SUPPORTED_MODELS[resolved_name]
 
-        # Define temperature constraints per model
-        if resolved_name in ["o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"]:
-            # O3 and O4 reasoning models only support temperature=1.0
-            temp_constraint = FixedTemperatureConstraint(1.0)
-        else:
-            # Other OpenAI models support 0.0-2.0 range
-            temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
+        # Define temperature constraints for GROK models
+        # GROK supports the standard OpenAI temperature range
+        temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
 
         return ModelCapabilities(
-            provider=ProviderType.OPENAI,
-            model_name=model_name,
-            friendly_name="OpenAI",
+            provider=ProviderType.XAI,
+            model_name=resolved_name,
+            friendly_name=self.FRIENDLY_NAME,
             context_window=config["context_window"],
             supports_extended_thinking=config["supports_extended_thinking"],
             supports_system_prompts=True,
@@ -93,7 +77,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
-        return ProviderType.OPENAI
+        return ProviderType.XAI
 
     def validate_model_name(self, model_name: str) -> bool:
         """Validate if the model name is supported and allowed."""
@@ -107,8 +91,8 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
-            logger.debug(f"OpenAI model '{model_name}' -> '{resolved_name}' blocked by restrictions")
+        if not restriction_service.is_allowed(ProviderType.XAI, resolved_name, model_name):
+            logger.debug(f"X.AI model '{model_name}' -> '{resolved_name}' blocked by restrictions")
             return False
 
         return True
@@ -122,7 +106,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
         max_output_tokens: Optional[int] = None,
         **kwargs,
     ) -> ModelResponse:
-        """Generate content using OpenAI API with proper model name resolution."""
+        """Generate content using X.AI API with proper model name resolution."""
         # Resolve model alias before making API call
         resolved_model_name = self._resolve_model_name(model_name)
 
@@ -138,8 +122,8 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
-        # Currently no OpenAI models support extended thinking
-        # This may change with future O3 models
+        # Currently GROK models do not support extended thinking
+        # This may change with future GROK model releases
         return False
 
     def _resolve_model_name(self, model_name: str) -> str:

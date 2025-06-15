@@ -21,6 +21,8 @@ if "GEMINI_API_KEY" not in os.environ:
     os.environ["GEMINI_API_KEY"] = "dummy-key-for-tests"
 if "OPENAI_API_KEY" not in os.environ:
     os.environ["OPENAI_API_KEY"] = "dummy-key-for-tests"
+if "XAI_API_KEY" not in os.environ:
+    os.environ["XAI_API_KEY"] = "dummy-key-for-tests"
 
 # Set default model to a specific value for tests to avoid auto mode
 # This prevents all tests from failing due to missing model parameter
@@ -46,10 +48,12 @@ from providers import ModelProviderRegistry  # noqa: E402
 from providers.base import ProviderType  # noqa: E402
 from providers.gemini import GeminiModelProvider  # noqa: E402
 from providers.openai import OpenAIModelProvider  # noqa: E402
+from providers.xai import XAIModelProvider  # noqa: E402
 
 # Register providers at test startup
 ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
 
 
 @pytest.fixture
@@ -90,6 +94,18 @@ def mock_provider_availability(request, monkeypatch):
         if marker:
             return
 
+    # Ensure providers are registered (in case other tests cleared the registry)
+    from providers.base import ProviderType
+
+    registry = ModelProviderRegistry()
+
+    if ProviderType.GOOGLE not in registry._providers:
+        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+    if ProviderType.OPENAI not in registry._providers:
+        ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+    if ProviderType.XAI not in registry._providers:
+        ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
+
     from unittest.mock import MagicMock
 
     original_get_provider = ModelProviderRegistry.get_provider_for_model
@@ -119,3 +135,31 @@ def mock_provider_availability(request, monkeypatch):
         return original_get_provider(model_name)
 
     monkeypatch.setattr(ModelProviderRegistry, "get_provider_for_model", mock_get_provider_for_model)
+
+    # Also mock is_effective_auto_mode for all BaseTool instances to return False
+    # unless we're specifically testing auto mode behavior
+    from tools.base import BaseTool
+
+    def mock_is_effective_auto_mode(self):
+        # If this is an auto mode test file or specific auto mode test, use the real logic
+        test_file = request.node.fspath.basename if hasattr(request, "node") and hasattr(request.node, "fspath") else ""
+        test_name = request.node.name if hasattr(request, "node") else ""
+
+        # Allow auto mode for tests in auto mode files or with auto in the name
+        if (
+            "auto_mode" in test_file.lower()
+            or "auto" in test_name.lower()
+            or "intelligent_fallback" in test_file.lower()
+            or "per_tool_model_defaults" in test_file.lower()
+        ):
+            # Call original method logic
+            from config import DEFAULT_MODEL
+
+            if DEFAULT_MODEL.lower() == "auto":
+                return True
+            provider = ModelProviderRegistry.get_provider_for_model(DEFAULT_MODEL)
+            return provider is None
+        # For all other tests, return False to disable auto mode
+        return False
+
+    monkeypatch.setattr(BaseTool, "is_effective_auto_mode", mock_is_effective_auto_mode)

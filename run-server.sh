@@ -120,6 +120,16 @@ else
         fi
     fi
     
+    if [ -n "${XAI_API_KEY:-}" ]; then
+        # Replace the placeholder API key with the actual value
+        if command -v sed >/dev/null 2>&1; then
+            sed -i.bak "s/your_xai_api_key_here/$XAI_API_KEY/" .env && rm .env.bak
+            echo "✅ Updated .env with existing XAI_API_KEY from environment"
+        else
+            echo "⚠️  Found XAI_API_KEY in environment, but sed not available. Please update .env manually."
+        fi
+    fi
+    
     if [ -n "${OPENROUTER_API_KEY:-}" ]; then
         # Replace the placeholder API key with the actual value
         if command -v sed >/dev/null 2>&1; then
@@ -169,6 +179,7 @@ source .env 2>/dev/null || true
 
 VALID_GEMINI_KEY=false
 VALID_OPENAI_KEY=false
+VALID_XAI_KEY=false
 VALID_OPENROUTER_KEY=false
 VALID_CUSTOM_URL=false
 
@@ -184,6 +195,12 @@ if [ -n "${OPENAI_API_KEY:-}" ] && [ "$OPENAI_API_KEY" != "your_openai_api_key_h
     echo "✅ OPENAI_API_KEY found"
 fi
 
+# Check if XAI_API_KEY is set and not the placeholder
+if [ -n "${XAI_API_KEY:-}" ] && [ "$XAI_API_KEY" != "your_xai_api_key_here" ]; then
+    VALID_XAI_KEY=true
+    echo "✅ XAI_API_KEY found"
+fi
+
 # Check if OPENROUTER_API_KEY is set and not the placeholder
 if [ -n "${OPENROUTER_API_KEY:-}" ] && [ "$OPENROUTER_API_KEY" != "your_openrouter_api_key_here" ]; then
     VALID_OPENROUTER_KEY=true
@@ -197,19 +214,21 @@ if [ -n "${CUSTOM_API_URL:-}" ]; then
 fi
 
 # Require at least one valid API key or custom URL
-if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ] && [ "$VALID_CUSTOM_URL" = false ]; then
+if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_XAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ] && [ "$VALID_CUSTOM_URL" = false ]; then
     echo ""
     echo "❌ ERROR: At least one valid API key or custom URL is required!"
     echo ""
     echo "Please edit the .env file and set at least one of:"
     echo "  - GEMINI_API_KEY (get from https://makersuite.google.com/app/apikey)"
     echo "  - OPENAI_API_KEY (get from https://platform.openai.com/api-keys)"
+    echo "  - XAI_API_KEY (get from https://console.x.ai/)"
     echo "  - OPENROUTER_API_KEY (get from https://openrouter.ai/)"
     echo "  - CUSTOM_API_URL (for local models like Ollama, vLLM, etc.)"
     echo ""
     echo "Example:"
     echo "  GEMINI_API_KEY=your-actual-api-key-here"
     echo "  OPENAI_API_KEY=sk-your-actual-openai-key-here"
+    echo "  XAI_API_KEY=xai-your-actual-xai-key-here"
     echo "  OPENROUTER_API_KEY=sk-or-your-actual-openrouter-key-here"
     echo "  CUSTOM_API_URL=http://host.docker.internal:11434/v1  # Ollama (use host.docker.internal, NOT localhost!)"
     echo ""
@@ -302,7 +321,7 @@ show_configuration_steps() {
     echo ""
     echo "🔄 Next steps:"
     NEEDS_KEY_UPDATE=false
-    if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null || grep -q "your_openrouter_api_key_here" .env 2>/dev/null; then
+    if grep -q "your_gemini_api_key_here" .env 2>/dev/null || grep -q "your_openai_api_key_here" .env 2>/dev/null || grep -q "your_xai_api_key_here" .env 2>/dev/null || grep -q "your_openrouter_api_key_here" .env 2>/dev/null; then
         NEEDS_KEY_UPDATE=true
     fi
 
@@ -310,6 +329,7 @@ show_configuration_steps() {
         echo "1. Edit .env and replace placeholder API keys with actual ones"
         echo "   - GEMINI_API_KEY: your-gemini-api-key-here"
         echo "   - OPENAI_API_KEY: your-openai-api-key-here"
+        echo "   - XAI_API_KEY: your-xai-api-key-here"
         echo "   - OPENROUTER_API_KEY: your-openrouter-api-key-here (optional)"
         echo "2. Restart services: $COMPOSE_CMD restart"
         echo "3. Copy the configuration below to your Claude Desktop config if required:"

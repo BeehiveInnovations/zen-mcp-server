@@ -117,6 +117,7 @@ class ModelProviderRegistry:
         PROVIDER_PRIORITY_ORDER = [
             ProviderType.GOOGLE,  # Direct Gemini access
             ProviderType.OPENAI,  # Direct OpenAI access
+            ProviderType.XAI,  # Direct X.AI GROK access
             ProviderType.CUSTOM,  # Local/self-hosted models
             ProviderType.OPENROUTER,  # Catch-all for cloud models
         ]
@@ -173,16 +174,22 @@ class ModelProviderRegistry:
                 # Get supported models based on provider type
                 if hasattr(provider, "SUPPORTED_MODELS"):
                     for model_name, config in provider.SUPPORTED_MODELS.items():
-                        # Skip aliases (string values)
+                        # Handle both base models (dict configs) and aliases (string values)
                         if isinstance(config, str):
-                            continue
-
-                        # Check restrictions if enabled
-                        if restriction_service and not restriction_service.is_allowed(provider_type, model_name):
-                            logging.debug(f"Model {model_name} filtered by restrictions")
-                            continue
-
-                        models[model_name] = provider_type
+                            # This is an alias - check if the target model would be allowed
+                            target_model = config
+                            if restriction_service and not restriction_service.is_allowed(provider_type, target_model):
+                                logging.debug(f"Alias {model_name} -> {target_model} filtered by restrictions")
+                                continue
+                            # Allow the alias
+                            models[model_name] = provider_type
+                        else:
+                            # This is a base model with config dict
+                            # Check restrictions if enabled
+                            if restriction_service and not restriction_service.is_allowed(provider_type, model_name):
+                                logging.debug(f"Model {model_name} filtered by restrictions")
+                                continue
+                            models[model_name] = provider_type
                 elif provider_type == ProviderType.OPENROUTER:
                     # OpenRouter uses a registry system instead of SUPPORTED_MODELS
                     if hasattr(provider, "_registry") and provider._registry:
@@ -230,6 +237,7 @@ class ModelProviderRegistry:
         key_mapping = {
             ProviderType.GOOGLE: "GEMINI_API_KEY",
             ProviderType.OPENAI: "OPENAI_API_KEY",
+            ProviderType.XAI: "XAI_API_KEY",
             ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
             ProviderType.CUSTOM: "CUSTOM_API_KEY",  # Can be empty for providers that don't need auth
         }
@@ -264,9 +272,13 @@ class ModelProviderRegistry:
         # Group by provider
         openai_models = [m for m, p in available_models.items() if p == ProviderType.OPENAI]
         gemini_models = [m for m, p in available_models.items() if p == ProviderType.GOOGLE]
+        xai_models = [m for m, p in available_models.items() if p == ProviderType.XAI]
+        openrouter_models = [m for m, p in available_models.items() if p == ProviderType.OPENROUTER]
 
         openai_available = bool(openai_models)
         gemini_available = bool(gemini_models)
+        xai_available = bool(xai_models)
+        openrouter_available = bool(openrouter_models)
 
         if tool_category == ToolModelCategory.EXTENDED_REASONING:
             # Prefer thinking-capable models for deep reasoning tools
@@ -275,17 +287,25 @@ class ModelProviderRegistry:
             elif openai_available and openai_models:
                 # Fall back to any available OpenAI model
                 return openai_models[0]
+            elif xai_available and "grok-3" in xai_models:
+                return "grok-3"  # GROK-3 for deep reasoning
+            elif xai_available and xai_models:
+                # Fall back to any available XAI model
+                return xai_models[0]
             elif gemini_available and any("pro" in m for m in gemini_models):
                 # Find the pro model (handles full names)
                 return next(m for m in gemini_models if "pro" in m)
             elif gemini_available and gemini_models:
                 # Fall back to any available Gemini model
                 return gemini_models[0]
-            else:
-                # Try to find thinking-capable model from custom/openrouter
+            elif openrouter_available:
+                # Try to find thinking-capable model from openrouter
                 thinking_model = cls._find_extended_thinking_model()
                 if thinking_model:
                     return thinking_model
+                # Fallback to first available OpenRouter model
+                return openrouter_models[0]
+            else:
                 # Fallback to pro if nothing found
                 return "gemini-2.5-pro-preview-06-05"
 
@@ -298,12 +318,20 @@ class ModelProviderRegistry:
             elif openai_available and openai_models:
                 # Fall back to any available OpenAI model
                 return openai_models[0]
+            elif xai_available and "grok-3-fast" in xai_models:
+                return "grok-3-fast"  # GROK-3 Fast for speed
+            elif xai_available and xai_models:
+                # Fall back to any available XAI model
+                return xai_models[0]
             elif gemini_available and any("flash" in m for m in gemini_models):
                 # Find the flash model (handles full names)
                 return next(m for m in gemini_models if "flash" in m)
             elif gemini_available and gemini_models:
                 # Fall back to any available Gemini model
                 return gemini_models[0]
+            elif openrouter_available:
+                # Fallback to first available OpenRouter model
+                return openrouter_models[0]
             else:
                 # Default to flash
                 return "gemini-2.5-flash-preview-05-20"
@@ -315,10 +343,16 @@ class ModelProviderRegistry:
             return "o3-mini"  # Second choice
         elif openai_available and openai_models:
             return openai_models[0]
+        elif xai_available and "grok-3" in xai_models:
+            return "grok-3"  # GROK-3 as balanced choice
+        elif xai_available and xai_models:
+            return xai_models[0]
         elif gemini_available and any("flash" in m for m in gemini_models):
             return next(m for m in gemini_models if "flash" in m)
         elif gemini_available and gemini_models:
             return gemini_models[0]
+        elif openrouter_available:
+            return openrouter_models[0]
         else:
             # No models available due to restrictions - check if any providers exist
             if not available_models:
@@ -355,8 +389,9 @@ class ModelProviderRegistry:
             preferred_models = [
                 "anthropic/claude-3.5-sonnet",
                 "anthropic/claude-3-opus-20240229",
-                "meta-llama/llama-3.1-70b-instruct",
+                "google/gemini-2.5-pro-preview-06-05",
                 "google/gemini-pro-1.5",
+                "meta-llama/llama-3.1-70b-instruct",
                 "mistralai/mixtral-8x7b-instruct",
             ]
             for model in preferred_models:

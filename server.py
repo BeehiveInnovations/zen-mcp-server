@@ -169,6 +169,7 @@ def configure_providers():
     from providers.gemini import GeminiModelProvider
     from providers.openai import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
+    from providers.xai import XAIModelProvider
     from utils.model_restrictions import get_restriction_service
 
     valid_providers = []
@@ -189,6 +190,13 @@ def configure_providers():
         valid_providers.append("OpenAI (o3)")
         has_native_apis = True
         logger.info("OpenAI API key found - o3 model available")
+
+    # Check for X.AI API key
+    xai_key = os.getenv("XAI_API_KEY")
+    if xai_key and xai_key != "your_xai_api_key_here":
+        valid_providers.append("X.AI (GROK)")
+        has_native_apis = True
+        logger.info("X.AI API key found - GROK models available")
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
@@ -221,6 +229,8 @@ def configure_providers():
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
         if openai_key and openai_key != "your_openai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+        if xai_key and xai_key != "your_xai_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
 
     # 2. Custom provider second (for local/private models)
     if has_custom:
@@ -242,6 +252,7 @@ def configure_providers():
             "At least one API configuration is required. Please set either:\n"
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI o3 model\n"
+            "- XAI_API_KEY for X.AI GROK models\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
             "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
         )

@@ -55,6 +55,8 @@ class TestClaudeContinuationOffers:
     """Test Claude continuation offer functionality"""
 
     def setup_method(self):
+        # Note: Tool creation and schema generation happens here
+        # If providers are not registered yet, tool might detect auto mode
         self.tool = ClaudeContinuationTool()
         # Set default model to avoid effective auto mode
         self.tool.default_model = "gemini-2.5-flash-preview-05-20"
@@ -63,11 +65,15 @@ class TestClaudeContinuationOffers:
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
     async def test_new_conversation_offers_continuation(self, mock_redis):
         """Test that new conversations offer Claude continuation opportunity"""
+        # Create tool AFTER providers are registered (in conftest.py fixture)
+        tool = ClaudeContinuationTool()
+        tool.default_model = "gemini-2.5-flash-preview-05-20"
+
         mock_client = Mock()
         mock_redis.return_value = mock_client
 
         # Mock the model
-        with patch.object(self.tool, "get_model_provider") as mock_get_provider:
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
             mock_provider = create_mock_provider()
             mock_provider.get_provider_type.return_value = Mock(value="google")
             mock_provider.supports_thinking_mode.return_value = False
@@ -81,7 +87,7 @@ class TestClaudeContinuationOffers:
 
             # Execute tool without continuation_id (new conversation)
             arguments = {"prompt": "Analyze this code"}
-            response = await self.tool.execute(arguments)
+            response = await tool.execute(arguments)
 
             # Parse response
             response_data = json.loads(response[0].text)
@@ -176,10 +182,6 @@ class TestClaudeContinuationOffers:
             # Parse response
             assert len(response) == 1
             response_data = json.loads(response[0].text)
-
-            # Debug output
-            if response_data.get("status") == "error":
-                print(f"Error content: {response_data.get('content')}")
 
             assert response_data["status"] == "continuation_available"
             assert response_data["content"] == "Analysis complete. The code looks good."

@@ -243,10 +243,23 @@ class TestLargePromptHandling:
         tool = ChatTool()
         exact_prompt = "x" * MCP_PROMPT_SIZE_LIMIT
 
-        # With the fix, this should now pass because we check at MCP transport boundary before adding internal content
-        result = await tool.execute({"prompt": exact_prompt})
-        output = json.loads(result[0].text)
-        assert output["status"] == "success"
+        # Mock the model provider to avoid real API calls
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = MagicMock(
+                content="Response to the large prompt",
+                usage={"input_tokens": 12000, "output_tokens": 10, "total_tokens": 12010},
+                model_name="gemini-2.5-flash-preview-05-20",
+                metadata={"finish_reason": "STOP"},
+            )
+            mock_get_provider.return_value = mock_provider
+
+            # With the fix, this should now pass because we check at MCP transport boundary before adding internal content
+            result = await tool.execute({"prompt": exact_prompt})
+            output = json.loads(result[0].text)
+            assert output["status"] == "success"
 
     @pytest.mark.asyncio
     async def test_boundary_case_just_over_limit(self):
