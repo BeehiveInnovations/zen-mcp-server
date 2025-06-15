@@ -9,6 +9,25 @@ set -euo pipefail
 # - Initial setup of the Docker environment
 # - Restart services after changing .env configuration
 # - Rebuild and restart after code changes
+# 
+# Usage: ./run-server.sh [-f]
+# Options:
+#   -f  Follow logs after starting (tail -f the MCP server log)
+
+# Parse command line arguments
+FOLLOW_LOGS=false
+while getopts "f" opt; do
+    case $opt in
+        f)
+            FOLLOW_LOGS=true
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo "Usage: $0 [-f]" >&2
+            exit 1
+            ;;
+    esac
+done
 
 # Spinner function for long-running operations
 show_spinner() {
@@ -386,9 +405,20 @@ fi
 echo "🔧 Useful commands:"
 echo "  Start services:    $COMPOSE_CMD up -d"
 echo "  Stop services:     $COMPOSE_CMD down"
-echo "  View logs:         $COMPOSE_CMD logs -f"
+echo "  View MCP logs:     docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log"
 echo "  Restart services:  $COMPOSE_CMD restart"
 echo "  Service status:    $COMPOSE_CMD ps"
 echo ""
 
-echo "Happy Clauding!"
+# Follow logs if -f flag was specified
+if [ "$FOLLOW_LOGS" = true ]; then
+    echo "📜 Following MCP server logs (press Ctrl+C to stop)..."
+    echo ""
+    # Give the container a moment to fully start
+    sleep 2
+    docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
+else
+    echo "💡 Tip: Use './run-server.sh -f' next time to automatically follow logs after startup"
+    echo ""
+    echo "Happy Clauding!"
+fi

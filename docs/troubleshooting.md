@@ -43,7 +43,11 @@ cat .env
 If you need to update your API keys, edit the `.env` file and then run:
 
 ```bash
+# Restart services
 ./run-server.sh
+
+# Or restart and follow logs for troubleshooting
+./run-server.sh -f
 ```
 
 This will validate your configuration and restart the services.
@@ -56,12 +60,14 @@ View the container logs for detailed error information:
 # Check if containers are running
 docker-compose ps
 
-# View all logs
-docker-compose logs -f
+# View MCP server logs (recommended - shows actual tool execution)
+docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
 
-# View specific service logs
-docker-compose logs -f zen-mcp
+# Or use the -f flag when starting to automatically follow logs
+./run-server.sh -f
 ```
+
+**Note**: Due to MCP protocol limitations, `docker-compose logs` only shows startup logs, not tool execution logs. Always use the docker exec command above or the `-f` flag for debugging.
 
 See [Logging Documentation](logging.md) for more details on accessing logs.
 

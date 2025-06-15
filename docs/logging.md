@@ -1,13 +1,29 @@
 # Logging
 
+## Quick Start - Follow Logs
+
+The easiest way to monitor logs is to use the `-f` flag when starting the server:
+
+```bash
+# Start server and automatically follow MCP logs
+./run-server.sh -f
+```
+
+This will start the server and immediately begin tailing the MCP server logs.
+
 ## Viewing Logs in Docker
 
 To monitor MCP server activity in real-time:
 
 ```bash
-# View all container logs
-docker-compose logs -f
+# Follow MCP server logs (recommended)
+docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
+
+# Or use the -f flag when starting the server
+./run-server.sh -f
 ```
+
+**Note**: Due to MCP protocol limitations, container logs don't show tool execution details. Always use the commands above for debugging.
 
 ## Log Files
 

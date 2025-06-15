@@ -8,6 +8,7 @@ This project includes comprehensive test coverage through unit tests and integra
 - Python virtual environment activated: `source venv/bin/activate`
 - All dependencies installed: `pip install -r requirements.txt`
 - Docker containers running (for simulator tests): `./run-server.sh`
+  - Use `./run-server.sh -f` to automatically follow logs after starting
 
 ### Unit Tests
 
@@ -37,7 +38,10 @@ Simulator tests replicate real-world Claude CLI interactions with the MCP server
 To monitor logs during test execution:
 
 ```bash
-# Monitor main server logs (includes all tool execution details)
+# Start server and automatically follow logs
+./run-server.sh -f
+
+# Or manually monitor main server logs (includes all tool execution details)
 docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
 
 # Monitor MCP activity logs (tool calls and completions)  
