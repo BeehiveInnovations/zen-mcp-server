@@ -483,11 +483,27 @@ did *not* discover.
 - **Multi-file analysis** - Understands cross-file relationships and dependencies
 - **Priority sequencing** - Recommends implementation order for refactoring changes
 
-**Refactor Types:**
-- `codesmells`: Detect long methods, god classes, duplicated code, poor naming
-- `decompose`: Break down large files (>1500 LOC), classes (>300 LOC), functions (>80 LOC) 
-- `modernize`: Update to modern language features (f-strings, async/await, etc.)
-- `organization`: Improve logical grouping, separation of concerns, module structure
+**Refactor Types (Progressive Priority System):**
+
+**1. `decompose` (CRITICAL PRIORITY)** - Context-aware decomposition with adaptive thresholds:
+- **AUTOMATIC decomposition** (CRITICAL severity - blocks all other refactoring):
+  - Files >15,000 LOC, Classes >3,000 LOC, Functions >500 LOC
+- **EVALUATE decomposition** (contextual severity - intelligent assessment):
+  - Files >5,000 LOC, Classes >1,000 LOC, Functions >150 LOC
+  - Only recommends if genuinely improves maintainability
+  - Respects legacy stability, domain complexity, performance constraints
+  - Considers legitimate cases where size is justified (algorithms, state machines, generated code)
+
+**2. `codesmells`** - Applied only after decomposition is complete:
+- Detect long methods, complex conditionals, duplicate code, magic numbers, poor naming
+
+**3. `modernize`** - Applied only after decomposition is complete:
+- Update to modern language features (f-strings, async/await, etc.)
+
+**4. `organization`** - Applied only after decomposition is complete:
+- Improve logical grouping, separation of concerns, module structure
+
+**Progressive Analysis:** The tool performs a top-down check (worse → bad → better) and refuses to work on lower-priority issues if critical decomposition is needed first. It understands that massive files and classes create cognitive overload that must be addressed before detail work can be effective. Legacy code that cannot be safely decomposed is handled with higher tolerance thresholds and context-sensitive exemptions.
 
 ### 8. `testgen` - Comprehensive Test Generation
 **Generates thorough test suites with edge case coverage** based on existing code and test framework used.
