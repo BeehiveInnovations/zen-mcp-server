@@ -233,7 +233,10 @@ class TracerTool(BaseTool):
         # Use centralized file processing logic for main code files (with line numbers enabled)
         continuation_id = getattr(request, "continuation_id", None)
         logger.debug(f"[TRACER] Preparing {len(request.files)} code files for analysis")
-        code_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code to analyze")
+        code_content, processed_files = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code to analyze")
+        
+        # Store processed files for conversation tracking
+        self._actually_processed_files = processed_files
 
         if code_content:
             from utils.token_utils import estimate_tokens
