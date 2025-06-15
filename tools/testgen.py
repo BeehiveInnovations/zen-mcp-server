@@ -214,13 +214,14 @@ class TestGenTool(BaseTool):
         # Use standard file content preparation with dynamic token budget
         try:
             logger.debug(f"[TESTGEN] Preparing file content for {len(examples_to_process)} test examples")
-            content = self._prepare_file_content_for_prompt(
+            content, processed_files = self._prepare_file_content_for_prompt(
                 examples_to_process,
                 continuation_id,
                 "Test examples",
                 max_tokens=test_examples_budget,
                 reserve_tokens=1000,
             )
+            # Store processed files for tracking - test examples are tracked separately from main code files
 
             # Determine how many files were actually included
             if content:
@@ -358,9 +359,10 @@ class TestGenTool(BaseTool):
 
         # Use centralized file processing logic for main code files (after deduplication)
         logger.debug(f"[TESTGEN] Preparing {len(code_files_to_process)} code files for analysis")
-        code_content = self._prepare_file_content_for_prompt(
+        code_content, processed_files = self._prepare_file_content_for_prompt(
             code_files_to_process, continuation_id, "Code to test", max_tokens=remaining_tokens, reserve_tokens=2000
         )
+        self._actually_processed_files = processed_files
 
         if code_content:
             from utils.token_utils import estimate_tokens

@@ -408,13 +408,14 @@ class Precommit(BaseTool):
             remaining_tokens = max_tokens - total_tokens
 
             # Use centralized file handling with filtering for duplicate prevention
-            file_content = self._prepare_file_content_for_prompt(
+            file_content, processed_files = self._prepare_file_content_for_prompt(
                 translated_files,
                 request.continuation_id,
                 "Context files",
                 max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
                 reserve_tokens=1000,  # Small reserve for formatting
             )
+            self._actually_processed_files = processed_files
 
             if file_content:
                 context_tokens = estimate_tokens(file_content)

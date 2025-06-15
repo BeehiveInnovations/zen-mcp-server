@@ -137,7 +137,8 @@ class AnalyzeTool(BaseTool):
 
         # Use centralized file processing logic
         continuation_id = getattr(request, "continuation_id", None)
-        file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Files")
+        file_content, processed_files = self._prepare_file_content_for_prompt(request.files, continuation_id, "Files")
+        self._actually_processed_files = processed_files
 
         # Build analysis instructions
         analysis_focus = []

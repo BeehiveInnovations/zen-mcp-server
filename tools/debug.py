@@ -166,7 +166,8 @@ class DebugIssueTool(BaseTool):
         if request.files:
             # Use centralized file processing logic
             continuation_id = getattr(request, "continuation_id", None)
-            file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code")
+            file_content, processed_files = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code")
+            self._actually_processed_files = processed_files
 
             if file_content:
                 context_parts.append(f"\n=== RELEVANT CODE ===\n{file_content}\n=== END CODE ===")

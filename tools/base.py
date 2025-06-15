@@ -544,7 +544,7 @@ class BaseTool(ABC):
         reserve_tokens: int = 1_000,
         remaining_budget: Optional[int] = None,
         arguments: Optional[dict] = None,
-    ) -> str:
+    ) -> tuple[str, list[str]]:
         """
         Centralized file processing for tool prompts.
 
@@ -563,10 +563,13 @@ class BaseTool(ABC):
             arguments: Original tool arguments (used to extract _remaining_tokens if available)
 
         Returns:
-            str: Formatted file content string ready for prompt inclusion
+            tuple[str, list[str]]: (formatted_file_content, actually_processed_files)
+                - formatted_file_content: Formatted file content string ready for prompt inclusion
+                - actually_processed_files: List of individual file paths that were actually read and embedded
+                  (directories are expanded to individual files)
         """
         if not request_files:
-            return ""
+            return "", []
 
         # Note: Even if conversation history is already embedded, we still need to process
         # any NEW files that aren't in the conversation history yet. The filter_new_files
@@ -705,6 +708,7 @@ class BaseTool(ABC):
             )
 
         content_parts = []
+        actually_processed_files = []
 
         # Read content of new files only
         if files_to_embed:
@@ -713,6 +717,11 @@ class BaseTool(ABC):
                 f"[FILES] {self.name}: Starting file embedding with token budget {effective_max_tokens + reserve_tokens:,}"
             )
             try:
+                # Before calling read_files, expand directories to get individual file paths
+                from utils.file_utils import expand_paths
+                expanded_files = expand_paths(files_to_embed)
+                logger.debug(f"[FILES] {self.name}: Expanded {len(files_to_embed)} paths to {len(expanded_files)} individual files")
+                
                 file_content = read_files(
                     files_to_embed,
                     max_tokens=effective_max_tokens + reserve_tokens,
@@ -721,6 +730,9 @@ class BaseTool(ABC):
                 )
                 self._validate_token_limit(file_content, context_description)
                 content_parts.append(file_content)
+                
+                # Track the expanded files as actually processed
+                actually_processed_files.extend(expanded_files)
 
                 # Estimate tokens for debug logging
                 from utils.token_utils import estimate_tokens
@@ -730,6 +742,7 @@ class BaseTool(ABC):
                     f"{self.name} tool successfully embedded {len(files_to_embed)} files ({content_tokens:,} tokens)"
                 )
                 logger.debug(f"[FILES] {self.name}: Successfully embedded files - {content_tokens:,} tokens used")
+                logger.debug(f"[FILES] {self.name}: Actually processed {len(actually_processed_files)} individual files")
             except Exception as e:
                 logger.error(f"{self.name} tool failed to embed files {files_to_embed}: {type(e).__name__}: {e}")
                 logger.debug(f"[FILES] {self.name}: File embedding failed - {type(e).__name__}: {e}")
@@ -759,8 +772,8 @@ class BaseTool(ABC):
                 logger.debug(f"[FILES] {self.name}: No skipped files to note")
 
         result = "".join(content_parts) if content_parts else ""
-        logger.debug(f"[FILES] {self.name}: _prepare_file_content_for_prompt returning {len(result)} chars")
-        return result
+        logger.debug(f"[FILES] {self.name}: _prepare_file_content_for_prompt returning {len(result)} chars, {len(actually_processed_files)} processed files")
+        return result, actually_processed_files
 
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
         """
@@ -1408,7 +1421,9 @@ When recommending searches, be specific about what information you need and why 
             )
 
             # Add this response as the first turn (assistant turn)
-            request_files = getattr(request, "files", []) or []
+            # Use actually processed files from file preparation instead of original request files
+            # This ensures directories are tracked as their individual expanded files
+            request_files = getattr(self, "_actually_processed_files", []) or getattr(request, "files", []) or []
             # Extract model metadata
             model_provider = None
             model_name = None

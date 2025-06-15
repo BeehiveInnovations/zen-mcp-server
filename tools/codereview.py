@@ -196,7 +196,8 @@ class CodeReviewTool(BaseTool):
 
         # Use centralized file processing logic
         continuation_id = getattr(request, "continuation_id", None)
-        file_content = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code")
+        file_content, processed_files = self._prepare_file_content_for_prompt(request.files, continuation_id, "Code")
+        self._actually_processed_files = processed_files
 
         # Build customized review instructions based on review type
         review_focus = []
