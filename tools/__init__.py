@@ -10,6 +10,7 @@ from .precommit import Precommit
 from .refactor import RefactorTool
 from .testgen import TestGenTool
 from .thinkdeep import ThinkDeepTool
+from .tracepath import TracePathTool
 
 __all__ = [
     "ThinkDeepTool",
@@ -20,4 +21,5 @@ __all__ = [
     "Precommit",
     "RefactorTool",
     "TestGenTool",
+    "TracePathTool",
 ]

@@ -10,6 +10,7 @@ from .precommit_prompt import PRECOMMIT_PROMPT
 from .refactor_prompt import REFACTOR_PROMPT
 from .testgen_prompt import TESTGEN_PROMPT
 from .thinkdeep_prompt import THINKDEEP_PROMPT
+from .tracepath_prompt import TRACEPATH_PROMPT
 
 __all__ = [
     "THINKDEEP_PROMPT",
@@ -20,4 +21,5 @@ __all__ = [
     "PRECOMMIT_PROMPT",
     "REFACTOR_PROMPT",
     "TESTGEN_PROMPT",
+    "TRACEPATH_PROMPT",
 ]
