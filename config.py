@@ -136,6 +136,12 @@ DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "
 # processing to use full model context windows (200K-1M+ tokens).
 MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
 
+# OpenAI Flex Processing configuration
+# When enabled (default), automatically uses OpenAI's Flex Processing service tier
+# for o3 and o3-mini models to reduce costs by ~50% with slightly higher latency
+# Set to "0" or "false" to disable and use standard tier
+OPENAI_USE_FLEX_PROCESSING = os.getenv("OPENAI_USE_FLEX_PROCESSING", "1").lower() not in ["0", "false", "no"]
+
 # Threading configuration
 # Simple Redis-based conversation threading for stateless MCP environment
 # Set REDIS_URL environment variable to connect to your Redis instance

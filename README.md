@@ -665,13 +665,33 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high
 **Available Models:**
 - **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
 - **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
-- **`o3`**: Strong logical reasoning  
-- **`o3mini`**: Balanced speed/quality
+- **`o3`**: Strong logical reasoning (uses [Flex Processing](https://platform.openai.com/docs/guides/flex-processing) for cost savings)
+- **`o3mini`**: Balanced speed/quality (uses [Flex Processing](https://platform.openai.com/docs/guides/flex-processing) for cost savings)
 - **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
 - **`o4-mini-high`**: Enhanced O4 with higher reasoning effort
 - **Custom models**: via OpenRouter or local APIs (Ollama, vLLM, etc.)
 
+**OpenAI Flex Processing:** The server automatically uses OpenAI's [Flex Processing service tier](https://platform.openai.com/docs/guides/flex-processing) for o3 and o3-mini models, providing the same quality outputs at lower costs with slightly higher latency. If Flex Processing is unavailable, the server automatically falls back to the standard tier.
+
+To disable Flex Processing and use standard tier pricing:
+```env
+OPENAI_USE_FLEX_PROCESSING=0  # Set to 0, false, or no to disable (default: enabled)
+```
+
 For detailed configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).
+
+### Environment Variables
+
+**Claude Code Bash Timeout Configuration:**
+When using Claude Code, you can configure timeouts for long-running bash commands:
+
+```env
+# Timeout for bash commands in milliseconds
+BASH_DEFAULT_TIMEOUT_MS=300000     # Default: 5 minutes (300,000ms)
+BASH_MAX_TIMEOUT_MS=1200000        # Maximum: 20 minutes (1,200,000ms)
+```
+
+These environment variables should be set in your shell configuration (e.g., `.bashrc`, `.zshrc`) before starting Claude Code. They control how long Claude waits for bash commands to complete when using tools that execute system commands.
 
 ## Testing
 

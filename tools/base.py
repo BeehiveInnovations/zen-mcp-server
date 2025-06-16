@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
+import config
 from config import MCP_PROMPT_SIZE_LIMIT
 from providers import ModelProvider, ModelProviderRegistry
 from utils import check_token_limit
@@ -1241,15 +1242,31 @@ When recommending searches, be specific about what information you need and why 
             logger.debug(f"Prompt length: {len(prompt)} characters")
 
             # Generate content with provider abstraction
+            # Add service_tier for OpenAI models if using flex processing
+            generation_kwargs = {}
+            if (
+                provider.get_provider_type().value == "openai"
+                and model_name in ["o3", "o3-mini"]
+                and config.OPENAI_USE_FLEX_PROCESSING
+            ):
+                # Use flex service tier for OpenAI models to reduce costs
+                generation_kwargs["service_tier"] = "flex"
+                logger.info(f"Using Flex Processing service tier for OpenAI model {model_name}")
+
             model_response = provider.generate_content(
                 prompt=prompt,
                 model_name=model_name,
                 system_prompt=system_prompt,
                 temperature=temperature,
                 thinking_mode=thinking_mode if provider.supports_thinking_mode(model_name) else None,
+                **generation_kwargs,
             )
 
             logger.info(f"Received response from {provider.get_provider_type().value} API for {self.name}")
+
+            # Check if we fell back from flex tier
+            if model_response.metadata.get("service_tier_fallback"):
+                logger.info("Used standard service tier after Flex Processing tier was unavailable")
 
             # Process the model's response
             if model_response.content:
