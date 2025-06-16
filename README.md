@@ -80,6 +80,7 @@ Claude is brilliant, but sometimes you need:
 - **Local model support** - Run models like Llama 3.2 locally via Ollama, vLLM, or LM Studio for privacy and cost control
 - **Dynamic collaboration** - Models can request additional context and follow-up replies from Claude mid-analysis
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
+- **Vision support** - Analyze images, diagrams, screenshots, and visual content with vision-capable models
 - **[Bypass MCP's token limits](docs/advanced-usage.md#working-with-large-prompts)** - Work around MCP's 25K limit automatically
 - **[Context revival across sessions](docs/context-revival.md)** - Continue conversations even after Claude's context resets, with other models maintaining full history
 
@@ -314,6 +315,7 @@ and then debate with the other models to give me a final verdict
 - Technology comparisons and best practices
 - Architecture and design discussions
 - Can reference files for context: `"Use gemini to explain this algorithm with context from algorithm.py"`
+- **Image support**: Include screenshots, diagrams, UI mockups for visual analysis: `"Chat with gemini about this error dialog screenshot to understand the user experience issue"`
 - **Dynamic collaboration**: Gemini can request additional files or context during the conversation if needed for a more thorough response
 - **Web search capability**: Analyzes when web searches would be helpful and recommends specific searches for Claude to perform, ensuring access to current documentation and best practices
 
@@ -337,6 +339,7 @@ with the best architecture for my project
 - Offers alternative perspectives and approaches
 - Validates architectural decisions and design patterns
 - Can reference specific files for context: `"Use gemini to think deeper about my API design with reference to api/routes.py"`
+- **Image support**: Analyze architectural diagrams, flowcharts, design mockups: `"Think deeper about this system architecture diagram with gemini pro using max thinking mode"`
 - **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
 - **Web search capability**: When enabled (default: true), identifies areas where current documentation or community solutions would strengthen the analysis and suggests specific searches for Claude
 
@@ -362,6 +365,7 @@ I need an actionable plan but break it down into smaller quick-wins that we can 
 - Supports specialized reviews: security, performance, quick
 - Can enforce coding standards: `"Use gemini to review src/ against PEP8 standards"`
 - Filters by severity: `"Get gemini to review auth/ - only report critical vulnerabilities"`
+- **Image support**: Review code from screenshots, error dialogs, or visual bug reports: `"Review this error screenshot and the related auth.py file for potential security issues"`
 
 ### 4. `precommit` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
@@ -408,6 +412,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - `review_type`: full|security|performance|quick
 - `severity_filter`: Filter by issue severity
 - `max_depth`: How deep to search for nested repos
+- `images`: Screenshots of requirements, design mockups, or error states for validation context
 ### 5. `debug` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
@@ -428,6 +433,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Supports runtime info and previous attempts
 - Provides structured root cause analysis with validation steps
 - Can request additional context when needed for thorough analysis
+- **Image support**: Include error screenshots, stack traces, console output: `"Debug this error using gemini with the stack trace screenshot and the failing test.py"`
 - **Web search capability**: When enabled (default: true), identifies when searching for error messages, known issues, or documentation would help solve the problem and recommends specific searches for Claude
 ### 6. `analyze` - Smart File Analysis
 **General-purpose code understanding and exploration**
@@ -447,6 +453,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Supports specialized analysis types: architecture, performance, security, quality
 - Uses file paths (not content) for clean terminal output
 - Can identify patterns, anti-patterns, and refactoring opportunities
+- **Image support**: Analyze architecture diagrams, UML charts, flowcharts: `"Analyze this system diagram with gemini to understand the data flow and identify bottlenecks"`
 - **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
 
 ### 7. `refactor` - Intelligent Code Refactoring
@@ -489,6 +496,7 @@ did *not* discover.
 - **Conservative approach** - Careful dependency analysis to prevent breaking changes
 - **Multi-file analysis** - Understands cross-file relationships and dependencies
 - **Priority sequencing** - Recommends implementation order for refactoring changes
+- **Image support**: Analyze code architecture diagrams, legacy system charts: `"Refactor this legacy module using gemini pro with the current architecture diagram"`
 
 **Refactor Types (Progressive Priority System):**
 
@@ -529,7 +537,8 @@ Claude can use to efficiently trace execution flows and map dependencies within 
 - Creates structured instructions for call-flow graph generation
 - Provides detailed formatting requirements for consistent output
 - Supports any programming language with automatic convention detection
-- Output can be used as an input into another tool, such as `chat` along with related code files to perform a logical call-flow analysis 
+- Output can be used as an input into another tool, such as `chat` along with related code files to perform a logical call-flow analysis
+- **Image support**: Analyze visual call flow diagrams, sequence diagrams: `"Generate tracer analysis for this payment flow using the sequence diagram"` 
 
 #### Example Prompts:
 ```
@@ -564,6 +573,7 @@ suites that cover realistic failure scenarios and integration points that shorte
 - Prioritizes smallest test files for pattern detection
 - Can reference existing test files: `"Generate tests following patterns from tests/unit/"`
 - Specific code coverage - target specific functions/classes rather than testing everything
+- **Image support**: Test UI components, analyze visual requirements: `"Generate tests for this login form using the UI mockup screenshot"`
 
 ### 10. `version` - Server Information
 ```
@@ -626,6 +636,7 @@ This server enables **true AI collaboration** between Claude and multiple AI mod
 - **Automatic 25K limit bypass**: Each exchange sends only incremental context, allowing unlimited total conversation size
 - Up to 10 exchanges per conversation (configurable via `MAX_CONVERSATION_TURNS`) with 3-hour expiry (configurable via `CONVERSATION_TIMEOUT_HOURS`)
 - Thread-safe with Redis persistence across all tools
+- **Image context preservation** - Images and visual references are maintained across conversation turns and tool switches
 
 **Cross-tool & Cross-Model Continuation Example:**
 ```
@@ -659,7 +670,7 @@ DEFAULT_MODEL=auto  # Claude picks the best model automatically
 
 # API Keys (at least one required)
 GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high, GPT-4.1
 ```
 
 **Available Models:**
@@ -669,6 +680,7 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3mini, O4-mini, O4-mini-high
 - **`o3mini`**: Balanced speed/quality
 - **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
 - **`o4-mini-high`**: Enhanced O4 with higher reasoning effort
+- **`gpt4.1`**: GPT-4.1 with 1M context window
 - **Custom models**: via OpenRouter or local APIs (Ollama, vLLM, etc.)
 
 For detailed configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).

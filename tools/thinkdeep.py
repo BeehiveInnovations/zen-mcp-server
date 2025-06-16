@@ -33,6 +33,10 @@ class ThinkDeepRequest(ToolRequest):
         None,
         description="Optional file paths or directories for additional context (must be absolute paths)",
     )
+    images: Optional[list[str]] = Field(
+        None,
+        description="Optional images for visual analysis - diagrams, charts, system architectures, or any visual information to analyze",
+    )
 
 
 class ThinkDeepTool(BaseTool):
@@ -60,7 +64,13 @@ class ThinkDeepTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Your current thinking/analysis to extend and validate. IMPORTANT: Before using this tool, Claude MUST first think deeply and establish a deep understanding of the topic and question by thinking through all relevant details, context, constraints, and implications. Share these extended thoughts and ideas in the prompt so the model has comprehensive information to work with for the best analysis.",
+                    "description": (
+                        "Your current thinking/analysis to extend and validate. IMPORTANT: Before using this tool, "
+                        "Claude MUST first think deeply and establish a deep understanding of the topic and question "
+                        "by thinking through all relevant details, context, constraints, and implications. Share "
+                        "these extended thoughts and ideas in the prompt so the model has comprehensive information "
+                        "to work with for the best analysis."
+                    ),
                 },
                 "model": self.get_model_field_schema(),
                 "problem_context": {
@@ -76,6 +86,11 @@ class ThinkDeepTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Optional file paths or directories for additional context (must be absolute paths)",
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional images for visual analysis - diagrams, charts, system architectures, or any visual information to analyze",
                 },
                 "temperature": {
                     "type": "number",

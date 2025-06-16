@@ -112,6 +112,8 @@ class ModelCapabilities:
     supports_system_prompts: bool = True
     supports_streaming: bool = True
     supports_function_calling: bool = False
+    supports_images: bool = False  # Whether model can process images
+    max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
 
     # Temperature constraint object - preferred way to define temperature limits
     temperature_constraint: TemperatureConstraint = field(

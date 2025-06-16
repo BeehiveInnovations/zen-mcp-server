@@ -23,6 +23,8 @@ class OpenRouterModelConfig:
     supports_streaming: bool = True
     supports_function_calling: bool = False
     supports_json_mode: bool = False
+    supports_images: bool = False  # Whether model can process images
+    max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
     is_custom: bool = False  # True for models that should only be used with custom endpoints
     description: str = ""
 
@@ -37,6 +39,8 @@ class OpenRouterModelConfig:
             supports_system_prompts=self.supports_system_prompts,
             supports_streaming=self.supports_streaming,
             supports_function_calling=self.supports_function_calling,
+            supports_images=self.supports_images,
+            max_image_size_mb=self.max_image_size_mb,
             temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 1.0),
         )
 
@@ -66,7 +70,8 @@ class OpenRouterModelRegistry:
                 translated_path = translate_path_for_environment(env_path)
                 self.config_path = Path(translated_path)
             else:
-                # Default to conf/custom_models.json (already in container)
+                # Default to conf/custom_models.json - use relative path from this file
+                # This works both in development and container environments
                 self.config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
 
         # Load configuration

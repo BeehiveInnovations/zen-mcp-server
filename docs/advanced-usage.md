@@ -11,6 +11,7 @@ This guide covers advanced features, configuration options, and workflows for po
 - [Context Revival: AI Memory Beyond Context Limits](#context-revival-ai-memory-beyond-context-limits)
 - [Collaborative Workflows](#collaborative-workflows)
 - [Working with Large Prompts](#working-with-large-prompts)
+- [Vision Support](#vision-support)
 - [Web Search Integration](#web-search-integration)
 - [System Prompts](#system-prompts)
 
@@ -25,7 +26,7 @@ DEFAULT_MODEL=auto  # Claude picks the best model automatically
 
 # API Keys (at least one required)
 GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, O4-mini, O4-mini-high
+OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, O4-mini, O4-mini-high, GPT-4.1
 ```
 
 **How Auto Mode Works:**
@@ -43,6 +44,7 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, O4-mini, O4-mini-high
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
 | **`o4-mini`** | OpenAI | 200K tokens | Latest reasoning model | Optimized for shorter contexts |
 | **`o4-mini-high`** | OpenAI | 200K tokens | Enhanced reasoning | Complex tasks requiring deeper analysis |
+| **`gpt4.1`** | OpenAI | 1M tokens | Latest GPT-4 with extended context | Large codebase analysis, comprehensive reviews |
 | **`llama`** (Llama 3.2) | Custom/Local | 128K tokens | Local inference, privacy | On-device analysis, cost-free processing |
 | **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
 
@@ -57,6 +59,7 @@ You can specify a default model instead of auto mode:
 DEFAULT_MODEL=gemini-2.5-pro-preview-06-05  # Always use Gemini Pro
 DEFAULT_MODEL=flash                         # Always use Flash
 DEFAULT_MODEL=o3                           # Always use O3
+DEFAULT_MODEL=gpt4.1                       # Always use GPT-4.1
 ```
 
 **Important:** After changing any configuration in `.env` (including `DEFAULT_MODEL`, API keys, or other settings), restart the server with `./run-server.sh` to apply the changes.
@@ -67,10 +70,12 @@ Regardless of your default setting, you can specify models per request:
 - "Use **flash** to quickly format this code"
 - "Use **o3** to debug this logic error"
 - "Review with **o4-mini** for balanced analysis"
+- "Use **gpt4.1** for comprehensive codebase analysis"
 
 **Model Capabilities:**
 - **Gemini Models**: Support thinking modes (minimal to max), web search, 1M context
 - **O3 Models**: Excellent reasoning, systematic analysis, 200K context
+- **GPT-4.1**: Extended context window (1M tokens), general capabilities
 
 ## Model Usage Restrictions
 
@@ -186,7 +191,7 @@ All tools that work with files support **both individual files and entire direct
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
 - `question`: What to analyze (required)  
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
@@ -201,7 +206,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
@@ -217,7 +222,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
@@ -233,7 +238,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
@@ -249,7 +254,7 @@ All tools that work with files support **both individual files and entire direct
 **`testgen`** - Comprehensive test generation with edge case coverage
 - `files`: Code files or directories to generate tests for (required)
 - `prompt`: Description of what to test, testing objectives, and scope (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `test_examples`: Optional existing test files as style/pattern reference
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 
@@ -264,7 +269,7 @@ All tools that work with files support **both individual files and entire direct
 - `files`: Code files or directories to analyze for refactoring opportunities (required)
 - `prompt`: Description of refactoring goals, context, and specific areas of focus (required)
 - `refactor_type`: codesmells|decompose|modernize|organization (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `focus_areas`: Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')
 - `style_guide_examples`: Optional existing code files to use as style/pattern reference
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
@@ -356,6 +361,47 @@ To help choose the right tool for your needs:
 - `testgen` vs `debug`: testgen creates test suites, debug just finds issues and recommends solutions
 - `refactor` vs `codereview`: refactor suggests structural improvements, codereview finds bugs/issues
 - `refactor` vs `analyze`: refactor provides actionable refactoring steps, analyze provides understanding
+
+## Vision Support
+
+The Zen MCP server supports vision-capable models for analyzing images, diagrams, screenshots, and visual content. Vision support works seamlessly with all tools and conversation threading.
+
+**Supported Models:**
+- **Gemini 2.5 Pro & Flash**: Excellent for diagrams, architecture analysis, UI mockups (up to 20MB total)
+- **OpenAI O3/O4 series**: Strong for visual debugging, error screenshots (up to 20MB total)
+- **Claude models via OpenRouter**: Good for code screenshots, visual analysis (up to 5MB total)
+- **Custom models**: Support varies by model, with 40MB maximum enforced for abuse prevention
+
+**Usage Examples:**
+```bash
+# Debug with error screenshots
+"Use zen to debug this error with the stack trace screenshot and error.py"
+
+# Architecture analysis with diagrams  
+"Analyze this system architecture diagram with gemini pro for bottlenecks"
+
+# UI review with mockups
+"Chat with flash about this UI mockup - is the layout intuitive?"
+
+# Code review with visual context
+"Review this authentication code along with the error dialog screenshot"
+```
+
+**Image Formats Supported:**
+- **Images**: JPG, PNG, GIF, WebP, BMP, SVG, TIFF
+- **Documents**: PDF (where supported by model)
+- **Data URLs**: Base64-encoded images from Claude
+
+**Key Features:**
+- **Automatic validation**: File type, magic bytes, and size validation
+- **Conversation context**: Images persist across tool switches and continuation
+- **Budget management**: Automatic dropping of old images when limits exceeded
+- **Model capability-aware**: Only sends images to vision-capable models
+
+**Best Practices:**
+- Describe images when including them: "screenshot of login error", "system architecture diagram"
+- Use appropriate models: Gemini for complex diagrams, O3 for debugging visuals
+- Consider image sizes: Larger images consume more of the model's capacity
 
 ## Working with Large Prompts
 
