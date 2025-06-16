@@ -136,6 +136,20 @@ class BaseTool(ABC):
     4. Register the tool in server.py's TOOLS dictionary
     """
 
+    # Class-level cache for OpenRouter registry to avoid repeated loading
+    _openrouter_registry_cache = None
+
+    @classmethod
+    def _get_openrouter_registry(cls):
+        """Get cached OpenRouter registry instance, creating if needed."""
+        # Use BaseTool class directly to ensure cache is shared across all subclasses
+        if BaseTool._openrouter_registry_cache is None:
+            from providers.openrouter_registry import OpenRouterModelRegistry
+
+            BaseTool._openrouter_registry_cache = OpenRouterModelRegistry()
+            logger.debug("Created cached OpenRouter registry instance")
+        return BaseTool._openrouter_registry_cache
+
     def __init__(self):
         # Cache tool metadata at initialization to avoid repeated calls
         self.name = self.get_name()
@@ -251,48 +265,62 @@ class BaseTool(ABC):
 
     def _get_available_models(self) -> list[str]:
         """
-        Get list of models that are actually available with current API keys.
+        Get list of all possible models for the schema enum.
 
-        This respects model restrictions automatically.
+        In auto mode, we show ALL models from MODEL_CAPABILITIES_DESC so Claude
+        can see all options, even if some require additional API configuration.
+        Runtime validation will handle whether a model is actually available.
 
         Returns:
-            List of available model names
+            List of all model names from config
         """
         from config import MODEL_CAPABILITIES_DESC
-        from providers.base import ProviderType
-        from providers.registry import ModelProviderRegistry
 
-        # Get available models from registry (respects restrictions)
-        available_models_map = ModelProviderRegistry.get_available_models(respect_restrictions=True)
-        available_models = list(available_models_map.keys())
+        # Start with all models from MODEL_CAPABILITIES_DESC
+        all_models = list(MODEL_CAPABILITIES_DESC.keys())
 
-        # Add model aliases if their targets are available
-        model_aliases = []
-        for alias, target in MODEL_CAPABILITIES_DESC.items():
-            if alias not in available_models and target in available_models:
-                model_aliases.append(alias)
+        # Add OpenRouter models if OpenRouter is configured
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
+            try:
+                registry = self._get_openrouter_registry()
+                # Add all aliases from the registry (includes OpenRouter cloud models)
+                for alias in registry.list_aliases():
+                    if alias not in all_models:
+                        all_models.append(alias)
+            except Exception as e:
+                import logging
 
-        available_models.extend(model_aliases)
+                logging.debug(f"Failed to add OpenRouter models to enum: {e}")
 
-        # Also check if OpenRouter is available (it accepts any model)
-        openrouter_provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)
-        if openrouter_provider and not available_models:
-            # If only OpenRouter is available, suggest using any model through it
-            available_models.append("any model via OpenRouter")
+        # Add custom models if custom API is configured
+        custom_url = os.getenv("CUSTOM_API_URL")
+        if custom_url:
+            try:
+                registry = self._get_openrouter_registry()
+                # Find all custom models (is_custom=true)
+                for alias in registry.list_aliases():
+                    config = registry.resolve(alias)
+                    if config and hasattr(config, "is_custom") and config.is_custom:
+                        if alias not in all_models:
+                            all_models.append(alias)
+            except Exception as e:
+                import logging
 
-        if not available_models:
-            # Check if it's due to restrictions
-            from utils.model_restrictions import get_restriction_service
+                logging.debug(f"Failed to add custom models to enum: {e}")
 
-            restriction_service = get_restriction_service()
-            restrictions = restriction_service.get_restriction_summary()
+        # Note: MODEL_CAPABILITIES_DESC already includes both short aliases (e.g., "flash", "o3")
+        # and full model names (e.g., "gemini-2.5-flash-preview-05-20") as keys
 
-            if restrictions:
-                return ["none - all models blocked by restrictions set in .env"]
-            else:
-                return ["none - please configure API keys"]
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_models = []
+        for model in all_models:
+            if model not in seen:
+                seen.add(model)
+                unique_models.append(model)
 
-        return available_models
+        return unique_models
 
     def get_model_field_schema(self) -> dict[str, Any]:
         """
@@ -323,14 +351,42 @@ class BaseTool(ABC):
             for model, desc in MODEL_CAPABILITIES_DESC.items():
                 model_desc_parts.append(f"- '{model}': {desc}")
 
+            # Add custom models if custom API is configured
+            custom_url = os.getenv("CUSTOM_API_URL")
+            if custom_url:
+                # Load custom models from registry
+                try:
+                    registry = self._get_openrouter_registry()
+                    model_desc_parts.append(f"\nCustom models via {custom_url}:")
+
+                    # Find all custom models (is_custom=true)
+                    for alias in registry.list_aliases():
+                        config = registry.resolve(alias)
+                        if config and hasattr(config, "is_custom") and config.is_custom:
+                            # Format context window
+                            context_tokens = config.context_window
+                            if context_tokens >= 1_000_000:
+                                context_str = f"{context_tokens // 1_000_000}M"
+                            elif context_tokens >= 1_000:
+                                context_str = f"{context_tokens // 1_000}K"
+                            else:
+                                context_str = str(context_tokens)
+
+                            desc_line = f"- '{alias}' ({context_str} context): {config.description}"
+                            if desc_line not in model_desc_parts:  # Avoid duplicates
+                                model_desc_parts.append(desc_line)
+                except Exception as e:
+                    import logging
+
+                    logging.debug(f"Failed to load custom model descriptions: {e}")
+                    model_desc_parts.append(f"\nCustom models: Models available via {custom_url}")
+
             if has_openrouter:
                 # Add OpenRouter models with descriptions
                 try:
                     import logging
 
-                    from providers.openrouter_registry import OpenRouterModelRegistry
-
-                    registry = OpenRouterModelRegistry()
+                    registry = self._get_openrouter_registry()
 
                     # Group models by their model_name to avoid duplicates
                     seen_models = set()
@@ -379,10 +435,13 @@ class BaseTool(ABC):
                         "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter."
                     )
 
+            # Get all available models for the enum
+            all_models = self._get_available_models()
+
             return {
                 "type": "string",
                 "description": "\n".join(model_desc_parts),
-                "enum": list(MODEL_CAPABILITIES_DESC.keys()),
+                "enum": all_models,
             }
         else:
             # Normal mode - model is optional with default
@@ -393,11 +452,7 @@ class BaseTool(ABC):
             if has_openrouter:
                 # Add OpenRouter aliases
                 try:
-                    # Import registry directly to show available aliases
-                    # This works even without an API key
-                    from providers.openrouter_registry import OpenRouterModelRegistry
-
-                    registry = OpenRouterModelRegistry()
+                    registry = self._get_openrouter_registry()
                     aliases = registry.list_aliases()
 
                     # Show ALL aliases from the configuration
