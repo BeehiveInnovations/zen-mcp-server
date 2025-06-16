@@ -432,11 +432,24 @@ echo ""
 
 # Follow logs if -f flag was specified
 if [ "$FOLLOW_LOGS" = true ]; then
-    echo "📜 Following MCP server logs (press Ctrl+C to stop)..."
+    echo "Following MCP server logs (press Ctrl+C to stop)..."
     echo ""
+    
     # Give the container a moment to fully start
-    sleep 2
-    docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
+    echo "Waiting for container to be ready..."
+    sleep 3
+    
+    # Check if container is running before trying to exec
+    if docker ps | grep -q "zen-mcp-server"; then
+        echo "Container is running, following logs..."
+        docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
+    else
+        echo "Container zen-mcp-server is not running"
+        echo "   Container status:"
+        docker ps -a | grep zen-mcp-server || echo "   Container not found"
+        echo "   Try running: docker logs zen-mcp-server"
+        exit 1
+    fi
 else
     echo "💡 Tip: Use './run-server.sh -f' next time to automatically follow logs after startup"
     echo ""
