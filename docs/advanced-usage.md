@@ -368,7 +368,7 @@ The Zen MCP server supports vision-capable models for analyzing images, diagrams
 
 **Supported Models:**
 - **Gemini 2.5 Pro & Flash**: Excellent for diagrams, architecture analysis, UI mockups (up to 20MB total)
-- **OpenAI O3/O4 series**: Strong for visual debugging, error screenshots (up to 20MB total)  
+- **OpenAI O3/O4 series**: Strong for visual debugging, error screenshots (up to 20MB total)
 - **Claude models via OpenRouter**: Good for code screenshots, visual analysis (up to 5MB total)
 - **Custom models**: Support varies by model, with 40MB maximum enforced for abuse prevention
 
