@@ -418,7 +418,7 @@ class TestGenerationTool(BaseTool):
 
         return full_prompt
 
-    def format_response(self, response: str, request: TestGenRequest, model_info: Optional[dict] = None) -> str:
+    def format_response(self, response: str, request: TestGenerationRequest, model_info: Optional[dict] = None) -> str:
         """
         Format the test generation response.
 
