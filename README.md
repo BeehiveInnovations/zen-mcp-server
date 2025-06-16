@@ -90,7 +90,9 @@ Claude is brilliant, but sometimes you need:
 > The most amazing side-effect of this _conversation continuation_ system is that even AFTER Claude's context resets or
 > compacts, since the continuation info is kept within MCP's memory, you can ask it to _continue_ discussing 
 > the plan with `o3`, and it will suddenly revive Claude because O3 would know what was being talked about and 
-> relay this back in a way that re-ignites Claude's understanding.
+> relay this back in a way that re-ignites Claude's understanding. All this without wasting context on asking Claude to
+> ingest lengthy documents / code again and re-prompting it to communicate with another model. Zen manages that internally. The model's response
+> revives Claude with better context around the discussion than an automatic summary ever can.   
 
 **[📖 Read the complete technical deep-dive on how this revolutionary system works](docs/context-revival.md)**
 
