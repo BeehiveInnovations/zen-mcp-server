@@ -28,8 +28,8 @@ class TestServerTools:
         assert "tracer" in tool_names
         assert "version" in tool_names
 
-        # Should have exactly 10 tools (including refactor and tracer)
-        assert len(tools) == 10
+        # Should have exactly 11 tools (including refactor, tracer, and listmodels)
+        assert len(tools) == 11
 
         # Check descriptions are verbose
         for tool in tools:

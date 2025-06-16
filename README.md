@@ -268,6 +268,7 @@ Just ask Claude naturally:
 - **Code needs refactoring?** → `refactor` (intelligent refactoring with decomposition focus)
 - **Need call-flow analysis?** → `tracer` (generates prompts for execution tracing and dependency mapping)
 - **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
+- **Which models are available?** → `listmodels` (shows all configured providers and models)
 - **Server info?** → `version` (version and configuration details)
 
 **Auto Mode:** When `DEFAULT_MODEL=auto`, Claude automatically picks the best model for each task. You can override with: "Use flash for quick analysis" or "Use o3 to debug this".
@@ -291,7 +292,8 @@ Just ask Claude naturally:
 7. [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
 8. [`tracer`](#8-tracer---static-code-analysis-prompt-generator) - Static code analysis prompt generator for call-flow mapping
 9. [`testgen`](#9-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
-10. [`version`](#10-version---server-information) - Get server version and configuration
+10. [`listmodels`](#10-listmodels---list-available-models) - Display all available AI models organized by provider
+11. [`version`](#11-version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -575,7 +577,13 @@ suites that cover realistic failure scenarios and integration points that shorte
 - Specific code coverage - target specific functions/classes rather than testing everything
 - **Image support**: Test UI components, analyze visual requirements: `"Generate tests for this login form using the UI mockup screenshot"`
 
-### 10. `version` - Server Information
+### 10. `listmodels` - List Available Models
+```
+"Use zen to list available models"
+```
+Shows all configured providers, available models with aliases, and context windows.
+
+### 11. `version` - Server Information
 ```
 "Get zen to show its version"
 ```

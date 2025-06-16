@@ -99,6 +99,9 @@ class ToolRequest(BaseModel):
 
 
 class BaseTool(ABC):
+    # Class-level cache for OpenRouter registry to avoid multiple loads
+    _openrouter_registry_cache = None
+
     """
     Abstract base class for all Gemini tools.
 
@@ -209,6 +212,20 @@ class BaseTool(ABC):
             str: System prompt with role definition and instructions
         """
         pass
+
+    @classmethod
+    def _get_openrouter_registry(cls):
+        """Get cached OpenRouter registry instance."""
+        if BaseTool._openrouter_registry_cache is None:
+            import logging
+
+            from providers.openrouter_registry import OpenRouterModelRegistry
+
+            logger = logging.getLogger(__name__)
+            logger.info("Loading OpenRouter registry for the first time (will be cached for all tools)")
+            BaseTool._openrouter_registry_cache = OpenRouterModelRegistry()
+
+        return BaseTool._openrouter_registry_cache
 
     def is_effective_auto_mode(self) -> bool:
         """

@@ -51,6 +51,7 @@ from tools import (
     ChatTool,
     CodeReviewTool,
     DebugIssueTool,
+    ListModelsTool,
     Precommit,
     RefactorTool,
     TestGenerationTool,
@@ -156,6 +157,7 @@ TOOLS = {
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
+    "listmodels": ListModelsTool(),  # List all available AI models by provider
     "precommit": Precommit(),  # Pre-commit validation of git changes
     "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
@@ -208,6 +210,11 @@ PROMPT_TEMPLATES = {
         "name": "tracer",
         "description": "Trace code execution paths",
         "template": "Generate tracer analysis with {model}",
+    },
+    "listmodels": {
+        "name": "listmodels",
+        "description": "List available AI models",
+        "template": "List all available models",
     },
 }
 
@@ -411,6 +418,10 @@ async def handle_list_tools() -> list[Tool]:
             ),
         ]
     )
+
+    # Log cache efficiency info
+    if os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here":
+        logger.debug("OpenRouter registry cache used efficiently across all tool schemas")
 
     logger.debug(f"Returning {len(tools)} tools to MCP client")
     return tools
@@ -821,14 +832,14 @@ async def handle_version() -> list[TextContent]:
 
     configured_providers = []
     available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
-    
+
     # Group models by provider
     models_by_provider = {}
     for model_name, provider_type in available_models.items():
         if provider_type not in models_by_provider:
             models_by_provider[provider_type] = []
         models_by_provider[provider_type].append(model_name)
-    
+
     # Format provider information with actual available models
     if ProviderType.GOOGLE in models_by_provider:
         gemini_models = ", ".join(sorted(models_by_provider[ProviderType.GOOGLE]))

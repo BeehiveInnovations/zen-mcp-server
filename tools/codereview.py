@@ -39,21 +39,32 @@ class CodeReviewRequest(ToolRequest):
     )
     prompt: str = Field(
         ...,
-        description="User's summary of what the code does, expected behavior, constraints, and review objectives",
+        description=(
+            "User's summary of what the code does, expected behavior, constraints, and review objectives. "
+            "IMPORTANT: Before using this tool, Claude should first perform its own preliminary review - "
+            "examining the code structure, identifying potential issues, understanding the business logic, "
+            "and noting areas of concern. Include Claude's initial observations about code quality, potential "
+            "bugs, architectural patterns, and specific areas that need deeper scrutiny. This dual-perspective "
+            "approach (Claude's analysis + external model's review) provides more comprehensive feedback and "
+            "catches issues that either reviewer might miss alone."
+        ),
     )
     images: Optional[list[str]] = Field(
         None,
-        description="Optional images of architecture diagrams, UI mockups, design documents, or visual references for code review context",
+        description=(
+            "Optional images of architecture diagrams, UI mockups, design documents, or visual references "
+            "for code review context"
+        ),
     )
     review_type: str = Field("full", description="Type of review: full|security|performance|quick")
     focus_on: Optional[str] = Field(
         None,
-        description="Specific aspects to focus on, or additional context that would help understand areas of concern",
+        description=("Specific aspects to focus on, or additional context that would help understand areas of concern"),
     )
     standards: Optional[str] = Field(None, description="Coding standards or guidelines to enforce")
     severity_filter: str = Field(
         "all",
-        description="Minimum severity to report: critical|high|medium|all",
+        description="Minimum severity to report: critical|high|medium|low|all",
     )
 
 
@@ -81,7 +92,8 @@ class CodeReviewTool(BaseTool):
             "Choose thinking_mode based on review scope: 'low' for small code snippets, "
             "'medium' for standard files/modules (default), 'high' for complex systems/architectures, "
             "'max' for critical security audits or large codebases requiring deepest analysis. "
-            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools "
+            "can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
@@ -96,12 +108,24 @@ class CodeReviewTool(BaseTool):
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "User's summary of what the code does, expected behavior, constraints, and review objectives",
+                    "description": (
+                        "User's summary of what the code does, expected behavior, constraints, and review "
+                        "objectives. IMPORTANT: Before using this tool, Claude should first perform its own "
+                        "preliminary review - examining the code structure, identifying potential issues, "
+                        "understanding the business logic, and noting areas of concern. Include Claude's initial "
+                        "observations about code quality, potential bugs, architectural patterns, and specific "
+                        "areas that need deeper scrutiny. This dual-perspective approach (Claude's analysis + "
+                        "external model's review) provides more comprehensive feedback and catches issues that "
+                        "either reviewer might miss alone."
+                    ),
                 },
                 "images": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional images of architecture diagrams, UI mockups, design documents, or visual references for code review context",
+                    "description": (
+                        "Optional images of architecture diagrams, UI mockups, design documents, or visual "
+                        "references for code review context"
+                    ),
                 },
                 "review_type": {
                     "type": "string",
@@ -111,7 +135,10 @@ class CodeReviewTool(BaseTool):
                 },
                 "focus_on": {
                     "type": "string",
-                    "description": "Specific aspects to focus on, or additional context that would help understand areas of concern",
+                    "description": (
+                        "Specific aspects to focus on, or additional context that would help understand "
+                        "areas of concern"
+                    ),
                 },
                 "standards": {
                     "type": "string",
@@ -119,7 +146,7 @@ class CodeReviewTool(BaseTool):
                 },
                 "severity_filter": {
                     "type": "string",
-                    "enum": ["critical", "high", "medium", "all"],
+                    "enum": ["critical", "high", "medium", "low", "all"],
                     "default": "all",
                     "description": "Minimum severity level to report",
                 },
@@ -132,16 +159,29 @@ class CodeReviewTool(BaseTool):
                 "thinking_mode": {
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
+                    "description": (
+                        "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), "
+                        "max (100% of model max)"
+                    ),
                 },
                 "use_websearch": {
                     "type": "boolean",
-                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "description": (
+                        "Enable web search for documentation, best practices, and current information. "
+                        "Particularly useful for: brainstorming sessions, architectural design discussions, "
+                        "exploring industry best practices, working with specific frameworks/technologies, "
+                        "researching solutions to complex problems, or when current documentation and community "
+                        "insights would enhance the analysis."
+                    ),
                     "default": True,
                 },
                 "continuation_id": {
                     "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
+                    "description": (
+                        "Thread continuation ID for multi-turn conversations. Can be used to continue "
+                        "conversations across different tools. Only provide this if continuing a previous "
+                        "conversation thread."
+                    ),
                 },
             },
             "required": ["files", "prompt"] + (["model"] if self.is_effective_auto_mode() else []),
@@ -263,7 +303,8 @@ class CodeReviewTool(BaseTool):
 {file_content}
 === END CODE ===
 
-Please provide a code review aligned with the user's context and expectations, following the format specified in the system prompt."""
+Please provide a code review aligned with the user's context and expectations, following the format specified """
+        "in the system prompt." ""
 
         return full_prompt
 
@@ -285,10 +326,14 @@ Please provide a code review aligned with the user's context and expectations, f
 
 **Claude's Next Steps:**
 
-1. **Understand the Context**: First examine the specific functions, files, and code sections mentioned in the review to understand each issue thoroughly.
+1. **Understand the Context**: First examine the specific functions, files, and code sections mentioned in """
+        """the review to understand each issue thoroughly.
 
-2. **Present Options to User**: After understanding the issues, ask the user which specific improvements they would like to implement, presenting them as a clear list of options.
+2. **Present Options to User**: After understanding the issues, ask the user which specific improvements """
+        """they would like to implement, presenting them as a clear list of options.
 
-3. **Implement Selected Fixes**: Only implement the fixes the user chooses, ensuring each change is made correctly and maintains code quality.
+3. **Implement Selected Fixes**: Only implement the fixes the user chooses, ensuring each change is made """
+        """correctly and maintains code quality.
 
-Remember: Always understand the code context before suggesting fixes, and let the user decide which improvements to implement."""
+Remember: Always understand the code context before suggesting fixes, and let the user decide which """
+        """improvements to implement."""
