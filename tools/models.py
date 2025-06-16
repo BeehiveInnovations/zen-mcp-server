@@ -43,6 +43,7 @@ class ToolOutput(BaseModel):
         "refactor_analysis_complete",
         "trace_complete",
         "resend_prompt",
+        "code_too_large",
         "continuation_available",
     ] = "success"
     content: Optional[str] = Field(None, description="The main content/response from the tool")
@@ -140,6 +141,15 @@ class RefactorAnalysisComplete(BaseModel):
     refactor_opportunities: list[RefactorOpportunity] = Field(..., description="List of refactoring opportunities")
     priority_sequence: list[str] = Field(..., description="Recommended order of refactoring IDs")
     next_actions_for_claude: list[RefactorAction] = Field(..., description="Specific actions for Claude to implement")
+
+
+class CodeTooLargeRequest(BaseModel):
+    """Request to reduce file selection due to size constraints"""
+
+    status: Literal["code_too_large"] = "code_too_large"
+    content: str = Field(..., description="Message explaining the size constraint")
+    content_type: Literal["text"] = "text"
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResendPromptRequest(BaseModel):
@@ -284,6 +294,7 @@ SPECIAL_STATUS_MODELS = {
     "refactor_analysis_complete": RefactorAnalysisComplete,
     "trace_complete": TraceComplete,
     "resend_prompt": ResendPromptRequest,
+    "code_too_large": CodeTooLargeRequest,
 }
 
 

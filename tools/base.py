@@ -936,6 +936,49 @@ When recommending searches, be specific about what information you need and why 
             }
         return None
 
+    def estimate_tokens_smart(self, file_path: str) -> int:
+        """
+        Estimate tokens for a file using file-type aware ratios.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            int: Estimated token count
+        """
+        from utils.file_utils import estimate_file_tokens
+
+        return estimate_file_tokens(file_path)
+
+    def check_total_file_size(self, files: list[str]) -> Optional[dict[str, Any]]:
+        """
+        Check if total file sizes would exceed token threshold before embedding.
+
+        IMPORTANT: This performs STRICT REJECTION at MCP boundary.
+        No partial inclusion - either all files fit or request is rejected.
+        This forces Claude to make better file selection decisions.
+
+        Args:
+            files: List of file paths to check
+
+        Returns:
+            Dict with MCP_CODE_TOO_LARGE response if too large, None if acceptable
+        """
+        if not files:
+            return None
+
+        # Get current model name for context-aware thresholds
+        model_name = getattr(self, "_current_model_name", None)
+        if not model_name:
+            from config import DEFAULT_MODEL
+
+            model_name = DEFAULT_MODEL
+
+        # Use centralized file size checking with model context
+        from utils.file_utils import check_total_file_size as check_file_size_utility
+
+        return check_file_size_utility(files, model_name)
+
     def handle_prompt_file(self, files: Optional[list[str]]) -> tuple[Optional[str], Optional[list[str]]]:
         """
         Check for and handle prompt.txt in the files list.

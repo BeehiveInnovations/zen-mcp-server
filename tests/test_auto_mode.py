@@ -171,7 +171,21 @@ class TestAutoMode:
                         # Return a mock provider for actually available models
                         from unittest.mock import MagicMock
 
-                        return MagicMock()
+                        from providers.base import ModelCapabilities
+
+                        mock_provider = MagicMock()
+                        # Set up proper capabilities to avoid MagicMock comparison errors
+                        from providers.base import ProviderType
+
+                        mock_capabilities = ModelCapabilities(
+                            provider=ProviderType.GOOGLE,
+                            model_name=model_name,
+                            friendly_name="Test Model",
+                            context_window=1048576,  # 1M tokens
+                            supports_function_calling=True,
+                        )
+                        mock_provider.get_capabilities.return_value = mock_capabilities
+                        return mock_provider
                     else:
                         # Other unknown models are not available
                         return None

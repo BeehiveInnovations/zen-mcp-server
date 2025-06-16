@@ -1,13 +1,12 @@
 """OpenRouter model registry for managing model configurations and aliases."""
 
-import json
 import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from utils.file_utils import translate_path_for_environment
+from utils.file_utils import read_json_file, translate_path_for_environment
 
 from .base import ModelCapabilities, ProviderType, RangeTemperatureConstraint
 
@@ -130,8 +129,10 @@ class OpenRouterModelRegistry:
             return []
 
         try:
-            with open(self.config_path) as f:
-                data = json.load(f)
+            # Use centralized JSON reading utility
+            data = read_json_file(str(self.config_path))
+            if data is None:
+                raise ValueError(f"Could not read or parse JSON from {self.config_path}")
 
             # Parse models
             configs = []
@@ -140,8 +141,9 @@ class OpenRouterModelRegistry:
                 configs.append(config)
 
             return configs
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in {self.config_path}: {e}")
+        except ValueError:
+            # Re-raise ValueError for specific config errors
+            raise
         except Exception as e:
             raise ValueError(f"Error reading config from {self.config_path}: {e}")
 
