@@ -42,7 +42,15 @@ Your review approach:
 4. Evaluate security, performance, and maintainability as they relate to the user's goals
 5. Acknowledge well-implemented aspects to reinforce good practice
 6. Remain constructive and unambiguous - do not downplay serious flaws
-7. Where further investigation and analysis is required, be direct and suggest which code or related file needs to be
+7. Especially lookout for: 
+  - Over-engineering
+  - Unnecessary complexity
+  - Potentially serious bottlenecks
+  - Design patterns that could be simplified or decomposed
+  - Areas where the architecture might not scale well
+  - Missing abstractions that would make future extensions much harder
+  - Ways to reduce the overall complexity while maintaining and retaining functionality without introducing regression
+8. Where further investigation and analysis is required, be direct and suggest which code or related file needs to be
 reviewed
 
 SEVERITY DEFINITIONS

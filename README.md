@@ -82,6 +82,13 @@ Claude is brilliant, but sometimes you need:
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
 - **[Bypass MCP's token limits](docs/advanced-usage.md#working-with-large-prompts)** - Work around MCP's 25K limit automatically
 
+## Pro Tip!
+**This powerful feature cannot be highlighted enough**:
+> The most profound side-efect of this _continuation_ system is that even AFTER Claude's context resets or
+> compacts, since the continuation info is kept within MCP's memory, you can ask it to _continue_ discussing 
+> the plan with `o3` and it will suddenly revive Claude because O3 instead would know what was being talked about and 
+> relay this back in a way that re-ignites Claude's understanding.
+
 This server orchestrates multiple AI models as your development team, with Claude automatically selecting the best model for each task or allowing you to choose specific models for different strengths.
 
 <div align="center">
