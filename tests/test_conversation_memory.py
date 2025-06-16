@@ -139,11 +139,25 @@ class TestConversationMemory:
         assert success is False
 
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
-    def test_build_conversation_history(self):
+    def test_build_conversation_history(self, project_path):
         """Test building conversation history format with files and speaker identification"""
         from providers.registry import ModelProviderRegistry
 
         ModelProviderRegistry.clear_cache()
+
+        # Create real test files to test actual file embedding functionality
+        main_file = project_path / "main.py"
+        readme_file = project_path / "docs" / "readme.md"
+        examples_dir = project_path / "examples"
+        examples_file = examples_dir / "example.py"
+
+        # Create directories and files
+        readme_file.parent.mkdir(parents=True, exist_ok=True)
+        examples_dir.mkdir(parents=True, exist_ok=True)
+
+        main_file.write_text("def main():\n    print('Hello world')\n")
+        readme_file.write_text("# Project Documentation\nThis is a test project.\n")
+        examples_file.write_text("# Example code\nprint('Example')\n")
 
         test_uuid = "12345678-1234-1234-1234-123456789012"
 
@@ -152,13 +166,13 @@ class TestConversationMemory:
                 role="user",
                 content="What is Python?",
                 timestamp="2023-01-01T00:00:00Z",
-                files=["/home/user/main.py", "/home/user/docs/readme.md"],
+                files=[str(main_file), str(readme_file)],
             ),
             ConversationTurn(
                 role="assistant",
                 content="Python is a programming language",
                 timestamp="2023-01-01T00:01:00Z",
-                files=["/home/user/examples/"],
+                files=[str(examples_dir)],  # Directory will be expanded to files
                 tool_name="chat",
             ),
         ]
@@ -194,8 +208,13 @@ class TestConversationMemory:
         assert "The following files have been shared and analyzed during our conversation." in history
 
         # Check that file context from previous turns is included (now shows files used per turn)
-        assert "Files used in this turn: /home/user/main.py, /home/user/docs/readme.md" in history
-        assert "Files used in this turn: /home/user/examples/" in history
+        assert f"Files used in this turn: {main_file}, {readme_file}" in history
+        assert f"Files used in this turn: {examples_dir}" in history
+
+        # Verify actual file content is embedded
+        assert "def main():" in history
+        assert "Hello world" in history
+        assert "Project Documentation" in history
 
     def test_build_conversation_history_empty(self):
         """Test building history with no turns"""

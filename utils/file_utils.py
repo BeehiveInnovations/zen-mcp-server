@@ -16,12 +16,33 @@ Security Model:
 - All file access is restricted to PROJECT_ROOT and its subdirectories
 - Absolute paths are required to prevent ambiguity
 - Symbolic links are resolved to ensure they stay within bounds
+
+CONVERSATION MEMORY INTEGRATION:
+This module works with the conversation memory system to support efficient
+multi-turn file handling:
+
+1. DEDUPLICATION SUPPORT:
+   - File reading functions are called by conversation-aware tools
+   - Supports newest-first file prioritization by providing accurate token estimation
+   - Enables efficient file content caching and token budget management
+
+2. TOKEN BUDGET OPTIMIZATION:
+   - Provides accurate token estimation for file content before reading
+   - Supports the dual prioritization strategy by enabling precise budget calculations
+   - Enables tools to make informed decisions about which files to include
+
+3. CROSS-TOOL FILE PERSISTENCE:
+   - File reading results are used across different tools in conversation chains
+   - Consistent file access patterns support conversation continuation scenarios
+   - Error handling preserves conversation flow when files become unavailable
 """
 
+import json
 import logging
 import os
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from .file_types import BINARY_EXTENSIONS, CODE_EXTENSIONS, IMAGE_EXTENSIONS, TEXT_EXTENSIONS
 from .security_config import CONTAINER_WORKSPACE, EXCLUDED_DIRS, MCP_SIGNATURE_FILES, SECURITY_ROOT, WORKSPACE_ROOT
@@ -689,3 +710,349 @@ def read_files(
     result = "\n\n".join(content_parts) if content_parts else ""
     logger.debug(f"[FILES] read_files complete: {len(result)} chars, {total_tokens:,} tokens used")
     return result
+
+
+def estimate_file_tokens(file_path: str) -> int:
+    """
+    Estimate tokens for a file using file-type aware ratios.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Estimated token count for the file
+    """
+    try:
+        translated_path = translate_path_for_environment(file_path)
+
+        if not os.path.exists(translated_path) or not os.path.isfile(translated_path):
+            return 0
+
+        file_size = os.path.getsize(translated_path)
+
+        # Get the appropriate ratio for this file type
+        from .file_types import get_token_estimation_ratio
+
+        ratio = get_token_estimation_ratio(file_path)
+
+        return int(file_size / ratio)
+    except Exception:
+        return 0
+
+
+def check_files_size_limit(files: list[str], max_tokens: int, threshold_percent: float = 1.0) -> tuple[bool, int, int]:
+    """
+    Check if a list of files would exceed token limits.
+
+    Args:
+        files: List of file paths to check
+        max_tokens: Maximum allowed tokens
+        threshold_percent: Percentage of max_tokens to use as threshold (0.0-1.0)
+
+    Returns:
+        Tuple of (within_limit, total_estimated_tokens, file_count)
+    """
+    if not files:
+        return True, 0, 0
+
+    total_estimated_tokens = 0
+    file_count = 0
+    threshold = int(max_tokens * threshold_percent)
+
+    for file_path in files:
+        try:
+            estimated_tokens = estimate_file_tokens(file_path)
+            total_estimated_tokens += estimated_tokens
+            if estimated_tokens > 0:  # Only count accessible files
+                file_count += 1
+        except Exception:
+            # Skip files that can't be accessed for size check
+            continue
+
+    within_limit = total_estimated_tokens <= threshold
+    return within_limit, total_estimated_tokens, file_count
+
+
+class LogTailer:
+    """
+    General-purpose log file tailer with rotation detection.
+
+    This class provides a reusable way to monitor log files for new content,
+    automatically handling log rotation and maintaining position tracking.
+    """
+
+    def __init__(self, file_path: str, initial_seek_end: bool = True):
+        """
+        Initialize log tailer for a specific file.
+
+        Args:
+            file_path: Path to the log file to monitor
+            initial_seek_end: If True, start monitoring from end of file
+        """
+        self.file_path = file_path
+        self.position = 0
+        self.last_size = 0
+        self.initial_seek_end = initial_seek_end
+
+        # Ensure file exists and initialize position
+        Path(self.file_path).touch()
+        if self.initial_seek_end and os.path.exists(self.file_path):
+            self.last_size = os.path.getsize(self.file_path)
+            self.position = self.last_size
+
+    def read_new_lines(self) -> list[str]:
+        """
+        Read new lines since last call, handling rotation.
+
+        Returns:
+            List of new lines from the file
+        """
+        if not os.path.exists(self.file_path):
+            return []
+
+        try:
+            current_size = os.path.getsize(self.file_path)
+
+            # Check for log rotation (file size decreased)
+            if current_size < self.last_size:
+                self.position = 0
+                self.last_size = current_size
+
+            with open(self.file_path, encoding="utf-8", errors="ignore") as f:
+                f.seek(self.position)
+                new_lines = f.readlines()
+                self.position = f.tell()
+                self.last_size = current_size
+
+                # Strip whitespace from each line
+                return [line.strip() for line in new_lines if line.strip()]
+
+        except OSError:
+            return []
+
+    def monitor_continuously(
+        self,
+        line_handler: Callable[[str], None],
+        check_interval: float = 0.5,
+        stop_condition: Optional[Callable[[], bool]] = None,
+    ):
+        """
+        Monitor file continuously and call handler for each new line.
+
+        Args:
+            line_handler: Function to call for each new line
+            check_interval: Seconds between file checks
+            stop_condition: Optional function that returns True to stop monitoring
+        """
+        while True:
+            try:
+                if stop_condition and stop_condition():
+                    break
+
+                new_lines = self.read_new_lines()
+                for line in new_lines:
+                    line_handler(line)
+
+                time.sleep(check_interval)
+
+            except KeyboardInterrupt:
+                break
+            except Exception as e:
+                logger.warning(f"Error monitoring log file {self.file_path}: {e}")
+                time.sleep(1)
+
+
+def read_json_file(file_path: str) -> Optional[dict]:
+    """
+    Read and parse a JSON file with proper error handling.
+
+    Args:
+        file_path: Path to the JSON file
+
+    Returns:
+        Parsed JSON data as dict, or None if file doesn't exist or invalid
+    """
+    try:
+        translated_path = translate_path_for_environment(file_path)
+        if not os.path.exists(translated_path):
+            return None
+
+        with open(translated_path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def write_json_file(file_path: str, data: dict, indent: int = 2) -> bool:
+    """
+    Write data to a JSON file with proper formatting.
+
+    Args:
+        file_path: Path to write the JSON file
+        data: Dictionary data to serialize
+        indent: JSON indentation level
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        translated_path = translate_path_for_environment(file_path)
+        os.makedirs(os.path.dirname(translated_path), exist_ok=True)
+
+        with open(translated_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=indent, ensure_ascii=False)
+        return True
+    except (OSError, TypeError):
+        return False
+
+
+def get_file_size(file_path: str) -> int:
+    """
+    Get file size in bytes with proper error handling.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        File size in bytes, or 0 if file doesn't exist or error
+    """
+    try:
+        translated_path = translate_path_for_environment(file_path)
+        if os.path.exists(translated_path) and os.path.isfile(translated_path):
+            return os.path.getsize(translated_path)
+        return 0
+    except OSError:
+        return 0
+
+
+def ensure_directory_exists(file_path: str) -> bool:
+    """
+    Ensure the parent directory of a file path exists.
+
+    Args:
+        file_path: Path to file (directory will be created for parent)
+
+    Returns:
+        True if directory exists or was created, False on error
+    """
+    try:
+        translated_path = translate_path_for_environment(file_path)
+        directory = os.path.dirname(translated_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def is_text_file(file_path: str) -> bool:
+    """
+    Check if a file is likely a text file based on extension and content.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        True if file appears to be text, False otherwise
+    """
+    from .file_types import is_text_file as check_text_type
+
+    return check_text_type(file_path)
+
+
+def read_file_safely(file_path: str, max_size: int = 10 * 1024 * 1024) -> Optional[str]:
+    """
+    Read a file with size limits and encoding handling.
+
+    Args:
+        file_path: Path to the file
+        max_size: Maximum file size in bytes (default 10MB)
+
+    Returns:
+        File content as string, or None if file too large or unreadable
+    """
+    try:
+        translated_path = translate_path_for_environment(file_path)
+        if not os.path.exists(translated_path) or not os.path.isfile(translated_path):
+            return None
+
+        file_size = os.path.getsize(translated_path)
+        if file_size > max_size:
+            return None
+
+        with open(translated_path, encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def check_total_file_size(files: list[str], model_name: Optional[str] = None) -> Optional[dict]:
+    """
+    Check if total file sizes would exceed token threshold before embedding.
+
+    IMPORTANT: This performs STRICT REJECTION at MCP boundary.
+    No partial inclusion - either all files fit or request is rejected.
+    This forces Claude to make better file selection decisions.
+
+    Args:
+        files: List of file paths to check
+        model_name: Model name for context-aware thresholds, or None for default
+
+    Returns:
+        Dict with `code_too_large` response if too large, None if acceptable
+    """
+    if not files:
+        return None
+
+    # Get model-specific token allocation (dynamic thresholds)
+    if not model_name:
+        from config import DEFAULT_MODEL
+
+        model_name = DEFAULT_MODEL
+
+    # Handle auto mode gracefully
+    if model_name.lower() == "auto":
+        from providers.registry import ModelProviderRegistry
+
+        model_name = ModelProviderRegistry.get_preferred_fallback_model()
+
+    from utils.model_context import ModelContext
+
+    model_context = ModelContext(model_name)
+    token_allocation = model_context.calculate_token_allocation()
+
+    # Dynamic threshold based on model capacity
+    context_window = token_allocation.total_tokens
+    if context_window >= 1_000_000:  # Gemini-class models
+        threshold_percent = 0.8  # Can be more generous
+    elif context_window >= 500_000:  # Mid-range models
+        threshold_percent = 0.7  # Moderate
+    else:  # OpenAI-class models (200K)
+        threshold_percent = 0.6  # Conservative
+
+    max_file_tokens = int(token_allocation.file_tokens * threshold_percent)
+
+    # Use centralized file size checking (threshold already applied to max_file_tokens)
+    within_limit, total_estimated_tokens, file_count = check_files_size_limit(files, max_file_tokens)
+
+    if not within_limit:
+        return {
+            "status": "code_too_large",
+            "content": (
+                f"The selected files are too large for analysis "
+                f"(estimated {total_estimated_tokens:,} tokens, limit {max_file_tokens:,}). "
+                f"Please select fewer, more specific files that are most relevant "
+                f"to your question, then invoke the tool again."
+            ),
+            "content_type": "text",
+            "metadata": {
+                "total_estimated_tokens": total_estimated_tokens,
+                "limit": max_file_tokens,
+                "file_count": file_count,
+                "threshold_percent": threshold_percent,
+                "model_context_window": context_window,
+                "instructions": "Reduce file selection and try again - all files must fit within budget",
+            },
+        }
+
+    return None  # Proceed with ALL files

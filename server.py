@@ -45,7 +45,7 @@ from tools import (
     DebugIssueTool,
     Precommit,
     RefactorTool,
-    TestGenTool,
+    TestGenerationTool,
     ThinkDeepTool,
     TracerTool,
 )
@@ -149,7 +149,7 @@ TOOLS = {
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "precommit": Precommit(),  # Pre-commit validation of git changes
-    "testgen": TestGenTool(),  # Comprehensive test generation with edge case coverage
+    "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
 }
@@ -380,20 +380,57 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     """
     Handle incoming tool execution requests from MCP clients.
 
-    This is the main request dispatcher that routes tool calls to their
-    appropriate handlers. It supports both AI-powered tools (from TOOLS registry)
-    and utility tools (implemented as static functions).
+    This is the main request dispatcher that routes tool calls to their appropriate handlers.
+    It supports both AI-powered tools (from TOOLS registry) and utility tools (implemented as
+    static functions).
 
-    Thread Context Reconstruction:
-    If the request contains a continuation_id, this function reconstructs
-    the conversation history and injects it into the tool's context.
+    CONVERSATION LIFECYCLE MANAGEMENT:
+    This function serves as the central orchestrator for multi-turn AI-to-AI conversations:
+
+    1. THREAD RESUMPTION: When continuation_id is present, it reconstructs complete conversation
+       context from Redis including conversation history and file references
+
+    2. CROSS-TOOL CONTINUATION: Enables seamless handoffs between different tools (analyze →
+       codereview → debug) while preserving full conversation context and file references
+
+    3. CONTEXT INJECTION: Reconstructed conversation history is embedded into tool prompts
+       using the dual prioritization strategy:
+       - Files: Newest-first prioritization (recent file versions take precedence)
+       - Turns: Newest-first collection for token efficiency, chronological presentation for LLM
+
+    4. FOLLOW-UP GENERATION: After tool execution, generates continuation offers for ongoing
+       AI-to-AI collaboration with natural language instructions
+
+    STATELESS TO STATEFUL BRIDGE:
+    The MCP protocol is inherently stateless, but this function bridges the gap by:
+    - Loading persistent conversation state from Redis
+    - Reconstructing full multi-turn context for tool execution
+    - Enabling tools to access previous exchanges and file references
+    - Supporting conversation chains across different tool types
 
     Args:
-        name: The name of the tool to execute
-        arguments: Dictionary of arguments to pass to the tool
+        name: The name of the tool to execute (e.g., "analyze", "chat", "codereview")
+        arguments: Dictionary of arguments to pass to the tool, potentially including:
+                  - continuation_id: UUID for conversation thread resumption
+                  - files: File paths for analysis (subject to deduplication)
+                  - prompt: User request or follow-up question
+                  - model: Specific AI model to use (optional)
 
     Returns:
-        List of TextContent objects containing the tool's response
+        List of TextContent objects containing:
+        - Tool's primary response with analysis/results
+        - Continuation offers for follow-up conversations (when applicable)
+        - Structured JSON responses with status and content
+
+    Raises:
+        ValueError: If continuation_id is invalid or conversation thread not found
+        Exception: For tool-specific errors or execution failures
+
+    Example Conversation Flow:
+        1. Claude calls analyze tool with files → creates new thread
+        2. Thread ID returned in continuation offer
+        3. Claude continues with codereview tool + continuation_id → full context preserved
+        4. Multiple tools can collaborate using same thread ID
     """
     logger.info(f"MCP tool call: {name}")
     logger.debug(f"MCP tool arguments: {list(arguments.keys())}")
@@ -508,16 +545,82 @@ Remember: Only suggest follow-ups when they would genuinely add value to the dis
 
 async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
     """
-    Reconstruct conversation context for thread continuation.
+    Reconstruct conversation context for stateless-to-stateful thread continuation.
 
-    This function loads the conversation history from Redis and integrates it
-    into the request arguments to provide full context to the tool.
+    This is a critical function that transforms the inherently stateless MCP protocol into
+    stateful multi-turn conversations. It loads persistent conversation state from Redis
+    and rebuilds complete conversation context using the sophisticated dual prioritization
+    strategy implemented in the conversation memory system.
+
+    CONTEXT RECONSTRUCTION PROCESS:
+
+    1. THREAD RETRIEVAL: Loads complete ThreadContext from Redis using continuation_id
+       - Includes all conversation turns with tool attribution
+       - Preserves file references and cross-tool context
+       - Handles conversation chains across multiple linked threads
+
+    2. CONVERSATION HISTORY BUILDING: Uses build_conversation_history() to create
+       comprehensive context with intelligent prioritization:
+
+       FILE PRIORITIZATION (Newest-First Throughout):
+       - When same file appears in multiple turns, newest reference wins
+       - File embedding prioritizes recent versions, excludes older duplicates
+       - Token budget management ensures most relevant files are preserved
+
+       CONVERSATION TURN PRIORITIZATION (Dual Strategy):
+       - Collection Phase: Processes turns newest-to-oldest for token efficiency
+       - Presentation Phase: Presents turns chronologically for LLM understanding
+       - Ensures recent context is preserved when token budget is constrained
+
+    3. CONTEXT INJECTION: Embeds reconstructed history into tool request arguments
+       - Conversation history becomes part of the tool's prompt context
+       - Files referenced in previous turns are accessible to current tool
+       - Cross-tool knowledge transfer is seamless and comprehensive
+
+    4. TOKEN BUDGET MANAGEMENT: Applies model-specific token allocation
+       - Balances conversation history vs. file content vs. response space
+       - Gracefully handles token limits with intelligent exclusion strategies
+       - Preserves most contextually relevant information within constraints
+
+    CROSS-TOOL CONTINUATION SUPPORT:
+    This function enables seamless handoffs between different tools:
+    - Analyze tool → Debug tool: Full file context and analysis preserved
+    - Chat tool → CodeReview tool: Conversation context maintained
+    - Any tool → Any tool: Complete cross-tool knowledge transfer
+
+    ERROR HANDLING & RECOVERY:
+    - Thread expiration: Provides clear instructions for conversation restart
+    - Redis unavailability: Graceful degradation with error messaging
+    - Invalid continuation_id: Security validation and user-friendly errors
 
     Args:
-        arguments: Original request arguments containing continuation_id
+        arguments: Original request arguments dictionary containing:
+                  - continuation_id (required): UUID of conversation thread to resume
+                  - Other tool-specific arguments that will be preserved
 
     Returns:
-        Modified arguments with conversation history injected
+        dict[str, Any]: Enhanced arguments dictionary with conversation context:
+        - Original arguments preserved
+        - Conversation history embedded in appropriate format for tool consumption
+        - File context from previous turns made accessible
+        - Cross-tool knowledge transfer enabled
+
+    Raises:
+        ValueError: When continuation_id is invalid, thread not found, or expired
+                   Includes user-friendly recovery instructions
+
+    Performance Characteristics:
+        - O(1) thread lookup in Redis
+        - O(n) conversation history reconstruction where n = number of turns
+        - Intelligent token budgeting prevents context window overflow
+        - Optimized file deduplication minimizes redundant content
+
+    Example Usage Flow:
+        1. Claude: "Continue analyzing the security issues" + continuation_id
+        2. reconstruct_thread_context() loads previous analyze conversation
+        3. Debug tool receives full context including previous file analysis
+        4. Debug tool can reference specific findings from analyze tool
+        5. Natural cross-tool collaboration without context loss
     """
     from utils.conversation_memory import add_turn, build_conversation_history, get_thread
 

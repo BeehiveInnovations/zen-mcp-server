@@ -36,7 +36,7 @@ class PrecommitRequest(ToolRequest):
     )
     prompt: Optional[str] = Field(
         None,
-        description="The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, Claude MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
+        description="The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, you MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
     )
     compare_to: Optional[str] = Field(
         None,
@@ -57,7 +57,7 @@ class PrecommitRequest(ToolRequest):
     review_type: Literal["full", "security", "performance", "quick"] = Field(
         "full", description="Type of review to perform on the changes."
     )
-    severity_filter: Literal["critical", "high", "medium", "all"] = Field(
+    severity_filter: Literal["critical", "high", "medium", "low", "all"] = Field(
         "all",
         description="Minimum severity level to report on the changes.",
     )
@@ -117,7 +117,7 @@ class Precommit(BaseTool):
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, Claude MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
+                    "description": "The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, you MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
                 },
                 "compare_to": {
                     "type": "string",
@@ -145,7 +145,7 @@ class Precommit(BaseTool):
                 },
                 "severity_filter": {
                     "type": "string",
-                    "enum": ["critical", "high", "medium", "all"],
+                    "enum": ["critical", "high", "medium", "low", "all"],
                     "default": "all",
                     "description": "Minimum severity level to report on the changes.",
                 },
@@ -226,6 +226,14 @@ class Precommit(BaseTool):
         # Translate the path and files if running in Docker
         translated_path = translate_path_for_environment(request.path)
         translated_files = translate_file_paths(request.files)
+
+        # MCP boundary check - STRICT REJECTION (check original files before translation)
+        if request.files:
+            file_size_check = self.check_total_file_size(request.files)
+            if file_size_check:
+                from tools.models import ToolOutput
+
+                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
 
         # Check if the path translation resulted in an error path
         if translated_path.startswith("/inaccessible/"):
@@ -540,4 +548,20 @@ class Precommit(BaseTool):
 
     def format_response(self, response: str, request: PrecommitRequest, model_info: Optional[dict] = None) -> str:
         """Format the response with commit guidance"""
-        return f"{response}\n\n---\n\n**Commit Status:** If no critical issues found, changes are ready for commit. Otherwise, address issues first and re-run review. Check with user before proceeding with any commit."
+        # Base response
+        formatted_response = response
+
+        # Add footer separator
+        formatted_response += "\n\n---\n\n"
+
+        # Add commit status instruction
+        formatted_response += (
+            "COMMIT STATUS: You MUST provide a clear summary of ALL issues found to the user. "
+            "If no critical or high severity issues found, changes are ready for commit. "
+            "If critical issues are found, you MUST fix them first and then run the precommit tool again "
+            "to validate the fixes before proceeding. "
+            "Medium to low severity issues should be addressed but may not block commit. "
+            "You MUST always CONFIRM with user and show them a CLEAR summary of ALL issues before proceeding with any commit."
+        )
+
+        return formatted_response

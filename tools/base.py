@@ -93,6 +93,30 @@ class BaseTool(ABC):
     This class defines the interface that all tools must implement and provides
     common functionality for request handling, model creation, and response formatting.
 
+    CONVERSATION-AWARE FILE PROCESSING:
+    This base class implements the sophisticated dual prioritization strategy for
+    conversation-aware file handling across all tools:
+
+    1. FILE DEDUPLICATION WITH NEWEST-FIRST PRIORITY:
+       - When same file appears in multiple conversation turns, newest reference wins
+       - Prevents redundant file embedding while preserving most recent file state
+       - Cross-tool file tracking ensures consistent behavior across analyze → codereview → debug
+
+    2. CONVERSATION CONTEXT INTEGRATION:
+       - All tools receive enhanced prompts with conversation history via reconstruct_thread_context()
+       - File references from previous turns are preserved and accessible
+       - Cross-tool knowledge transfer maintains full context without manual file re-specification
+
+    3. TOKEN-AWARE FILE EMBEDDING:
+       - Respects model-specific token allocation budgets from ModelContext
+       - Prioritizes conversation history, then newest files, then remaining content
+       - Graceful degradation when token limits are approached
+
+    4. STATELESS-TO-STATEFUL BRIDGING:
+       - Tools operate on stateless MCP requests but access full conversation state
+       - Conversation memory automatically injected via continuation_id parameter
+       - Enables natural AI-to-AI collaboration across tool boundaries
+
     To create a new tool:
     1. Create a new class that inherits from BaseTool
     2. Implement all abstract methods
@@ -546,12 +570,33 @@ class BaseTool(ABC):
         arguments: Optional[dict] = None,
     ) -> tuple[str, list[str]]:
         """
-        Centralized file processing for tool prompts.
+        Centralized file processing implementing dual prioritization strategy.
 
-        This method handles the common pattern across all tools:
-        1. Filter out files already embedded in conversation history
-        2. Read content of only new files
-        3. Generate informative note about skipped files
+        DUAL PRIORITIZATION STRATEGY CORE IMPLEMENTATION:
+        This method is the heart of conversation-aware file processing across all tools:
+
+        1. CONVERSATION-AWARE FILE DEDUPLICATION:
+           - Automatically detects and filters files already embedded in conversation history
+           - Implements newest-first prioritization: when same file appears in multiple turns,
+             only the newest reference is preserved to avoid redundant content
+           - Cross-tool file tracking ensures consistent behavior across tool boundaries
+
+        2. TOKEN-BUDGET OPTIMIZATION:
+           - Respects remaining token budget from conversation context reconstruction
+           - Prioritizes conversation history + newest file versions within constraints
+           - Graceful degradation when token limits approached (newest files preserved first)
+           - Model-specific token allocation ensures optimal context window utilization
+
+        3. CROSS-TOOL CONTINUATION SUPPORT:
+           - File references persist across different tools (analyze → codereview → debug)
+           - Previous tool file embeddings are tracked and excluded from new embeddings
+           - Maintains complete file context without manual re-specification
+
+        PROCESSING WORKFLOW:
+        1. Filter out files already embedded in conversation history using newest-first priority
+        2. Read content of only new files within remaining token budget
+        3. Generate informative notes about skipped files for user transparency
+        4. Return formatted content ready for prompt inclusion
 
         Args:
             request_files: List of files requested for current tool execution
@@ -935,6 +980,49 @@ When recommending searches, be specific about what information you need and why 
                 },
             }
         return None
+
+    def estimate_tokens_smart(self, file_path: str) -> int:
+        """
+        Estimate tokens for a file using file-type aware ratios.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            int: Estimated token count
+        """
+        from utils.file_utils import estimate_file_tokens
+
+        return estimate_file_tokens(file_path)
+
+    def check_total_file_size(self, files: list[str]) -> Optional[dict[str, Any]]:
+        """
+        Check if total file sizes would exceed token threshold before embedding.
+
+        IMPORTANT: This performs STRICT REJECTION at MCP boundary.
+        No partial inclusion - either all files fit or request is rejected.
+        This forces Claude to make better file selection decisions.
+
+        Args:
+            files: List of file paths to check
+
+        Returns:
+            Dict with `code_too_large` response if too large, None if acceptable
+        """
+        if not files:
+            return None
+
+        # Get current model name for context-aware thresholds
+        model_name = getattr(self, "_current_model_name", None)
+        if not model_name:
+            from config import DEFAULT_MODEL
+
+            model_name = DEFAULT_MODEL
+
+        # Use centralized file size checking with model context
+        from utils.file_utils import check_total_file_size as check_file_size_utility
+
+        return check_file_size_utility(files, model_name)
 
     def handle_prompt_file(self, files: Optional[list[str]]) -> tuple[Optional[str], Optional[list[str]]]:
         """
