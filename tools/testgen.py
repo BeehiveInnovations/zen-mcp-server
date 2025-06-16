@@ -28,7 +28,7 @@ from .base import BaseTool, ToolRequest
 logger = logging.getLogger(__name__)
 
 
-class TestGenRequest(ToolRequest):
+class TestGenerationRequest(ToolRequest):
     """
     Request model for the test generation tool.
 
@@ -56,7 +56,7 @@ class TestGenRequest(ToolRequest):
     )
 
 
-class TestGenTool(BaseTool):
+class TestGenerationTool(BaseTool):
     """
     Test generation tool implementation.
 
@@ -141,7 +141,7 @@ class TestGenTool(BaseTool):
         return ToolModelCategory.EXTENDED_REASONING
 
     def get_request_model(self):
-        return TestGenRequest
+        return TestGenerationRequest
 
     def _process_test_examples(
         self, test_examples: list[str], continuation_id: Optional[str], available_tokens: int = None
@@ -246,7 +246,7 @@ class TestGenTool(BaseTool):
             logger.error(f"[TESTGEN] Failed to process test examples: {type(e).__name__}: {e}")
             return "", f"Warning: Could not process test examples: {str(e)}"
 
-    async def prepare_prompt(self, request: TestGenRequest) -> str:
+    async def prepare_prompt(self, request: TestGenerationRequest) -> str:
         """
         Prepare the test generation prompt with code analysis and optional test examples.
 
@@ -418,7 +418,7 @@ class TestGenTool(BaseTool):
 
         return full_prompt
 
-    def format_response(self, response: str, request: TestGenRequest, model_info: Optional[dict] = None) -> str:
+    def format_response(self, response: str, request: TestGenerationRequest, model_info: Optional[dict] = None) -> str:
         """
         Format the test generation response.
 
