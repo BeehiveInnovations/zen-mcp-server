@@ -11,35 +11,6 @@ from datetime import datetime
 from utils.file_utils import LogTailer
 
 
-def create_line_handler(log_name: str, filter_func=None, format_func=None):
-    """
-    Create a line handler function for log monitoring.
-
-    Args:
-        log_name: Name of the log for display purposes
-        filter_func: Optional function to filter lines (return True to include)
-        format_func: Optional function to format lines for display
-
-    Returns:
-        Function that handles log lines
-    """
-
-    def handle_line(line: str):
-        if filter_func and not filter_func(line):
-            return
-
-        timestamp = datetime.now().strftime("%H:%M:%S")
-
-        if format_func:
-            formatted_line = format_func(line)
-        else:
-            formatted_line = line
-
-        print(f"[{timestamp}] {formatted_line}")
-
-    return handle_line
-
-
 def monitor_mcp_activity():
     """Monitor MCP server activity by watching multiple log files"""
     log_files = {
