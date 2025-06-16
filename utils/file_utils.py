@@ -284,8 +284,40 @@ def translate_path_for_environment(path_str: str) -> str:
     Returns:
         Translated path appropriate for the current environment
     """
+    # Allow access to specific internal application configuration files
+    # Store as relative paths so they work in both Docker and standalone modes
+    # Use exact paths for security - no wildcards or prefix matching
+    ALLOWED_INTERNAL_PATHS = {
+        "conf/custom_models.json",
+        # Add other specific internal files here as needed
+    }
+
+    # Check for internal app paths - extract relative part if it's an /app/ path
+    relative_internal_path = None
+    if path_str.startswith("/app/"):
+        relative_internal_path = path_str[5:]  # Remove "/app/" prefix
+        if relative_internal_path.startswith("/"):
+            relative_internal_path = relative_internal_path[1:]  # Remove leading slash if present
+
+    # Check if this is an allowed internal file
+    if relative_internal_path and relative_internal_path in ALLOWED_INTERNAL_PATHS:
+        # Translate to appropriate path for current environment
+        if not WORKSPACE_ROOT or not WORKSPACE_ROOT.strip() or not CONTAINER_WORKSPACE.exists():
+            # Standalone mode: use relative path
+            return "./" + relative_internal_path
+        else:
+            # Docker mode: use absolute app path
+            return "/app/" + relative_internal_path
+
+    # Handle other /app/ paths in standalone mode (for non-whitelisted files)
     if not WORKSPACE_ROOT or not WORKSPACE_ROOT.strip() or not CONTAINER_WORKSPACE.exists():
-        # Not in the configured Docker environment, no translation needed
+        if path_str.startswith("/app/"):
+            # Convert Docker internal paths to local relative paths for standalone mode
+            relative_path = path_str[5:]  # Remove "/app/" prefix
+            if relative_path.startswith("/"):
+                relative_path = relative_path[1:]  # Remove leading slash if present
+            return "./" + relative_path
+        # No other translation needed for standalone mode
         return path_str
 
     # Check if the path is already a container path (starts with /workspace)
