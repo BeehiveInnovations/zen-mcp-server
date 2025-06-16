@@ -12,6 +12,7 @@ import json
 import os
 import tempfile
 import uuid
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -79,8 +80,12 @@ class TestImageSupportIntegration:
         expected = ["shared.png", "new_diagram.png", "middle.png", "old_diagram.png"]
         assert image_list == expected
 
-    def test_add_turn_with_images(self):
+    @patch("utils.conversation_memory.get_redis_client")
+    def test_add_turn_with_images(self, mock_redis):
         """Test adding a conversation turn with images."""
+        mock_client = Mock()
+        mock_redis.return_value = mock_client
+        
         thread_id = create_thread("test_tool", {"initial": "context"})
 
         success = add_turn(
@@ -93,6 +98,26 @@ class TestImageSupportIntegration:
         )
 
         assert success
+
+        # Mock thread context for get_thread call
+        updated_context = ThreadContext(
+            thread_id=thread_id,
+            created_at="2025-01-01T00:00:00Z",
+            last_updated_at="2025-01-01T00:00:00Z",
+            tool_name="test_tool",
+            turns=[
+                ConversationTurn(
+                    role="user",
+                    content="Analyze these screenshots",
+                    timestamp="2025-01-01T00:00:00Z",
+                    files=["app.py"],
+                    images=["screenshot1.png", "screenshot2.png"],
+                    tool_name="debug",
+                )
+            ],
+            initial_context={"initial": "context"},
+        )
+        mock_client.get.return_value = updated_context.model_dump_json()
 
         # Retrieve and verify the thread
         context = get_thread(thread_id)
@@ -271,8 +296,12 @@ class TestImageSupportIntegration:
             importlib.reload(config)
             ModelProviderRegistry._instance = None
 
-    def test_cross_tool_image_context_preservation(self):
+    @patch("utils.conversation_memory.get_redis_client")
+    def test_cross_tool_image_context_preservation(self, mock_redis):
         """Test that images are preserved across different tools in conversation."""
+        mock_client = Mock()
+        mock_redis.return_value = mock_client
+        
         # Create initial thread with chat tool
         thread_id = create_thread("chat", {"initial": "context"})
 
@@ -298,6 +327,39 @@ class TestImageSupportIntegration:
             files=["error.log"],
             tool_name="debug",
         )
+
+        # Mock complete thread context for get_thread call
+        complete_context = ThreadContext(
+            thread_id=thread_id,
+            created_at="2025-01-01T00:00:00Z",
+            last_updated_at="2025-01-01T00:05:00Z",
+            tool_name="chat",
+            turns=[
+                ConversationTurn(
+                    role="user",
+                    content="Here's my UI design",
+                    timestamp="2025-01-01T00:01:00Z",
+                    images=["design.png", "mockup.jpg"],
+                    tool_name="chat",
+                ),
+                ConversationTurn(
+                    role="assistant",
+                    content="I can see your design. It looks good!",
+                    timestamp="2025-01-01T00:02:00Z",
+                    tool_name="chat",
+                ),
+                ConversationTurn(
+                    role="user",
+                    content="Now I'm getting this error",
+                    timestamp="2025-01-01T00:03:00Z",
+                    images=["error_screen.png"],
+                    files=["error.log"],
+                    tool_name="debug",
+                ),
+            ],
+            initial_context={"initial": "context"},
+        )
+        mock_client.get.return_value = complete_context.model_dump_json()
 
         # Retrieve thread and check image preservation
         context = get_thread(thread_id)
@@ -356,8 +418,12 @@ class TestImageSupportIntegration:
         result = tool._validate_image_limits(None, "test_model")
         assert result is None
 
-    def test_conversation_memory_thread_chaining_with_images(self):
+    @patch("utils.conversation_memory.get_redis_client")
+    def test_conversation_memory_thread_chaining_with_images(self, mock_redis):
         """Test that images work correctly with conversation thread chaining."""
+        mock_client = Mock()
+        mock_redis.return_value = mock_client
+        
         # Create parent thread with images
         parent_thread_id = create_thread("chat", {"parent": "context"})
         add_turn(
@@ -377,6 +443,26 @@ class TestImageSupportIntegration:
             images=["child1.png", "shared.png"],  # shared.png appears again (should prioritize newer)
             tool_name="debug",
         )
+
+        # Mock child thread context for get_thread call
+        child_context = ThreadContext(
+            thread_id=child_thread_id,
+            created_at="2025-01-01T00:00:00Z",
+            last_updated_at="2025-01-01T00:02:00Z",
+            tool_name="debug",
+            turns=[
+                ConversationTurn(
+                    role="user",
+                    content="Child thread with more images",
+                    timestamp="2025-01-01T00:02:00Z",
+                    images=["child1.png", "shared.png"],
+                    tool_name="debug",
+                )
+            ],
+            initial_context={"child": "context"},
+            parent_thread_id=parent_thread_id,
+        )
+        mock_client.get.return_value = child_context.model_dump_json()
 
         # Get child thread and verify image collection works across chain
         child_context = get_thread(child_thread_id)
