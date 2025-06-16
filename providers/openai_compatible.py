@@ -4,6 +4,7 @@ import base64
 import ipaddress
 import logging
 import os
+import time
 from abc import abstractmethod
 from typing import Optional
 from urllib.parse import urlparse
@@ -300,33 +301,76 @@ class OpenAICompatibleProvider(ModelProvider):
             if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "stream"]:
                 completion_params[key] = value
 
-        try:
-            # Generate completion
-            response = self.client.chat.completions.create(**completion_params)
+        # Retry logic with progressive delays
+        max_retries = 4  # Total of 4 attempts
+        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
 
-            # Extract content and usage
-            content = response.choices[0].message.content
-            usage = self._extract_usage(response)
+        last_exception = None
 
-            return ModelResponse(
-                content=content,
-                usage=usage,
-                model_name=model_name,
-                friendly_name=self.FRIENDLY_NAME,
-                provider=self.get_provider_type(),
-                metadata={
-                    "finish_reason": response.choices[0].finish_reason,
-                    "model": response.model,  # Actual model used
-                    "id": response.id,
-                    "created": response.created,
-                },
-            )
+        for attempt in range(max_retries):
+            try:
+                # Generate completion
+                response = self.client.chat.completions.create(**completion_params)
 
-        except Exception as e:
-            # Log error and re-raise with more context
-            error_msg = f"{self.FRIENDLY_NAME} API error for model {model_name}: {str(e)}"
-            logging.error(error_msg)
-            raise RuntimeError(error_msg) from e
+                # Extract content and usage
+                content = response.choices[0].message.content
+                usage = self._extract_usage(response)
+
+                return ModelResponse(
+                    content=content,
+                    usage=usage,
+                    model_name=model_name,
+                    friendly_name=self.FRIENDLY_NAME,
+                    provider=self.get_provider_type(),
+                    metadata={
+                        "finish_reason": response.choices[0].finish_reason,
+                        "model": response.model,  # Actual model used
+                        "id": response.id,
+                        "created": response.created,
+                    },
+                )
+
+            except Exception as e:
+                last_exception = e
+
+                # Check if this is a retryable error
+                error_str = str(e).lower()
+                is_retryable = any(
+                    term in error_str
+                    for term in [
+                        "timeout",
+                        "connection",
+                        "network",
+                        "temporary",
+                        "unavailable",
+                        "retry",
+                        "429",
+                        "500",
+                        "502",
+                        "503",
+                        "504",
+                    ]
+                )
+
+                # If this is the last attempt or not retryable, give up
+                if attempt == max_retries - 1 or not is_retryable:
+                    break
+
+                # Get progressive delay
+                delay = retry_delays[attempt]
+
+                # Log retry attempt
+                logging.warning(
+                    f"{self.FRIENDLY_NAME} API error for model {model_name}, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
+                )
+                time.sleep(delay)
+
+        # If we get here, all retries failed
+        error_msg = (
+            f"{self.FRIENDLY_NAME} API error for model {model_name} after {max_retries} attempts: {str(last_exception)}"
+        )
+        logging.error(error_msg)
+        raise RuntimeError(error_msg) from last_exception
 
     def count_tokens(self, text: str, model_name: str) -> int:
         """Count tokens for the given text.

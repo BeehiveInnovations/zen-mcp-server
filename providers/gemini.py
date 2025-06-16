@@ -159,9 +159,9 @@ class GeminiModelProvider(ModelProvider):
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
-        # Retry logic with exponential backoff
-        max_retries = 2  # Total of 2 attempts (1 initial + 1 retry)
-        base_delay = 1.0  # Start with 1 second delay
+        # Retry logic with progressive delays
+        max_retries = 4  # Total of 4 attempts
+        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
 
         last_exception = None
 
@@ -217,11 +217,13 @@ class GeminiModelProvider(ModelProvider):
                 if attempt == max_retries - 1 or not is_retryable:
                     break
 
-                # Calculate delay with exponential backoff
-                delay = base_delay * (2**attempt)
+                # Get progressive delay
+                delay = retry_delays[attempt]
 
-                # Log retry attempt (could add logging here if needed)
-                # For now, just sleep and retry
+                # Log retry attempt
+                logger.warning(
+                    f"Gemini API error for model {resolved_name}, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
+                )
                 time.sleep(delay)
 
         # If we get here, all retries failed
