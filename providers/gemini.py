@@ -222,7 +222,7 @@ class GeminiModelProvider(ModelProvider):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, model_name, resolved_name):
             logger.debug(f"Gemini model '{model_name}' -> '{resolved_name}' blocked by restrictions")
             return False
 
