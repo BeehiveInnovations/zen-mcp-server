@@ -318,9 +318,14 @@ def translate_path_for_environment(path_str: str) -> str:
     # Handle built-in server config file - no translation needed
     if _is_builtin_custom_models_config(path_str):
         return path_str
-
     if not WORKSPACE_ROOT or not WORKSPACE_ROOT.strip() or not CONTAINER_WORKSPACE.exists():
-        # Not in the configured Docker environment, no translation needed
+        if path_str.startswith("/app/"):
+            # Convert Docker internal paths to local relative paths for standalone mode
+            relative_path = path_str[5:]  # Remove "/app/" prefix
+            if relative_path.startswith("/"):
+                relative_path = relative_path[1:]  # Remove leading slash if present
+            return "./" + relative_path
+        # No other translation needed for standalone mode
         return path_str
 
     # Check if the path is already a container path (starts with /workspace)

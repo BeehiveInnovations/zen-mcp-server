@@ -612,11 +612,17 @@ def _plan_file_inclusion_by_size(all_files: list[str], max_file_tokens: int) -> 
                     )
             else:
                 files_to_skip.append(file_path)
-                logger.debug(f"[FILES] Skipping {file_path} - file not accessible")
+                # More descriptive message for missing files
+                if not os.path.exists(translated_path):
+                    logger.debug(
+                        f"[FILES] Skipping {file_path} - file no longer exists (may have been moved/deleted since conversation)"
+                    )
+                else:
+                    logger.debug(f"[FILES] Skipping {file_path} - file not accessible (not a regular file)")
 
         except Exception as e:
             files_to_skip.append(file_path)
-            logger.debug(f"[FILES] Skipping {file_path} - error: {type(e).__name__}: {e}")
+            logger.debug(f"[FILES] Skipping {file_path} - error during processing: {type(e).__name__}: {e}")
 
     logger.debug(
         f"[FILES] Inclusion plan: {len(files_to_include)} include, {len(files_to_skip)} skip, {total_tokens:,} tokens"
@@ -803,7 +809,8 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         files_to_include, files_to_skip, estimated_tokens = _plan_file_inclusion_by_size(all_files, max_file_tokens)
 
         if files_to_skip:
-            logger.info(f"[FILES] Skipping {len(files_to_skip)} files due to size constraints: {files_to_skip}")
+            logger.info(f"[FILES] Excluding {len(files_to_skip)} files from conversation history: {files_to_skip}")
+            logger.debug("[FILES] Files excluded for various reasons (size constraints, missing files, access issues)")
 
         if files_to_include:
             history_parts.extend(
@@ -813,7 +820,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                     (
                         ""
                         if not files_to_skip
-                        else f"[NOTE: {len(files_to_skip)} files omitted due to size constraints]"
+                        else f"[NOTE: {len(files_to_skip)} files omitted (size constraints, missing files, or access issues)]"
                     ),
                     "Refer to these when analyzing the context and requests below:",
                     "",
@@ -842,16 +849,31 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                         else:
                             logger.debug(f"File skipped (empty content): {file_path}")
                     except Exception as e:
-                        logger.warning(
-                            f"Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
-                        )
+                        # More descriptive error handling for missing files
+                        try:
+                            from utils.file_utils import translate_path_for_environment
+
+                            translated_path = translate_path_for_environment(file_path)
+                            if not os.path.exists(translated_path):
+                                logger.info(
+                                    f"File no longer accessible for conversation history: {file_path} - file was moved/deleted since conversation (marking as excluded)"
+                                )
+                            else:
+                                logger.warning(
+                                    f"Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
+                                )
+                        except Exception:
+                            # Fallback if path translation also fails
+                            logger.warning(
+                                f"Failed to embed file in conversation history: {file_path} - {type(e).__name__}: {e}"
+                            )
                         continue
 
                 if file_contents:
                     files_content = "".join(file_contents)
                     if files_to_skip:
                         files_content += (
-                            f"\n[NOTE: {len(files_to_skip)} additional file(s) were omitted due to size constraints. "
+                            f"\n[NOTE: {len(files_to_skip)} additional file(s) were omitted due to size constraints, missing files, or access issues. "
                             f"These were older files from earlier conversation turns.]\n"
                         )
                     history_parts.append(files_content)
