@@ -364,8 +364,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     """
     Handle incoming tool execution requests from MCP clients.
 
-    This is the main request dispatcher that routes tool calls to their appropriate handlers. 
-    It supports both AI-powered tools (from TOOLS registry) and utility tools (implemented as 
+    This is the main request dispatcher that routes tool calls to their appropriate handlers.
+    It supports both AI-powered tools (from TOOLS registry) and utility tools (implemented as
     static functions).
 
     CONVERSATION LIFECYCLE MANAGEMENT:
@@ -373,15 +373,15 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
 
     1. THREAD RESUMPTION: When continuation_id is present, it reconstructs complete conversation
        context from Redis including conversation history and file references
-    
-    2. CROSS-TOOL CONTINUATION: Enables seamless handoffs between different tools (analyze → 
+
+    2. CROSS-TOOL CONTINUATION: Enables seamless handoffs between different tools (analyze →
        codereview → debug) while preserving full conversation context and file references
-    
+
     3. CONTEXT INJECTION: Reconstructed conversation history is embedded into tool prompts
        using the dual prioritization strategy:
        - Files: Newest-first prioritization (recent file versions take precedence)
        - Turns: Newest-first collection for token efficiency, chronological presentation for LLM
-    
+
     4. FOLLOW-UP GENERATION: After tool execution, generates continuation offers for ongoing
        AI-to-AI collaboration with natural language instructions
 
@@ -531,36 +531,36 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     """
     Reconstruct conversation context for stateless-to-stateful thread continuation.
 
-    This is a critical function that transforms the inherently stateless MCP protocol into 
+    This is a critical function that transforms the inherently stateless MCP protocol into
     stateful multi-turn conversations. It loads persistent conversation state from Redis
     and rebuilds complete conversation context using the sophisticated dual prioritization
     strategy implemented in the conversation memory system.
 
     CONTEXT RECONSTRUCTION PROCESS:
-    
+
     1. THREAD RETRIEVAL: Loads complete ThreadContext from Redis using continuation_id
        - Includes all conversation turns with tool attribution
        - Preserves file references and cross-tool context
        - Handles conversation chains across multiple linked threads
-    
+
     2. CONVERSATION HISTORY BUILDING: Uses build_conversation_history() to create
        comprehensive context with intelligent prioritization:
-       
+
        FILE PRIORITIZATION (Newest-First Throughout):
        - When same file appears in multiple turns, newest reference wins
        - File embedding prioritizes recent versions, excludes older duplicates
        - Token budget management ensures most relevant files are preserved
-       
+
        CONVERSATION TURN PRIORITIZATION (Dual Strategy):
        - Collection Phase: Processes turns newest-to-oldest for token efficiency
        - Presentation Phase: Presents turns chronologically for LLM understanding
        - Ensures recent context is preserved when token budget is constrained
-    
+
     3. CONTEXT INJECTION: Embeds reconstructed history into tool request arguments
        - Conversation history becomes part of the tool's prompt context
        - Files referenced in previous turns are accessible to current tool
        - Cross-tool knowledge transfer is seamless and comprehensive
-    
+
     4. TOKEN BUDGET MANAGEMENT: Applies model-specific token allocation
        - Balances conversation history vs. file content vs. response space
        - Gracefully handles token limits with intelligent exclusion strategies

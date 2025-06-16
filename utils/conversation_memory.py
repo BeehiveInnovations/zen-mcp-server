@@ -40,8 +40,8 @@ Key Features:
 - Graceful degradation when Redis is unavailable
 
 DUAL PRIORITIZATION STRATEGY (Files & Conversations):
-The conversation memory system implements sophisticated prioritization for both files and 
-conversation turns, using a consistent "newest-first" approach during collection but 
+The conversation memory system implements sophisticated prioritization for both files and
+conversation turns, using a consistent "newest-first" approach during collection but
 presenting information in the optimal format for LLM consumption:
 
 FILE PRIORITIZATION (Newest-First Throughout):
@@ -64,7 +64,7 @@ CONVERSATION TURN PRIORITIZATION (Newest-First Collection, Chronological Present
    - LLM sees natural conversation flow: "Turn 1 → Turn 2 → Turn 3..."
    - Maintains proper sequential understanding while preserving recency prioritization
 
-This dual approach ensures optimal context preservation (newest-first) with natural 
+This dual approach ensures optimal context preservation (newest-first) with natural
 conversation flow (chronological) for maximum LLM comprehension and relevance.
 
 USAGE EXAMPLE:
@@ -568,19 +568,19 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
     CONVERSATION TURN ORDERING STRATEGY:
     The function employs a sophisticated two-phase approach for optimal token utilization:
-    
+
     PHASE 1 - COLLECTION (Newest-First for Token Budget):
     - Processes conversation turns in REVERSE chronological order (newest to oldest)
     - Prioritizes recent turns within token constraints
     - If token budget is exceeded, OLDER turns are excluded first
     - Ensures the most contextually relevant recent exchanges are preserved
-    
+
     PHASE 2 - PRESENTATION (Chronological for LLM Understanding):
     - Reverses the collected turns back to chronological order (oldest to newest)
     - Presents conversation flow naturally for LLM comprehension
     - Maintains "--- Turn 1, Turn 2, Turn 3..." sequential numbering
     - Enables LLM to follow conversation progression logically
-    
+
     This approach balances recency prioritization with natural conversation flow.
 
     TOKEN MANAGEMENT:
