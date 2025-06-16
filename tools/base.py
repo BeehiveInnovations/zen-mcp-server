@@ -1078,6 +1078,7 @@ When recommending searches, be specific about what information you need and why 
                     _, data = image_path.split(",", 1)
                     # Base64 encoding increases size by ~33%, so decode to get actual size
                     import base64
+                    actual_size = len(base64.b64decode(data))
 
                     actual_size = len(base64.b64decode(data))
                     total_size_mb += actual_size / (1024 * 1024)
