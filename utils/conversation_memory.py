@@ -39,10 +39,12 @@ Key Features:
 - Thread-safe operations for concurrent access
 - Graceful degradation when Redis is unavailable
 
-FILE PRIORITIZATION STRATEGY:
-The conversation memory system implements a sophisticated file prioritization algorithm
-that ensures newer file references always take precedence over older ones:
+DUAL PRIORITIZATION STRATEGY (Files & Conversations):
+The conversation memory system implements sophisticated prioritization for both files and 
+conversation turns, using a consistent "newest-first" approach during collection but 
+presenting information in the optimal format for LLM consumption:
 
+FILE PRIORITIZATION (Newest-First Throughout):
 1. When collecting files across conversation turns, the system walks BACKWARDS through
    turns (newest to oldest) and builds a unique file list
 2. If the same file path appears in multiple turns, only the reference from the
@@ -54,8 +56,16 @@ that ensures newer file references always take precedence over older ones:
 4. This strategy works across conversation chains - files from newer turns in ANY
    thread take precedence over files from older turns in ANY thread
 
-This approach ensures that when token limits force file exclusions, the most
-recently referenced and contextually relevant files are preserved.
+CONVERSATION TURN PRIORITIZATION (Newest-First Collection, Chronological Presentation):
+1. COLLECTION PHASE: Processes turns newest-to-oldest to prioritize recent context
+   - When token budget is tight, OLDER turns are excluded first
+   - Ensures most contextually relevant recent exchanges are preserved
+2. PRESENTATION PHASE: Reverses collected turns to chronological order (oldest-first)
+   - LLM sees natural conversation flow: "Turn 1 → Turn 2 → Turn 3..."
+   - Maintains proper sequential understanding while preserving recency prioritization
+
+This dual approach ensures optimal context preservation (newest-first) with natural 
+conversation flow (chronological) for maximum LLM comprehension and relevance.
 
 USAGE EXAMPLE:
 1. Tool A creates thread: create_thread("analyze", request_data) → returns UUID
@@ -64,7 +74,20 @@ USAGE EXAMPLE:
 4. Tool B sees conversation history via build_conversation_history()
 5. Tool B adds its response: add_turn(UUID, "assistant", response, tool_name="codereview")
 
-This enables true AI-to-AI collaboration across the entire tool ecosystem.
+DUAL STRATEGY EXAMPLE:
+Conversation has 5 turns, token budget allows only 3 turns:
+
+Collection Phase (Newest-First Priority):
+- Evaluates: Turn 5 → Turn 4 → Turn 3 → Turn 2 → Turn 1
+- Includes: Turn 5, Turn 4, Turn 3 (newest 3 fit in budget)
+- Excludes: Turn 2, Turn 1 (oldest, dropped due to token limits)
+
+Presentation Phase (Chronological Order):
+- LLM sees: "--- Turn 3 (Claude) ---", "--- Turn 4 (Gemini) ---", "--- Turn 5 (Claude) ---"
+- Natural conversation flow maintained despite prioritizing recent context
+
+This enables true AI-to-AI collaboration across the entire tool ecosystem with optimal
+context preservation and natural conversation understanding.
 """
 
 import logging
@@ -543,10 +566,27 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     to include complete conversation history across multiple linked threads. File
     prioritization works across the entire chain, not just the current thread.
 
+    CONVERSATION TURN ORDERING STRATEGY:
+    The function employs a sophisticated two-phase approach for optimal token utilization:
+    
+    PHASE 1 - COLLECTION (Newest-First for Token Budget):
+    - Processes conversation turns in REVERSE chronological order (newest to oldest)
+    - Prioritizes recent turns within token constraints
+    - If token budget is exceeded, OLDER turns are excluded first
+    - Ensures the most contextually relevant recent exchanges are preserved
+    
+    PHASE 2 - PRESENTATION (Chronological for LLM Understanding):
+    - Reverses the collected turns back to chronological order (oldest to newest)
+    - Presents conversation flow naturally for LLM comprehension
+    - Maintains "--- Turn 1, Turn 2, Turn 3..." sequential numbering
+    - Enables LLM to follow conversation progression logically
+    
+    This approach balances recency prioritization with natural conversation flow.
+
     TOKEN MANAGEMENT:
     - Uses model-specific token allocation (file_tokens + history_tokens)
     - Files are embedded ONCE at the start to prevent duplication
-    - Conversation turns are processed newest-first but presented chronologically
+    - Turn collection prioritizes newest-first, presentation shows chronologically
     - Stops adding turns when token budget would be exceeded
     - Gracefully handles token limits with informative notes
 
@@ -770,13 +810,16 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
     history_parts.append("Previous conversation turns:")
 
-    # Build conversation turns bottom-up (most recent first) but present chronologically
-    # This ensures we include as many recent turns as possible within the token budget
-    turn_entries = []  # Will store (index, formatted_turn_content) for chronological ordering
+    # === PHASE 1: COLLECTION (Newest-First for Token Budget) ===
+    # Build conversation turns bottom-up (most recent first) to prioritize recent context within token limits
+    # This ensures we include as many recent turns as possible within the token budget by excluding
+    # OLDER turns first when space runs out, preserving the most contextually relevant exchanges
+    turn_entries = []  # Will store (index, formatted_turn_content) for chronological ordering later
     total_turn_tokens = 0
     file_embedding_tokens = sum(model_context.estimate_tokens(part) for part in history_parts)
 
-    # Process turns in reverse order (most recent first) to prioritize recent context
+    # CRITICAL: Process turns in REVERSE chronological order (newest to oldest)
+    # This prioritization strategy ensures recent context is preserved when token budget is tight
     for idx in range(len(all_turns) - 1, -1, -1):
         turn = all_turns[idx]
         turn_num = idx + 1
@@ -821,14 +864,19 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
             logger.debug(f"[HISTORY]   Budget: {max_history_tokens:,}")
             break
 
-        # Add this turn to our list (we'll reverse it later for chronological order)
+        # Add this turn to our collection (we'll reverse it later for chronological presentation)
+        # Store the original index to maintain proper turn numbering in final output
         turn_entries.append((idx, turn_content))
         total_turn_tokens += turn_tokens
 
-    # Reverse to get chronological order (oldest first)
+    # === PHASE 2: PRESENTATION (Chronological for LLM Understanding) ===
+    # Reverse the collected turns to restore chronological order (oldest first)
+    # This gives the LLM a natural conversation flow: Turn 1 → Turn 2 → Turn 3...
+    # while still having prioritized recent turns during the token-constrained collection phase
     turn_entries.reverse()
 
-    # Add the turns in chronological order
+    # Add the turns in chronological order for natural LLM comprehension
+    # The LLM will see: "--- Turn 1 (Claude) ---" followed by "--- Turn 2 (Gemini) ---" etc.
     for _, turn_content in turn_entries:
         history_parts.append(turn_content)
 

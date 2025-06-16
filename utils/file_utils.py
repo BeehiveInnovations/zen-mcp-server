@@ -16,6 +16,25 @@ Security Model:
 - All file access is restricted to PROJECT_ROOT and its subdirectories
 - Absolute paths are required to prevent ambiguity
 - Symbolic links are resolved to ensure they stay within bounds
+
+CONVERSATION MEMORY INTEGRATION:
+This module works with the conversation memory system to support efficient
+multi-turn file handling:
+
+1. DEDUPLICATION SUPPORT:
+   - File reading functions are called by conversation-aware tools
+   - Supports newest-first file prioritization by providing accurate token estimation
+   - Enables efficient file content caching and token budget management
+
+2. TOKEN BUDGET OPTIMIZATION:
+   - Provides accurate token estimation for file content before reading
+   - Supports the dual prioritization strategy by enabling precise budget calculations
+   - Enables tools to make informed decisions about which files to include
+
+3. CROSS-TOOL FILE PERSISTENCE:
+   - File reading results are used across different tools in conversation chains
+   - Consistent file access patterns support conversation continuation scenarios
+   - Error handling preserves conversation flow when files become unavailable
 """
 
 import json
