@@ -85,8 +85,22 @@ class TestImageSupportIntegration:
         """Test adding a conversation turn with images."""
         mock_client = Mock()
         mock_redis.return_value = mock_client
-        
+
+        # Mock the Redis operations to return success
+        mock_client.set.return_value = True
+
         thread_id = create_thread("test_tool", {"initial": "context"})
+
+        # Set up initial thread context for add_turn to find
+        initial_context = ThreadContext(
+            thread_id=thread_id,
+            created_at="2025-01-01T00:00:00Z",
+            last_updated_at="2025-01-01T00:00:00Z",
+            tool_name="test_tool",
+            turns=[],  # Empty initially
+            initial_context={"initial": "context"},
+        )
+        mock_client.get.return_value = initial_context.model_dump_json()
 
         success = add_turn(
             thread_id=thread_id,
@@ -301,9 +315,23 @@ class TestImageSupportIntegration:
         """Test that images are preserved across different tools in conversation."""
         mock_client = Mock()
         mock_redis.return_value = mock_client
-        
+
+        # Mock the Redis operations to return success
+        mock_client.set.return_value = True
+
         # Create initial thread with chat tool
         thread_id = create_thread("chat", {"initial": "context"})
+
+        # Set up initial thread context for add_turn to find
+        initial_context = ThreadContext(
+            thread_id=thread_id,
+            created_at="2025-01-01T00:00:00Z",
+            last_updated_at="2025-01-01T00:00:00Z",
+            tool_name="chat",
+            turns=[],  # Empty initially
+            initial_context={"initial": "context"},
+        )
+        mock_client.get.return_value = initial_context.model_dump_json()
 
         # Add turn with images from chat tool
         add_turn(
@@ -423,9 +451,23 @@ class TestImageSupportIntegration:
         """Test that images work correctly with conversation thread chaining."""
         mock_client = Mock()
         mock_redis.return_value = mock_client
-        
+
+        # Mock the Redis operations to return success
+        mock_client.set.return_value = True
+
         # Create parent thread with images
         parent_thread_id = create_thread("chat", {"parent": "context"})
+
+        # Set up initial parent thread context for add_turn to find
+        parent_context = ThreadContext(
+            thread_id=parent_thread_id,
+            created_at="2025-01-01T00:00:00Z",
+            last_updated_at="2025-01-01T00:00:00Z",
+            tool_name="chat",
+            turns=[],  # Empty initially
+            initial_context={"parent": "context"},
+        )
+        mock_client.get.return_value = parent_context.model_dump_json()
         add_turn(
             thread_id=parent_thread_id,
             role="user",
