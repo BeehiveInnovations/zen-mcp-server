@@ -73,8 +73,8 @@ class GeminiModelProvider(ModelProvider):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
-            raise ValueError(f"Gemini model '{model_name}' is not allowed by restriction policy.")
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, model_name, resolved_name):
+            raise ValueError(f"Gemini model '{resolved_name}' is not allowed by restriction policy.")
 
         config = self.SUPPORTED_MODELS[resolved_name]
 
@@ -109,7 +109,7 @@ class GeminiModelProvider(ModelProvider):
         """Generate content using Gemini model."""
         # Validate parameters
         resolved_name = self._resolve_model_name(model_name)
-        self.validate_parameters(resolved_name, temperature)
+        self.validate_parameters(model_name, temperature)
 
         # Prepare content parts (text and potentially images)
         parts = []
@@ -150,7 +150,7 @@ class GeminiModelProvider(ModelProvider):
             generation_config.max_output_tokens = max_output_tokens
 
         # Add thinking configuration for models that support it
-        capabilities = self.get_capabilities(resolved_name)
+        capabilities = self.get_capabilities(model_name)
         if capabilities.supports_extended_thinking and thinking_mode in self.THINKING_BUDGETS:
             # Get model's max thinking tokens and calculate actual budget
             model_config = self.SUPPORTED_MODELS.get(resolved_name)
@@ -253,7 +253,7 @@ class GeminiModelProvider(ModelProvider):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, model_name, resolved_name):
             logger.debug(f"Gemini model '{model_name}' -> '{resolved_name}' blocked by restrictions")
             return False
 
