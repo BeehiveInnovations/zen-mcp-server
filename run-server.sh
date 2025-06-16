@@ -440,7 +440,7 @@ if [ "$FOLLOW_LOGS" = true ]; then
     sleep 3
     
     # Check if container is running before trying to exec
-    if docker ps | grep -q "zen-mcp-server"; then
+    if docker ps --format "{{.Names}}" | grep -q "^zen-mcp-server$"; then
         echo "Container is running, following logs..."
         docker exec zen-mcp-server tail -f -n 500 /tmp/mcp_server.log
     else
