@@ -582,6 +582,13 @@ suites that cover realistic failure scenarios and integration points that shorte
 
 For detailed tool parameters and configuration options, see the [Advanced Usage Guide](docs/advanced-usage.md).
 
+### Prompt Support
+
+- `/zen:thinkdeeper with o3 check if the algorithm in @sort.py is performant and if there are alternatives we could explore`
+- `/zen:precommit use gemini pro and confirm these changes match our requirements in COOL_FEATURE.md`
+- `/zen:testgen write me tests for class ABC`
+- `/zen:refactor using local-llama propose a decomposition strategy, make a plan and save it in FIXES.md then share this with o3 to confirm along with large_file.swift`
+
 ### Add Your Own Tools
 
 **Want to create custom tools for your specific workflows?** 

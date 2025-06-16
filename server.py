@@ -30,7 +30,15 @@ from typing import Any
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
-from mcp.types import ServerCapabilities, TextContent, Tool, ToolsCapability
+from mcp.types import (
+    GetPromptResult,
+    Prompt,
+    PromptMessage,
+    ServerCapabilities,
+    TextContent,
+    Tool,
+    ToolsCapability,
+)
 
 from config import (
     DEFAULT_MODEL,
@@ -152,6 +160,55 @@ TOOLS = {
     "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
+}
+
+# Rich prompt templates for all tools
+PROMPT_TEMPLATES = {
+    "thinkdeep": {
+        "name": "thinkdeeper",
+        "description": "Think deeply about the current context or problem",
+        "template": "Think deeper about this with {model} using {thinking_mode} thinking mode",
+    },
+    "codereview": {
+        "name": "review",
+        "description": "Perform a comprehensive code review",
+        "template": "Perform a comprehensive code review with {model}",
+    },
+    "debug": {
+        "name": "debug",
+        "description": "Debug an issue or error",
+        "template": "Help debug this issue with {model}",
+    },
+    "analyze": {
+        "name": "analyze",
+        "description": "Analyze files and code structure",
+        "template": "Analyze these files with {model}",
+    },
+    "chat": {
+        "name": "chat",
+        "description": "Chat and brainstorm ideas",
+        "template": "Chat with {model} about this",
+    },
+    "precommit": {
+        "name": "precommit",
+        "description": "Validate changes before committing",
+        "template": "Run precommit validation with {model}",
+    },
+    "testgen": {
+        "name": "testgen",
+        "description": "Generate comprehensive tests",
+        "template": "Generate comprehensive tests with {model}",
+    },
+    "refactor": {
+        "name": "refactor",
+        "description": "Refactor and improve code structure",
+        "template": "Refactor this code with {model}",
+    },
+    "tracer": {
+        "name": "tracer",
+        "description": "Trace code execution paths",
+        "template": "Generate tracer analysis with {model}",
+    },
 }
 
 
@@ -758,17 +815,38 @@ async def handle_version() -> list[TextContent]:
         "available_tools": list(TOOLS.keys()) + ["version"],
     }
 
-    # Check configured providers
+    # Check configured providers and available models
     from providers import ModelProviderRegistry
     from providers.base import ProviderType
 
     configured_providers = []
-    if ModelProviderRegistry.get_provider(ProviderType.GOOGLE):
-        configured_providers.append("Gemini (flash, pro)")
-    if ModelProviderRegistry.get_provider(ProviderType.OPENAI):
-        configured_providers.append("OpenAI (o3, o3-mini)")
-    if ModelProviderRegistry.get_provider(ProviderType.OPENROUTER):
-        configured_providers.append("OpenRouter (configured via conf/custom_models.json)")
+    available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+    
+    # Group models by provider
+    models_by_provider = {}
+    for model_name, provider_type in available_models.items():
+        if provider_type not in models_by_provider:
+            models_by_provider[provider_type] = []
+        models_by_provider[provider_type].append(model_name)
+    
+    # Format provider information with actual available models
+    if ProviderType.GOOGLE in models_by_provider:
+        gemini_models = ", ".join(sorted(models_by_provider[ProviderType.GOOGLE]))
+        configured_providers.append(f"Gemini ({gemini_models})")
+    if ProviderType.OPENAI in models_by_provider:
+        openai_models = ", ".join(sorted(models_by_provider[ProviderType.OPENAI]))
+        configured_providers.append(f"OpenAI ({openai_models})")
+    if ProviderType.XAI in models_by_provider:
+        xai_models = ", ".join(sorted(models_by_provider[ProviderType.XAI]))
+        configured_providers.append(f"X.AI ({xai_models})")
+    if ProviderType.CUSTOM in models_by_provider:
+        custom_models = ", ".join(sorted(models_by_provider[ProviderType.CUSTOM]))
+        custom_url = os.getenv("CUSTOM_API_URL", "")
+        configured_providers.append(f"Custom API ({custom_url}) - Models: {custom_models}")
+    if ProviderType.OPENROUTER in models_by_provider:
+        # For OpenRouter, show a summary since there could be many models
+        openrouter_count = len(models_by_provider[ProviderType.OPENROUTER])
+        configured_providers.append(f"OpenRouter ({openrouter_count} models via conf/custom_models.json)")
 
     # Format the information in a human-readable way
     text = f"""Zen MCP Server v{__version__}
@@ -788,12 +866,132 @@ Configured Providers:
 Available Tools:
 {chr(10).join(f"  - {tool}" for tool in version_info["available_tools"])}
 
+All Available Models:
+{chr(10).join(f"  - {model}" for model in sorted(available_models.keys()))}
+
 For updates, visit: https://github.com/BeehiveInnovations/zen-mcp-server"""
 
     # Create standardized tool output
     tool_output = ToolOutput(status="success", content=text, content_type="text", metadata={"tool_name": "version"})
 
     return [TextContent(type="text", text=tool_output.model_dump_json())]
+
+
+@server.list_prompts()
+async def handle_list_prompts() -> list[Prompt]:
+    """
+    List all available prompts for Claude Code shortcuts.
+
+    This handler returns prompts that enable shortcuts like /zen:thinkdeeper.
+    We automatically generate prompts from all tools (1:1 mapping) plus add
+    a few marketing aliases with richer templates for commonly used tools.
+
+    Returns:
+        List of Prompt objects representing all available prompts
+    """
+    logger.debug("MCP client requested prompt list")
+    prompts = []
+
+    # Add a prompt for each tool with rich templates
+    for tool_name, tool in TOOLS.items():
+        if tool_name in PROMPT_TEMPLATES:
+            # Use the rich template
+            template_info = PROMPT_TEMPLATES[tool_name]
+            prompts.append(
+                Prompt(
+                    name=template_info["name"],
+                    description=template_info["description"],
+                    arguments=[],  # MVP: no structured args
+                )
+            )
+        else:
+            # Fallback for any tools without templates (shouldn't happen)
+            prompts.append(
+                Prompt(
+                    name=tool_name,
+                    description=f"Use {tool.name} tool",
+                    arguments=[],
+                )
+            )
+
+    logger.debug(f"Returning {len(prompts)} prompts to MCP client")
+    return prompts
+
+
+@server.get_prompt()
+async def handle_get_prompt(name: str, arguments: dict[str, Any] = None) -> GetPromptResult:
+    """
+    Get prompt details and generate the actual prompt text.
+
+    This handler is called when a user invokes a prompt (e.g., /zen:thinkdeeper).
+    It generates the appropriate text that Claude will then use to call the
+    underlying tool.
+
+    Args:
+        name: The name of the prompt to execute
+        arguments: Optional arguments for the prompt (e.g., model, thinking_mode)
+
+    Returns:
+        GetPromptResult with the prompt details and generated message
+
+    Raises:
+        ValueError: If the prompt name is unknown
+    """
+    logger.debug(f"MCP client requested prompt: {name} with args: {arguments}")
+
+    # Find the corresponding tool by checking prompt names
+    tool_name = None
+    template_info = None
+
+    # Check if it's a known prompt name
+    for t_name, t_info in PROMPT_TEMPLATES.items():
+        if t_info["name"] == name:
+            tool_name = t_name
+            template_info = t_info
+            break
+
+    # If not found, check if it's a direct tool name
+    if not tool_name and name in TOOLS:
+        tool_name = name
+        template_info = {
+            "name": name,
+            "description": f"Use {name} tool",
+            "template": f"Use {name}",
+        }
+
+    if not tool_name:
+        logger.error(f"Unknown prompt requested: {name}")
+        raise ValueError(f"Unknown prompt: {name}")
+
+    # Get the template
+    template = template_info.get("template", f"Use {tool_name}")
+
+    # Safe template expansion with defaults
+    prompt_args = {
+        "model": arguments.get("model", "auto") if arguments else "auto",
+        "thinking_mode": arguments.get("thinking_mode", "medium") if arguments else "medium",
+    }
+
+    # Safely format the template
+    try:
+        prompt_text = template.format(**prompt_args)
+    except KeyError as e:
+        logger.warning(f"Missing template argument {e} for prompt {name}, using raw template")
+        prompt_text = template  # Fallback to raw template
+
+    return GetPromptResult(
+        prompt=Prompt(
+            name=name,
+            description=template_info["description"],
+            arguments=[],
+        ),
+        messages=[
+            PromptMessage(
+                role="user",
+                content={"type": "text", "text": prompt_text},
+            )
+        ],
+    )
 
 
 async def main():
