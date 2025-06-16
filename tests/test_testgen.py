@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from tests.mock_helpers import create_mock_provider
-from tools.testgen import TestGenRequest, TestGenTool
+from tools.testgen import TestGenerationRequest, TestGenerationTool
 
 
 class TestTestGenTool:
@@ -18,7 +18,7 @@ class TestTestGenTool:
 
     @pytest.fixture
     def tool(self):
-        return TestGenTool()
+        return TestGenerationTool()
 
     @pytest.fixture
     def temp_files(self):

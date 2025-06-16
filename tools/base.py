@@ -962,7 +962,7 @@ When recommending searches, be specific about what information you need and why 
             files: List of file paths to check
 
         Returns:
-            Dict with MCP_CODE_TOO_LARGE response if too large, None if acceptable
+            Dict with `code_too_large` response if too large, None if acceptable
         """
         if not files:
             return None

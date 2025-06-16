@@ -45,7 +45,7 @@ from tools import (
     DebugIssueTool,
     Precommit,
     RefactorTool,
-    TestGenTool,
+    TestGenerationTool,
     ThinkDeepTool,
     TracerTool,
 )
@@ -149,7 +149,7 @@ TOOLS = {
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "precommit": Precommit(),  # Pre-commit validation of git changes
-    "testgen": TestGenTool(),  # Comprehensive test generation with edge case coverage
+    "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
 }

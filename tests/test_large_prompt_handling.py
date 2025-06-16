@@ -149,18 +149,39 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_codereview_large_focus(self, large_prompt):
         """Test that codereview tool detects large focus_on field."""
-        tool = CodeReviewTool()
-        result = await tool.execute(
-            {
-                "files": ["/some/file.py"],
-                "focus_on": large_prompt,
-                "prompt": "Test code review for validation purposes",
-            }
-        )
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
 
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        assert output["status"] == "resend_prompt"
+        tool = CodeReviewTool()
+        
+        # Mock provider to avoid MagicMock comparison errors that would prevent large prompt detection
+        with patch.object(tool, "get_model_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_provider_type.return_value = MagicMock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
+            
+            result = await tool.execute(
+                {
+                    "files": ["/some/file.py"],
+                    "focus_on": large_prompt,
+                    "prompt": "Test code review for validation purposes",
+                }
+            )
+
+            assert len(result) == 1
+            output = json.loads(result[0].text)
+            assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_review_changes_large_original_request(self, large_prompt):

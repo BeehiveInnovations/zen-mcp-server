@@ -76,35 +76,48 @@ class TestCodeReviewTool:
         assert schema["required"] == ["files", "prompt"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.get_model_provider")
-    async def test_execute_with_review_type(self, mock_get_provider, tool, tmp_path):
+    async def test_execute_with_review_type(self, tool, tmp_path):
         """Test execution with specific review type"""
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
+
         # Create test file
         test_file = tmp_path / "test.py"
         test_file.write_text("def insecure(): pass", encoding="utf-8")
 
-        # Mock provider
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = False
-        mock_provider.generate_content.return_value = Mock(
-            content="Security issues found", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
+            # Mock provider
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Security issues found", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        result = await tool.execute(
-            {
-                "files": [str(test_file)],
-                "review_type": "security",
-                "focus_on": "authentication",
-                "prompt": "Test code review for validation purposes",
-            }
-        )
+            result = await tool.execute(
+                {
+                    "files": [str(test_file)],
+                    "review_type": "security",
+                    "focus_on": "authentication",
+                    "prompt": "Test code review for validation purposes",
+                }
+            )
 
-        assert len(result) == 1
-        assert "Security issues found" in result[0].text
-        assert "Claude's Next Steps:" in result[0].text
-        assert "Security issues found" in result[0].text
+            assert len(result) == 1
+            assert "Security issues found" in result[0].text
+            assert "Claude's Next Steps:" in result[0].text
+            assert "Security issues found" in result[0].text
 
 
 class TestDebugIssueTool:
@@ -169,35 +182,48 @@ class TestAnalyzeTool:
         assert set(schema["required"]) == {"files", "prompt"}
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.get_model_provider")
-    async def test_execute_with_analysis_type(self, mock_get_provider, tool, tmp_path):
+    async def test_execute_with_analysis_type(self, tool, tmp_path):
         """Test execution with specific analysis type"""
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
+
         # Create test file
         test_file = tmp_path / "module.py"
         test_file.write_text("class Service: pass", encoding="utf-8")
 
-        # Mock provider
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = False
-        mock_provider.generate_content.return_value = Mock(
-            content="Architecture analysis", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
+            # Mock provider
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Architecture analysis", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        result = await tool.execute(
-            {
-                "files": [str(test_file)],
-                "prompt": "What's the structure?",
-                "analysis_type": "architecture",
-                "output_format": "summary",
-            }
-        )
+            result = await tool.execute(
+                {
+                    "files": [str(test_file)],
+                    "prompt": "What's the structure?",
+                    "analysis_type": "architecture",
+                    "output_format": "summary",
+                }
+            )
 
-        assert len(result) == 1
-        assert "Architecture analysis" in result[0].text
-        assert "Next Steps:" in result[0].text
-        assert "Architecture analysis" in result[0].text
+            assert len(result) == 1
+            assert "Architecture analysis" in result[0].text
+            assert "Next Steps:" in result[0].text
+            assert "Architecture analysis" in result[0].text
 
 
 class TestAbsolutePathValidation:
@@ -287,9 +313,9 @@ class TestAbsolutePathValidation:
     @pytest.mark.asyncio
     async def test_testgen_tool_relative_path_rejected(self):
         """Test that testgen tool rejects relative paths"""
-        from tools import TestGenTool
+        from tools import TestGenerationTool
 
-        tool = TestGenTool()
+        tool = TestGenerationTool()
         result = await tool.execute(
             {"files": ["src/main.py"], "prompt": "Generate tests for the functions"}  # relative path
         )
@@ -301,26 +327,39 @@ class TestAbsolutePathValidation:
         assert "src/main.py" in response["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.AnalyzeTool.get_model_provider")
-    async def test_analyze_tool_accepts_absolute_paths(self, mock_get_provider):
+    async def test_analyze_tool_accepts_absolute_paths(self):
         """Test that analyze tool accepts absolute paths"""
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
+
         tool = AnalyzeTool()
 
-        # Mock provider
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = False
-        mock_provider.generate_content.return_value = Mock(
-            content="Analysis complete", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        with patch("tools.AnalyzeTool.get_model_provider") as mock_get_provider:
+            # Mock provider
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = False
+            mock_provider.generate_content.return_value = Mock(
+                content="Analysis complete", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        result = await tool.execute({"files": ["/absolute/path/file.py"], "prompt": "What does this do?"})
+            result = await tool.execute({"files": ["/absolute/path/file.py"], "prompt": "What does this do?"})
 
-        assert len(result) == 1
-        response = json.loads(result[0].text)
-        assert response["status"] == "success"
-        assert "Analysis complete" in response["content"]
+            assert len(result) == 1
+            response = json.loads(result[0].text)
+            assert response["status"] == "success"
+            assert "Analysis complete" in response["content"]
 
 
 class TestSpecialStatusModels:

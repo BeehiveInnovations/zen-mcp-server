@@ -39,134 +39,186 @@ class TestThinkingModes:
             ), f"{tool.__class__.__name__} should default to {expected_default}"
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.get_model_provider")
-    async def test_thinking_mode_minimal(self, mock_get_provider):
+    async def test_thinking_mode_minimal(self):
         """Test minimal thinking mode"""
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = True
-        mock_provider.generate_content.return_value = Mock(
-            content="Minimal thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
 
-        tool = AnalyzeTool()
-        result = await tool.execute(
-            {
-                "files": ["/absolute/path/test.py"],
-                "prompt": "What is this?",
-                "thinking_mode": "minimal",
-            }
-        )
+        with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = True
+            mock_provider.generate_content.return_value = Mock(
+                content="Minimal thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        # Verify create_model was called with correct thinking_mode
-        assert mock_get_provider.called
-        # Verify generate_content was called with thinking_mode
-        mock_provider.generate_content.assert_called_once()
-        call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "minimal" or (
-            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
-        )  # thinking_mode parameter
+            tool = AnalyzeTool()
+            result = await tool.execute(
+                {
+                    "files": ["/absolute/path/test.py"],
+                    "prompt": "What is this?",
+                    "thinking_mode": "minimal",
+                }
+            )
 
-        # Parse JSON response
-        import json
+            # Verify create_model was called with correct thinking_mode
+            assert mock_get_provider.called
+            # Verify generate_content was called with thinking_mode
+            mock_provider.generate_content.assert_called_once()
+            call_kwargs = mock_provider.generate_content.call_args[1]
+            assert call_kwargs.get("thinking_mode") == "minimal" or (
+                not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+            )  # thinking_mode parameter
 
-        response_data = json.loads(result[0].text)
-        assert response_data["status"] == "success"
-        assert "Minimal thinking response" in response_data["content"] or "Analysis:" in response_data["content"]
+            # Parse JSON response
+            import json
+
+            response_data = json.loads(result[0].text)
+            assert response_data["status"] == "success"
+            assert "Minimal thinking response" in response_data["content"] or "Analysis:" in response_data["content"]
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.get_model_provider")
-    async def test_thinking_mode_low(self, mock_get_provider):
+    async def test_thinking_mode_low(self):
         """Test low thinking mode"""
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = True
-        mock_provider.generate_content.return_value = Mock(
-            content="Low thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
 
-        tool = CodeReviewTool()
-        result = await tool.execute(
-            {
-                "files": ["/absolute/path/test.py"],
-                "thinking_mode": "low",
-                "prompt": "Test code review for validation purposes",
-            }
-        )
+        with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = True
+            mock_provider.generate_content.return_value = Mock(
+                content="Low thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        # Verify create_model was called with correct thinking_mode
-        assert mock_get_provider.called
-        # Verify generate_content was called with thinking_mode
-        mock_provider.generate_content.assert_called_once()
-        call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "low" or (
-            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
-        )
+            tool = CodeReviewTool()
+            result = await tool.execute(
+                {
+                    "files": ["/absolute/path/test.py"],
+                    "thinking_mode": "low",
+                    "prompt": "Test code review for validation purposes",
+                }
+            )
 
-        assert "Low thinking response" in result[0].text or "Code Review" in result[0].text
+            # Verify create_model was called with correct thinking_mode
+            assert mock_get_provider.called
+            # Verify generate_content was called with thinking_mode
+            mock_provider.generate_content.assert_called_once()
+            call_kwargs = mock_provider.generate_content.call_args[1]
+            assert call_kwargs.get("thinking_mode") == "low" or (
+                not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+            )
+
+            assert "Low thinking response" in result[0].text or "Code Review" in result[0].text
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.get_model_provider")
-    async def test_thinking_mode_medium(self, mock_get_provider):
+    async def test_thinking_mode_medium(self):
         """Test medium thinking mode (default for most tools)"""
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = True
-        mock_provider.generate_content.return_value = Mock(
-            content="Medium thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
 
-        tool = DebugIssueTool()
-        result = await tool.execute(
-            {
-                "prompt": "Test error",
-                # Not specifying thinking_mode, should use default (medium)
-            }
-        )
+        with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = True
+            mock_provider.generate_content.return_value = Mock(
+                content="Medium thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        # Verify create_model was called with default thinking_mode
-        assert mock_get_provider.called
-        # Verify generate_content was called with thinking_mode
-        mock_provider.generate_content.assert_called_once()
-        call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "medium" or (
-            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
-        )
+            tool = DebugIssueTool()
+            result = await tool.execute(
+                {
+                    "prompt": "Test error",
+                    # Not specifying thinking_mode, should use default (medium)
+                }
+            )
 
-        assert "Medium thinking response" in result[0].text or "Debug Analysis" in result[0].text
+            # Verify create_model was called with default thinking_mode
+            assert mock_get_provider.called
+            # Verify generate_content was called with thinking_mode
+            mock_provider.generate_content.assert_called_once()
+            call_kwargs = mock_provider.generate_content.call_args[1]
+            assert call_kwargs.get("thinking_mode") == "medium" or (
+                not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+            )
+
+            assert "Medium thinking response" in result[0].text or "Debug Analysis" in result[0].text
 
     @pytest.mark.asyncio
-    @patch("tools.base.BaseTool.get_model_provider")
-    async def test_thinking_mode_high(self, mock_get_provider):
+    async def test_thinking_mode_high(self):
         """Test high thinking mode"""
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = True
-        mock_provider.generate_content.return_value = Mock(
-            content="High thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
-        )
-        mock_get_provider.return_value = mock_provider
+        from unittest.mock import MagicMock
+        from providers.base import ModelCapabilities, ProviderType
 
-        tool = AnalyzeTool()
-        await tool.execute(
-            {
-                "files": ["/absolute/path/complex.py"],
-                "prompt": "Analyze architecture",
-                "thinking_mode": "high",
-            }
-        )
+        with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
+            mock_provider = create_mock_provider()
+            mock_provider.get_provider_type.return_value = Mock(value="google")
+            mock_provider.supports_thinking_mode.return_value = True
+            mock_provider.generate_content.return_value = Mock(
+                content="High thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            )
+            
+            # Set up proper capabilities to avoid MagicMock comparison errors
+            mock_capabilities = ModelCapabilities(
+                provider=ProviderType.GOOGLE,
+                model_name="gemini-2.5-flash-preview-05-20",
+                friendly_name="Test Model",
+                context_window=1048576,
+                supports_function_calling=True,
+            )
+            mock_provider.get_capabilities.return_value = mock_capabilities
+            mock_get_provider.return_value = mock_provider
 
-        # Verify create_model was called with correct thinking_mode
-        assert mock_get_provider.called
-        # Verify generate_content was called with thinking_mode
-        mock_provider.generate_content.assert_called_once()
-        call_kwargs = mock_provider.generate_content.call_args[1]
-        assert call_kwargs.get("thinking_mode") == "high" or (
-            not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
-        )
+            tool = AnalyzeTool()
+            await tool.execute(
+                {
+                    "files": ["/absolute/path/complex.py"],
+                    "prompt": "Analyze architecture",
+                    "thinking_mode": "high",
+                }
+            )
+
+            # Verify create_model was called with correct thinking_mode
+            assert mock_get_provider.called
+            # Verify generate_content was called with thinking_mode
+            mock_provider.generate_content.assert_called_once()
+            call_kwargs = mock_provider.generate_content.call_args[1]
+            assert call_kwargs.get("thinking_mode") == "high" or (
+                not mock_provider.supports_thinking_mode.return_value and call_kwargs.get("thinking_mode") is None
+            )
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")

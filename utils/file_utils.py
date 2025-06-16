@@ -980,7 +980,7 @@ def check_total_file_size(files: list[str], model_name: Optional[str] = None) ->
         model_name: Model name for context-aware thresholds, or None for default
 
     Returns:
-        Dict with MCP_CODE_TOO_LARGE response if too large, None if acceptable
+        Dict with `code_too_large` response if too large, None if acceptable
     """
     if not files:
         return None
