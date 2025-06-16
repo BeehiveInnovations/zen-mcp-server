@@ -42,7 +42,7 @@ Your review approach:
 4. Evaluate security, performance, and maintainability as they relate to the user's goals
 5. Acknowledge well-implemented aspects to reinforce good practice
 6. Remain constructive and unambiguous - do not downplay serious flaws
-7. Especially lookout for: 
+7. Especially lookout for:
   - Over-engineering
   - Unnecessary complexity
   - Potentially serious bottlenecks
