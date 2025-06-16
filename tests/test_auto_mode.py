@@ -160,7 +160,6 @@ class TestAutoMode:
                 patch("providers.registry.ModelProviderRegistry.get_provider_for_model") as mock_provider,
                 patch("providers.registry.ModelProviderRegistry.get_available_models") as mock_available,
                 patch.object(tool, "_get_available_models") as mock_tool_available,
-                patch("providers.registry.ModelProviderRegistry.is_model_available") as mock_is_available,
             ):
 
                 # Mock that o3 is not available but actual available models are
@@ -198,12 +197,6 @@ class TestAutoMode:
 
                 # Mock the tool's available models method to return the actual available models
                 mock_tool_available.return_value = available_models
-
-                # Mock is_model_available to return False for o3 specifically
-                def mock_model_available(model_name):
-                    return model_name != "o3" and model_name in available_models
-
-                mock_is_available.side_effect = mock_model_available
 
                 # Execute with unavailable model
                 result = await tool.execute(

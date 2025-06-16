@@ -15,7 +15,7 @@ from utils.file_utils import LogTailer
 def _process_log_stream(tailer, filter_func=None, format_func=None):
     """
     Process new lines from a log tailer with optional filtering and formatting.
-    
+
     Args:
         tailer: LogTailer instance to read from
         filter_func: Optional function to filter lines (return True to include)
@@ -26,15 +26,15 @@ def _process_log_stream(tailer, filter_func=None, format_func=None):
         # Apply filter if provided
         if filter_func and not filter_func(line):
             continue
-            
+
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
+
         # Apply formatter if provided
         if format_func:
             formatted = format_func(line)
         else:
             formatted = line
-            
+
         print(f"[{timestamp}] {formatted}")
 
 

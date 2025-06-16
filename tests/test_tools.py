@@ -78,7 +78,6 @@ class TestCodeReviewTool:
     @pytest.mark.asyncio
     async def test_execute_with_review_type(self, tool, tmp_path):
         """Test execution with specific review type"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         # Create test file
@@ -93,7 +92,7 @@ class TestCodeReviewTool:
             mock_provider.generate_content.return_value = Mock(
                 content="Security issues found", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,
@@ -184,7 +183,6 @@ class TestAnalyzeTool:
     @pytest.mark.asyncio
     async def test_execute_with_analysis_type(self, tool, tmp_path):
         """Test execution with specific analysis type"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         # Create test file
@@ -199,7 +197,7 @@ class TestAnalyzeTool:
             mock_provider.generate_content.return_value = Mock(
                 content="Architecture analysis", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,
@@ -329,7 +327,6 @@ class TestAbsolutePathValidation:
     @pytest.mark.asyncio
     async def test_analyze_tool_accepts_absolute_paths(self):
         """Test that analyze tool accepts absolute paths"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         tool = AnalyzeTool()
@@ -342,7 +339,7 @@ class TestAbsolutePathValidation:
             mock_provider.generate_content.return_value = Mock(
                 content="Analysis complete", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,

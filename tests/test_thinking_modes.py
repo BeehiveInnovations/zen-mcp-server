@@ -41,7 +41,6 @@ class TestThinkingModes:
     @pytest.mark.asyncio
     async def test_thinking_mode_minimal(self):
         """Test minimal thinking mode"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
@@ -51,7 +50,7 @@ class TestThinkingModes:
             mock_provider.generate_content.return_value = Mock(
                 content="Minimal thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,
@@ -91,7 +90,6 @@ class TestThinkingModes:
     @pytest.mark.asyncio
     async def test_thinking_mode_low(self):
         """Test low thinking mode"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
@@ -101,7 +99,7 @@ class TestThinkingModes:
             mock_provider.generate_content.return_value = Mock(
                 content="Low thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,
@@ -136,7 +134,6 @@ class TestThinkingModes:
     @pytest.mark.asyncio
     async def test_thinking_mode_medium(self):
         """Test medium thinking mode (default for most tools)"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
@@ -146,7 +143,7 @@ class TestThinkingModes:
             mock_provider.generate_content.return_value = Mock(
                 content="Medium thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,
@@ -180,7 +177,6 @@ class TestThinkingModes:
     @pytest.mark.asyncio
     async def test_thinking_mode_high(self):
         """Test high thinking mode"""
-        from unittest.mock import MagicMock
         from providers.base import ModelCapabilities, ProviderType
 
         with patch("tools.base.BaseTool.get_model_provider") as mock_get_provider:
@@ -190,7 +186,7 @@ class TestThinkingModes:
             mock_provider.generate_content.return_value = Mock(
                 content="High thinking response", usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
             )
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,

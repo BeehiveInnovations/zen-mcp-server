@@ -150,16 +150,17 @@ class TestLargePromptHandling:
     async def test_codereview_large_focus(self, large_prompt):
         """Test that codereview tool detects large focus_on field."""
         from unittest.mock import MagicMock
+
         from providers.base import ModelCapabilities, ProviderType
 
         tool = CodeReviewTool()
-        
+
         # Mock provider to avoid MagicMock comparison errors that would prevent large prompt detection
         with patch.object(tool, "get_model_provider") as mock_get_provider:
             mock_provider = MagicMock()
             mock_provider.get_provider_type.return_value = MagicMock(value="google")
             mock_provider.supports_thinking_mode.return_value = False
-            
+
             # Set up proper capabilities to avoid MagicMock comparison errors
             mock_capabilities = ModelCapabilities(
                 provider=ProviderType.GOOGLE,
@@ -170,7 +171,7 @@ class TestLargePromptHandling:
             )
             mock_provider.get_capabilities.return_value = mock_capabilities
             mock_get_provider.return_value = mock_provider
-            
+
             result = await tool.execute(
                 {
                     "files": ["/some/file.py"],
