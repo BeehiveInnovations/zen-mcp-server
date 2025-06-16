@@ -115,29 +115,7 @@ class RequestyProvider(OpenAICompatibleProvider):
         resolved_name = self._resolve_model_name(model_name)
 
         if resolved_name not in self.SUPPORTED_MODELS:
-            # For models not in our list, return generic capabilities
-            # This allows Requesty to support new models without code changes
-            logger.debug(
-                f"Model '{model_name}' not in predefined list, using generic capabilities. "
-                "Consider adding to SUPPORTED_MODELS for specific capabilities."
-            )
-
-            return ModelCapabilities(
-                provider=ProviderType.REQUESTY,
-                model_name=resolved_name,
-                friendly_name=self.FRIENDLY_NAME,
-                context_window=32_768,  # Conservative default
-                supports_extended_thinking=False,
-                supports_system_prompts=True,
-                supports_streaming=True,
-                supports_function_calling=True,  # Requesty supports function calling
-                temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
-            )
-
-        # Check if resolved name is a dict (model config) or string (shouldn't happen after resolution)
-        config = self.SUPPORTED_MODELS.get(resolved_name)
-        if not isinstance(config, dict):
-            raise ValueError(f"Invalid model configuration for '{model_name}'")
+            raise ValueError(f"Unsupported model: {model_name}")
 
         # Check restrictions
         from utils.model_restrictions import get_restriction_service
@@ -145,6 +123,8 @@ class RequestyProvider(OpenAICompatibleProvider):
         restriction_service = get_restriction_service()
         if not restriction_service.is_allowed(ProviderType.REQUESTY, resolved_name, model_name):
             raise ValueError(f"Model '{model_name}' is not allowed by restriction policy.")
+
+        config = self.SUPPORTED_MODELS[resolved_name]
 
         return ModelCapabilities(
             provider=ProviderType.REQUESTY,
@@ -154,8 +134,8 @@ class RequestyProvider(OpenAICompatibleProvider):
             supports_extended_thinking=config["supports_extended_thinking"],
             supports_system_prompts=True,
             supports_streaming=True,
-            supports_function_calling=True,  # Requesty supports function calling
-            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
+            supports_function_calling=True,
+            temperature_constraint=RangeTemperatureConstraint(0.0, 1.0, 0.7),
         )
 
     def get_provider_type(self) -> ProviderType:
@@ -163,56 +143,27 @@ class RequestyProvider(OpenAICompatibleProvider):
         return ProviderType.REQUESTY
 
     def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported.
-
-        Args:
-            model_name: Model name to validate
-
-        Returns:
-            True if model is supported or unknown (let Requesty handle it)
-        """
+        """Validate if the model name is supported."""
         resolved_name = self._resolve_model_name(model_name)
 
         # Check if it's in our known models
-        if resolved_name in self.SUPPORTED_MODELS and isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
-            # Check restrictions
-            from utils.model_restrictions import get_restriction_service
+        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
+            return False
 
-            restriction_service = get_restriction_service()
-            if not restriction_service.is_allowed(ProviderType.REQUESTY, resolved_name, model_name):
-                logger.debug(f"Requesty model '{model_name}' -> '{resolved_name}' blocked by restrictions")
-                return False
-            return True
+        # Check restrictions
+        from utils.model_restrictions import get_restriction_service
 
-        # For unknown models, we accept them but log
-        # This allows Requesty to work with new models without code updates
-        logger.debug(f"Model '{model_name}' not in predefined list, accepting for Requesty to validate")
+        restriction_service = get_restriction_service()
+        if not restriction_service.is_allowed(ProviderType.REQUESTY, resolved_name, model_name):
+            return False
+
         return True
 
     def _resolve_model_name(self, model_name: str) -> str:
-        """Resolve model shorthand to full name.
-
-        Args:
-            model_name: Input model name or alias
-
-        Returns:
-            Resolved model name
-        """
-        # Check if it's an alias (case-insensitive)
-        # First try exact match
+        """Resolve model shorthand to full name."""
         shorthand_value = self.SUPPORTED_MODELS.get(model_name)
         if isinstance(shorthand_value, str):
-            logger.debug(f"Resolved Requesty model alias '{model_name}' to '{shorthand_value}'")
             return shorthand_value
-
-        # Try case-insensitive match for aliases
-        model_name_lower = model_name.lower()
-        for key, value in self.SUPPORTED_MODELS.items():
-            if isinstance(value, str) and key.lower() == model_name_lower:
-                logger.debug(f"Resolved Requesty model alias '{model_name}' to '{value}' (case-insensitive)")
-                return value
-
-        # Return as-is if not an alias
         return model_name
 
     def generate_content(
@@ -224,28 +175,10 @@ class RequestyProvider(OpenAICompatibleProvider):
         max_output_tokens: Optional[int] = None,
         **kwargs,
     ) -> ModelResponse:
-        """Generate content using API with proper model name resolution.
-
-        CRITICAL: This method MUST be overridden to resolve aliases before API calls.
-        Without this, aliases like "gpt4o" would be sent to the API instead of "openai/gpt-4o".
-
-        Args:
-            prompt: The user prompt
-            model_name: Model name or alias
-            system_prompt: Optional system prompt
-            temperature: Temperature setting
-            max_output_tokens: Maximum output tokens
-            **kwargs: Additional parameters
-
-        Returns:
-            ModelResponse with generated content
-        """
+        """Generate content using API with proper model name resolution."""
         # CRITICAL: Resolve model alias before making API call
+        # This ensures aliases like "large" get sent as "example-model-large" to the API
         resolved_model_name = self._resolve_model_name(model_name)
-
-        # Log the resolution for debugging
-        if resolved_model_name != model_name:
-            logger.info(f"Requesty: Using model '{resolved_model_name}' (resolved from '{model_name}')")
 
         # Call parent implementation with resolved model name
         return super().generate_content(

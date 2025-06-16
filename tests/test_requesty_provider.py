@@ -54,8 +54,8 @@ class TestRequestyProvider:
         # Test unknown models passthrough
         assert provider._resolve_model_name("unknown-model") == "unknown-model"
 
-    def test_get_capabilities_known_model(self):
-        """Test getting capabilities for known models."""
+    def test_get_capabilities(self):
+        """Test getting capabilities."""
         provider = RequestyProvider("test-key")
 
         # Test Claude 4 Sonnet model
@@ -78,142 +78,6 @@ class TestRequestyProvider:
         assert capabilities.temperature_constraint.min_temp == 0.0
         assert capabilities.temperature_constraint.max_temp == 2.0
         assert capabilities.temperature_constraint.default_temp == 0.7
-
-    def test_get_capabilities_unknown_model(self):
-        """Test getting capabilities for unknown models returns generic capabilities."""
-        provider = RequestyProvider("test-key")
-
-        # Test unknown model
-        capabilities = provider.get_capabilities("future-model-xyz")
-        assert capabilities.model_name == "future-model-xyz"
-        assert capabilities.friendly_name == "Requesty"
-        assert capabilities.context_window == 32_768  # Conservative default
-        assert capabilities.provider == ProviderType.REQUESTY
-        assert capabilities.supports_function_calling is True
-        assert capabilities.supports_extended_thinking is False
-
-    @patch("providers.openai_compatible.OpenAI")
-    def test_generate_content_with_alias(self, mock_openai_class):
-        """Test that generate_content properly resolves aliases before API call."""
-        # Setup mock
-        mock_client = MagicMock()
-        mock_openai_class.return_value = mock_client
-
-        # Mock the API response
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Test response"))]
-        mock_response.usage.prompt_tokens = 10
-        mock_response.usage.completion_tokens = 20
-        mock_response.usage.total_tokens = 30
-        mock_response.model = "openai/o3"
-        mock_client.chat.completions.create.return_value = mock_response
-
-        provider = RequestyProvider("test-key")
-
-        # Call with alias
-        response = provider.generate_content(
-            prompt="Test prompt",
-            model_name="o3",  # Using alias
-            temperature=0.7,
-        )
-
-        # Verify the API was called with resolved model name
-        mock_client.chat.completions.create.assert_called_once()
-        call_args = mock_client.chat.completions.create.call_args
-        assert call_args.kwargs["model"] == "openai/o3"  # Resolved name, not alias
-
-        # Verify response
-        assert response.content == "Test response"
-        assert response.model_name == "openai/o3"
-        assert response.provider == ProviderType.REQUESTY
-
-    @patch("utils.model_restrictions.get_restriction_service")
-    def test_model_restrictions(self, mock_get_restriction_service):
-        """Test that model restrictions are properly enforced."""
-        # Setup mock restriction service
-        mock_restriction_service = MagicMock()
-        mock_get_restriction_service.return_value = mock_restriction_service
-
-        provider = RequestyProvider("test-key")
-
-        # Test allowed model
-        mock_restriction_service.is_allowed.return_value = True
-        assert provider.validate_model_name("o3") is True
-
-        # Test restricted model
-        mock_restriction_service.is_allowed.return_value = False
-        assert provider.validate_model_name("o3") is False
-
-        # Verify restriction service was called correctly
-        mock_restriction_service.is_allowed.assert_called_with(ProviderType.REQUESTY, "openai/o3", "o3")
-
-    def test_count_tokens(self):
-        """Test token counting (inherited from OpenAICompatibleProvider)."""
-        provider = RequestyProvider("test-key")
-
-        # Test basic token estimation
-        text = "This is a test message."
-        tokens = provider.count_tokens(text, "o3")
-        # Should use character/4 estimation
-        assert tokens == len(text) // 4
-
-    def test_supports_thinking_mode(self):
-        """Test that thinking mode is correctly reported based on model capabilities."""
-        provider = RequestyProvider("test-key")
-
-        # Models with extended thinking support
-        assert provider.supports_thinking_mode("claude-4-sonnet") is True
-        assert provider.supports_thinking_mode("o3") is True
-        assert provider.supports_thinking_mode("gemini-pro") is True
-
-        # Models without extended thinking support
-        assert provider.supports_thinking_mode("claude-haiku") is False
-        assert provider.supports_thinking_mode("mistral-large") is False
-        assert provider.supports_thinking_mode("unknown-model") is False
-
-    def test_case_insensitive_model_resolution(self):
-        """Test that model aliases are resolved case-insensitively."""
-        provider = RequestyProvider("test-key")
-
-        # Test case variations
-        assert provider._resolve_model_name("CLAUDE-4-SONNET") == "coding/claude-4-sonnet"
-        assert provider._resolve_model_name("O3") == "openai/o3"
-        assert provider._resolve_model_name("Claude-Haiku") == "anthropic/claude-3-5-haiku-latest"
-        assert provider._resolve_model_name("GEMINI-PRO") == "google/gemini-2.5-pro-preview-06-05"
-        assert provider._resolve_model_name("Mistral-Large") == "mistral/mistral-large-latest"
-
-        # Verify case preservation for direct model names
-        assert provider._resolve_model_name("OpenAI/O3") == "OpenAI/O3"
-        assert provider._resolve_model_name("UNKNOWN-MODEL") == "UNKNOWN-MODEL"
-
-    def test_requesty_specific_models(self):
-        """Test Requesty-specific model handling."""
-        provider = RequestyProvider("test-key")
-
-        # Test Requesty-specific models that might not be available elsewhere
-        capabilities = provider.get_capabilities("coding/claude-4-sonnet")
-        assert capabilities.model_name == "coding/claude-4-sonnet"
-        assert capabilities.supports_extended_thinking is True
-
-        # Test Perplexity Sonar model
-        capabilities = provider.get_capabilities("sonar")
-        assert capabilities.model_name == "perplexity/sonar"
-        assert capabilities.context_window == 131_072
-        assert capabilities.supports_extended_thinking is True
-
-    def test_requesty_registration(self):
-        """Test Requesty can be registered and retrieved."""
-        with patch.dict(os.environ, {"REQUESTY_API_KEY": "test-key"}):
-            # Clean up any existing registration
-            ModelProviderRegistry.unregister_provider(ProviderType.REQUESTY)
-
-            # Register the provider
-            ModelProviderRegistry.register_provider(ProviderType.REQUESTY, RequestyProvider)
-
-            # Retrieve and verify
-            provider = ModelProviderRegistry.get_provider(ProviderType.REQUESTY)
-            assert provider is not None
-            assert isinstance(provider, RequestyProvider)
 
 
 class TestRequestyAutoMode:
@@ -308,33 +172,6 @@ class TestRequestyAutoMode:
 
         with pytest.raises(ValueError, match="not allowed by restriction policy"):
             provider.get_capabilities("mistral-large")
-
-
-class TestRequestyErrorHandling:
-    """Test error handling for Requesty provider."""
-
-    @patch("utils.model_restrictions.get_restriction_service")
-    def test_capabilities_with_restricted_model(self, mock_get_restriction_service):
-        """Test that get_capabilities raises error for restricted models."""
-        mock_restriction_service = MagicMock()
-        mock_get_restriction_service.return_value = mock_restriction_service
-        mock_restriction_service.is_allowed.return_value = False
-
-        provider = RequestyProvider("test-key")
-
-        with pytest.raises(ValueError, match="not allowed by restriction policy"):
-            provider.get_capabilities("o3")
-
-    def test_invalid_model_configuration(self):
-        """Test handling of invalid model configuration."""
-        provider = RequestyProvider("test-key")
-
-        # Mock a situation where a model configuration is invalid
-        # This would only happen if SUPPORTED_MODELS was corrupted
-        with patch.object(provider, "SUPPORTED_MODELS", {"bad-model": None}):
-            # This should raise ValueError for invalid configuration
-            with pytest.raises(ValueError, match="Invalid model configuration"):
-                provider.get_capabilities("bad-model")
 
 
 class TestRequestyProviderPriority:

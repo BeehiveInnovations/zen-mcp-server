@@ -692,12 +692,14 @@ When a user requests a model (e.g., "pro", "o3", "example-large-v1"), the system
        ProviderType.GOOGLE,      # Native Gemini API
        ProviderType.OPENAI,      # Native OpenAI API  
        ProviderType.CUSTOM,      # Local/self-hosted
+       ProviderType.REQUESTY,    # Requesty routing service
        ProviderType.OPENROUTER,  # Catch-all for everything else
    ]
    ```
 
 2. **For each provider**, calls `validate_model_name()`:
    - Native providers (Gemini, OpenAI) return `true` only for their specific models
+   - Requesty returns `true` only for it's models
    - OpenRouter returns `true` for ANY model (it's the catch-all)
    - First provider that validates the model handles the request
 
