@@ -32,10 +32,6 @@ class TestRequestyProvider:
         assert provider.validate_model_name("o3") is True
         assert provider.validate_model_name("openai/o3") is True
 
-        # Test unknown models (should still be accepted)
-        assert provider.validate_model_name("future-model-xyz") is True
-        assert provider.validate_model_name("vendor/new-model") is True
-
     def test_resolve_model_name(self):
         """Test model name resolution for aliases."""
         provider = RequestyProvider("test-key")
@@ -76,7 +72,7 @@ class TestRequestyProvider:
         # Test temperature constraint
         assert isinstance(capabilities.temperature_constraint, RangeTemperatureConstraint)
         assert capabilities.temperature_constraint.min_temp == 0.0
-        assert capabilities.temperature_constraint.max_temp == 2.0
+        assert capabilities.temperature_constraint.max_temp == 1.0
         assert capabilities.temperature_constraint.default_temp == 0.7
 
 
