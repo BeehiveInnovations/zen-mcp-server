@@ -73,7 +73,9 @@ class GeminiModelProvider(ModelProvider):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.GOOGLE, model_name, resolved_name):
+        # IMPORTANT: Parameter order is (provider_type, model_name, original_name)
+        # resolved_name is the canonical model name, model_name is the user input
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
             raise ValueError(f"Gemini model '{resolved_name}' is not allowed by restriction policy.")
 
         config = self.SUPPORTED_MODELS[resolved_name]
@@ -255,7 +257,9 @@ class GeminiModelProvider(ModelProvider):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.GOOGLE, model_name, resolved_name):
+        # IMPORTANT: Parameter order is (provider_type, model_name, original_name)
+        # resolved_name is the canonical model name, model_name is the user input
+        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
             logger.debug(f"Gemini model '{model_name}' -> '{resolved_name}' blocked by restrictions")
             return False
 
