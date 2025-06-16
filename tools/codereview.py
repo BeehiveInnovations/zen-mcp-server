@@ -41,6 +41,10 @@ class CodeReviewRequest(ToolRequest):
         ...,
         description="User's summary of what the code does, expected behavior, constraints, and review objectives",
     )
+    images: Optional[list[str]] = Field(
+        None,
+        description="Optional images of architecture diagrams, UI mockups, design documents, or visual references for code review context",
+    )
     review_type: str = Field("full", description="Type of review: full|security|performance|quick")
     focus_on: Optional[str] = Field(
         None,
@@ -93,6 +97,11 @@ class CodeReviewTool(BaseTool):
                 "prompt": {
                     "type": "string",
                     "description": "User's summary of what the code does, expected behavior, constraints, and review objectives",
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional images of architecture diagrams, UI mockups, design documents, or visual references for code review context",
                 },
                 "review_type": {
                     "type": "string",

@@ -24,6 +24,10 @@ class DebugIssueRequest(ToolRequest):
         None,
         description="Files or directories that might be related to the issue (must be absolute paths)",
     )
+    images: Optional[list[str]] = Field(
+        None,
+        description="Optional images showing error screens, UI issues, logs displays, or visual debugging information",
+    )
     runtime_info: Optional[str] = Field(None, description="Environment, versions, or runtime information")
     previous_attempts: Optional[str] = Field(None, description="What has been tried already")
 
@@ -68,6 +72,11 @@ class DebugIssueTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Files or directories that might be related to the issue (must be absolute paths)",
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional images showing error screens, UI issues, logs displays, or visual debugging information",
                 },
                 "runtime_info": {
                     "type": "string",

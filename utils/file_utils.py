@@ -48,6 +48,36 @@ from .file_types import BINARY_EXTENSIONS, CODE_EXTENSIONS, IMAGE_EXTENSIONS, TE
 from .security_config import CONTAINER_WORKSPACE, EXCLUDED_DIRS, MCP_SIGNATURE_FILES, SECURITY_ROOT, WORKSPACE_ROOT
 from .token_utils import DEFAULT_CONTEXT_WINDOW, estimate_tokens
 
+
+def _is_builtin_custom_models_config(path_str: str) -> bool:
+    """
+    Check if path points to the server's built-in custom_models.json config file.
+
+    This only matches the server's internal config, not user-specified CUSTOM_MODELS_CONFIG_PATH.
+    We identify the built-in config by checking if it resolves to the server's conf directory.
+
+    Args:
+        path_str: Path to check
+
+    Returns:
+        True if this is the server's built-in custom_models.json config file
+    """
+    try:
+        path = Path(path_str)
+
+        # Get the server root by going up from this file: utils/file_utils.py -> server_root
+        server_root = Path(__file__).parent.parent
+        builtin_config = server_root / "conf" / "custom_models.json"
+
+        # Check if the path resolves to the same file as our built-in config
+        # This handles both relative and absolute paths to the same file
+        return path.resolve() == builtin_config.resolve()
+
+    except Exception:
+        # If path resolution fails, it's not our built-in config
+        return False
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -271,7 +301,8 @@ def translate_path_for_environment(path_str: str) -> str:
     tools and utilities throughout the codebase. It handles:
     1. Docker host-to-container path translation (host paths -> /workspace/...)
     2. Direct mode (no translation needed)
-    3. Security validation and error handling
+    3. Internal server files (conf/custom_models.json)
+    4. Security validation and error handling
 
     Docker Path Translation Logic:
     - Input: /Users/john/project/src/file.py (host path from Claude)
@@ -284,32 +315,9 @@ def translate_path_for_environment(path_str: str) -> str:
     Returns:
         Translated path appropriate for the current environment
     """
-    # Allow access to specific internal application configuration files
-    # Store as relative paths so they work in both Docker and standalone modes
-    # Use exact paths for security - no wildcards or prefix matching
-    ALLOWED_INTERNAL_PATHS = {
-        "conf/custom_models.json",
-        # Add other specific internal files here as needed
-    }
-
-    # Check for internal app paths - extract relative part if it's an /app/ path
-    relative_internal_path = None
-    if path_str.startswith("/app/"):
-        relative_internal_path = path_str[5:]  # Remove "/app/" prefix
-        if relative_internal_path.startswith("/"):
-            relative_internal_path = relative_internal_path[1:]  # Remove leading slash if present
-
-    # Check if this is an allowed internal file
-    if relative_internal_path and relative_internal_path in ALLOWED_INTERNAL_PATHS:
-        # Translate to appropriate path for current environment
-        if not WORKSPACE_ROOT or not WORKSPACE_ROOT.strip() or not CONTAINER_WORKSPACE.exists():
-            # Standalone mode: use relative path
-            return "./" + relative_internal_path
-        else:
-            # Docker mode: use absolute app path
-            return "/app/" + relative_internal_path
-
-    # Handle other /app/ paths in standalone mode (for non-whitelisted files)
+    # Handle built-in server config file - no translation needed
+    if _is_builtin_custom_models_config(path_str):
+        return path_str
     if not WORKSPACE_ROOT or not WORKSPACE_ROOT.strip() or not CONTAINER_WORKSPACE.exists():
         if path_str.startswith("/app/"):
             # Convert Docker internal paths to local relative paths for standalone mode

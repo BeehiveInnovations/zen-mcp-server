@@ -87,7 +87,13 @@ class AnalyzeTool(BaseTool):
                 },
                 "use_websearch": {
                     "type": "boolean",
-                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "description": (
+                        "Enable web search for documentation, best practices, and current information. "
+                        "Particularly useful for: brainstorming sessions, architectural design discussions, "
+                        "exploring industry best practices, working with specific frameworks/technologies, "
+                        "researching solutions to complex problems, or when current documentation and "
+                        "community insights would enhance the analysis."
+                    ),
                     "default": True,
                 },
                 "continuation_id": {

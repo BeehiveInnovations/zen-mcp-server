@@ -78,6 +78,10 @@ class PrecommitRequest(ToolRequest):
         None,
         description="Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
     )
+    images: Optional[list[str]] = Field(
+        None,
+        description="Optional images showing expected UI changes, design requirements, or visual references for the changes being validated",
+    )
 
 
 class Precommit(BaseTool):
@@ -169,6 +173,11 @@ class Precommit(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional images showing expected UI changes, design requirements, or visual references for the changes being validated",
                 },
                 "use_websearch": {
                     "type": "boolean",

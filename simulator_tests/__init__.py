@@ -24,6 +24,7 @@ from .test_redis_validation import RedisValidationTest
 from .test_refactor_validation import RefactorValidationTest
 from .test_testgen_validation import TestGenValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
+from .test_vision_capability import VisionCapabilityTest
 from .test_xai_models import XAIModelsTest
 
 # Test registry for dynamic loading
@@ -45,6 +46,7 @@ TEST_REGISTRY = {
     "testgen_validation": TestGenValidationTest,
     "refactor_validation": RefactorValidationTest,
     "conversation_chain_validation": ConversationChainValidationTest,
+    "vision_capability": VisionCapabilityTest,
     "xai_models": XAIModelsTest,
     # "o3_pro_expensive": O3ProExpensiveTest,  # COMMENTED OUT - too expensive to run by default
 }
@@ -69,6 +71,7 @@ __all__ = [
     "TestGenValidationTest",
     "RefactorValidationTest",
     "ConversationChainValidationTest",
+    "VisionCapabilityTest",
     "XAIModelsTest",
     "TEST_REGISTRY",
 ]
