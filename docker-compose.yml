@@ -28,6 +28,8 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - XAI_API_KEY=${XAI_API_KEY:-}
+      # Requesty support
+      - REQUESTY_API_KEY=${REQUESTY_API_KEY:-}
       # OpenRouter support
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - CUSTOM_MODELS_CONFIG_PATH=${CUSTOM_MODELS_CONFIG_PATH:-}
@@ -43,6 +45,7 @@ services:
       - OPENAI_ALLOWED_MODELS=${OPENAI_ALLOWED_MODELS:-}
       - GOOGLE_ALLOWED_MODELS=${GOOGLE_ALLOWED_MODELS:-}
       - XAI_ALLOWED_MODELS=${XAI_ALLOWED_MODELS:-}
+      - REQUESTY_ALLOWED_MODELS=${REQUESTY_ALLOWED_MODELS:-}
       - REDIS_URL=redis://redis:6379/0
       # Use HOME not PWD: Claude needs access to any absolute file path, not just current project,
       # and Claude Code could be running from multiple locations at the same time

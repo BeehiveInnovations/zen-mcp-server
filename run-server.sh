@@ -140,6 +140,16 @@ else
         fi
     fi
     
+    if [ -n "${REQUESTY_API_KEY:-}" ]; then
+        # Replace the placeholder API key with the actual value
+        if command -v sed >/dev/null 2>&1; then
+            sed -i.bak "s/your_requesty_api_key_here/$REQUESTY_API_KEY/" .env && rm .env.bak
+            echo "✅ Updated .env with existing REQUESTY_API_KEY from environment"
+        else
+            echo "⚠️  Found REQUESTY_API_KEY in environment, but sed not available. Please update .env manually."
+        fi
+    fi
+    
     # Update WORKSPACE_ROOT to use current user's home directory
     if command -v sed >/dev/null 2>&1; then
         sed -i.bak "s|WORKSPACE_ROOT=/Users/your-username|WORKSPACE_ROOT=$HOME|" .env && rm .env.bak
@@ -181,6 +191,7 @@ VALID_GEMINI_KEY=false
 VALID_OPENAI_KEY=false
 VALID_XAI_KEY=false
 VALID_OPENROUTER_KEY=false
+VALID_REQUESTY_KEY=false
 VALID_CUSTOM_URL=false
 
 # Check if GEMINI_API_KEY is set and not the placeholder
@@ -207,6 +218,12 @@ if [ -n "${OPENROUTER_API_KEY:-}" ] && [ "$OPENROUTER_API_KEY" != "your_openrout
     echo "✅ OPENROUTER_API_KEY found"
 fi
 
+# Check if REQUESTY_API_KEY is set and not the placeholder
+if [ -n "${REQUESTY_API_KEY:-}" ] && [ "$REQUESTY_API_KEY" != "your_requesty_api_key_here" ]; then
+    VALID_REQUESTY_KEY=true
+    echo "✅ REQUESTY_API_KEY found"
+fi
+
 # Check if CUSTOM_API_URL is set and not empty (custom API key is optional)
 if [ -n "${CUSTOM_API_URL:-}" ]; then
     VALID_CUSTOM_URL=true
@@ -214,7 +231,7 @@ if [ -n "${CUSTOM_API_URL:-}" ]; then
 fi
 
 # Require at least one valid API key or custom URL
-if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_XAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ] && [ "$VALID_CUSTOM_URL" = false ]; then
+if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VALID_XAI_KEY" = false ] && [ "$VALID_OPENROUTER_KEY" = false ] && [ "$VALID_REQUESTY_KEY" = false ] && [ "$VALID_CUSTOM_URL" = false ]; then
     echo ""
     echo "❌ ERROR: At least one valid API key or custom URL is required!"
     echo ""
@@ -223,6 +240,7 @@ if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VAL
     echo "  - OPENAI_API_KEY (get from https://platform.openai.com/api-keys)"
     echo "  - XAI_API_KEY (get from https://console.x.ai/)"
     echo "  - OPENROUTER_API_KEY (get from https://openrouter.ai/)"
+    echo "  - REQUESTY_API_KEY (get from https://requesty.ai/)"
     echo "  - CUSTOM_API_URL (for local models like Ollama, vLLM, etc.)"
     echo ""
     echo "Example:"
@@ -230,6 +248,7 @@ if [ "$VALID_GEMINI_KEY" = false ] && [ "$VALID_OPENAI_KEY" = false ] && [ "$VAL
     echo "  OPENAI_API_KEY=sk-your-actual-openai-key-here"
     echo "  XAI_API_KEY=xai-your-actual-xai-key-here"
     echo "  OPENROUTER_API_KEY=sk-or-your-actual-openrouter-key-here"
+    echo "  REQUESTY_API_KEY=rqy-your-actual-requesty-key-here"
     echo "  CUSTOM_API_URL=http://host.docker.internal:11434/v1  # Ollama (use host.docker.internal, NOT localhost!)"
     echo ""
     exit 1

@@ -171,11 +171,13 @@ def configure_providers():
     from providers.gemini import GeminiModelProvider
     from providers.openai import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
+    from providers.requesty import RequestyProvider
     from providers.xai import XAIModelProvider
     from utils.model_restrictions import get_restriction_service
 
     valid_providers = []
     has_native_apis = False
+    has_requesty = False
     has_openrouter = False
     has_custom = False
 
@@ -199,6 +201,13 @@ def configure_providers():
         valid_providers.append("X.AI (GROK)")
         has_native_apis = True
         logger.info("X.AI API key found - GROK models available")
+
+    # Check for Requesty API key
+    requesty_key = os.getenv("REQUESTY_API_KEY")
+    if requesty_key and requesty_key != "your_requesty_api_key_here":
+        valid_providers.append("Requesty")
+        has_requesty = True
+        logger.info("Requesty API key found - Multiple models available via Requesty")
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
@@ -244,7 +253,11 @@ def configure_providers():
 
         ModelProviderRegistry.register_provider(ProviderType.CUSTOM, custom_provider_factory)
 
-    # 3. OpenRouter last (catch-all for everything else)
+    # 3. Requesty (routing service)
+    if has_requesty:
+        ModelProviderRegistry.register_provider(ProviderType.REQUESTY, RequestyProvider)
+
+    # 4. OpenRouter last (catch-all for everything else)
     if has_openrouter:
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
@@ -255,6 +268,7 @@ def configure_providers():
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI o3 model\n"
             "- XAI_API_KEY for X.AI GROK models\n"
+            "- REQUESTY_API_KEY for Requesty (multiple models)\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
             "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
         )
@@ -264,9 +278,11 @@ def configure_providers():
     # Log provider priority
     priority_info = []
     if has_native_apis:
-        priority_info.append("Native APIs (Gemini, OpenAI)")
+        priority_info.append("Native APIs (Gemini, OpenAI, X.AI)")
     if has_custom:
         priority_info.append("Custom endpoints")
+    if has_requesty:
+        priority_info.append("Requesty")
     if has_openrouter:
         priority_info.append("OpenRouter (catch-all)")
 

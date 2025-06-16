@@ -108,7 +108,11 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 ### 1. Get API Keys (at least one required)
 
-**Option A: OpenRouter (Access multiple models with one API)**
+**Option A: Routing Services (Access multiple models with one API)**
+- **Requesty**: Visit [Requesty](https://requesty.ai/) for smart routing and fallback across multiple models. [Documentation](https://docs.requesty.ai/)
+  - Access to advanced models: Claude 4 Sonnet, Claude Opus 4, O3, Gemini 2.5, and more
+  - Many models support extended thinking capabilities
+  - Automatic fallback and smart routing between providers
 - **OpenRouter**: Visit [OpenRouter](https://openrouter.ai/) for access to multiple models through one API. [Setup Guide](docs/custom_models.md)
   - Control model access and spending limits directly in your OpenRouter dashboard
   - Configure model aliases in [`conf/custom_models.json`](conf/custom_models.json)
@@ -157,6 +161,8 @@ nano .env
 # The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
+# XAI_API_KEY=your-xai-api-key-here       # For GROK models
+# REQUESTY_API_KEY=your-requesty-key      # For Requesty routing
 # OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/custom_models.md)
 
 # For local models (Ollama, vLLM, etc.) - Note: Use host.docker.internal for Docker networking:

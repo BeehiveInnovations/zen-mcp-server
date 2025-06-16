@@ -22,6 +22,7 @@ from .test_openrouter_models import OpenRouterModelsTest
 from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_redis_validation import RedisValidationTest
 from .test_refactor_validation import RefactorValidationTest
+from .test_requesty_models import TestRequestyModels
 from .test_testgen_validation import TestGenValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
 from .test_xai_models import XAIModelsTest
@@ -46,6 +47,7 @@ TEST_REGISTRY = {
     "refactor_validation": RefactorValidationTest,
     "conversation_chain_validation": ConversationChainValidationTest,
     "xai_models": XAIModelsTest,
+    "requesty_models": TestRequestyModels,
     # "o3_pro_expensive": O3ProExpensiveTest,  # COMMENTED OUT - too expensive to run by default
 }
 
@@ -70,5 +72,6 @@ __all__ = [
     "RefactorValidationTest",
     "ConversationChainValidationTest",
     "XAIModelsTest",
+    "TestRequestyModels",
     "TEST_REGISTRY",
 ]

@@ -59,6 +59,14 @@ MODEL_CAPABILITIES_DESC = {
     "grok-3-fast": "GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
     "grok3": "GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
     "grokfast": "GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
+    # Requesty models - Available when REQUESTY_API_KEY is configured
+    # (Models also available natively like o3, gemini-pro are listed above with their native providers)
+    "claude-4-sonnet": "Claude 4 Sonnet (200K context) via Requesty - Advanced coding model with extended thinking",
+    "claude-haiku": "Claude 3.5 Haiku Latest (200K context) via Requesty - Fast, efficient Claude model",
+    "claude-opus-4": "Claude Opus 4 (200K context) via Requesty - Anthropic's most capable model with extended thinking",
+    "sonar": "Perplexity Sonar (131K context) via Requesty - Web-aware model with extended thinking",
+    "devstral": "Devstral Small (131K context) via Requesty - Mistral's coding-focused model",
+    "mistral-large": "Mistral Large Latest (131K context) via Requesty - Mistral's most capable model",
     # Full model names also supported (for explicit specification)
     "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
     "gemini-2.5-pro-preview-06-05": (
@@ -66,8 +74,8 @@ MODEL_CAPABILITIES_DESC = {
     ),
 }
 
-# OpenRouter/Custom API Fallback Behavior:
-# When only OpenRouter or Custom API is configured (no native API keys), these
+# Requesty/OpenRouter/Custom API Fallback Behavior:
+# When only Requesty, OpenRouter or Custom API is configured (no native API keys), these
 # model aliases automatically map to equivalent models through the proxy:
 # - "flash" → "google/gemini-2.5-flash-preview-05-20" (via OpenRouter)
 # - "pro" → "google/gemini-2.5-pro-preview-06-05" (via OpenRouter)
