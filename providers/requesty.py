@@ -84,6 +84,8 @@ class RequestyProvider(OpenAICompatibleProvider):
         "mistral-large": "mistral/mistral-large-latest",
         "gemini-pro": "google/gemini-2.5-pro-preview-06-05",
         "gemini-flash": "google/gemini-2.5-flash-preview-05-20",
+        "flash": "google/gemini-2.5-flash-preview-05-20",
+        "pro": "google/gemini-2.5-pro-preview-06-05",
     }
 
     def __init__(self, api_key: str, **kwargs):
