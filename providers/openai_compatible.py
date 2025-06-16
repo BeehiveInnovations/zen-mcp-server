@@ -1,5 +1,6 @@
 """Base class for OpenAI-compatible API providers."""
 
+import base64
 import ipaddress
 import logging
 import os
@@ -229,6 +230,7 @@ class OpenAICompatibleProvider(ModelProvider):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_output_tokens: Optional[int] = None,
+        images: Optional[list[str]] = None,
         **kwargs,
     ) -> ModelResponse:
         """Generate content using the OpenAI-compatible API.
@@ -255,7 +257,32 @@ class OpenAICompatibleProvider(ModelProvider):
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+
+        # Prepare user message with text and potentially images
+        user_content = []
+        user_content.append({"type": "text", "text": prompt})
+
+        # Add images if provided and model supports vision
+        if images and self._supports_vision(model_name):
+            for image_path in images:
+                try:
+                    image_content = self._process_image(image_path)
+                    if image_content:
+                        user_content.append(image_content)
+                except Exception as e:
+                    logging.warning(f"Failed to process image {image_path}: {e}")
+                    # Continue with other images and text
+                    continue
+        elif images and not self._supports_vision(model_name):
+            logging.warning(f"Model {model_name} does not support images, ignoring {len(images)} image(s)")
+
+        # Add user message
+        if len(user_content) == 1:
+            # Only text content, use simple string format for compatibility
+            messages.append({"role": "user", "content": prompt})
+        else:
+            # Text + images, use content array format
+            messages.append({"role": "user", "content": user_content})
 
         # Prepare completion parameters
         completion_params = {
@@ -424,3 +451,66 @@ class OpenAICompatibleProvider(ModelProvider):
         Default is False for OpenAI-compatible providers.
         """
         return False
+
+    def _supports_vision(self, model_name: str) -> bool:
+        """Check if the model supports vision (image processing).
+
+        Default implementation for OpenAI-compatible providers.
+        Subclasses should override with specific model support.
+        """
+        # Common vision-capable models - only include models that actually support images
+        vision_models = {
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4-turbo",
+            "gpt-4-vision-preview",
+            "gpt-4.1-2025-04-14",  # GPT-4.1 supports vision
+            "o3",
+            "o3-mini",
+            "o3-pro",
+            "o4-mini",
+            "o4-mini-high",
+            # Note: Claude models would be handled by a separate provider
+        }
+        supports = model_name.lower() in vision_models
+        logging.debug(f"Model '{model_name}' vision support: {supports}")
+        return supports
+
+    def _process_image(self, image_path: str) -> Optional[dict]:
+        """Process an image for OpenAI-compatible API."""
+        try:
+            if image_path.startswith("data:image/"):
+                # Handle data URL: data:image/png;base64,iVBORw0...
+                return {"type": "image_url", "image_url": {"url": image_path}}
+            else:
+                # Handle file path - translate for Docker environment
+                from utils.file_utils import translate_path_for_environment
+
+                translated_path = translate_path_for_environment(image_path)
+                logging.debug(f"Translated image path from '{image_path}' to '{translated_path}'")
+
+                if not os.path.exists(translated_path):
+                    logging.warning(f"Image file not found: {translated_path} (original: {image_path})")
+                    return None
+
+                # Use translated path for all subsequent operations
+                image_path = translated_path
+
+                # Detect MIME type from file extension using centralized mappings
+                from utils.file_types import get_image_mime_type
+
+                ext = os.path.splitext(image_path)[1].lower()
+                mime_type = get_image_mime_type(ext)
+                logging.debug(f"Processing image '{image_path}' with extension '{ext}' as MIME type '{mime_type}'")
+
+                # Read and encode the image
+                with open(image_path, "rb") as f:
+                    image_data = base64.b64encode(f.read()).decode()
+
+                # Create data URL for OpenAI API
+                data_url = f"data:{mime_type};base64,{image_data}"
+
+                return {"type": "image_url", "image_url": {"url": data_url}}
+        except Exception as e:
+            logging.error(f"Error processing image {image_path}: {e}")
+            return None

@@ -112,6 +112,11 @@ docker logs zen-mcp-redis
 
 ### Testing
 
+Simulation tests are available to test the MCP server in a 'live' scenario, using your configured
+API keys to ensure the models are working and the server is able to communicate back and forth. 
+IMPORTANT: Any time any code is changed or updated, you MUST first ./run-server.sh to restart it once OR
+pass `--rebuild` to the script below the first time so that it's able to restart and use the latest code.
+
 #### Run All Simulator Tests
 ```bash
 # Run the complete test suite

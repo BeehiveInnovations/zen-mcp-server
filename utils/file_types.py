@@ -88,8 +88,9 @@ TEXT_DATA = {
     ".lock",  # Lock files
 }
 
-# Image file extensions
-IMAGES = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".ico", ".tiff", ".tif"}
+# Image file extensions - limited to what AI models actually support
+# Based on OpenAI and Gemini supported formats: PNG, JPEG, GIF, WebP
+IMAGES = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 # Binary executable and library extensions
 BINARIES = {
@@ -240,3 +241,30 @@ def get_token_estimation_ratio(file_path: str) -> float:
 
     extension = Path(file_path).suffix.lower()
     return TOKEN_ESTIMATION_RATIOS.get(extension, 3.5)  # Conservative default
+
+
+# MIME type mappings for image files - limited to what AI models actually support
+# Based on OpenAI and Gemini supported formats: PNG, JPEG, GIF, WebP
+IMAGE_MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
+
+def get_image_mime_type(extension: str) -> str:
+    """
+    Get the MIME type for an image file extension.
+
+    Args:
+        extension: File extension (with or without leading dot)
+
+    Returns:
+        MIME type string (default: image/jpeg for unknown extensions)
+    """
+    if not extension.startswith("."):
+        extension = "." + extension
+    extension = extension.lower()
+    return IMAGE_MIME_TYPES.get(extension, "image/jpeg")
