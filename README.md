@@ -81,13 +81,18 @@ Claude is brilliant, but sometimes you need:
 - **Dynamic collaboration** - Models can request additional context and follow-up replies from Claude mid-analysis
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
 - **[Bypass MCP's token limits](docs/advanced-usage.md#working-with-large-prompts)** - Work around MCP's 25K limit automatically
+- **[Context revival across sessions](docs/context-revival.md)** - Continue conversations even after Claude's context resets, with other models maintaining full history
 
-## Pro Tip!
-**This powerful feature cannot be highlighted enough**:
-> The most profound side-efect of this _continuation_ system is that even AFTER Claude's context resets or
+## Pro Tip: Context Revival
+
+**This is an extremely powerful feature that cannot be highlighted enough**:
+
+> The most amazing side-effect of this _conversation continuation_ system is that even AFTER Claude's context resets or
 > compacts, since the continuation info is kept within MCP's memory, you can ask it to _continue_ discussing 
-> the plan with `o3` and it will suddenly revive Claude because O3 instead would know what was being talked about and 
+> the plan with `o3`, and it will suddenly revive Claude because O3 would know what was being talked about and 
 > relay this back in a way that re-ignites Claude's understanding.
+
+**[📖 Read the complete technical deep-dive on how this revolutionary system works](docs/context-revival.md)**
 
 This server orchestrates multiple AI models as your development team, with Claude automatically selecting the best model for each task or allowing you to choose specific models for different strengths.
 

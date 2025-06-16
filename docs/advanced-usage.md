@@ -8,6 +8,7 @@ This guide covers advanced features, configuration options, and workflows for po
 - [Model Usage Restrictions](#model-usage-restrictions)
 - [Thinking Modes](#thinking-modes)
 - [Tool Parameters](#tool-parameters)
+- [Context Revival: AI Memory Beyond Context Limits](#context-revival-ai-memory-beyond-context-limits)
 - [Collaborative Workflows](#collaborative-workflows)
 - [Working with Large Prompts](#working-with-large-prompts)
 - [Web Search Integration](#web-search-integration)
@@ -275,6 +276,33 @@ All tools that work with files support **both individual files and entire direct
 "Use pro to modernize this JavaScript code following examples/modern-patterns.js"
 "Refactor src/ for better organization, focus on maintainability and readability"
 ```
+
+## Context Revival: AI Memory Beyond Context Limits
+
+**The Zen MCP Server's most revolutionary feature** is its ability to maintain conversation context even after Claude's memory resets. This enables truly persistent AI collaboration across multiple sessions and context boundaries.
+
+### 🔥 **The Breakthrough**
+
+Even when Claude's context resets or compacts, conversations can continue seamlessly because other models (O3, Gemini) have access to the complete conversation history stored in Redis and can "remind" Claude of everything that was discussed.
+
+### Key Benefits
+
+- **Persistent conversations** across Claude's context resets
+- **Cross-tool continuation** with full context preservation
+- **Multi-session workflows** that maintain complete history
+- **True AI orchestration** where models can build on each other's work
+- **Seamless handoffs** between different tools and models
+
+### Quick Example
+
+```
+Session 1: "Design a RAG system with gemini pro"
+[Claude's context resets]
+Session 2: "Continue our RAG discussion with o3"
+→ O3 receives the full history and reminds Claude of everything discussed
+```
+
+**📖 [Read the complete Context Revival guide](context-revival.md)** for detailed examples, technical architecture, configuration options, and best practices.
 
 ## Collaborative Workflows
 
