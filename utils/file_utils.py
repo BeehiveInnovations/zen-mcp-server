@@ -196,9 +196,7 @@ def detect_file_type(file_path: str) -> str:
     """
     Detect file type for appropriate processing strategy.
 
-    NOTE: This function is currently not used for line number auto-detection
-    due to backward compatibility requirements. It is intended for future
-    features requiring specific file type handling (e.g., image processing,
+    This function is intended for specific file type handling (e.g., image processing,
     binary file analysis, or enhanced file filtering).
 
     Args:
@@ -247,7 +245,7 @@ def should_add_line_numbers(file_path: str, include_line_numbers: Optional[bool]
     if include_line_numbers is not None:
         return include_line_numbers
 
-    # Default: DO NOT add line numbers (backwards compatibility)
+    # Default: DO NOT add line numbers
     # Tools that want line numbers must explicitly request them
     return False
 
@@ -1026,7 +1024,7 @@ def read_file_safely(file_path: str, max_size: int = 10 * 1024 * 1024) -> Option
         return None
 
 
-def check_total_file_size(files: list[str], model_name: Optional[str] = None) -> Optional[dict]:
+def check_total_file_size(files: list[str], model_name: str) -> Optional[dict]:
     """
     Check if total file sizes would exceed token threshold before embedding.
 
@@ -1034,9 +1032,12 @@ def check_total_file_size(files: list[str], model_name: Optional[str] = None) ->
     No partial inclusion - either all files fit or request is rejected.
     This forces Claude to make better file selection decisions.
 
+    This function MUST be called with the effective model name (after resolution).
+    It should never receive 'auto' or None - model resolution happens earlier.
+
     Args:
         files: List of file paths to check
-        model_name: Model name for context-aware thresholds, or None for default
+        model_name: The resolved model name for context-aware thresholds (required)
 
     Returns:
         Dict with `code_too_large` response if too large, None if acceptable
@@ -1044,17 +1045,14 @@ def check_total_file_size(files: list[str], model_name: Optional[str] = None) ->
     if not files:
         return None
 
-    # Get model-specific token allocation (dynamic thresholds)
-    if not model_name:
-        from config import DEFAULT_MODEL
+    # Validate we have a proper model name (not auto or None)
+    if not model_name or model_name.lower() == "auto":
+        raise ValueError(
+            f"check_total_file_size called with unresolved model: '{model_name}'. "
+            "Model must be resolved before file size checking."
+        )
 
-        model_name = DEFAULT_MODEL
-
-    # Handle auto mode gracefully
-    if model_name.lower() == "auto":
-        from providers.registry import ModelProviderRegistry
-
-        model_name = ModelProviderRegistry.get_preferred_fallback_model()
+    logger.info(f"File size check: Using model '{model_name}' for token limit calculation")
 
     from utils.model_context import ModelContext
 
@@ -1091,6 +1089,7 @@ def check_total_file_size(files: list[str], model_name: Optional[str] = None) ->
                 "file_count": file_count,
                 "threshold_percent": threshold_percent,
                 "model_context_window": context_window,
+                "model_name": model_name,
                 "instructions": "Reduce file selection and try again - all files must fit within budget",
             },
         }

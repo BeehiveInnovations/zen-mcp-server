@@ -290,23 +290,25 @@ class TestGenerationTool(BaseTool):
         continuation_id = getattr(request, "continuation_id", None)
 
         # Get model context for token budget calculation
-        model_name = getattr(self, "_current_model_name", None)
         available_tokens = None
 
-        if model_name:
+        if hasattr(self, "_model_context") and self._model_context:
             try:
-                provider = self.get_model_provider(model_name)
-                capabilities = provider.get_capabilities(model_name)
+                capabilities = self._model_context.capabilities
                 # Use 75% of context for content (code + test examples), 25% for response
                 available_tokens = int(capabilities.context_window * 0.75)
                 logger.debug(
-                    f"[TESTGEN] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {model_name}"
+                    f"[TESTGEN] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {self._model_context.model_name}"
                 )
             except Exception as e:
                 # Fallback to conservative estimate
-                logger.warning(f"[TESTGEN] Could not get model capabilities for {model_name}: {e}")
+                logger.warning(f"[TESTGEN] Could not get model capabilities: {e}")
                 available_tokens = 120000  # Conservative fallback
                 logger.debug(f"[TESTGEN] Using fallback token budget: {available_tokens:,} tokens")
+        else:
+            # No model context available (shouldn't happen in normal flow)
+            available_tokens = 120000  # Conservative fallback
+            logger.debug(f"[TESTGEN] No model context, using fallback token budget: {available_tokens:,} tokens")
 
         # Process test examples first to determine token allocation
         test_examples_content = ""

@@ -425,15 +425,39 @@ class TestComprehensive(unittest.TestCase):
                         files=["/tmp/test.py"], prompt="Test prompt", test_examples=["/tmp/example.py"]
                     )
 
-                    # This should trigger token budget calculation
-                    import asyncio
+                    # Mock the provider registry to return a provider with 200k context
+                    from unittest.mock import MagicMock
 
-                    asyncio.run(tool.prepare_prompt(request))
+                    from providers.base import ModelCapabilities, ProviderType
 
-                    # Verify test examples got 25% of 150k tokens (75% of 200k context)
-                    mock_process.assert_called_once()
-                    call_args = mock_process.call_args[0]
-                    assert call_args[2] == 150000  # 75% of 200k context window
+                    mock_provider = MagicMock()
+                    mock_capabilities = ModelCapabilities(
+                        provider=ProviderType.OPENAI,
+                        model_name="o3",
+                        friendly_name="OpenAI",
+                        context_window=200000,
+                        supports_images=False,
+                        supports_extended_thinking=True,
+                    )
+
+                    with patch("providers.registry.ModelProviderRegistry.get_provider_for_model") as mock_get_provider:
+                        mock_provider.get_capabilities.return_value = mock_capabilities
+                        mock_get_provider.return_value = mock_provider
+
+                        # Set up model context to simulate normal execution flow
+                        from utils.model_context import ModelContext
+
+                        tool._model_context = ModelContext("o3")  # Model with 200k context window
+
+                        # This should trigger token budget calculation
+                        import asyncio
+
+                        asyncio.run(tool.prepare_prompt(request))
+
+                        # Verify test examples got 25% of 150k tokens (75% of 200k context)
+                        mock_process.assert_called_once()
+                        call_args = mock_process.call_args[0]
+                        assert call_args[2] == 150000  # 75% of 200k context window
 
     @pytest.mark.asyncio
     async def test_continuation_support(self, tool, temp_files):

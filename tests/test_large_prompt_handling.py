@@ -91,22 +91,35 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_chat_prompt_file_handling(self, temp_prompt_file):
         """Test that chat tool correctly handles prompt.txt files with reasonable size."""
+        from tests.mock_helpers import create_mock_provider
+
         tool = ChatTool()
         # Use a smaller prompt that won't exceed limit when combined with system prompt
         reasonable_prompt = "This is a reasonable sized prompt for testing prompt.txt file handling."
 
-        # Mock the model
-        with patch.object(tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="google")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = MagicMock(
-                content="Processed prompt from file",
-                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
-                metadata={"finish_reason": "STOP"},
-            )
+        # Mock the model with proper capabilities and ModelContext
+        with (
+            patch.object(tool, "get_model_provider") as mock_get_provider,
+            patch("utils.model_context.ModelContext") as mock_model_context_class,
+        ):
+
+            mock_provider = create_mock_provider(model_name="gemini-2.5-flash-preview-05-20", context_window=1_048_576)
+            mock_provider.generate_content.return_value.content = "Processed prompt from file"
             mock_get_provider.return_value = mock_provider
+
+            # Mock ModelContext to avoid the comparison issue
+            from utils.model_context import TokenAllocation
+
+            mock_model_context = MagicMock()
+            mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+            mock_model_context.calculate_token_allocation.return_value = TokenAllocation(
+                total_tokens=1_048_576,
+                content_tokens=838_861,
+                response_tokens=209_715,
+                file_tokens=335_544,
+                history_tokens=335_544,
+            )
+            mock_model_context_class.return_value = mock_model_context
 
             # Mock read_file_content to avoid security checks
             with patch("tools.base.read_file_content") as mock_read_file:
@@ -358,20 +371,33 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_prompt_file_read_error(self):
         """Test handling when prompt.txt can't be read."""
+        from tests.mock_helpers import create_mock_provider
+
         tool = ChatTool()
         bad_file = "/nonexistent/prompt.txt"
 
-        with patch.object(tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="google")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = MagicMock(
-                content="Success",
-                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
-                metadata={"finish_reason": "STOP"},
-            )
+        with (
+            patch.object(tool, "get_model_provider") as mock_get_provider,
+            patch("utils.model_context.ModelContext") as mock_model_context_class,
+        ):
+
+            mock_provider = create_mock_provider(model_name="gemini-2.5-flash-preview-05-20", context_window=1_048_576)
+            mock_provider.generate_content.return_value.content = "Success"
             mock_get_provider.return_value = mock_provider
+
+            # Mock ModelContext to avoid the comparison issue
+            from utils.model_context import TokenAllocation
+
+            mock_model_context = MagicMock()
+            mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+            mock_model_context.calculate_token_allocation.return_value = TokenAllocation(
+                total_tokens=1_048_576,
+                content_tokens=838_861,
+                response_tokens=209_715,
+                file_tokens=335_544,
+                history_tokens=335_544,
+            )
+            mock_model_context_class.return_value = mock_model_context
 
             # Should continue with empty prompt when file can't be read
             result = await tool.execute({"prompt": "", "files": [bad_file]})

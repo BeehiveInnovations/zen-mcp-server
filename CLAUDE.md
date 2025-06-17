@@ -169,6 +169,7 @@ Available simulator tests include:
 - `testgen_validation` - TestGen tool validation with specific test function
 - `refactor_validation` - Refactor tool validation with codesmells
 - `conversation_chain_validation` - Conversation chain and threading validation
+- `consensus_stance` - Consensus tool validation with stance steering (for/against/neutral)
 
 **Note**: All simulator tests should be run individually for optimal testing and better error isolation.
 

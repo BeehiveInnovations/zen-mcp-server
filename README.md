@@ -13,19 +13,19 @@ problem-solving, and collaborative development.
 
 **Features true AI orchestration with conversations that continue across tasks** - Give Claude a complex
 task and let it orchestrate between models automatically. Claude stays in control, performs the actual work, 
-but gets perspectives from the best AI for each subtask. With tools like [`analyze`](#6-analyze---smart-file-analysis) for 
-understanding codebases, [`codereview`](#3-codereview---professional-code-review) for audits, [`refactor`](#7-refactor---intelligent-code-refactoring) for 
-improving code structure, [`debug`](#5-debug---expert-debugging-assistant) for solving complex problems, and [`precommit`](#4-precommit---pre-commit-validation) for 
+but gets perspectives from the best AI for each subtask. With tools like [`analyze`](#7-analyze---smart-file-analysis) for 
+understanding codebases, [`codereview`](#4-codereview---professional-code-review) for audits, [`refactor`](#8-refactor---intelligent-code-refactoring) for 
+improving code structure, [`debug`](#6-debug---expert-debugging-assistant) for solving complex problems, and [`precommit`](#5-precommit---pre-commit-validation) for 
 validating changes, Claude can switch between different tools _and_ models mid-conversation, 
 with context carrying forward seamlessly.
 
 **Example Workflow - Claude Code:**
 1. Performs its own reasoning
-2. Uses Gemini Pro to deeply [`analyze`](#6-analyze---smart-file-analysis) the code in question for a second opinion
+2. Uses Gemini Pro to deeply [`analyze`](#7-analyze---smart-file-analysis) the code in question for a second opinion
 3. Switches to O3 to continue [`chatting`](#1-chat---general-development-chat--collaborative-thinking) about its findings 
 4. Uses Flash to evaluate formatting suggestions from O3
 5. Performs the actual work after taking in feedback from all three
-6. Returns to Pro for a [`precommit`](#4-precommit---pre-commit-validation) review
+6. Returns to Pro for a [`precommit`](#5-precommit---pre-commit-validation) review
 
 All within a single conversation thread! Gemini Pro in step 6 _knows_ what was recommended by O3 in step 3! Taking that context
 and review into consideration to aid with its pre-commit review.
@@ -48,13 +48,14 @@ and review into consideration to aid with its pre-commit review.
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
   - [`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) - Extended reasoning
-  - [`codereview`](#3-codereview---professional-code-review) - Code review
-  - [`precommit`](#4-precommit---pre-commit-validation) - Pre-commit validation
-  - [`debug`](#5-debug---expert-debugging-assistant) - Debugging help
-  - [`analyze`](#6-analyze---smart-file-analysis) - File analysis
-  - [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
-  - [`tracer`](#8-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
-  - [`testgen`](#9-testgen---comprehensive-test-generation) - Test generation with edge cases
+  - [`consensus`](#3-consensus---multi-model-perspective-gathering) - Multi-model consensus analysis
+  - [`codereview`](#4-codereview---professional-code-review) - Code review
+  - [`precommit`](#5-precommit---pre-commit-validation) - Pre-commit validation
+  - [`debug`](#6-debug---expert-debugging-assistant) - Debugging help
+  - [`analyze`](#7-analyze---smart-file-analysis) - File analysis
+  - [`refactor`](#8-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
+  - [`tracer`](#9-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
+  - [`testgen`](#10-testgen---comprehensive-test-generation) - Test generation with edge cases
   - [`your custom tool`](#add-your-own-tools) - Create custom tools for specialized workflows
 
 - **Advanced Usage**
@@ -72,9 +73,10 @@ Claude is brilliant, but sometimes you need:
 - **Automatic model selection** - Claude picks the right model for each task (or you can specify)
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
 - **A second opinion** on complex architectural decisions - augment Claude's thinking with perspectives from Gemini Pro, O3, or [dozens of other models via custom endpoints](docs/custom_models.md) ([`thinkdeep`](#2-thinkdeep---extended-reasoning-partner))
-- **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#3-codereview---professional-code-review))
-- **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#4-precommit---pre-commit-validation))
-- **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#5-debug---expert-debugging-assistant))
+- **Get multiple expert opinions** - Have different AI models debate your ideas (some supporting, some critical) to help you make better decisions ([`consensus`](#3-consensus---multi-model-perspective-gathering))
+- **Professional code reviews** with actionable feedback across entire repositories ([`codereview`](#4-codereview---professional-code-review))
+- **Pre-commit validation** with deep analysis using the best model for the job ([`precommit`](#5-precommit---pre-commit-validation))
+- **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#6-debug---expert-debugging-assistant))
 - **Extended context windows beyond Claude's limits** - Delegate analysis to Gemini (1M tokens) or O3 (200K tokens) for entire codebases, large datasets, or comprehensive documentation
 - **Model-specific strengths** - Extended thinking with Gemini Pro, fast iteration with Flash, strong reasoning with O3, local privacy with Ollama
 - **Local model support** - Run models like Llama 3.2 locally via Ollama, vLLM, or LM Studio for privacy and cost control
@@ -261,6 +263,7 @@ Just ask Claude naturally:
 **Quick Tool Selection Guide:**
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
 - **Need deeper thinking?** → `thinkdeep` (extends analysis, finds edge cases)
+- **Need multiple perspectives?** → `consensus` (get diverse expert opinions on proposals and decisions)
 - **Code needs review?** → `codereview` (bugs, security, performance issues)
 - **Pre-commit validation?** → `precommit` (validate git changes before committing)
 - **Something's broken?** → `debug` (root cause analysis, error tracing)
@@ -285,15 +288,16 @@ Just ask Claude naturally:
 **Tools Overview:**
 1. [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking and development conversations
 2. [`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) - Extended reasoning and problem-solving
-3. [`codereview`](#3-codereview---professional-code-review) - Professional code review with severity levels
-4. [`precommit`](#4-precommit---pre-commit-validation) - Validate git changes before committing
-5. [`debug`](#5-debug---expert-debugging-assistant) - Root cause analysis and debugging
-6. [`analyze`](#6-analyze---smart-file-analysis) - General-purpose file and code analysis
-7. [`refactor`](#7-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
-8. [`tracer`](#8-tracer---static-code-analysis-prompt-generator) - Static code analysis prompt generator for call-flow mapping
-9. [`testgen`](#9-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
-10. [`listmodels`](#10-listmodels---list-available-models) - Display all available AI models organized by provider
-11. [`version`](#11-version---server-information) - Get server version and configuration
+3. [`consensus`](#3-consensus---multi-model-perspective-gathering) - Multi-model consensus analysis with stance steering
+4. [`codereview`](#4-codereview---professional-code-review) - Professional code review with severity levels
+5. [`precommit`](#5-precommit---pre-commit-validation) - Validate git changes before committing
+6. [`debug`](#6-debug---expert-debugging-assistant) - Root cause analysis and debugging
+7. [`analyze`](#7-analyze---smart-file-analysis) - General-purpose file and code analysis
+8. [`refactor`](#8-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
+9. [`tracer`](#9-tracer---static-code-analysis-prompt-generator) - Static code analysis prompt generator for call-flow mapping
+10. [`testgen`](#10-testgen---comprehensive-test-generation) - Comprehensive test generation with edge case coverage
+11. [`listmodels`](#11-listmodels---list-available-models) - Display all available AI models organized by provider
+12. [`version`](#12-version---server-information) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 **Your thinking partner - bounce ideas, get second opinions, brainstorm collaboratively**
@@ -307,6 +311,7 @@ Chat with zen and pick the best model for this job. I need to pick between Redis
 and I need an expert opinion for the project I'm working on. Get a good idea of what the project does, pick one of the two options
 and then debate with the other models to give me a final verdict
 ```
+
 
 **Key Features:**
 - Collaborative thinking partner for your analysis and planning
@@ -345,7 +350,79 @@ with the best architecture for my project
 - **Enhanced Critical Evaluation (v2.10.0)**: After Gemini's analysis, Claude is prompted to critically evaluate the suggestions, consider context and constraints, identify risks, and synthesize a final recommendation - ensuring a balanced, well-considered solution
 - **Web search capability**: When enabled (default: true), identifies areas where current documentation or community solutions would strengthen the analysis and suggests specific searches for Claude
 
-### 3. `codereview` - Professional Code Review  
+### 3. `consensus` - Multi-Model Perspective Gathering
+**Get diverse expert opinions from multiple AI models on technical proposals and decisions**
+
+**Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for complex architectural decisions or `max` for critical strategic choices requiring comprehensive analysis.
+
+**Model Recommendation:** Consensus tool uses extended reasoning models by default, making it ideal for complex decision-making scenarios that benefit from multiple perspectives and deep analysis.
+
+#### How It Works:
+The consensus tool orchestrates multiple AI models to provide diverse perspectives on your proposals:
+1. **Assign stances**: Each model can take a specific viewpoint (supportive, critical, or neutral)
+2. **Gather opinions**: Models analyze your proposal from their assigned perspective with built-in common-sense guardrails
+3. **Synthesize results**: Claude combines all perspectives into a balanced recommendation
+4. **Natural language**: Use simple descriptions like "supportive", "critical", or "against" - the tool handles synonyms automatically
+
+#### Example Prompts:
+
+**For/Against Analysis:**
+```
+Use zen consensus with flash taking a supportive stance and pro being critical to evaluate whether 
+we should migrate from REST to GraphQL for our API
+```
+
+**Multi-Model Technical Decision:**
+```
+Get consensus from o3, flash, and pro on our new authentication architecture. Have o3 focus on 
+security implications, flash on implementation speed, and pro stay neutral for overall assessment
+```
+
+**Natural Language Stance Assignment:**
+```
+Use consensus tool with gemini being "for" the proposal and grok being "against" to debate 
+whether we should adopt microservices architecture
+```
+
+**Key Features:**
+- **Stance steering**: Assign specific perspectives (for/against/neutral) to each model with intelligent synonym handling
+- **Custom stance prompts**: Provide specific instructions for how each model should approach the analysis
+- **Ethical guardrails**: Models will refuse to support truly bad ideas regardless of assigned stance
+- **Unknown stance handling**: Invalid stances automatically default to neutral with warning
+- **Natural language support**: Use terms like "supportive", "critical", "oppose", "favor" - all handled intelligently
+- **Sequential processing**: Reliable execution avoiding MCP protocol issues
+- **Focus areas**: Specify particular aspects to emphasize (e.g., 'security', 'performance', 'user experience')
+- **File context support**: Include relevant files for informed decision-making
+- **Image support**: Analyze architectural diagrams, UI mockups, or design documents
+- **Conversation continuation**: Build on previous consensus analysis with additional rounds
+- **Web search capability**: Enhanced analysis with current best practices and documentation
+
+**Parameters:**
+- `prompt`: Detailed description of the proposal or decision to analyze
+- `models`: List of model configurations with optional stance and custom instructions
+- `files`: Context files for informed analysis (absolute paths)
+- `images`: Visual references like diagrams or mockups
+- `focus_areas`: Specific aspects to emphasize
+- `temperature`: Control consistency (default: 0.2 for stable consensus)
+- `thinking_mode`: Analysis depth (minimal/low/medium/high/max)
+- `use_websearch`: Enable research for enhanced analysis (default: true)
+- `continuation_id`: Continue previous consensus discussions
+
+**Example Natural Language Model Specifications:**
+```json
+[
+  {"model": "o3", "stance": "for", "stance_prompt": "Focus on technical benefits and implementation feasibility"},
+  {"model": "flash", "stance": "against", "stance_prompt": "Identify risks, costs, and potential downsides"}, 
+  {"model": "pro", "stance": "neutral"}
+]
+```
+
+**Or simply use natural language:**
+```
+"Have gemini support the idea, grok oppose it, and flash stay neutral"
+```
+
+### 4. `codereview` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for security-critical code (worth the extra tokens) or `low` for quick style checks (saves ~6k tokens).
@@ -362,6 +439,18 @@ Perform a codereview with gemini pro and review auth.py for security issues and 
 I need an actionable plan but break it down into smaller quick-wins that we can implement and test rapidly 
 ```
 
+### Pro Tip
+
+**You can start more than _one_ codereview sessions with Claude**:
+
+```
+Start separate sub-tasks for codereview one with o3 finding critical issues and one with flash finding low priority issues
+and quick-wins and give me the final single combined review highlighting only the critical issues 
+```
+
+The above prompt will simultaneously run two separate `codereview` tools with two separate models and combine the output
+into a single summary for you to consume.
+
 **Key Features:**
 - Issues prioritized by severity (🔴 CRITICAL → 🟢 LOW)
 - Supports specialized reviews: security, performance, quick
@@ -369,7 +458,7 @@ I need an actionable plan but break it down into smaller quick-wins that we can 
 - Filters by severity: `"Get gemini to review auth/ - only report critical vulnerabilities"`
 - **Image support**: Review code from screenshots, error dialogs, or visual bug reports: `"Review this error screenshot and the related auth.py file for potential security issues"`
 
-### 4. `precommit` - Pre-Commit Validation
+### 5. `precommit` - Pre-Commit Validation
 **Comprehensive review of staged/unstaged git changes across multiple repositories**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` or `max` for critical releases when thorough validation justifies the token cost.
@@ -415,7 +504,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - `severity_filter`: Filter by issue severity
 - `max_depth`: How deep to search for nested repos
 - `images`: Screenshots of requirements, design mockups, or error states for validation context
-### 5. `debug` - Expert Debugging Assistant
+### 6. `debug` - Expert Debugging Assistant
 **Root cause analysis for complex problems**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for tricky bugs (investment in finding root cause) or `low` for simple errors (save tokens).
@@ -437,7 +526,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - Can request additional context when needed for thorough analysis
 - **Image support**: Include error screenshots, stack traces, console output: `"Debug this error using gemini with the stack trace screenshot and the failing test.py"`
 - **Web search capability**: When enabled (default: true), identifies when searching for error messages, known issues, or documentation would help solve the problem and recommends specific searches for Claude
-### 6. `analyze` - Smart File Analysis
+### 7. `analyze` - Smart File Analysis
 **General-purpose code understanding and exploration**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for architecture analysis (comprehensive insights worth the cost) or `low` for quick file overviews (save ~6k tokens).
@@ -458,7 +547,7 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - **Image support**: Analyze architecture diagrams, UML charts, flowcharts: `"Analyze this system diagram with gemini to understand the data flow and identify bottlenecks"`
 - **Web search capability**: When enabled with `use_websearch` (default: true), the model can request Claude to perform web searches and share results back to enhance analysis with current documentation, design patterns, and best practices
 
-### 7. `refactor` - Intelligent Code Refactoring
+### 8. `refactor` - Intelligent Code Refactoring
 **Comprehensive refactoring analysis with top-down decomposition strategy**
 
 **Thinking Mode:** Default is `medium` (8,192 tokens). Use `high` for complex legacy systems (worth the investment for thorough refactoring plans) or `max` for extremely complex codebases requiring deep analysis.
@@ -522,7 +611,7 @@ did *not* discover.
 
 **Progressive Analysis:** The tool performs a top-down check (worse → bad → better) and refuses to work on lower-priority issues if critical decomposition is needed first. It understands that massive files and classes create cognitive overload that must be addressed before detail work can be effective. Legacy code that cannot be safely decomposed is handled with higher tolerance thresholds and context-sensitive exemptions.
 
-### 8. `tracer` - Static Code Analysis Prompt Generator
+### 9. `tracer` - Static Code Analysis Prompt Generator
 **Creates detailed analysis prompts for call-flow mapping and dependency tracing**
 
 This is a specialized prompt-generation tool that creates structured analysis requests for Claude to perform comprehensive static code analysis. 
@@ -548,7 +637,7 @@ Claude can use to efficiently trace execution flows and map dependencies within 
 "Use zen to generate a dependency trace for the PaymentProcessor class to understand its relationships" -> uses `dependencies` mode
 ```
 
-### 9. `testgen` - Comprehensive Test Generation
+### 10. `testgen` - Comprehensive Test Generation
 **Generates thorough test suites with edge case coverage** based on existing code and test framework used.
 
 **Thinking Mode (Extended thinking models):** Default is `medium` (8,192 tokens). Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
@@ -577,13 +666,13 @@ suites that cover realistic failure scenarios and integration points that shorte
 - Specific code coverage - target specific functions/classes rather than testing everything
 - **Image support**: Test UI components, analyze visual requirements: `"Generate tests for this login form using the UI mockup screenshot"`
 
-### 10. `listmodels` - List Available Models
+### 11. `listmodels` - List Available Models
 ```
 "Use zen to list available models"
 ```
 Shows all configured providers, available models with aliases, and context windows.
 
-### 11. `version` - Server Information
+### 12. `version` - Server Information
 ```
 "Get zen to show its version"
 ```
@@ -596,13 +685,15 @@ Zen supports powerful structured prompts in Claude Code for quick access to tool
 
 #### Basic Tool Prompts
 - `/zen:thinkdeeper` - Use thinkdeep tool with auto-selected model
-- `/zen:chat` - Use chat tool with auto-selected model  
+- `/zen:chat` - Use chat tool with auto-selected model
+- `/zen:consensus` - Use consensus tool with auto-selected models
 - `/zen:codereview` - Use codereview tool with auto-selected model
 - `/zen:analyze` - Use analyze tool with auto-selected model
 
 #### Model-Specific Tool Prompts
 - `/zen:chat:o3 hello there` - Use chat tool specifically with O3 model
 - `/zen:thinkdeep:flash analyze this quickly` - Use thinkdeep tool with Flash for speed
+- `/zen:consensus:pro,flash:for,o3:against debate this proposal` - Use consensus with specific model stances
 - `/zen:codereview:pro review for security` - Use codereview tool with Gemini Pro for thorough analysis
 - `/zen:debug:grok help with this error` - Use debug tool with GROK model
 - `/zen:analyze:gemini-2.5-flash-preview-05-20 examine these files` - Use analyze tool with specific Gemini model
@@ -611,10 +702,12 @@ Zen supports powerful structured prompts in Claude Code for quick access to tool
 - `/zen:continue` - Continue previous conversation using chat tool
 - `/zen:chat:continue` - Continue previous conversation using chat tool specifically
 - `/zen:thinkdeep:continue` - Continue previous conversation using thinkdeep tool
+- `/zen:consensus:continue` - Continue previous consensus discussion with additional analysis
 - `/zen:analyze:continue` - Continue previous conversation using analyze tool
 
 #### Advanced Examples
 - `/zen:thinkdeeper:o3 check if the algorithm in @sort.py is performant and if there are alternatives we could explore`
+- `/zen:consensus:flash:for,o3:against,pro:neutral debate whether we should migrate to GraphQL for our API`
 - `/zen:precommit:pro confirm these changes match our requirements in COOL_FEATURE.md`
 - `/zen:testgen:flash write me tests for class ABC`
 - `/zen:refactor:local-llama propose a decomposition strategy, make a plan and save it in FIXES.md then share this with o3 to confirm along with large_file.swift`

@@ -884,7 +884,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                     history_parts.append("(No accessible files found)")
                     logger.debug(f"[FILES] No accessible files found from {len(files_to_include)} planned files")
             else:
-                # Fallback to original read_files function for backward compatibility
+                # Fallback to original read_files function
                 files_content = read_files_func(all_files)
                 if files_content:
                     # Add token validation for the combined file content
@@ -940,14 +940,10 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
         turn_header += ") ---"
         turn_parts.append(turn_header)
 
-        # Add files context if present - but just reference which files were used
-        # (the actual contents are already embedded above)
-        if turn.files:
-            turn_parts.append(f"Files used in this turn: {', '.join(turn.files)}")
-            turn_parts.append("")  # Empty line for readability
-
-        # Add the actual content
-        turn_parts.append(turn.content)
+        # Get tool-specific formatting if available
+        # This includes file references and the actual content
+        tool_formatted_content = _get_tool_formatted_content(turn)
+        turn_parts.extend(tool_formatted_content)
 
         # Calculate tokens for this turn
         turn_content = "\n".join(turn_parts)
@@ -1017,6 +1013,63 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     )
 
     return complete_history, total_conversation_tokens
+
+
+def _get_tool_formatted_content(turn: ConversationTurn) -> list[str]:
+    """
+    Get tool-specific formatting for a conversation turn.
+
+    This function attempts to use the tool's custom formatting method if available,
+    falling back to default formatting if the tool cannot be found or doesn't
+    provide custom formatting.
+
+    Args:
+        turn: The conversation turn to format
+
+    Returns:
+        list[str]: Formatted content lines for this turn
+    """
+    if turn.tool_name:
+        try:
+            # Dynamically import to avoid circular dependencies
+            from server import TOOLS
+
+            tool = TOOLS.get(turn.tool_name)
+            if tool and hasattr(tool, "format_conversation_turn"):
+                # Use tool-specific formatting
+                return tool.format_conversation_turn(turn)
+        except Exception as e:
+            # Log but don't fail - fall back to default formatting
+            logger.debug(f"[HISTORY] Could not get tool-specific formatting for {turn.tool_name}: {e}")
+
+    # Default formatting
+    return _default_turn_formatting(turn)
+
+
+def _default_turn_formatting(turn: ConversationTurn) -> list[str]:
+    """
+    Default formatting for conversation turns.
+
+    This provides the standard formatting when no tool-specific
+    formatting is available.
+
+    Args:
+        turn: The conversation turn to format
+
+    Returns:
+        list[str]: Default formatted content lines
+    """
+    parts = []
+
+    # Add files context if present
+    if turn.files:
+        parts.append(f"Files used in this turn: {', '.join(turn.files)}")
+        parts.append("")  # Empty line for readability
+
+    # Add the actual content
+    parts.append(turn.content)
+
+    return parts
 
 
 def _is_valid_uuid(val: str) -> bool:

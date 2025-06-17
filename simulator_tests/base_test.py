@@ -136,18 +136,23 @@ class Calculator:
 
             self.logger.debug(f"Calling MCP tool {tool_name} with proper initialization")
 
-            # Execute the command
+            # Execute the command with proper handling for async responses
+            # For consensus tool and other long-running tools, we need to ensure
+            # the subprocess doesn't close prematurely
             result = subprocess.run(
                 docker_cmd,
                 input=input_data,
                 text=True,
                 capture_output=True,
                 timeout=3600,  # 1 hour timeout
+                check=False,  # Don't raise on non-zero exit code
             )
 
             if result.returncode != 0:
-                self.logger.error(f"Docker exec failed: {result.stderr}")
-                return None, None
+                self.logger.error(f"Docker exec failed with return code {result.returncode}")
+                self.logger.error(f"Stderr: {result.stderr}")
+                # Still try to parse stdout as the response might have been written before the error
+                self.logger.debug(f"Attempting to parse stdout despite error: {result.stdout[:500]}")
 
             # Parse the response - look for the tool call response
             response_data = self._parse_mcp_response(result.stdout, expected_id=2)
@@ -191,7 +196,10 @@ class Calculator:
 
             # If we get here, log all responses for debugging
             self.logger.warning(f"No valid tool call response found for ID {expected_id}")
-            self.logger.debug(f"Full stdout: {stdout}")
+            self.logger.warning(f"Full stdout: {stdout}")
+            self.logger.warning(f"Total stdout lines: {len(lines)}")
+            for i, line in enumerate(lines[:10]):  # Log first 10 lines
+                self.logger.warning(f"Line {i}: {line[:100]}...")
             return None
 
         except json.JSONDecodeError as e:

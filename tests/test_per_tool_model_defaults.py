@@ -291,16 +291,22 @@ class TestFileContentPreparation:
             tool = ThinkDeepTool()
             tool._current_model_name = "auto"
 
+            # Set up model context to simulate normal execution flow
+            from utils.model_context import ModelContext
+
+            tool._model_context = ModelContext("gemini-2.5-pro-preview-06-05")
+
             # Call the method
             content, processed_files = tool._prepare_file_content_for_prompt(["/test/file.py"], None, "test")
 
-            # Check that it logged the correct message
-            debug_calls = [call for call in mock_logger.debug.call_args_list if "Auto mode detected" in str(call)]
+            # Check that it logged the correct message about using model context
+            debug_calls = [call for call in mock_logger.debug.call_args_list if "Using model context" in str(call)]
             assert len(debug_calls) > 0
             debug_message = str(debug_calls[0])
-            # Should use a model suitable for extended reasoning
-            assert "gemini-2.5-pro-preview-06-05" in debug_message or "pro" in debug_message
-            assert "extended_reasoning" in debug_message
+            # Should mention the model being used
+            assert "gemini-2.5-pro-preview-06-05" in debug_message
+            # Should mention file tokens (not content tokens)
+            assert "file tokens" in debug_message
 
 
 class TestProviderHelperMethods:

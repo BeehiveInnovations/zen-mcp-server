@@ -236,13 +236,7 @@ class Precommit(BaseTool):
         translated_path = translate_path_for_environment(request.path)
         translated_files = translate_file_paths(request.files)
 
-        # MCP boundary check - STRICT REJECTION (check original files before translation)
-        if request.files:
-            file_size_check = self.check_total_file_size(request.files)
-            if file_size_check:
-                from tools.models import ToolOutput
-
-                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
+        # File size validation happens at MCP boundary in server.py
 
         # Check if the path translation resulted in an error path
         if translated_path.startswith("/inaccessible/"):

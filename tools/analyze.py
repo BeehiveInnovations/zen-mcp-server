@@ -141,13 +141,7 @@ class AnalyzeTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # MCP boundary check - STRICT REJECTION
-        if request.files:
-            file_size_check = self.check_total_file_size(request.files)
-            if file_size_check:
-                from tools.models import ToolOutput
-
-                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
+        # File size validation happens at MCP boundary in server.py
 
         # Use centralized file processing logic
         continuation_id = getattr(request, "continuation_id", None)
