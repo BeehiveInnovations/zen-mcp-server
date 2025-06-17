@@ -383,6 +383,10 @@ security implications, flash on implementation speed, and pro stay neutral for o
 Use consensus tool with gemini being "for" the proposal and grok being "against" to debate 
 whether we should adopt microservices architecture
 ```
+```
+I want to work on module X and Y, unsure which is going to be more popular with users of my app. 
+Get a consensus from gemini supporting the idea for implementing X, grok opposing it, and flash staying neutral
+```
 
 **Key Features:**
 - **Stance steering**: Assign specific perspectives (for/against/neutral) to each model with intelligent synonym handling
@@ -407,20 +411,6 @@ whether we should adopt microservices architecture
 - `thinking_mode`: Analysis depth (minimal/low/medium/high/max)
 - `use_websearch`: Enable research for enhanced analysis (default: true)
 - `continuation_id`: Continue previous consensus discussions
-
-**Example Natural Language Model Specifications:**
-```json
-[
-  {"model": "o3", "stance": "for", "stance_prompt": "Focus on technical benefits and implementation feasibility"},
-  {"model": "flash", "stance": "against", "stance_prompt": "Identify risks, costs, and potential downsides"}, 
-  {"model": "pro", "stance": "neutral"}
-]
-```
-
-**Or simply use natural language:**
-```
-"Have gemini support the idea, grok oppose it, and flash stay neutral"
-```
 
 ### 4. `codereview` - Professional Code Review  
 **Comprehensive code analysis with prioritized feedback**
