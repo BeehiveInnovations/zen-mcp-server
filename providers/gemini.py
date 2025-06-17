@@ -307,7 +307,8 @@ class GeminiModelProvider(ModelProvider):
                 usage["input_tokens"] = metadata.prompt_token_count
             if hasattr(metadata, "candidates_token_count"):
                 usage["output_tokens"] = metadata.candidates_token_count
-            if "input_tokens" in usage and "output_tokens" in usage:
+            if ("input_tokens" in usage and "output_tokens" in usage and 
+                usage["input_tokens"] is not None and usage["output_tokens"] is not None):
                 usage["total_tokens"] = usage["input_tokens"] + usage["output_tokens"]
 
         return usage
