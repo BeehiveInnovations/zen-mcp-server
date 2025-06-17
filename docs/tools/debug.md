@@ -2,7 +2,8 @@
 
 **Root cause analysis for complex problems**
 
-The `debug` tool provides systematic debugging assistance with root cause analysis, hypothesis generation, and structured problem-solving approaches for complex technical issues.
+The `debug` tool provides systematic debugging assistance with root cause analysis, hypothesis generation, and 
+structured problem-solving approaches for complex technical issues.
 
 ## Thinking Mode
 
@@ -12,9 +13,15 @@ The `debug` tool provides systematic debugging assistance with root cause analys
 
 **Basic Usage:**
 ```
-"Use gemini to debug this TypeError: 'NoneType' object has no attribute 'split'"
-"Get gemini to debug why my API returns 500 errors with the full stack trace: [paste traceback]"
+Get gemini to debug why my API returns 400 errors randomly with the full stack trace: [paste traceback]
 ```
+
+## How It Works 
+
+Just because Claude gets to use a development partner doesn't mean it's off the hook! 
+Claude does the initial groundwork of investigation and then passes this on to the other model - just as a developer 
+would for a second opinion when involving another, with enough context. This results in a significant improvement in
+bug hunting and reduces the chance of wasting precious tokens back and forth.
 
 ## Key Features
 

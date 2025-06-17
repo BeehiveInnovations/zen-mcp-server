@@ -33,6 +33,9 @@ Available tests:
     openrouter_fallback         - OpenRouter fallback mechanism testing
     openrouter_models           - OpenRouter models availability testing
     token_allocation_validation - Token allocation and limits validation
+    testgen_validation          - TestGen tool validation with specific test function
+    refactor_validation         - Refactor tool validation with codesmells
+    debug_validation            - Debug tool validation with actual bugs
     conversation_chain_validation - Conversation chain continuity validation
 
 Examples:

@@ -14,22 +14,49 @@ from systemprompts import DEBUG_ISSUE_PROMPT
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+DEBUG_FIELD_DESCRIPTIONS = {
+    "prompt": (
+        "Issue description. Include what you can provide: "
+        "error messages, symptoms, when it occurs, steps to reproduce, environment details, "
+        "recent changes, and any other relevant information. Mention any previous attempts at fixing this issue, "
+        "including any past fix that was in place but has now regressed. "
+        "The more context available, the better the analysis. "
+        "SYSTEMATIC INVESTIGATION: Claude MUST begin by thinking hard and performing a thorough investigation using a systematic approach. "
+        "First understand the issue, find the code that may be causing it or code that is breaking, as well as any related code that could have caused this as a side effect. "
+        "Claude MUST maintain detailed investigation notes in a DEBUGGING_{issue_description}.md file within the project folder, "
+        "updating it as it performs step-by-step analysis of the code, trying to determine the actual root cause and understanding how a minimal, appropriate fix can be found. "
+        "This file MUST contain functions, methods, files visited OR determined to be part of the problem. Claude MUST update this and remove any references that it finds to be irrelevant during its investigation. "
+        "Once complete, Claude MUST provide Zen's debug tool with this file passed into the files parameter. "
+        "It is ESSENTIAL that this detailed work is performed by Claude before sharing all the relevant details with its development assistant. This will greatly help in zeroing in on the root cause."
+    ),
+    "findings": (
+        "Claude MUST first perform its own investigation, gather its findings and analysis. Include: steps taken to analyze the issue, "
+        "code patterns discovered, initial hypotheses formed, any relevant classes/functions/methods examined, "
+        "and any preliminary conclusions. This provides context for the assistant model's analysis."
+    ),
+    "files": (
+        "Essential files for debugging - ONLY include files that are directly related to the issue, "
+        "contain the problematic code, or are necessary for understanding the root cause. "
+        "This can include any relevant log files, error description documents, investigation documents, "
+        "claude's own findings as a document, related code that may help with analysis."
+        "DO NOT include every file scanned during investigation (must be absolute paths)."
+    ),
+    "error_context": "Stack trace, snippet from logs, or additional error context. For very large text you MUST instead"
+    "save the context as a temporary file within the project folder and share it as an absolute file path"
+    "reference to the files parameter.",
+    "images": "Optional images showing error screens, UI issues, logs displays, or visual debugging information",
+}
+
 
 class DebugIssueRequest(ToolRequest):
     """Request model for debug tool"""
 
-    prompt: str = Field(..., description="Error message, symptoms, or issue description")
-    error_context: Optional[str] = Field(None, description="Stack trace, logs, or additional error context")
-    files: Optional[list[str]] = Field(
-        None,
-        description="Files or directories that might be related to the issue (must be absolute paths)",
-    )
-    images: Optional[list[str]] = Field(
-        None,
-        description="Optional images showing error screens, UI issues, logs displays, or visual debugging information",
-    )
-    runtime_info: Optional[str] = Field(None, description="Environment, versions, or runtime information")
-    previous_attempts: Optional[str] = Field(None, description="What has been tried already")
+    prompt: str = Field(..., description=DEBUG_FIELD_DESCRIPTIONS["prompt"])
+    findings: Optional[str] = Field(None, description=DEBUG_FIELD_DESCRIPTIONS["findings"])
+    files: Optional[list[str]] = Field(None, description=DEBUG_FIELD_DESCRIPTIONS["files"])
+    error_context: Optional[str] = Field(None, description=DEBUG_FIELD_DESCRIPTIONS["error_context"])
+    images: Optional[list[str]] = Field(None, description=DEBUG_FIELD_DESCRIPTIONS["images"])
 
 
 class DebugIssueTool(BaseTool):
@@ -40,15 +67,35 @@ class DebugIssueTool(BaseTool):
 
     def get_description(self) -> str:
         return (
-            "DEBUG & ROOT CAUSE ANALYSIS - Expert debugging for complex issues with 1M token capacity. "
+            "DEBUG & ROOT CAUSE ANALYSIS - Expert debugging for complex issues with systematic investigation support. "
             "Use this when you need to debug code, find out why something is failing, identify root causes, "
             "trace errors, or diagnose issues. "
-            "IMPORTANT: Share diagnostic files liberally! The model can handle up to 1M tokens, so include: "
-            "large log files, full stack traces, memory dumps, diagnostic outputs, multiple related files, "
-            "entire modules, test results, configuration files - anything that might help debug the issue. "
-            "Claude should proactively use this tool whenever debugging is needed and share comprehensive "
-            "file paths rather than snippets. Include error messages, stack traces, logs, and ALL relevant "
-            "code files as absolute paths. The more context, the better the debugging analysis. "
+            "SYSTEMATIC INVESTIGATION WORKFLOW: "
+            "Claude MUST begin by thinking hard and performing a thorough investigation using a systematic approach. "
+            "First understand the issue, find the code that may be causing it or code that is breaking, as well as any related code that could have caused this as a side effect. "
+            "Claude MUST maintain detailed investigation notes while it performs its analysis, "
+            "updating it as it performs step-by-step analysis of the code, trying to determine the actual root cause and understanding how a minimal, appropriate fix can be found. "
+            "This file MUST contain functions, methods, files visited OR determined to be part of the problem. Claude MUST update this and remove any references that it finds to be irrelevant during its investigation. "
+            "Once complete, Claude MUST provide Zen's debug tool with this file passed into the files parameter. "
+            "1. INVESTIGATE SYSTEMATICALLY: Claude MUST think and use a methodical approach to trace through error reports, "
+            "examine code, and gather evidence step by step "
+            "2. DOCUMENT FINDINGS: Maintain detailed investigation notes to "
+            "keep the user informed during its initial investigation. This investigation MUST be shared with this tool for the assistant "
+            "to be able to help more effectively. "
+            "3. USE TRACER TOOL: For complex method calls, class references, or side effects use Zen's tracer tool and include its output as part of the "
+            "prompt or additional context "
+            "4. COLLECT EVIDENCE: Document important discoveries and validation attempts "
+            "5. PROVIDE COMPREHENSIVE FINDINGS: Pass complete findings to this tool for expert analysis "
+            "INVESTIGATION METHODOLOGY: "
+            "- Start with error messages/symptoms and work backwards to root cause "
+            "- Examine code flow and identify potential failure points "
+            "- Use tracer tool for complex method interactions and dependencies if and as needed but continue with the investigation after using it "
+            "- Test hypotheses against actual code and logs and confirm the idea holds "
+            "- Document everything systematically "
+            "ESSENTIAL FILES ONLY: Include only files (documents, code etc) directly related to the issue. "
+            "Focus on quality over quantity for assistant model analysis. "
+            "STRUCTURED OUTPUT: Assistant models return JSON responses with hypothesis "
+            "ranking, evidence correlation, and actionable fixes. "
             "Choose thinking_mode based on issue complexity: 'low' for simple errors, "
             "'medium' for standard debugging (default), 'high' for complex system issues, "
             "'max' for extremely challenging bugs requiring deepest analysis. "
@@ -61,30 +108,26 @@ class DebugIssueTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Error message, symptoms, or issue description",
+                    "description": DEBUG_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "model": self.get_model_field_schema(),
-                "error_context": {
+                "findings": {
                     "type": "string",
-                    "description": "Stack trace, logs, or additional error context",
+                    "description": DEBUG_FIELD_DESCRIPTIONS["findings"],
                 },
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Files or directories that might be related to the issue (must be absolute paths)",
+                    "description": DEBUG_FIELD_DESCRIPTIONS["files"],
+                },
+                "error_context": {
+                    "type": "string",
+                    "description": DEBUG_FIELD_DESCRIPTIONS["error_context"],
                 },
                 "images": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional images showing error screens, UI issues, logs displays, or visual debugging information",
-                },
-                "runtime_info": {
-                    "type": "string",
-                    "description": "Environment, versions, or runtime information",
-                },
-                "previous_attempts": {
-                    "type": "string",
-                    "description": "What has been tried already",
+                    "description": DEBUG_FIELD_DESCRIPTIONS["images"],
                 },
                 "temperature": {
                     "type": "number",
@@ -164,14 +207,11 @@ class DebugIssueTool(BaseTool):
         # Build context sections
         context_parts = [f"=== ISSUE DESCRIPTION ===\n{request.prompt}\n=== END DESCRIPTION ==="]
 
+        if request.findings:
+            context_parts.append(f"\n=== CLAUDE'S INVESTIGATION FINDINGS ===\n{request.findings}\n=== END FINDINGS ===")
+
         if request.error_context:
             context_parts.append(f"\n=== ERROR CONTEXT/STACK TRACE ===\n{request.error_context}\n=== END CONTEXT ===")
-
-        if request.runtime_info:
-            context_parts.append(f"\n=== RUNTIME INFORMATION ===\n{request.runtime_info}\n=== END RUNTIME ===")
-
-        if request.previous_attempts:
-            context_parts.append(f"\n=== PREVIOUS ATTEMPTS ===\n{request.previous_attempts}\n=== END ATTEMPTS ===")
 
         # Add relevant files if provided
         if request.files:
@@ -183,7 +223,9 @@ class DebugIssueTool(BaseTool):
             self._actually_processed_files = processed_files
 
             if file_content:
-                context_parts.append(f"\n=== RELEVANT CODE ===\n{file_content}\n=== END CODE ===")
+                context_parts.append(
+                    f"\n=== ESSENTIAL FILES FOR DEBUGGING ===\n{file_content}\n=== END ESSENTIAL FILES ==="
+                )
 
         full_context = "\n".join(context_parts)
 
@@ -211,15 +253,55 @@ Focus on finding the root cause and providing actionable solutions."""
 
         return full_prompt
 
-    def format_response(self, response: str, request: DebugIssueRequest, model_info: Optional[dict] = None) -> str:
-        """Format the debugging response"""
-        # Get the friendly model name
-        model_name = "the model"
+    def _get_model_name(self, model_info: Optional[dict]) -> str:
+        """Extract friendly model name from model info."""
         if model_info and model_info.get("model_response"):
-            model_name = model_info["model_response"].friendly_name or "the model"
+            return model_info["model_response"].friendly_name or "the model"
+        return "the model"
+
+    def _generate_systematic_next_steps(self, model_name: str) -> str:
+        """Generate next steps for systematic investigation completion."""
+        return f"""**Expert Analysis Complete**
+
+{model_name} has analyzed your systematic investigation findings.
+
+**Next Steps:**
+1. **UPDATE INVESTIGATION DOCUMENT**: Add the expert analysis to your DEBUGGING_*.md file
+2. **REVIEW HYPOTHESES**: Examine the ranked hypotheses and evidence validation
+3. **IMPLEMENT FIXES**: Apply recommended minimal fixes in order of likelihood
+4. **VALIDATE CHANGES**: Test each fix thoroughly to ensure no regressions
+5. **DOCUMENT RESOLUTION**: Update investigation document with final resolution"""
+
+    def _generate_standard_analysis_steps(self, model_name: str) -> str:
+        """Generate next steps for standard analysis completion."""
+        return f"""**Expert Analysis Complete**
+
+{model_name} has analyzed your investigation findings.
+
+**Next Steps:**
+1. **REVIEW HYPOTHESES**: Examine the ranked hypotheses and evidence
+2. **IMPLEMENT FIXES**: Apply recommended minimal fixes in order of likelihood
+3. **VALIDATE CHANGES**: Test each fix thoroughly to ensure no regressions"""
+
+    def _generate_general_analysis_steps(self, model_name: str) -> str:
+        """Generate next steps for general analysis responses."""
+        return f"""**Analysis from {model_name}**
+
+**Next Steps:** Continue your systematic investigation based on the guidance provided, then return
+with comprehensive findings for expert analysis."""
+
+    def format_response(self, response: str, request: DebugIssueRequest, model_info: Optional[dict] = None) -> str:
+        """Format the debugging response for Claude to present to user"""
+        # The base class automatically handles structured responses like 'clarification_required'
+        # and 'analysis_complete' via SPECIAL_STATUS_MODELS, so we only handle normal text responses here
+
+        model_name = self._get_model_name(model_info)
+
+        # For normal text responses, provide general guidance
+        next_steps = self._generate_general_analysis_steps(model_name)
 
         return f"""{response}
 
 ---
 
-**Next Steps:** Evaluate {model_name}'s recommendations, synthesize the best fix considering potential regressions, and if the root cause has been clearly identified, proceed with implementing the potential fixes."""
+{next_steps}"""

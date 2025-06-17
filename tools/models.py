@@ -284,20 +284,6 @@ class TraceComplete(BaseModel):
     state_access: Optional[list[StateAccess]] = Field(default_factory=list, description="State access information")
 
 
-# Registry mapping status strings to their corresponding Pydantic models
-SPECIAL_STATUS_MODELS = {
-    "clarification_required": ClarificationRequest,
-    "full_codereview_required": FullCodereviewRequired,
-    "focused_review_required": FocusedReviewRequired,
-    "test_sample_needed": TestSampleNeeded,
-    "more_tests_required": MoreTestsRequired,
-    "refactor_analysis_complete": RefactorAnalysisComplete,
-    "trace_complete": TraceComplete,
-    "resend_prompt": ResendPromptRequest,
-    "code_too_large": CodeTooLargeRequest,
-}
-
-
 class DiagnosticHypothesis(BaseModel):
     """A debugging hypothesis with context and next steps"""
 
@@ -321,3 +307,51 @@ class StructuredDebugResponse(BaseModel):
         default_factory=list,
         description="Additional files or information that would help with analysis",
     )
+
+
+class DebugHypothesis(BaseModel):
+    """A debugging hypothesis with detailed analysis"""
+
+    name: str = Field(..., description="Name/title of the hypothesis")
+    confidence: Literal["High", "Medium", "Low"] = Field(..., description="Confidence level")
+    root_cause: str = Field(..., description="Technical explanation of the root cause")
+    evidence: str = Field(..., description="Logs or code clues supporting this hypothesis")
+    correlation: str = Field(..., description="How symptoms map to the cause")
+    validation: str = Field(..., description="Quick test to confirm the hypothesis")
+    minimal_fix: str = Field(..., description="Smallest change to resolve the issue")
+    regression_check: str = Field(..., description="Why this fix is safe")
+    file_references: list[str] = Field(default_factory=list, description="File:line format for exact locations")
+
+
+class DebugAnalysisComplete(BaseModel):
+    """Complete debugging analysis with systematic investigation tracking"""
+
+    status: Literal["analysis_complete"] = "analysis_complete"
+    investigation_id: str = Field(..., description="Auto-generated unique ID for this investigation")
+    summary: str = Field(..., description="Brief description of the problem and its impact")
+    investigation_steps: list[str] = Field(..., description="Steps taken during the investigation")
+    hypotheses: list[DebugHypothesis] = Field(..., description="Ranked hypotheses with detailed analysis")
+    key_findings: list[str] = Field(..., description="Important discoveries made during analysis")
+    immediate_actions: list[str] = Field(..., description="Steps to take regardless of which hypothesis is correct")
+    recommended_tools: list[str] = Field(default_factory=list, description="Additional tools recommended for analysis")
+    prevention_strategy: Optional[str] = Field(
+        None, description="Targeted measures to prevent this exact issue from recurring"
+    )
+    investigation_summary: str = Field(
+        ..., description="Comprehensive summary of the complete investigation process and conclusions"
+    )
+
+
+# Registry mapping status strings to their corresponding Pydantic models
+SPECIAL_STATUS_MODELS = {
+    "clarification_required": ClarificationRequest,
+    "full_codereview_required": FullCodereviewRequired,
+    "focused_review_required": FocusedReviewRequired,
+    "test_sample_needed": TestSampleNeeded,
+    "more_tests_required": MoreTestsRequired,
+    "refactor_analysis_complete": RefactorAnalysisComplete,
+    "trace_complete": TraceComplete,
+    "resend_prompt": ResendPromptRequest,
+    "code_too_large": CodeTooLargeRequest,
+    "analysis_complete": DebugAnalysisComplete,
+}

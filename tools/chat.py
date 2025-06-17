@@ -14,31 +14,29 @@ from systemprompts import CHAT_PROMPT
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+CHAT_FIELD_DESCRIPTIONS = {
+    "prompt": (
+        "Your thorough, expressive question with as much context as possible. Remember: you're talking to "
+        "another Claude assistant who has deep expertise and can provide nuanced insights. Include your "
+        "current thinking, specific challenges, background context, what you've already tried, and what "
+        "kind of response would be most helpful. The more context and detail you provide, the more "
+        "valuable and targeted the response will be."
+    ),
+    "files": "Optional files for context (must be absolute paths)",
+    "images": (
+        "Optional images for visual context. Useful for UI discussions, diagrams, visual problems, "
+        "error screens, or architectural mockups."
+    ),
+}
+
 
 class ChatRequest(ToolRequest):
     """Request model for chat tool"""
 
-    prompt: str = Field(
-        ...,
-        description=(
-            "Your thorough, expressive question with as much context as possible. Remember: you're talking to "
-            "another Claude assistant who has deep expertise and can provide nuanced insights. Include your "
-            "current thinking, specific challenges, background context, what you've already tried, and what "
-            "kind of response would be most helpful. The more context and detail you provide, the more "
-            "valuable and targeted the response will be."
-        ),
-    )
-    files: Optional[list[str]] = Field(
-        default_factory=list,
-        description="Optional files for context (must be absolute paths)",
-    )
-    images: Optional[list[str]] = Field(
-        default_factory=list,
-        description=(
-            "Optional images for visual context. Useful for UI discussions, diagrams, visual problems, "
-            "error screens, or architectural mockups."
-        ),
-    )
+    prompt: str = Field(..., description=CHAT_FIELD_DESCRIPTIONS["prompt"])
+    files: Optional[list[str]] = Field(default_factory=list, description=CHAT_FIELD_DESCRIPTIONS["files"])
+    images: Optional[list[str]] = Field(default_factory=list, description=CHAT_FIELD_DESCRIPTIONS["images"])
 
 
 class ChatTool(BaseTool):
@@ -65,26 +63,17 @@ class ChatTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": (
-                        "Your thorough, expressive question with as much context as possible. Remember: you're "
-                        "talking to another Claude assistant who has deep expertise and can provide nuanced "
-                        "insights. Include your current thinking, specific challenges, background context, what "
-                        "you've already tried, and what kind of response would be most helpful. The more context "
-                        "and detail you provide, the more valuable and targeted the response will be."
-                    ),
+                    "description": CHAT_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional files for context (must be absolute paths)",
+                    "description": CHAT_FIELD_DESCRIPTIONS["files"],
                 },
                 "images": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": (
-                        "Optional images for visual context. Useful for UI discussions, diagrams, visual "
-                        "problems, error screens, or architectural mockups."
-                    ),
+                    "description": CHAT_FIELD_DESCRIPTIONS["images"],
                 },
                 "model": self.get_model_field_schema(),
                 "temperature": {

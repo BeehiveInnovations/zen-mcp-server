@@ -30,6 +30,19 @@ from .base import BaseTool, ToolRequest
 logger = logging.getLogger(__name__)
 
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+REFACTOR_FIELD_DESCRIPTIONS = {
+    "files": "Code files or directories to analyze for refactoring opportunities (must be absolute paths)",
+    "prompt": "Description of refactoring goals, context, and specific areas of focus",
+    "refactor_type": "Type of refactoring analysis to perform",
+    "focus_areas": "Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
+    "style_guide_examples": (
+        "Optional existing code files to use as style/pattern reference (must be absolute paths). "
+        "These files represent the target coding style and patterns for the project."
+    ),
+}
+
+
 class RefactorRequest(ToolRequest):
     """
     Request model for the refactor tool.
@@ -38,28 +51,14 @@ class RefactorRequest(ToolRequest):
     the refactoring analysis process.
     """
 
-    files: list[str] = Field(
-        ...,
-        description="Code files or directories to analyze for refactoring opportunities (must be absolute paths)",
-    )
-    prompt: str = Field(
-        ...,
-        description="Description of refactoring goals, context, and specific areas of focus",
-    )
+    files: list[str] = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["files"])
+    prompt: str = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["prompt"])
     refactor_type: Literal["codesmells", "decompose", "modernize", "organization"] = Field(
-        ..., description="Type of refactoring analysis to perform"
+        ..., description=REFACTOR_FIELD_DESCRIPTIONS["refactor_type"]
     )
-    focus_areas: Optional[list[str]] = Field(
-        None,
-        description="Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
-    )
+    focus_areas: Optional[list[str]] = Field(None, description=REFACTOR_FIELD_DESCRIPTIONS["focus_areas"])
     style_guide_examples: Optional[list[str]] = Field(
-        None,
-        description=(
-            "Optional existing code files to use as style/pattern reference (must be absolute paths). "
-            "These files represent the target coding style and patterns for the project. "
-            "Particularly useful for 'modernize' and 'organization' refactor types."
-        ),
+        None, description=REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"]
     )
 
 
@@ -92,30 +91,27 @@ class RefactorTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Code files or directories to analyze for refactoring opportunities (must be absolute paths)",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["files"],
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "Description of refactoring goals, context, and specific areas of focus",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "refactor_type": {
                     "type": "string",
                     "enum": ["codesmells", "decompose", "modernize", "organization"],
-                    "description": "Type of refactoring analysis to perform",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["refactor_type"],
                 },
                 "focus_areas": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["focus_areas"],
                 },
                 "style_guide_examples": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": (
-                        "Optional existing code files to use as style/pattern reference (must be absolute paths). "
-                        "These files represent the target coding style and patterns for the project."
-                    ),
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"],
                 },
                 "thinking_mode": {
                     "type": "string",
