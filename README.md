@@ -3,7 +3,7 @@
 https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
 
 <div align="center">  
-  <b>🤖 Claude + [Gemini / O3 / GROK / OpenRouter / Ollama / Any Model] = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + [Gemini / OpenAI / Grok / OpenRouter / Ollama / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -38,6 +38,8 @@ and review into consideration to aid with its pre-commit review.
 > **You're** the one who crafts the powerful prompt that makes Claude bring in Gemini, Flash, O3 — or fly solo.  
 > You're the guide. The prompter. The puppeteer. 
 > ### You are the AI - **Actually Intelligent**.
+
+Because these AI models [clearly aren't when they get chatty →](docs/ai_banter.md)
 
 ## Quick Navigation
 
