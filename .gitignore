@@ -171,3 +171,6 @@ test-setup/
 FEATURE_*.md
 # Temporary files
 /tmp/
+
+# Local user instructions
+CLAUDE.local.md

@@ -196,24 +196,8 @@ class GeminiModelProvider(ModelProvider):
             except Exception as e:
                 last_exception = e
 
-                # Check if this is a retryable error
-                error_str = str(e).lower()
-                is_retryable = any(
-                    term in error_str
-                    for term in [
-                        "timeout",
-                        "connection",
-                        "network",
-                        "temporary",
-                        "unavailable",
-                        "retry",
-                        "429",
-                        "500",
-                        "502",
-                        "503",
-                        "504",
-                    ]
-                )
+                # Check if this is a retryable error using structured error codes
+                is_retryable = self._is_error_retryable(e)
 
                 # If this is the last attempt or not retryable, give up
                 if attempt == max_retries - 1 or not is_retryable:
@@ -387,6 +371,78 @@ class GeminiModelProvider(ModelProvider):
             "gemini-1.5-flash",
         }
         return model_name in vision_models
+
+    def _is_error_retryable(self, error: Exception) -> bool:
+        """Determine if an error should be retried based on structured error codes.
+
+        Uses Gemini API error structure instead of text pattern matching for reliability.
+
+        Args:
+            error: Exception from Gemini API call
+
+        Returns:
+            True if error should be retried, False otherwise
+        """
+        error_str = str(error).lower()
+
+        # Check for 429 errors first - these need special handling
+        if "429" in error_str or "quota" in error_str or "resource_exhausted" in error_str:
+            # For Gemini, check for specific non-retryable error indicators
+            # These typically indicate permanent failures or quota/size limits
+            non_retryable_indicators = [
+                "quota exceeded",
+                "resource exhausted",
+                "context length",
+                "token limit",
+                "request too large",
+                "invalid request",
+                "quota_exceeded",
+                "resource_exhausted",
+            ]
+
+            # Also check if this is a structured error from Gemini SDK
+            try:
+                # Try to access error details if available
+                if hasattr(error, "details") or hasattr(error, "reason"):
+                    # Gemini API errors may have structured details
+                    error_details = getattr(error, "details", "") or getattr(error, "reason", "")
+                    error_details_str = str(error_details).lower()
+
+                    # Check for non-retryable error codes/reasons
+                    if any(indicator in error_details_str for indicator in non_retryable_indicators):
+                        logger.debug(f"Non-retryable Gemini error: {error_details}")
+                        return False
+            except Exception:
+                pass
+
+            # Check main error string for non-retryable patterns
+            if any(indicator in error_str for indicator in non_retryable_indicators):
+                logger.debug(f"Non-retryable Gemini error based on message: {error_str[:200]}...")
+                return False
+
+            # If it's a 429/quota error but doesn't match non-retryable patterns, it might be retryable rate limiting
+            logger.debug(f"Retryable Gemini rate limiting error: {error_str[:100]}...")
+            return True
+
+        # For non-429 errors, check if they're retryable
+        retryable_indicators = [
+            "timeout",
+            "connection",
+            "network",
+            "temporary",
+            "unavailable",
+            "retry",
+            "internal error",
+            "408",  # Request timeout
+            "500",  # Internal server error
+            "502",  # Bad gateway
+            "503",  # Service unavailable
+            "504",  # Gateway timeout
+            "ssl",  # SSL errors
+            "handshake",  # Handshake failures
+        ]
+
+        return any(indicator in error_str for indicator in retryable_indicators)
 
     def _process_image(self, image_path: str) -> Optional[dict]:
         """Process an image for Gemini API."""

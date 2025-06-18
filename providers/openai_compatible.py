@@ -326,24 +326,8 @@ class OpenAICompatibleProvider(ModelProvider):
             except Exception as e:
                 last_exception = e
 
-                # Check if this is a retryable error
-                error_str = str(e).lower()
-                is_retryable = any(
-                    term in error_str
-                    for term in [
-                        "timeout",
-                        "connection",
-                        "network",
-                        "temporary",
-                        "unavailable",
-                        "retry",
-                        "429",
-                        "500",
-                        "502",
-                        "503",
-                        "504",
-                    ]
-                )
+                # Check if this is a retryable error using structured error codes
+                is_retryable = self._is_error_retryable(e)
 
                 if is_retryable and attempt < max_retries - 1:
                     delay = retry_delays[attempt]
@@ -484,24 +468,8 @@ class OpenAICompatibleProvider(ModelProvider):
             except Exception as e:
                 last_exception = e
 
-                # Check if this is a retryable error
-                error_str = str(e).lower()
-                is_retryable = any(
-                    term in error_str
-                    for term in [
-                        "timeout",
-                        "connection",
-                        "network",
-                        "temporary",
-                        "unavailable",
-                        "retry",
-                        "429",
-                        "500",
-                        "502",
-                        "503",
-                        "504",
-                    ]
-                )
+                # Check if this is a retryable error using structured error codes
+                is_retryable = self._is_error_retryable(e)
 
                 # If this is the last attempt or not retryable, give up
                 if attempt == max_retries - 1 or not is_retryable:
@@ -671,6 +639,97 @@ class OpenAICompatibleProvider(ModelProvider):
         supports = model_name.lower() in vision_models
         logging.debug(f"Model '{model_name}' vision support: {supports}")
         return supports
+
+    def _is_error_retryable(self, error: Exception) -> bool:
+        """Determine if an error should be retried based on structured error codes.
+
+        Uses OpenAI API error structure instead of text pattern matching for reliability.
+
+        Args:
+            error: Exception from OpenAI API call
+
+        Returns:
+            True if error should be retried, False otherwise
+        """
+        error_str = str(error).lower()
+
+        # Check for 429 errors first - these need special handling
+        if "429" in error_str:
+            # Try to extract structured error information
+            error_type = None
+            error_code = None
+
+            # Parse structured error from OpenAI API response
+            # Format: "Error code: 429 - {'error': {'type': 'tokens', 'code': 'rate_limit_exceeded', ...}}"
+            try:
+                import ast
+                import json
+                import re
+
+                # Extract JSON part from error string using regex
+                # Look for pattern: {...} (from first { to last })
+                json_match = re.search(r"\{.*\}", str(error))
+                if json_match:
+                    json_like_str = json_match.group(0)
+
+                    # First try: parse as Python literal (handles single quotes safely)
+                    try:
+                        error_data = ast.literal_eval(json_like_str)
+                    except (ValueError, SyntaxError):
+                        # Fallback: try JSON parsing with simple quote replacement
+                        # (for cases where it's already valid JSON or simple replacements work)
+                        json_str = json_like_str.replace("'", '"')
+                        error_data = json.loads(json_str)
+
+                    if "error" in error_data:
+                        error_info = error_data["error"]
+                        error_type = error_info.get("type")
+                        error_code = error_info.get("code")
+
+            except (json.JSONDecodeError, ValueError, SyntaxError, AttributeError):
+                # Fall back to checking hasattr for OpenAI SDK exception objects
+                if hasattr(error, "response") and hasattr(error.response, "json"):
+                    try:
+                        response_data = error.response.json()
+                        if "error" in response_data:
+                            error_info = response_data["error"]
+                            error_type = error_info.get("type")
+                            error_code = error_info.get("code")
+                    except Exception:
+                        pass
+
+            # Determine if 429 is retryable based on structured error codes
+            if error_type == "tokens":
+                # Token-related 429s are typically non-retryable (request too large)
+                logging.debug(f"Non-retryable 429: token-related error (type={error_type}, code={error_code})")
+                return False
+            elif error_code in ["invalid_request_error", "context_length_exceeded"]:
+                # These are permanent failures
+                logging.debug(f"Non-retryable 429: permanent failure (type={error_type}, code={error_code})")
+                return False
+            else:
+                # Other 429s (like requests per minute) are retryable
+                logging.debug(f"Retryable 429: rate limiting (type={error_type}, code={error_code})")
+                return True
+
+        # For non-429 errors, check if they're retryable
+        retryable_indicators = [
+            "timeout",
+            "connection",
+            "network",
+            "temporary",
+            "unavailable",
+            "retry",
+            "408",  # Request timeout
+            "500",  # Internal server error
+            "502",  # Bad gateway
+            "503",  # Service unavailable
+            "504",  # Gateway timeout
+            "ssl",  # SSL errors
+            "handshake",  # Handshake failures
+        ]
+
+        return any(indicator in error_str for indicator in retryable_indicators)
 
     def _process_image(self, image_path: str) -> Optional[dict]:
         """Process an image for OpenAI-compatible API."""
