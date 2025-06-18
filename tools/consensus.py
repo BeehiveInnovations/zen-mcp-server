@@ -63,7 +63,7 @@ class ConsensusRequest(ToolRequest):
     )
     files: Optional[list[str]] = Field(
         default_factory=list,
-        description="Optional files or directories for additional context (must be absolute paths)",
+        description="Optional files or directories for additional context (must be FULL absolute paths - DO NOT SHORTEN)",
     )
     images: Optional[list[str]] = Field(
         default_factory=list,
@@ -148,7 +148,7 @@ class ConsensusTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional files or directories for additional context (must be absolute paths)",
+                    "description": "Optional files or directories for additional context (must be FULL absolute paths - DO NOT SHORTEN)",
                 },
                 "images": {
                     "type": "array",

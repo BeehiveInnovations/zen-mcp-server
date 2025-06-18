@@ -89,7 +89,7 @@ class ToolRequest(BaseModel):
     images: Optional[list[str]] = Field(
         None,
         description=(
-            "Optional image(s) for visual context. Accepts absolute file paths or "
+            "Optional image(s) for visual context. Accepts absolute file paths (must be FULL absolute paths to real files / folders - DO NOT SHORTEN) or "
             "base64 data URLs. Only provide when user explicitly mentions images. "
             "When including images, please describe what you believe each image contains "
             "(e.g., 'screenshot of error dialog', 'architecture diagram', 'code snippet') "
@@ -955,18 +955,18 @@ When recommending searches, be specific about what information you need and why 
             for file_path in request.files:
                 if not os.path.isabs(file_path):
                     return (
-                        f"Error: All file paths must be absolute. "
+                        f"Error: All file paths must be FULL absolute paths to real files / folders - DO NOT SHORTEN. "
                         f"Received relative path: {file_path}\n"
-                        f"Please provide the full absolute path starting with '/'"
+                        f"Please provide the full absolute path starting with '/' (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
                     )
 
         # Check if request has 'path' attribute (used by review_changes tool)
         if hasattr(request, "path") and request.path:
             if not os.path.isabs(request.path):
                 return (
-                    f"Error: Path must be absolute. "
+                    f"Error: Path must be FULL absolute paths to real files / folders - DO NOT SHORTEN. "
                     f"Received relative path: {request.path}\n"
-                    f"Please provide the full absolute path starting with '/'"
+                    f"Please provide the full absolute path starting with '/' (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
                 )
 
         return None
@@ -1014,7 +1014,7 @@ When recommending searches, be specific about what information you need and why 
                     f"MANDATORY ACTION REQUIRED: The prompt is too large for MCP's token limits (>{MCP_PROMPT_SIZE_LIMIT:,} characters). "
                     "YOU MUST IMMEDIATELY save the prompt text to a temporary file named 'prompt.txt' in the working directory. "
                     "DO NOT attempt to shorten or modify the prompt. SAVE IT AS-IS to 'prompt.txt'. "
-                    "Then resend the request with the absolute file path to 'prompt.txt' in the files parameter, "
+                    "Then resend the request with the absolute file path to 'prompt.txt' in the files parameter (must be FULL absolute path - DO NOT SHORTEN), "
                     "along with any other files you wish to share as context. Leave the prompt text itself empty or very brief in the new request. "
                     "This is the ONLY way to handle large prompts - you MUST follow these exact steps."
                 ),

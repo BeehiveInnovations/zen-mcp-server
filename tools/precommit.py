@@ -32,7 +32,7 @@ class PrecommitRequest(ToolRequest):
 
     path: str = Field(
         ...,
-        description="Starting directory to search for git repositories (must be absolute path).",
+        description="Starting directory to search for git repositories (must be FULL absolute paths - DO NOT SHORTEN).",
     )
     prompt: Optional[str] = Field(
         None,
@@ -76,7 +76,7 @@ class PrecommitRequest(ToolRequest):
     )
     files: Optional[list[str]] = Field(
         None,
-        description="Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
+        description="Optional files or directories to provide as context (must be FULL absolute paths - DO NOT SHORTEN). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
     )
     images: Optional[list[str]] = Field(
         None,
@@ -116,7 +116,7 @@ class Precommit(BaseTool):
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Starting directory to search for git repositories (must be absolute path).",
+                    "description": "Starting directory to search for git repositories (must be FULL absolute paths - DO NOT SHORTEN).",
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
@@ -172,7 +172,7 @@ class Precommit(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
+                    "description": "Optional files or directories to provide as context (must be FULL absolute paths - DO NOT SHORTEN). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
                 },
                 "images": {
                     "type": "array",

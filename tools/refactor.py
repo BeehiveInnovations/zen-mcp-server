@@ -32,12 +32,12 @@ logger = logging.getLogger(__name__)
 
 # Field descriptions to avoid duplication between Pydantic and JSON schema
 REFACTOR_FIELD_DESCRIPTIONS = {
-    "files": "Code files or directories to analyze for refactoring opportunities (must be absolute paths)",
+    "files": "Code files or directories to analyze for refactoring opportunities (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
     "prompt": "Description of refactoring goals, context, and specific areas of focus",
     "refactor_type": "Type of refactoring analysis to perform",
     "focus_areas": "Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
     "style_guide_examples": (
-        "Optional existing code files to use as style/pattern reference (must be absolute paths). "
+        "Optional existing code files to use as style/pattern reference (must be FULL absolute paths to real files / folders - DO NOT SHORTEN). "
         "These files represent the target coding style and patterns for the project."
     ),
 }

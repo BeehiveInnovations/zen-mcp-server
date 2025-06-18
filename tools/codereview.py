@@ -25,7 +25,7 @@ from .base import BaseTool, ToolRequest
 
 # Field descriptions to avoid duplication between Pydantic and JSON schema
 CODEREVIEW_FIELD_DESCRIPTIONS = {
-    "files": "Code files or directories to review (must be absolute paths)",
+    "files": "Code files or directories to review (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
     "prompt": (
         "User's summary of what the code does, expected behavior, constraints, and review objectives. "
         "IMPORTANT: Before using this tool, Claude should first perform its own preliminary review - "

@@ -31,7 +31,7 @@ class ThinkDeepRequest(ToolRequest):
     )
     files: Optional[list[str]] = Field(
         None,
-        description="Optional file paths or directories for additional context (must be absolute paths)",
+        description="Optional file paths or directories for additional context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
     )
     images: Optional[list[str]] = Field(
         None,
@@ -85,7 +85,7 @@ class ThinkDeepTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional file paths or directories for additional context (must be absolute paths)",
+                    "description": "Optional file paths or directories for additional context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
                 },
                 "images": {
                     "type": "array",

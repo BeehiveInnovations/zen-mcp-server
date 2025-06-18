@@ -23,7 +23,7 @@ CHAT_FIELD_DESCRIPTIONS = {
         "kind of response would be most helpful. The more context and detail you provide, the more "
         "valuable and targeted the response will be."
     ),
-    "files": "Optional files for context (must be absolute paths)",
+    "files": "Optional files for context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
     "images": (
         "Optional images for visual context. Useful for UI discussions, diagrams, visual problems, "
         "error screens, or architectural mockups."

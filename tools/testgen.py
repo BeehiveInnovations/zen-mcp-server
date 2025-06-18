@@ -39,7 +39,7 @@ class TestGenerationRequest(ToolRequest):
 
     files: list[str] = Field(
         ...,
-        description="Code files or directories to generate tests for (must be absolute paths)",
+        description="Code files or directories to generate tests for (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
     )
     prompt: str = Field(
         ...,
@@ -48,7 +48,7 @@ class TestGenerationRequest(ToolRequest):
     test_examples: Optional[list[str]] = Field(
         None,
         description=(
-            "Optional existing test files or directories to use as style/pattern reference (must be absolute paths). "
+            "Optional existing test files or directories to use as style/pattern reference (must be FULL absolute paths to real files / folders - DO NOT SHORTEN). "
             "If not provided, the tool will determine the best testing approach based on the code structure. "
             "For large test directories, only the smallest representative tests should be included to determine testing patterns. "
             "If similar tests exist for the code being tested, include those for the most relevant patterns."
@@ -91,7 +91,7 @@ class TestGenerationTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Code files or directories to generate tests for (must be absolute paths)",
+                    "description": "Code files or directories to generate tests for (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
@@ -102,7 +102,7 @@ class TestGenerationTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": (
-                        "Optional existing test files or directories to use as style/pattern reference (must be absolute paths). "
+                        "Optional existing test files or directories to use as style/pattern reference (must be FULL absolute paths to real files / folders - DO NOT SHORTEN). "
                         "If not provided, the tool will determine the best testing approach based on the code structure. "
                         "For large test directories, only the smallest representative tests will be included to determine testing patterns. "
                         "If similar tests exist for the code being tested, include those for the most relevant patterns."

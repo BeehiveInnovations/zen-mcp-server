@@ -16,7 +16,7 @@ from .base import BaseTool, ToolRequest
 
 # Field descriptions to avoid duplication between Pydantic and JSON schema
 ANALYZE_FIELD_DESCRIPTIONS = {
-    "files": "Files or directories to analyze (must be absolute paths)",
+    "files": "Files or directories to analyze (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
     "prompt": "What to analyze or look for",
     "analysis_type": "Type of analysis to perform",
     "output_format": "How to format the output",

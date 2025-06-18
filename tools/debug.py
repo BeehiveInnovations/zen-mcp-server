@@ -45,10 +45,10 @@ DEBUG_FIELD_DESCRIPTIONS = {
         "contain the problematic code, or are necessary for understanding the root cause. "
         "This can include any relevant log files, error description documents, investigation documents, "
         "claude's own findings as a document, related code that may help with analysis."
-        "DO NOT include every file scanned during investigation (must be absolute paths)."
+        "DO NOT include every file scanned during investigation (must be FULL absolute paths - DO NOT SHORTEN)."
     ),
     "error_context": "Stack trace, snippet from logs, or additional error context. For very large text you MUST instead"
-    "save the context as a temporary file within the project folder and share it as an absolute file path"
+    "save the context as a temporary file within the project folder and share it as a FULL absolute file path - DO NOT SHORTEN"
     "reference to the files parameter.",
     "images": "Optional images showing error screens, UI issues, logs displays, or visual debugging information",
 }
