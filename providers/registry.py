@@ -200,6 +200,26 @@ class ModelProviderRegistry:
                                 continue
 
                             models[model_name] = provider_type
+                elif provider_type == ProviderType.CUSTOM:
+                    # Custom provider also uses a registry system (shared with OpenRouter)
+                    if hasattr(provider, "_registry") and provider._registry:
+                        # Get all models from the registry
+                        all_models = provider._registry.list_models()
+                        aliases = provider._registry.list_aliases()
+
+                        # Add models that are validated by the custom provider
+                        for model_name in all_models + aliases:
+                            # Use the provider's validation logic to determine if this model
+                            # is appropriate for the custom endpoint
+                            if provider.validate_model_name(model_name):
+                                # Check restrictions if enabled
+                                if restriction_service and not restriction_service.is_allowed(
+                                    provider_type, model_name
+                                ):
+                                    logging.debug(f"Model {model_name} filtered by restrictions")
+                                    continue
+
+                                models[model_name] = provider_type
 
         return models
 
@@ -274,11 +294,13 @@ class ModelProviderRegistry:
         gemini_models = [m for m, p in available_models.items() if p == ProviderType.GOOGLE]
         xai_models = [m for m, p in available_models.items() if p == ProviderType.XAI]
         openrouter_models = [m for m, p in available_models.items() if p == ProviderType.OPENROUTER]
+        custom_models = [m for m, p in available_models.items() if p == ProviderType.CUSTOM]
 
         openai_available = bool(openai_models)
         gemini_available = bool(gemini_models)
         xai_available = bool(xai_models)
         openrouter_available = bool(openrouter_models)
+        custom_available = bool(custom_models)
 
         if tool_category == ToolModelCategory.EXTENDED_REASONING:
             # Prefer thinking-capable models for deep reasoning tools
@@ -305,6 +327,9 @@ class ModelProviderRegistry:
                     return thinking_model
                 # Fallback to first available OpenRouter model
                 return openrouter_models[0]
+            elif custom_available:
+                # Fallback to custom models when available
+                return custom_models[0]
             else:
                 # Fallback to pro if nothing found
                 return "gemini-2.5-pro-preview-06-05"
@@ -332,6 +357,9 @@ class ModelProviderRegistry:
             elif openrouter_available:
                 # Fallback to first available OpenRouter model
                 return openrouter_models[0]
+            elif custom_available:
+                # Fallback to custom models when available
+                return custom_models[0]
             else:
                 # Default to flash
                 return "gemini-2.5-flash-preview-05-20"
@@ -353,6 +381,9 @@ class ModelProviderRegistry:
             return gemini_models[0]
         elif openrouter_available:
             return openrouter_models[0]
+        elif custom_available:
+            # Fallback to custom models when available
+            return custom_models[0]
         else:
             # No models available due to restrictions - check if any providers exist
             if not available_models:
