@@ -69,8 +69,8 @@ MODEL_CAPABILITIES_DESC = {
 # OpenRouter/Custom API Fallback Behavior:
 # When only OpenRouter or Custom API is configured (no native API keys), these
 # model aliases automatically map to equivalent models through the proxy:
-# - "flash" → "google/gemini-2.5-flash-preview-05-20" (via OpenRouter)
-# - "pro" → "google/gemini-2.5-pro-preview-06-05" (via OpenRouter)
+# - "flash" → "google/gemini-2.5-flash" (via OpenRouter)
+# - "pro" → "google/gemini-2.5-pro" (via OpenRouter)
 # - "o3" → "openai/o3" (via OpenRouter)
 # - "o3mini" → "openai/o3-mini" (via OpenRouter)
 # - "o4-mini" → "openai/o4-mini" (via OpenRouter)

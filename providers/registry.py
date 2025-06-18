@@ -383,7 +383,7 @@ class ModelProviderRegistry:
             preferred_models = [
                 "anthropic/claude-3.5-sonnet",
                 "anthropic/claude-3-opus-20240229",
-                "google/gemini-2.5-pro-preview-06-05",
+                "google/gemini-2.5-pro",
                 "google/gemini-pro-1.5",
                 "meta-llama/llama-3.1-70b-instruct",
                 "mistralai/mixtral-8x7b-instruct",

@@ -511,8 +511,8 @@ class TestAutoModeComprehensive:
             # Mock OpenRouter registry to return known models
             mock_registry = MagicMock()
             mock_registry.list_models.return_value = [
-                "google/gemini-2.5-flash-preview-05-20",
-                "google/gemini-2.5-pro-preview-06-05",
+                "google/gemini-2.5-flash",
+                "google/gemini-2.5-pro",
                 "openai/o3",
                 "openai/o4-mini",
                 "anthropic/claude-3-opus",

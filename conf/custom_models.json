@@ -57,7 +57,13 @@
     },
     {
       "model_name": "anthropic/claude-3-sonnet",
-      "aliases": ["sonnet", "claude-sonnet", "claude3-sonnet", "claude-3-sonnet", "claude"],
+      "aliases": [
+        "sonnet",
+        "claude-sonnet",
+        "claude3-sonnet",
+        "claude-3-sonnet",
+        "claude"
+      ],
       "context_window": 200000,
       "supports_extended_thinking": false,
       "supports_json_mode": false,
@@ -78,8 +84,8 @@
       "description": "Claude 3 Haiku - Fast and efficient with vision"
     },
     {
-      "model_name": "google/gemini-2.5-pro-preview",
-      "aliases": ["pro","gemini-pro", "gemini", "pro-openrouter"],
+      "model_name": "google/gemini-2.5-pro",
+      "aliases": ["pro", "gemini-pro", "gemini", "pro-openrouter"],
       "context_window": 1048576,
       "supports_extended_thinking": false,
       "supports_json_mode": true,
@@ -89,8 +95,8 @@
       "description": "Google's Gemini 2.5 Pro via OpenRouter with vision"
     },
     {
-      "model_name": "google/gemini-2.5-flash-preview-05-20",
-      "aliases": ["flash","gemini-flash", "flash-openrouter", "flash-2.5"],
+      "model_name": "google/gemini-2.5-flash",
+      "aliases": ["flash", "gemini-flash", "flash-openrouter", "flash-2.5"],
       "context_window": 1048576,
       "supports_extended_thinking": false,
       "supports_json_mode": true,
@@ -112,7 +118,13 @@
     },
     {
       "model_name": "meta-llama/llama-3-70b",
-      "aliases": ["llama", "llama3", "llama3-70b", "llama-70b", "llama3-openrouter"],
+      "aliases": [
+        "llama",
+        "llama3",
+        "llama3-70b",
+        "llama-70b",
+        "llama3-openrouter"
+      ],
       "context_window": 8192,
       "supports_extended_thinking": false,
       "supports_json_mode": false,
