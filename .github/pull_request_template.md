@@ -43,13 +43,8 @@ Please provide a clear and concise description of what this PR does.
 # Activate virtual environment first
 source venv/bin/activate
 
-# Run all linting checks
-ruff check .
-black --check .
-isort --check-only .
-
-# Run all unit tests
-python -m pytest -xvs
+# Run comprehensive code quality checks (recommended)
+./code_quality_checks.sh
 
 # If you made tool changes, also run simulator tests
 python communication_simulator_test.py
@@ -70,11 +65,11 @@ Fixes #(issue number)
 ## Checklist
 
 - [ ] PR title follows the format guidelines above
-- [ ] Activated venv and ran all linting: `source venv/bin/activate && ruff check . && black --check . && isort --check-only .`
+- [ ] **Activated venv and ran code quality checks: `source venv/bin/activate && ./code_quality_checks.sh`**
 - [ ] Self-review completed
 - [ ] **Tests added for ALL changes** (see Testing section above)
 - [ ] Documentation updated as needed
-- [ ] All unit tests passing: `python -m pytest -xvs`
+- [ ] All unit tests passing
 - [ ] Relevant simulator tests passing (if tool changes)
 - [ ] Ready for review
 
