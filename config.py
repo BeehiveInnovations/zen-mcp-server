@@ -14,9 +14,9 @@ import os
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "4.6.1"
+__version__ = "5.1.0"
 # Last update date in ISO format
-__updated__ = "2025-06-15"
+__updated__ = "2025-06-18"
 # Primary maintainer
 __author__ = "Fahad Gilani"
 
@@ -102,6 +102,14 @@ TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
 # Higher modes use more computational budget but provide deeper analysis
 DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "high")
 
+# Consensus Tool Defaults
+# Consensus timeout and rate limiting settings
+DEFAULT_CONSENSUS_TIMEOUT = 120.0  # 2 minutes per model
+DEFAULT_CONSENSUS_MAX_INSTANCES_PER_COMBINATION = 2
+
+# NOTE: Consensus tool now uses sequential processing for MCP compatibility
+# Concurrent processing was removed to avoid async pattern violations
+
 # MCP Protocol Transport Limits
 #
 # IMPORTANT: This limit ONLY applies to the Claude CLI ↔ MCP Server transport boundary.
@@ -129,7 +137,7 @@ DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "
 # What is NOT limited by this constant:
 # - System prompts added internally by tools
 # - File content embedded by tools
-# - Conversation history loaded from Redis
+# - Conversation history loaded from storage
 # - Web search instructions or other internal additions
 # - Complete prompts sent to external models (managed by model-specific token limits)
 #
@@ -138,6 +146,5 @@ DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "
 MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
 
 # Threading configuration
-# Simple Redis-based conversation threading for stateless MCP environment
-# Set REDIS_URL environment variable to connect to your Redis instance
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Simple in-memory conversation threading for stateless MCP environment
+# Conversations persist only during the Claude session

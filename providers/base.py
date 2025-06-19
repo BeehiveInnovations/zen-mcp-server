@@ -113,6 +113,8 @@ class ModelCapabilities:
     supports_system_prompts: bool = True
     supports_streaming: bool = True
     supports_function_calling: bool = False
+    supports_images: bool = False  # Whether model can process images
+    max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
 
     # Temperature constraint object - preferred way to define temperature limits
     temperature_constraint: TemperatureConstraint = field(
@@ -219,4 +221,28 @@ class ModelProvider(ABC):
     @abstractmethod
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
+        pass
+
+    @abstractmethod
+    def list_models(self, respect_restrictions: bool = True) -> list[str]:
+        """Return a list of model names supported by this provider.
+
+        Args:
+            respect_restrictions: Whether to apply provider-specific restriction logic.
+
+        Returns:
+            List of model names available from this provider
+        """
+        pass
+
+    @abstractmethod
+    def list_all_known_models(self) -> list[str]:
+        """Return all model names known by this provider, including alias targets.
+
+        This is used for validation purposes to ensure restriction policies
+        can validate against both aliases and their target model names.
+
+        Returns:
+            List of all model names and alias targets known by this provider
+        """
         pass

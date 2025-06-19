@@ -1,185 +1,149 @@
 #!/usr/bin/env python3
 """
 Log monitor for MCP server - monitors and displays tool activity
+
+This module provides a simplified log monitoring interface using the
+centralized LogTailer class from utils.file_utils.
 """
 
-import os
 import time
 from datetime import datetime
-from pathlib import Path
+
+from utils.file_utils import LogTailer
+
+
+def _process_log_stream(tailer, filter_func=None, format_func=None):
+    """
+    Process new lines from a log tailer with optional filtering and formatting.
+
+    Args:
+        tailer: LogTailer instance to read from
+        filter_func: Optional function to filter lines (return True to include)
+        format_func: Optional function to format lines for display
+    """
+    lines = tailer.read_new_lines()
+    for line in lines:
+        # Apply filter if provided
+        if filter_func and not filter_func(line):
+            continue
+
+        timestamp = datetime.now().strftime("%H:%M:%S")
+
+        # Apply formatter if provided
+        if format_func:
+            formatted = format_func(line)
+        else:
+            formatted = line
+
+        print(f"[{timestamp}] {formatted}")
 
 
 def monitor_mcp_activity():
-    """Monitor MCP server activity by watching the log file"""
-    log_file = "/tmp/mcp_server.log"
-    activity_file = "/tmp/mcp_activity.log"
-    debug_file = "/tmp/gemini_debug.log"
-    overflow_file = "/tmp/mcp_server_overflow.log"
+    """Monitor MCP server activity by watching multiple log files"""
+    log_files = {
+        "/tmp/mcp_server.log": "main",
+        "/tmp/mcp_activity.log": "activity",
+        "/tmp/gemini_debug.log": "debug",
+        "/tmp/mcp_server_overflow.log": "overflow",
+    }
 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] MCP Log Monitor started")
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Monitoring: {log_file}")
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Activity file: {activity_file}")
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Debug file: {debug_file}")
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Overflow file: {overflow_file}")
+    for file_path, name in log_files.items():
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Monitoring {name}: {file_path}")
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Note: Logs rotate daily at midnight, keeping 7 days of history")
     print("-" * 60)
 
-    # Track file positions and sizes for rotation detection
-    log_pos = 0
-    activity_pos = 0
-    debug_pos = 0
-    overflow_pos = 0
+    # Create tailers for each log file
+    tailers = {}
 
-    # Track file sizes to detect rotation
-    log_size = 0
-    activity_size = 0
-    debug_size = 0
-    overflow_size = 0
+    # Activity log - most important for tool calls
+    def activity_filter(line: str) -> bool:
+        return any(
+            keyword in line
+            for keyword in [
+                "TOOL_CALL:",
+                "TOOL_COMPLETED:",
+                "CONVERSATION_RESUME:",
+                "CONVERSATION_CONTEXT:",
+                "CONVERSATION_ERROR:",
+            ]
+        )
 
-    # Ensure files exist
-    Path(log_file).touch()
-    Path(activity_file).touch()
-    Path(debug_file).touch()
-    Path(overflow_file).touch()
+    def activity_formatter(line: str) -> str:
+        if "TOOL_CALL:" in line:
+            tool_info = line.split("TOOL_CALL:")[-1].strip()
+            return f"Tool called: {tool_info}"
+        elif "TOOL_COMPLETED:" in line:
+            tool_name = line.split("TOOL_COMPLETED:")[-1].strip()
+            return f"✓ Tool completed: {tool_name}"
+        elif "CONVERSATION_RESUME:" in line:
+            resume_info = line.split("CONVERSATION_RESUME:")[-1].strip()
+            return f"Resume: {resume_info}"
+        elif "CONVERSATION_CONTEXT:" in line:
+            context_info = line.split("CONVERSATION_CONTEXT:")[-1].strip()
+            return f"Context: {context_info}"
+        elif "CONVERSATION_ERROR:" in line:
+            error_info = line.split("CONVERSATION_ERROR:")[-1].strip()
+            return f"❌ Conversation error: {error_info}"
+        return line
 
-    # Initialize file sizes
-    if os.path.exists(log_file):
-        log_size = os.path.getsize(log_file)
-        log_pos = log_size  # Start from end to avoid old logs
-    if os.path.exists(activity_file):
-        activity_size = os.path.getsize(activity_file)
-        activity_pos = activity_size  # Start from end to avoid old logs
-    if os.path.exists(debug_file):
-        debug_size = os.path.getsize(debug_file)
-        debug_pos = debug_size  # Start from end to avoid old logs
-    if os.path.exists(overflow_file):
-        overflow_size = os.path.getsize(overflow_file)
-        overflow_pos = overflow_size  # Start from end to avoid old logs
+    tailers["activity"] = LogTailer("/tmp/mcp_activity.log")
 
-    while True:
-        try:
-            # Check activity file (most important for tool calls)
-            if os.path.exists(activity_file):
-                # Check for log rotation
-                current_activity_size = os.path.getsize(activity_file)
-                if current_activity_size < activity_size:
-                    # File was rotated - start from beginning
-                    activity_pos = 0
-                    activity_size = current_activity_size
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Activity log rotated - restarting from beginning")
+    # Main log - errors and warnings
+    def main_filter(line: str) -> bool:
+        return any(keyword in line for keyword in ["ERROR", "WARNING", "DEBUG", "Gemini API"])
 
-                with open(activity_file) as f:
-                    f.seek(activity_pos)
-                    new_lines = f.readlines()
-                    activity_pos = f.tell()
-                    activity_size = current_activity_size
+    def main_formatter(line: str) -> str:
+        if "ERROR" in line:
+            return f"❌ {line}"
+        elif "WARNING" in line:
+            return f"⚠️  {line}"
+        elif "DEBUG" in line:
+            if "📄" in line or "📁" in line:
+                return f"📂 FILE: {line}"
+            else:
+                return f"🔍 {line}"
+        elif "Gemini API" in line and ("Sending" in line or "Received" in line):
+            return f"API: {line}"
+        elif "INFO" in line and any(keyword in line for keyword in ["Gemini API", "Tool", "Conversation"]):
+            return f"ℹ️  {line}"
+        return line
 
-                    for line in new_lines:
-                        line = line.strip()
-                        if line:
-                            if "TOOL_CALL:" in line:
-                                tool_info = line.split("TOOL_CALL:")[-1].strip()
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] Tool called: {tool_info}")
-                            elif "TOOL_COMPLETED:" in line:
-                                tool_name = line.split("TOOL_COMPLETED:")[-1].strip()
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✓ Tool completed: {tool_name}")
-                            elif "CONVERSATION_RESUME:" in line:
-                                resume_info = line.split("CONVERSATION_RESUME:")[-1].strip()
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] Resume: {resume_info}")
-                            elif "CONVERSATION_CONTEXT:" in line:
-                                context_info = line.split("CONVERSATION_CONTEXT:")[-1].strip()
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] Context: {context_info}")
-                            elif "CONVERSATION_ERROR:" in line:
-                                error_info = line.split("CONVERSATION_ERROR:")[-1].strip()
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Conversation error: {error_info}")
+    tailers["main"] = LogTailer("/tmp/mcp_server.log")
 
-            # Check main log file for errors and warnings
-            if os.path.exists(log_file):
-                # Check for log rotation
-                current_log_size = os.path.getsize(log_file)
-                if current_log_size < log_size:
-                    # File was rotated - start from beginning
-                    log_pos = 0
-                    log_size = current_log_size
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Main log rotated - restarting from beginning")
+    # Debug log
+    def debug_formatter(line: str) -> str:
+        return f"DEBUG: {line}"
 
-                with open(log_file) as f:
-                    f.seek(log_pos)
-                    new_lines = f.readlines()
-                    log_pos = f.tell()
-                    log_size = current_log_size
+    tailers["debug"] = LogTailer("/tmp/gemini_debug.log")
 
-                    for line in new_lines:
-                        line = line.strip()
-                        if line:
-                            if "ERROR" in line:
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ {line}")
-                            elif "WARNING" in line:
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  {line}")
-                            elif "DEBUG" in line:
-                                # Highlight file embedding debug logs
-                                if "📄" in line or "📁" in line:
-                                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 📂 FILE: {line}")
-                                else:
-                                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 {line}")
-                            elif "INFO" in line and ("Gemini API" in line or "Tool" in line or "Conversation" in line):
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  {line}")
-                            elif "Gemini API" in line and ("Sending" in line or "Received" in line):
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] API: {line}")
+    # Overflow log
+    def overflow_filter(line: str) -> bool:
+        return "ERROR" in line or "WARNING" in line
 
-            # Check debug file
-            if os.path.exists(debug_file):
-                # Check for log rotation
-                current_debug_size = os.path.getsize(debug_file)
-                if current_debug_size < debug_size:
-                    # File was rotated - start from beginning
-                    debug_pos = 0
-                    debug_size = current_debug_size
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Debug log rotated - restarting from beginning")
+    def overflow_formatter(line: str) -> str:
+        if "ERROR" in line:
+            return f"🚨 OVERFLOW: {line}"
+        elif "WARNING" in line:
+            return f"⚠️  OVERFLOW: {line}"
+        return line
 
-                with open(debug_file) as f:
-                    f.seek(debug_pos)
-                    new_lines = f.readlines()
-                    debug_pos = f.tell()
-                    debug_size = current_debug_size
+    tailers["overflow"] = LogTailer("/tmp/mcp_server_overflow.log")
 
-                    for line in new_lines:
-                        line = line.strip()
-                        if line:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] DEBUG: {line}")
+    # Monitor all files in a simple loop
+    try:
+        while True:
+            # Process each log stream using the helper function
+            _process_log_stream(tailers["activity"], activity_filter, activity_formatter)
+            _process_log_stream(tailers["main"], main_filter, main_formatter)
+            _process_log_stream(tailers["debug"], None, debug_formatter)  # No filter for debug
+            _process_log_stream(tailers["overflow"], overflow_filter, overflow_formatter)
 
-            # Check overflow file for warnings/errors when main log gets too large
-            if os.path.exists(overflow_file):
-                # Check for log rotation
-                current_overflow_size = os.path.getsize(overflow_file)
-                if current_overflow_size < overflow_size:
-                    # File was rotated - start from beginning
-                    overflow_pos = 0
-                    overflow_size = current_overflow_size
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Overflow log rotated - restarting from beginning")
+            # Wait before next check
+            time.sleep(0.5)
 
-                with open(overflow_file) as f:
-                    f.seek(overflow_pos)
-                    new_lines = f.readlines()
-                    overflow_pos = f.tell()
-                    overflow_size = current_overflow_size
-
-                    for line in new_lines:
-                        line = line.strip()
-                        if line:
-                            if "ERROR" in line:
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 OVERFLOW: {line}")
-                            elif "WARNING" in line:
-                                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  OVERFLOW: {line}")
-
-            time.sleep(0.5)  # Check every 500ms
-
-        except KeyboardInterrupt:
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Log monitor stopped")
-            break
-        except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Monitor error: {e}")
-            time.sleep(1)
+    except KeyboardInterrupt:
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Log monitor stopped")
 
 
 if __name__ == "__main__":

@@ -35,14 +35,17 @@ class ToolOutput(BaseModel):
     status: Literal[
         "success",
         "error",
-        "clarification_required",
+        "files_required_to_continue",
         "full_codereview_required",
         "focused_review_required",
         "test_sample_needed",
         "more_tests_required",
         "refactor_analysis_complete",
+        "trace_complete",
         "resend_prompt",
+        "code_too_large",
         "continuation_available",
+        "no_bug_found",
     ] = "success"
     content: Optional[str] = Field(None, description="The main content/response from the tool")
     content_type: Literal["text", "markdown", "json"] = "text"
@@ -52,11 +55,11 @@ class ToolOutput(BaseModel):
     )
 
 
-class ClarificationRequest(BaseModel):
-    """Request for additional context or clarification"""
+class FilesNeededRequest(BaseModel):
+    """Request for missing files / code to continue"""
 
-    status: Literal["clarification_required"] = "clarification_required"
-    question: str = Field(..., description="Question to ask Claude for more context")
+    status: Literal["files_required_to_continue"] = "files_required_to_continue"
+    mandatory_instructions: str = Field(..., description="Critical instructions for Claude regarding required context")
     files_needed: Optional[list[str]] = Field(
         default_factory=list, description="Specific files that are needed for analysis"
     )
@@ -141,6 +144,15 @@ class RefactorAnalysisComplete(BaseModel):
     next_actions_for_claude: list[RefactorAction] = Field(..., description="Specific actions for Claude to implement")
 
 
+class CodeTooLargeRequest(BaseModel):
+    """Request to reduce file selection due to size constraints"""
+
+    status: Literal["code_too_large"] = "code_too_large"
+    content: str = Field(..., description="Message explaining the size constraint")
+    content_type: Literal["text"] = "text"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ResendPromptRequest(BaseModel):
     """Request to resend prompt via file due to size limits"""
 
@@ -150,16 +162,127 @@ class ResendPromptRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-# Registry mapping status strings to their corresponding Pydantic models
-SPECIAL_STATUS_MODELS = {
-    "clarification_required": ClarificationRequest,
-    "full_codereview_required": FullCodereviewRequired,
-    "focused_review_required": FocusedReviewRequired,
-    "test_sample_needed": TestSampleNeeded,
-    "more_tests_required": MoreTestsRequired,
-    "refactor_analysis_complete": RefactorAnalysisComplete,
-    "resend_prompt": ResendPromptRequest,
-}
+class TraceEntryPoint(BaseModel):
+    """Entry point information for trace analysis"""
+
+    file: str = Field(..., description="Absolute path to the file")
+    class_or_struct: str = Field(..., description="Class or module name")
+    method: str = Field(..., description="Method or function name")
+    signature: str = Field(..., description="Full method signature")
+    parameters: Optional[dict[str, Any]] = Field(default_factory=dict, description="Parameter values used in analysis")
+
+
+class TraceTarget(BaseModel):
+    """Target information for dependency analysis"""
+
+    file: str = Field(..., description="Absolute path to the file")
+    class_or_struct: str = Field(..., description="Class or module name")
+    method: str = Field(..., description="Method or function name")
+    signature: str = Field(..., description="Full method signature")
+
+
+class CallPathStep(BaseModel):
+    """A single step in the call path trace"""
+
+    from_info: dict[str, Any] = Field(..., description="Source location information", alias="from")
+    to: dict[str, Any] = Field(..., description="Target location information")
+    reason: str = Field(..., description="Reason for the call or dependency")
+    condition: Optional[str] = Field(None, description="Conditional logic if applicable")
+    ambiguous: bool = Field(False, description="Whether this call is ambiguous")
+
+
+class BranchingPoint(BaseModel):
+    """A branching point in the execution flow"""
+
+    file: str = Field(..., description="File containing the branching point")
+    method: str = Field(..., description="Method containing the branching point")
+    line: int = Field(..., description="Line number of the branching point")
+    condition: str = Field(..., description="Branching condition")
+    branches: list[str] = Field(..., description="Possible execution branches")
+    ambiguous: bool = Field(False, description="Whether the branching is ambiguous")
+
+
+class SideEffect(BaseModel):
+    """A side effect detected in the trace"""
+
+    type: str = Field(..., description="Type of side effect")
+    description: str = Field(..., description="Description of the side effect")
+    file: str = Field(..., description="File where the side effect occurs")
+    method: str = Field(..., description="Method where the side effect occurs")
+    line: int = Field(..., description="Line number of the side effect")
+
+
+class UnresolvedDependency(BaseModel):
+    """An unresolved dependency in the trace"""
+
+    reason: str = Field(..., description="Reason why the dependency is unresolved")
+    affected_file: str = Field(..., description="File affected by the unresolved dependency")
+    line: int = Field(..., description="Line number of the unresolved dependency")
+
+
+class IncomingDependency(BaseModel):
+    """An incoming dependency (what calls this target)"""
+
+    from_file: str = Field(..., description="Source file of the dependency")
+    from_class: str = Field(..., description="Source class of the dependency")
+    from_method: str = Field(..., description="Source method of the dependency")
+    line: int = Field(..., description="Line number of the dependency")
+    type: str = Field(..., description="Type of dependency")
+
+
+class OutgoingDependency(BaseModel):
+    """An outgoing dependency (what this target calls)"""
+
+    to_file: str = Field(..., description="Target file of the dependency")
+    to_class: str = Field(..., description="Target class of the dependency")
+    to_method: str = Field(..., description="Target method of the dependency")
+    line: int = Field(..., description="Line number of the dependency")
+    type: str = Field(..., description="Type of dependency")
+
+
+class TypeDependency(BaseModel):
+    """A type-level dependency (inheritance, imports, etc.)"""
+
+    dependency_type: str = Field(..., description="Type of dependency")
+    source_file: str = Field(..., description="Source file of the dependency")
+    source_entity: str = Field(..., description="Source entity (class, module)")
+    target: str = Field(..., description="Target entity")
+
+
+class StateAccess(BaseModel):
+    """State access information"""
+
+    file: str = Field(..., description="File where state is accessed")
+    method: str = Field(..., description="Method accessing the state")
+    access_type: str = Field(..., description="Type of access (reads, writes, etc.)")
+    state_entity: str = Field(..., description="State entity being accessed")
+
+
+class TraceComplete(BaseModel):
+    """Complete trace analysis response"""
+
+    status: Literal["trace_complete"] = "trace_complete"
+    trace_type: Literal["precision", "dependencies"] = Field(..., description="Type of trace performed")
+
+    # Precision mode fields
+    entry_point: Optional[TraceEntryPoint] = Field(None, description="Entry point for precision trace")
+    call_path: Optional[list[CallPathStep]] = Field(default_factory=list, description="Call path for precision trace")
+    branching_points: Optional[list[BranchingPoint]] = Field(default_factory=list, description="Branching points")
+    side_effects: Optional[list[SideEffect]] = Field(default_factory=list, description="Side effects detected")
+    unresolved: Optional[list[UnresolvedDependency]] = Field(
+        default_factory=list, description="Unresolved dependencies"
+    )
+
+    # Dependencies mode fields
+    target: Optional[TraceTarget] = Field(None, description="Target for dependency analysis")
+    incoming_dependencies: Optional[list[IncomingDependency]] = Field(
+        default_factory=list, description="Incoming dependencies"
+    )
+    outgoing_dependencies: Optional[list[OutgoingDependency]] = Field(
+        default_factory=list, description="Outgoing dependencies"
+    )
+    type_dependencies: Optional[list[TypeDependency]] = Field(default_factory=list, description="Type dependencies")
+    state_access: Optional[list[StateAccess]] = Field(default_factory=list, description="State access information")
 
 
 class DiagnosticHypothesis(BaseModel):
@@ -185,3 +308,69 @@ class StructuredDebugResponse(BaseModel):
         default_factory=list,
         description="Additional files or information that would help with analysis",
     )
+
+
+class DebugHypothesis(BaseModel):
+    """A debugging hypothesis with detailed analysis"""
+
+    name: str = Field(..., description="Name/title of the hypothesis")
+    confidence: Literal["High", "Medium", "Low"] = Field(..., description="Confidence level")
+    root_cause: str = Field(..., description="Technical explanation of the root cause")
+    evidence: str = Field(..., description="Logs or code clues supporting this hypothesis")
+    correlation: str = Field(..., description="How symptoms map to the cause")
+    validation: str = Field(..., description="Quick test to confirm the hypothesis")
+    minimal_fix: str = Field(..., description="Smallest change to resolve the issue")
+    regression_check: str = Field(..., description="Why this fix is safe")
+    file_references: list[str] = Field(default_factory=list, description="File:line format for exact locations")
+
+
+class DebugAnalysisComplete(BaseModel):
+    """Complete debugging analysis with systematic investigation tracking"""
+
+    status: Literal["analysis_complete"] = "analysis_complete"
+    investigation_id: str = Field(..., description="Auto-generated unique ID for this investigation")
+    summary: str = Field(..., description="Brief description of the problem and its impact")
+    investigation_steps: list[str] = Field(..., description="Steps taken during the investigation")
+    hypotheses: list[DebugHypothesis] = Field(..., description="Ranked hypotheses with detailed analysis")
+    key_findings: list[str] = Field(..., description="Important discoveries made during analysis")
+    immediate_actions: list[str] = Field(..., description="Steps to take regardless of which hypothesis is correct")
+    recommended_tools: list[str] = Field(default_factory=list, description="Additional tools recommended for analysis")
+    prevention_strategy: Optional[str] = Field(
+        None, description="Targeted measures to prevent this exact issue from recurring"
+    )
+    investigation_summary: str = Field(
+        ..., description="Comprehensive summary of the complete investigation process and conclusions"
+    )
+
+
+class NoBugFound(BaseModel):
+    """Response when thorough investigation finds no concrete evidence of a bug"""
+
+    status: Literal["no_bug_found"] = "no_bug_found"
+    summary: str = Field(..., description="Summary of what was thoroughly investigated")
+    investigation_steps: list[str] = Field(..., description="Steps taken during the investigation")
+    areas_examined: list[str] = Field(..., description="Code areas and potential failure points examined")
+    confidence_level: Literal["High", "Medium", "Low"] = Field(
+        ..., description="Confidence level in the no-bug finding"
+    )
+    alternative_explanations: list[str] = Field(
+        ..., description="Possible alternative explanations for reported symptoms"
+    )
+    recommended_questions: list[str] = Field(..., description="Questions to clarify the issue with the user")
+    next_steps: list[str] = Field(..., description="Suggested actions to better understand the reported issue")
+
+
+# Registry mapping status strings to their corresponding Pydantic models
+SPECIAL_STATUS_MODELS = {
+    "files_required_to_continue": FilesNeededRequest,
+    "full_codereview_required": FullCodereviewRequired,
+    "focused_review_required": FocusedReviewRequired,
+    "test_sample_needed": TestSampleNeeded,
+    "more_tests_required": MoreTestsRequired,
+    "refactor_analysis_complete": RefactorAnalysisComplete,
+    "trace_complete": TraceComplete,
+    "resend_prompt": ResendPromptRequest,
+    "code_too_large": CodeTooLargeRequest,
+    "analysis_complete": DebugAnalysisComplete,
+    "no_bug_found": NoBugFound,
+}

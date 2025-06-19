@@ -23,11 +23,25 @@ from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
 from systemprompts import REFACTOR_PROMPT
-from utils.file_utils import translate_file_paths
 
 from .base import BaseTool, ToolRequest
 
 logger = logging.getLogger(__name__)
+
+
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+REFACTOR_FIELD_DESCRIPTIONS = {
+    "files": "Code files or directories to analyze for refactoring opportunities. MUST be FULL absolute paths to real files / folders - DO NOT SHORTEN."
+    "The files also MUST directly involve the classes, functions etc that need to be refactored. Closely related or dependent files"
+    "will also help.",
+    "prompt": "Description of refactoring goals, context, and specific areas of focus.",
+    "refactor_type": "Type of refactoring analysis to perform",
+    "focus_areas": "Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
+    "style_guide_examples": (
+        "Optional existing code files to use as style/pattern reference (must be FULL absolute paths to real files / folders - DO NOT SHORTEN). "
+        "These files represent the target coding style and patterns for the project."
+    ),
+}
 
 
 class RefactorRequest(ToolRequest):
@@ -38,28 +52,14 @@ class RefactorRequest(ToolRequest):
     the refactoring analysis process.
     """
 
-    files: list[str] = Field(
-        ...,
-        description="Code files or directories to analyze for refactoring opportunities (must be absolute paths)",
-    )
-    prompt: str = Field(
-        ...,
-        description="Description of refactoring goals, context, and specific areas of focus",
-    )
+    files: list[str] = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["files"])
+    prompt: str = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["prompt"])
     refactor_type: Literal["codesmells", "decompose", "modernize", "organization"] = Field(
-        ..., description="Type of refactoring analysis to perform"
+        ..., description=REFACTOR_FIELD_DESCRIPTIONS["refactor_type"]
     )
-    focus_areas: Optional[list[str]] = Field(
-        None,
-        description="Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
-    )
+    focus_areas: Optional[list[str]] = Field(None, description=REFACTOR_FIELD_DESCRIPTIONS["focus_areas"])
     style_guide_examples: Optional[list[str]] = Field(
-        None,
-        description=(
-            "Optional existing code files to use as style/pattern reference (must be absolute paths). "
-            "These files represent the target coding style and patterns for the project. "
-            "Particularly useful for 'modernize' and 'organization' refactor types."
-        ),
+        None, description=REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"]
     )
 
 
@@ -92,30 +92,27 @@ class RefactorTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Code files or directories to analyze for refactoring opportunities (must be absolute paths)",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["files"],
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "Description of refactoring goals, context, and specific areas of focus",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "refactor_type": {
                     "type": "string",
                     "enum": ["codesmells", "decompose", "modernize", "organization"],
-                    "description": "Type of refactoring analysis to perform",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["refactor_type"],
                 },
                 "focus_areas": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["focus_areas"],
                 },
                 "style_guide_examples": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": (
-                        "Optional existing code files to use as style/pattern reference (must be absolute paths). "
-                        "These files represent the target coding style and patterns for the project."
-                    ),
+                    "description": REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"],
                 },
                 "thinking_mode": {
                     "type": "string",
@@ -289,9 +286,7 @@ class RefactorTool(BaseTool):
             logger.info(f"[REFACTOR] All {len(style_examples)} style examples already in conversation history")
             return "", ""
 
-        # Translate file paths for Docker environment before accessing files
-        translated_examples = translate_file_paths(examples_to_process)
-        logger.debug(f"[REFACTOR] Translated {len(examples_to_process)} file paths for container access")
+        logger.debug(f"[REFACTOR] Processing {len(examples_to_process)} file paths")
 
         # Calculate token budget for style examples (20% of available tokens, or fallback)
         if available_tokens:
@@ -310,10 +305,9 @@ class RefactorTool(BaseTool):
 
         # Sort by file size (smallest first) for pattern-focused selection
         file_sizes = []
-        for i, file_path in enumerate(examples_to_process):
-            translated_path = translated_examples[i]
+        for file_path in examples_to_process:
             try:
-                size = os.path.getsize(translated_path)
+                size = os.path.getsize(file_path)
                 file_sizes.append((file_path, size))
                 logger.debug(f"[REFACTOR] Style example {os.path.basename(file_path)}: {size:,} bytes")
             except (OSError, FileNotFoundError) as e:
@@ -409,23 +403,25 @@ class RefactorTool(BaseTool):
         continuation_id = getattr(request, "continuation_id", None)
 
         # Get model context for token budget calculation
-        model_name = getattr(self, "_current_model_name", None)
         available_tokens = None
 
-        if model_name:
+        if hasattr(self, "_model_context") and self._model_context:
             try:
-                provider = self.get_model_provider(model_name)
-                capabilities = provider.get_capabilities(model_name)
+                capabilities = self._model_context.capabilities
                 # Use 75% of context for content (code + style examples), 25% for response
                 available_tokens = int(capabilities.context_window * 0.75)
                 logger.debug(
-                    f"[REFACTOR] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {model_name}"
+                    f"[REFACTOR] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {self._model_context.model_name}"
                 )
             except Exception as e:
                 # Fallback to conservative estimate
-                logger.warning(f"[REFACTOR] Could not get model capabilities for {model_name}: {e}")
+                logger.warning(f"[REFACTOR] Could not get model capabilities: {e}")
                 available_tokens = 120000  # Conservative fallback
                 logger.debug(f"[REFACTOR] Using fallback token budget: {available_tokens:,} tokens")
+        else:
+            # No model context available (shouldn't happen in normal flow)
+            available_tokens = 120000  # Conservative fallback
+            logger.debug(f"[REFACTOR] No model context, using fallback token budget: {available_tokens:,} tokens")
 
         # Process style guide examples first to determine token allocation
         style_examples_content = ""

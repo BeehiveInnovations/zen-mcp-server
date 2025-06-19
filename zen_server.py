@@ -1,7 +1,6 @@
 """
-Zen MCP Server - Entry point for backward compatibility
-This file exists to maintain compatibility with existing configurations.
-The main implementation is now in server.py
+Zen MCP Server - Entry point
+The main implementation is in server.py
 """
 
 import asyncio

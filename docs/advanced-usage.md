@@ -8,31 +8,28 @@ This guide covers advanced features, configuration options, and workflows for po
 - [Model Usage Restrictions](#model-usage-restrictions)
 - [Thinking Modes](#thinking-modes)
 - [Tool Parameters](#tool-parameters)
+- [Context Revival: AI Memory Beyond Context Limits](#context-revival-ai-memory-beyond-context-limits)
 - [Collaborative Workflows](#collaborative-workflows)
 - [Working with Large Prompts](#working-with-large-prompts)
+- [Vision Support](#vision-support)
 - [Web Search Integration](#web-search-integration)
 - [System Prompts](#system-prompts)
 
 ## Model Configuration
 
-**Auto Mode (Recommended):**
-Set `DEFAULT_MODEL=auto` in your .env file and Claude will intelligently select the best model for each task:
+**For basic configuration**, see the [Configuration Guide](configuration.md) which covers API keys, model selection, and environment variables.
 
-```env
-# .env file
-DEFAULT_MODEL=auto  # Claude picks the best model automatically
+This section focuses on **advanced model usage patterns** for power users:
 
-# API Keys (at least one required)
-GEMINI_API_KEY=your-gemini-key    # Enables Gemini Pro & Flash
-OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, O4-mini, O4-mini-high
-```
+**Per-Request Model Override:**
+Regardless of your default configuration, you can specify models per request:
+- "Use **pro** for deep security analysis of auth.py"
+- "Use **flash** to quickly format this code"
+- "Use **o3** to debug this logic error"
+- "Review with **o4-mini** for balanced analysis"
+- "Use **gpt4.1** for comprehensive codebase analysis"
 
-**How Auto Mode Works:**
-- Claude analyzes each request and selects the optimal model
-- Model selection is based on task complexity, requirements, and model strengths
-- You can always override: "Use flash for quick check" or "Use o3 to debug"
-
-**Supported Models & When Claude Uses Them:**
+**Claude's Auto Mode Decision Matrix:**
 
 | Model | Provider | Context | Strengths | Auto Mode Usage |
 |-------|----------|---------|-----------|------------------|
@@ -42,80 +39,42 @@ OPENAI_API_KEY=your-openai-key    # Enables O3, O3-mini, O4-mini, O4-mini-high
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
 | **`o4-mini`** | OpenAI | 200K tokens | Latest reasoning model | Optimized for shorter contexts |
 | **`o4-mini-high`** | OpenAI | 200K tokens | Enhanced reasoning | Complex tasks requiring deeper analysis |
+| **`gpt4.1`** | OpenAI | 1M tokens | Latest GPT-4 with extended context | Large codebase analysis, comprehensive reviews |
 | **`llama`** (Llama 3.2) | Custom/Local | 128K tokens | Local inference, privacy | On-device analysis, cost-free processing |
 | **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
 
 **Mix & Match Providers:** Use multiple providers simultaneously! Set both `OPENROUTER_API_KEY` and `CUSTOM_API_URL` to access 
 cloud models (expensive/powerful) AND local models (free/private) in the same conversation.
 
-**Manual Model Selection:**
-You can specify a default model instead of auto mode:
-
-```env
-# Use a specific model by default
-DEFAULT_MODEL=gemini-2.5-pro-preview-06-05  # Always use Gemini Pro
-DEFAULT_MODEL=flash                         # Always use Flash
-DEFAULT_MODEL=o3                           # Always use O3
-```
-
-**Important:** After changing any configuration in `.env` (including `DEFAULT_MODEL`, API keys, or other settings), restart the server with `./run-server.sh` to apply the changes.
-
-**Per-Request Model Override:**
-Regardless of your default setting, you can specify models per request:
-- "Use **pro** for deep security analysis of auth.py"
-- "Use **flash** to quickly format this code"
-- "Use **o3** to debug this logic error"
-- "Review with **o4-mini** for balanced analysis"
-
 **Model Capabilities:**
 - **Gemini Models**: Support thinking modes (minimal to max), web search, 1M context
 - **O3 Models**: Excellent reasoning, systematic analysis, 200K context
+- **GPT-4.1**: Extended context window (1M tokens), general capabilities
 
 ## Model Usage Restrictions
 
-**Limit which models can be used from each provider**
+**For complete restriction configuration**, see the [Configuration Guide](configuration.md#model-usage-restrictions).
 
-Set environment variables to control model usage:
+**Advanced Restriction Strategies:**
 
+**Cost Control Examples:**
 ```env
-# Only allow specific OpenAI models
+# Development: Allow experimentation
+GOOGLE_ALLOWED_MODELS=flash,pro
 OPENAI_ALLOWED_MODELS=o4-mini,o3-mini
 
-# Only allow specific Gemini models  
+# Production: Cost-optimized  
 GOOGLE_ALLOWED_MODELS=flash
-
-# Only allow specific OpenRouter models
-OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
-
-# Use shorthand names or full model names
-OPENAI_ALLOWED_MODELS=mini,o3-mini  # mini = o4-mini
-```
-
-**How it works:**
-- **Not set or empty**: All models allowed (default)
-- **Comma-separated list**: Only those models allowed
-- **To disable a provider**: Don't set its API key
-
-**Examples:**
-
-```env
-# Cost control - only cheap models
 OPENAI_ALLOWED_MODELS=o4-mini
-GOOGLE_ALLOWED_MODELS=flash
-OPENROUTER_ALLOWED_MODELS=haiku,sonnet
 
-# Single model per provider
-OPENAI_ALLOWED_MODELS=o4-mini
+# High-performance: Quality over cost
 GOOGLE_ALLOWED_MODELS=pro
-OPENROUTER_ALLOWED_MODELS=opus
+OPENAI_ALLOWED_MODELS=o3,o4-mini-high
 ```
 
-**Notes:**
-- Applies to all usage including auto mode
-- Case-insensitive, whitespace tolerant
-- Server warns about typos at startup
-- `OPENAI_ALLOWED_MODELS` and `GOOGLE_ALLOWED_MODELS` only affect native providers
-- `OPENROUTER_ALLOWED_MODELS` affects OpenRouter models accessed via custom provider (where `is_custom: false` in custom_models.json)
+**Important Notes:**
+- Restrictions apply to all usage including auto mode
+- `OPENROUTER_ALLOWED_MODELS` only affects OpenRouter models accessed via custom provider (where `is_custom: false` in custom_models.json)
 - Custom local models (`is_custom: true`) are not affected by any restrictions
 
 ## Thinking Modes
@@ -185,7 +144,7 @@ All tools that work with files support **both individual files and entire direct
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
 - `question`: What to analyze (required)  
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
@@ -200,7 +159,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`codereview`** - Review code files or directories
 - `files`: List of file paths or directories (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `review_type`: full|security|performance|quick
 - `focus_on`: Specific aspects to focus on
 - `standards`: Coding standards to enforce
@@ -216,7 +175,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`debug`** - Debug with file context
 - `error_description`: Description of the issue (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `error_context`: Stack trace or logs
 - `files`: Files or directories related to the issue
 - `runtime_info`: Environment details
@@ -232,7 +191,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`thinkdeep`** - Extended analysis with file context
 - `current_analysis`: Your current thinking (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `problem_context`: Additional context
 - `focus_areas`: Specific aspects to focus on
 - `files`: Files or directories for context
@@ -248,7 +207,7 @@ All tools that work with files support **both individual files and entire direct
 **`testgen`** - Comprehensive test generation with edge case coverage
 - `files`: Code files or directories to generate tests for (required)
 - `prompt`: Description of what to test, testing objectives, and scope (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `test_examples`: Optional existing test files as style/pattern reference
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 
@@ -263,7 +222,7 @@ All tools that work with files support **both individual files and entire direct
 - `files`: Code files or directories to analyze for refactoring opportunities (required)
 - `prompt`: Description of refactoring goals, context, and specific areas of focus (required)
 - `refactor_type`: codesmells|decompose|modernize|organization (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `focus_areas`: Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')
 - `style_guide_examples`: Optional existing code files to use as style/pattern reference
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
@@ -275,6 +234,35 @@ All tools that work with files support **both individual files and entire direct
 "Use pro to modernize this JavaScript code following examples/modern-patterns.js"
 "Refactor src/ for better organization, focus on maintainability and readability"
 ```
+
+## Context Revival: AI Memory Beyond Context Limits
+
+**The Zen MCP Server's most revolutionary feature** is its ability to maintain conversation context even after Claude's memory resets. This enables truly persistent AI collaboration across multiple sessions and context boundaries.
+
+### **The Breakthrough**
+
+Even when Claude's context resets or compacts, conversations can continue seamlessly because other models (O3, Gemini) have access to the complete conversation history stored in memory and can "remind" Claude of everything that was discussed.
+
+### Key Benefits
+
+- **Persistent conversations** across Claude's context resets
+- **Cross-tool continuation** with full context preservation
+- **Multi-session workflows** that maintain complete history
+- **True AI orchestration** where models can build on each other's work
+- **Seamless handoffs** between different tools and models
+
+### Quick Example
+
+```
+Session 1: "Design a RAG system with gemini pro"
+[Claude's context resets]
+Session 2: "Continue our RAG discussion with o3"
+→ O3 receives the full history and reminds Claude of everything discussed
+```
+
+**📖 [Read the complete Context Revival guide](context-revival.md)** for detailed examples, technical architecture, configuration options, and best practices.
+
+**See also:** [AI-to-AI Collaboration Guide](ai-collaboration.md) for multi-model coordination and conversation threading.
 
 ## Collaborative Workflows
 
@@ -328,6 +316,47 @@ To help choose the right tool for your needs:
 - `testgen` vs `debug`: testgen creates test suites, debug just finds issues and recommends solutions
 - `refactor` vs `codereview`: refactor suggests structural improvements, codereview finds bugs/issues
 - `refactor` vs `analyze`: refactor provides actionable refactoring steps, analyze provides understanding
+
+## Vision Support
+
+The Zen MCP server supports vision-capable models for analyzing images, diagrams, screenshots, and visual content. Vision support works seamlessly with all tools and conversation threading.
+
+**Supported Models:**
+- **Gemini 2.5 Pro & Flash**: Excellent for diagrams, architecture analysis, UI mockups (up to 20MB total)
+- **OpenAI O3/O4 series**: Strong for visual debugging, error screenshots (up to 20MB total)
+- **Claude models via OpenRouter**: Good for code screenshots, visual analysis (up to 5MB total)
+- **Custom models**: Support varies by model, with 40MB maximum enforced for abuse prevention
+
+**Usage Examples:**
+```bash
+# Debug with error screenshots
+"Use zen to debug this error with the stack trace screenshot and error.py"
+
+# Architecture analysis with diagrams  
+"Analyze this system architecture diagram with gemini pro for bottlenecks"
+
+# UI review with mockups
+"Chat with flash about this UI mockup - is the layout intuitive?"
+
+# Code review with visual context
+"Review this authentication code along with the error dialog screenshot"
+```
+
+**Image Formats Supported:**
+- **Images**: JPG, PNG, GIF, WebP, BMP, SVG, TIFF
+- **Documents**: PDF (where supported by model)
+- **Data URLs**: Base64-encoded images from Claude
+
+**Key Features:**
+- **Automatic validation**: File type, magic bytes, and size validation
+- **Conversation context**: Images persist across tool switches and continuation
+- **Budget management**: Automatic dropping of old images when limits exceeded
+- **Model capability-aware**: Only sends images to vision-capable models
+
+**Best Practices:**
+- Describe images when including them: "screenshot of login error", "system architecture diagram"
+- Use appropriate models: Gemini for complex diagrams, O3 for debugging visuals
+- Consider image sizes: Larger images consume more of the model's capacity
 
 ## Working with Large Prompts
 

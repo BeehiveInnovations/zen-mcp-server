@@ -21,14 +21,26 @@ from pydantic import Field
 
 from config import TEMPERATURE_ANALYTICAL
 from systemprompts import TESTGEN_PROMPT
-from utils.file_utils import translate_file_paths
 
 from .base import BaseTool, ToolRequest
 
 logger = logging.getLogger(__name__)
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+TESTGEN_FIELD_DESCRIPTIONS = {
+    "files": "Code files or directories to generate tests for (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+    "prompt": "Description of what to test, testing objectives, and specific scope/focus areas. Be specific about any "
+    "particular component, module, class of function you would like to generate tests for.",
+    "test_examples": (
+        "Optional existing test files or directories to use as style/pattern reference (must be FULL absolute paths to real files / folders - DO NOT SHORTEN). "
+        "If not provided, the tool will determine the best testing approach based on the code structure. "
+        "For large test directories, only the smallest representative tests should be included to determine testing patterns. "
+        "If similar tests exist for the code being tested, include those for the most relevant patterns."
+    ),
+}
 
-class TestGenRequest(ToolRequest):
+
+class TestGenerationRequest(ToolRequest):
     """
     Request model for the test generation tool.
 
@@ -37,26 +49,12 @@ class TestGenRequest(ToolRequest):
     test examples for style consistency.
     """
 
-    files: list[str] = Field(
-        ...,
-        description="Code files or directories to generate tests for (must be absolute paths)",
-    )
-    prompt: str = Field(
-        ...,
-        description="Description of what to test, testing objectives, and specific scope/focus areas",
-    )
-    test_examples: Optional[list[str]] = Field(
-        None,
-        description=(
-            "Optional existing test files or directories to use as style/pattern reference (must be absolute paths). "
-            "If not provided, the tool will determine the best testing approach based on the code structure. "
-            "For large test directories, only the smallest representative tests should be included to determine testing patterns. "
-            "If similar tests exist for the code being tested, include those for the most relevant patterns."
-        ),
-    )
+    files: list[str] = Field(..., description=TESTGEN_FIELD_DESCRIPTIONS["files"])
+    prompt: str = Field(..., description=TESTGEN_FIELD_DESCRIPTIONS["prompt"])
+    test_examples: Optional[list[str]] = Field(None, description=TESTGEN_FIELD_DESCRIPTIONS["test_examples"])
 
 
-class TestGenTool(BaseTool):
+class TestGenerationTool(BaseTool):
     """
     Test generation tool implementation.
 
@@ -91,22 +89,17 @@ class TestGenTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Code files or directories to generate tests for (must be absolute paths)",
+                    "description": TESTGEN_FIELD_DESCRIPTIONS["files"],
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "Description of what to test, testing objectives, and specific scope/focus areas",
+                    "description": TESTGEN_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "test_examples": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": (
-                        "Optional existing test files or directories to use as style/pattern reference (must be absolute paths). "
-                        "If not provided, the tool will determine the best testing approach based on the code structure. "
-                        "For large test directories, only the smallest representative tests will be included to determine testing patterns. "
-                        "If similar tests exist for the code being tested, include those for the most relevant patterns."
-                    ),
+                    "description": TESTGEN_FIELD_DESCRIPTIONS["test_examples"],
                 },
                 "thinking_mode": {
                     "type": "string",
@@ -141,7 +134,7 @@ class TestGenTool(BaseTool):
         return ToolModelCategory.EXTENDED_REASONING
 
     def get_request_model(self):
-        return TestGenRequest
+        return TestGenerationRequest
 
     def _process_test_examples(
         self, test_examples: list[str], continuation_id: Optional[str], available_tokens: int = None
@@ -171,9 +164,7 @@ class TestGenTool(BaseTool):
             logger.info(f"[TESTGEN] All {len(test_examples)} test examples already in conversation history")
             return "", ""
 
-        # Translate file paths for Docker environment before accessing files
-        translated_examples = translate_file_paths(examples_to_process)
-        logger.debug(f"[TESTGEN] Translated {len(examples_to_process)} file paths for container access")
+        logger.debug(f"[TESTGEN] Processing {len(examples_to_process)} file paths")
 
         # Calculate token budget for test examples (25% of available tokens, or fallback)
         if available_tokens:
@@ -191,13 +182,11 @@ class TestGenTool(BaseTool):
         )
 
         # Sort by file size (smallest first) for pattern-focused selection
-        # Use translated paths for file system operations, but keep original paths for processing
         file_sizes = []
-        for i, file_path in enumerate(examples_to_process):
-            translated_path = translated_examples[i]
+        for file_path in examples_to_process:
             try:
-                size = os.path.getsize(translated_path)
-                file_sizes.append((file_path, size))  # Keep original path for consistency
+                size = os.path.getsize(file_path)
+                file_sizes.append((file_path, size))
                 logger.debug(f"[TESTGEN] Test example {os.path.basename(file_path)}: {size:,} bytes")
             except (OSError, FileNotFoundError) as e:
                 # If we can't get size, put it at the end
@@ -246,7 +235,7 @@ class TestGenTool(BaseTool):
             logger.error(f"[TESTGEN] Failed to process test examples: {type(e).__name__}: {e}")
             return "", f"Warning: Could not process test examples: {str(e)}"
 
-    async def prepare_prompt(self, request: TestGenRequest) -> str:
+    async def prepare_prompt(self, request: TestGenerationRequest) -> str:
         """
         Prepare the test generation prompt with code analysis and optional test examples.
 
@@ -290,23 +279,25 @@ class TestGenTool(BaseTool):
         continuation_id = getattr(request, "continuation_id", None)
 
         # Get model context for token budget calculation
-        model_name = getattr(self, "_current_model_name", None)
         available_tokens = None
 
-        if model_name:
+        if hasattr(self, "_model_context") and self._model_context:
             try:
-                provider = self.get_model_provider(model_name)
-                capabilities = provider.get_capabilities(model_name)
+                capabilities = self._model_context.capabilities
                 # Use 75% of context for content (code + test examples), 25% for response
                 available_tokens = int(capabilities.context_window * 0.75)
                 logger.debug(
-                    f"[TESTGEN] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {model_name}"
+                    f"[TESTGEN] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {self._model_context.model_name}"
                 )
             except Exception as e:
                 # Fallback to conservative estimate
-                logger.warning(f"[TESTGEN] Could not get model capabilities for {model_name}: {e}")
+                logger.warning(f"[TESTGEN] Could not get model capabilities: {e}")
                 available_tokens = 120000  # Conservative fallback
                 logger.debug(f"[TESTGEN] Using fallback token budget: {available_tokens:,} tokens")
+        else:
+            # No model context available (shouldn't happen in normal flow)
+            available_tokens = 120000  # Conservative fallback
+            logger.debug(f"[TESTGEN] No model context, using fallback token budget: {available_tokens:,} tokens")
 
         # Process test examples first to determine token allocation
         test_examples_content = ""
@@ -418,7 +409,7 @@ class TestGenTool(BaseTool):
 
         return full_prompt
 
-    def format_response(self, response: str, request: TestGenRequest, model_info: Optional[dict] = None) -> str:
+    def format_response(self, response: str, request: TestGenerationRequest, model_info: Optional[dict] = None) -> str:
         """
         Format the test generation response.
 

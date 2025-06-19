@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
 from systemprompts import PRECOMMIT_PROMPT
-from utils.file_utils import translate_file_paths, translate_path_for_environment
 from utils.git_utils import find_git_repositories, get_git_status, run_git_command
 from utils.token_utils import estimate_tokens
 
@@ -26,58 +25,65 @@ from .base import BaseTool, ToolRequest
 # Conservative fallback for token limits
 DEFAULT_CONTEXT_WINDOW = 200_000
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+PRECOMMIT_FIELD_DESCRIPTIONS = {
+    "path": "Starting absolute path to the directory to search for git repositories (must be FULL absolute paths - DO NOT SHORTEN).",
+    "prompt": (
+        "The original user request description for the changes. Provides critical context for the review. "
+        "MANDATORY: if original request is limited or not available, you MUST study the changes carefully, think deeply "
+        "about the implementation intent, analyze patterns across all modifications, infer the logic and "
+        "requirements from the code changes and provide a thorough starting point."
+    ),
+    "compare_to": (
+        "Optional: A git ref (branch, tag, commit hash) to compare against. If not provided, reviews local "
+        "staged and unstaged changes."
+    ),
+    "include_staged": "Include staged changes in the review. Only applies if 'compare_to' is not set.",
+    "include_unstaged": "Include uncommitted (unstaged) changes in the review. Only applies if 'compare_to' is not set.",
+    "focus_on": "Specific aspects to focus on (e.g., 'logic for user authentication', 'database query efficiency').",
+    "review_type": "Type of review to perform on the changes.",
+    "severity_filter": "Minimum severity level to report on the changes.",
+    "max_depth": "Maximum depth to search for nested git repositories to prevent excessive recursion.",
+    "temperature": "Temperature for the response (0.0 to 1.0). Lower values are more focused and deterministic.",
+    "thinking_mode": "Thinking depth mode for the assistant.",
+    "files": (
+        "Optional files or directories to provide as context (must be FULL absolute paths - DO NOT SHORTEN). "
+        "These additional files are not part of the changes but provide helpful context like configs, docs, or related code."
+    ),
+    "images": (
+        "Optional images showing expected UI changes, design requirements, or visual references for the changes "
+        "being validated (must be FULL absolute paths - DO NOT SHORTEN). "
+    ),
+}
+
 
 class PrecommitRequest(ToolRequest):
     """Request model for precommit tool"""
 
-    path: str = Field(
-        ...,
-        description="Starting directory to search for git repositories (must be absolute path).",
-    )
-    prompt: Optional[str] = Field(
-        None,
-        description="The original user request description for the changes. Provides critical context for the review.",
-    )
-    compare_to: Optional[str] = Field(
-        None,
-        description="Optional: A git ref (branch, tag, commit hash) to compare against. If not provided, reviews local staged and unstaged changes.",
-    )
-    include_staged: bool = Field(
-        True,
-        description="Include staged changes in the review. Only applies if 'compare_to' is not set.",
-    )
-    include_unstaged: bool = Field(
-        True,
-        description="Include uncommitted (unstaged) changes in the review. Only applies if 'compare_to' is not set.",
-    )
-    focus_on: Optional[str] = Field(
-        None,
-        description="Specific aspects to focus on (e.g., 'logic for user authentication', 'database query efficiency').",
-    )
+    path: str = Field(..., description=PRECOMMIT_FIELD_DESCRIPTIONS["path"])
+    prompt: Optional[str] = Field(None, description=PRECOMMIT_FIELD_DESCRIPTIONS["prompt"])
+    compare_to: Optional[str] = Field(None, description=PRECOMMIT_FIELD_DESCRIPTIONS["compare_to"])
+    include_staged: bool = Field(True, description=PRECOMMIT_FIELD_DESCRIPTIONS["include_staged"])
+    include_unstaged: bool = Field(True, description=PRECOMMIT_FIELD_DESCRIPTIONS["include_unstaged"])
+    focus_on: Optional[str] = Field(None, description=PRECOMMIT_FIELD_DESCRIPTIONS["focus_on"])
     review_type: Literal["full", "security", "performance", "quick"] = Field(
-        "full", description="Type of review to perform on the changes."
+        "full", description=PRECOMMIT_FIELD_DESCRIPTIONS["review_type"]
     )
-    severity_filter: Literal["critical", "high", "medium", "all"] = Field(
-        "all",
-        description="Minimum severity level to report on the changes.",
+    severity_filter: Literal["critical", "high", "medium", "low", "all"] = Field(
+        "all", description=PRECOMMIT_FIELD_DESCRIPTIONS["severity_filter"]
     )
-    max_depth: int = Field(
-        5,
-        description="Maximum depth to search for nested git repositories to prevent excessive recursion.",
-    )
+    max_depth: int = Field(5, description=PRECOMMIT_FIELD_DESCRIPTIONS["max_depth"])
     temperature: Optional[float] = Field(
         None,
-        description="Temperature for the response (0.0 to 1.0). Lower values are more focused and deterministic.",
+        description=PRECOMMIT_FIELD_DESCRIPTIONS["temperature"],
         ge=0.0,
         le=1.0,
     )
     thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
-        None, description="Thinking depth mode for the assistant."
+        None, description=PRECOMMIT_FIELD_DESCRIPTIONS["thinking_mode"]
     )
-    files: Optional[list[str]] = Field(
-        None,
-        description="Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
-    )
+    files: Optional[list[str]] = Field(None, description=PRECOMMIT_FIELD_DESCRIPTIONS["files"])
+    images: Optional[list[str]] = Field(None, description=PRECOMMIT_FIELD_DESCRIPTIONS["images"])
 
 
 class Precommit(BaseTool):
@@ -95,6 +101,9 @@ class Precommit(BaseTool):
             "Use this before committing, when reviewing changes, checking your changes, validating changes, "
             "or when you're about to commit or ready to commit. Claude should proactively suggest using this tool "
             "whenever the user mentions committing or when changes are complete. "
+            "When original request context is unavailable, Claude MUST think deeply about implementation intent, "
+            "analyze patterns across modifications, infer business logic and requirements from code changes, "
+            "and provide comprehensive insights about what was accomplished and completion status. "
             "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
             "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
             "'max' for critical releases or when reviewing extensive changes across multiple systems. "
@@ -109,63 +118,68 @@ class Precommit(BaseTool):
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Starting directory to search for git repositories (must be absolute path).",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["path"],
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "The original user request description for the changes. Provides critical context for the review.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "compare_to": {
                     "type": "string",
-                    "description": "Optional: A git ref (branch, tag, commit hash) to compare against. If not provided, reviews local staged and unstaged changes.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["compare_to"],
                 },
                 "include_staged": {
                     "type": "boolean",
                     "default": True,
-                    "description": "Include staged changes in the review. Only applies if 'compare_to' is not set.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["include_staged"],
                 },
                 "include_unstaged": {
                     "type": "boolean",
                     "default": True,
-                    "description": "Include uncommitted (unstaged) changes in the review. Only applies if 'compare_to' is not set.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["include_unstaged"],
                 },
                 "focus_on": {
                     "type": "string",
-                    "description": "Specific aspects to focus on (e.g., 'logic for user authentication', 'database query efficiency').",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["focus_on"],
                 },
                 "review_type": {
                     "type": "string",
                     "enum": ["full", "security", "performance", "quick"],
                     "default": "full",
-                    "description": "Type of review to perform on the changes.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["review_type"],
                 },
                 "severity_filter": {
                     "type": "string",
-                    "enum": ["critical", "high", "medium", "all"],
+                    "enum": ["critical", "high", "medium", "low", "all"],
                     "default": "all",
-                    "description": "Minimum severity level to report on the changes.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["severity_filter"],
                 },
                 "max_depth": {
                     "type": "integer",
                     "default": 5,
-                    "description": "Maximum depth to search for nested git repositories to prevent excessive recursion.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["max_depth"],
                 },
                 "temperature": {
                     "type": "number",
-                    "description": "Temperature for the response (0.0 to 1.0). Lower values are more focused and deterministic.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["temperature"],
                     "minimum": 0,
                     "maximum": 1,
                 },
                 "thinking_mode": {
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth mode for the assistant.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["thinking_mode"],
                 },
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["files"],
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": PRECOMMIT_FIELD_DESCRIPTIONS["images"],
                 },
                 "use_websearch": {
                     "type": "boolean",
@@ -220,20 +234,10 @@ class Precommit(BaseTool):
 
             raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
 
-        # Translate the path and files if running in Docker
-        translated_path = translate_path_for_environment(request.path)
-        translated_files = translate_file_paths(request.files)
-
-        # Check if the path translation resulted in an error path
-        if translated_path.startswith("/inaccessible/"):
-            raise ValueError(
-                f"The path '{request.path}' is not accessible from within the Docker container. "
-                f"The Docker container can only access files within the mounted workspace. "
-                f"Please ensure the path is within the mounted directory or adjust your Docker volume mounts."
-            )
+        # File size validation happens at MCP boundary in server.py
 
         # Find all git repositories
-        repositories = find_git_repositories(translated_path, request.max_depth)
+        repositories = find_git_repositories(request.path, request.max_depth)
 
         if not repositories:
             return "No git repositories found in the specified path."
@@ -404,12 +408,12 @@ class Precommit(BaseTool):
         context_files_summary = []
         context_tokens = 0
 
-        if translated_files:
+        if request.files:
             remaining_tokens = max_tokens - total_tokens
 
             # Use centralized file handling with filtering for duplicate prevention
             file_content, processed_files = self._prepare_file_content_for_prompt(
-                translated_files,
+                request.files,
                 request.continuation_id,
                 "Context files",
                 max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
@@ -420,7 +424,7 @@ class Precommit(BaseTool):
             if file_content:
                 context_tokens = estimate_tokens(file_content)
                 context_files_content = [file_content]
-                context_files_summary.append(f"✅ Included: {len(translated_files)} context files")
+                context_files_summary.append(f"✅ Included: {len(request.files)} context files")
             else:
                 context_files_summary.append("WARNING: No context files could be read or files too large")
 
@@ -523,7 +527,7 @@ class Precommit(BaseTool):
         )
 
         # Add instruction for requesting files if needed
-        if not translated_files:
+        if not request.files:
             prompt_parts.append(
                 "\nIf you need additional context files to properly review these changes "
                 "(such as configuration files, documentation, or related code), "
@@ -537,4 +541,20 @@ class Precommit(BaseTool):
 
     def format_response(self, response: str, request: PrecommitRequest, model_info: Optional[dict] = None) -> str:
         """Format the response with commit guidance"""
-        return f"{response}\n\n---\n\n**Commit Status:** If no critical issues found, changes are ready for commit. Otherwise, address issues first and re-run review. Check with user before proceeding with any commit."
+        # Base response
+        formatted_response = response
+
+        # Add footer separator
+        formatted_response += "\n\n---\n\n"
+
+        # Add commit status instruction
+        formatted_response += (
+            "COMMIT STATUS: You MUST provide a clear summary of ALL issues found to the user. "
+            "If no critical or high severity issues found, changes are ready for commit. "
+            "If critical issues are found, you MUST fix them first and then run the precommit tool again "
+            "to validate the fixes before proceeding. "
+            "Medium to low severity issues should be addressed but may not block commit. "
+            "You MUST always CONFIRM with user and show them a CLEAR summary of ALL issues before proceeding with any commit."
+        )
+
+        return formatted_response

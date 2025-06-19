@@ -4,6 +4,26 @@ Model context management for dynamic token allocation.
 This module provides a clean abstraction for model-specific token management,
 ensuring that token limits are properly calculated based on the current model
 being used, not global constants.
+
+CONVERSATION MEMORY INTEGRATION:
+This module works closely with the conversation memory system to provide
+optimal token allocation for multi-turn conversations:
+
+1. DUAL PRIORITIZATION STRATEGY SUPPORT:
+   - Provides separate token budgets for conversation history vs. files
+   - Enables the conversation memory system to apply newest-first prioritization
+   - Ensures optimal balance between context preservation and new content
+
+2. MODEL-SPECIFIC ALLOCATION:
+   - Dynamic allocation based on model capabilities (context window size)
+   - Conservative allocation for smaller models (O3: 200K context)
+   - Generous allocation for larger models (Gemini: 1M+ context)
+   - Adapts token distribution ratios based on model capacity
+
+3. CROSS-TOOL CONSISTENCY:
+   - Provides consistent token budgets across different tools
+   - Enables seamless conversation continuation between tools
+   - Supports conversation reconstruction with proper budget management
 """
 
 import logging
@@ -40,8 +60,9 @@ class ModelContext:
     token calculations, ensuring consistency across the system.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, model_option: Optional[str] = None):
         self.model_name = model_name
+        self.model_option = model_option  # Store optional model option (e.g., "for", "against", etc.)
         self._provider = None
         self._capabilities = None
         self._token_allocation = None
@@ -64,13 +85,31 @@ class ModelContext:
 
     def calculate_token_allocation(self, reserved_for_response: Optional[int] = None) -> TokenAllocation:
         """
-        Calculate token allocation based on model capacity.
+        Calculate token allocation based on model capacity and conversation requirements.
+
+        This method implements the core token budget calculation that supports the
+        dual prioritization strategy used in conversation memory and file processing:
+
+        TOKEN ALLOCATION STRATEGY:
+        1. CONTENT vs RESPONSE SPLIT:
+           - Smaller models (< 300K): 60% content, 40% response (conservative)
+           - Larger models (≥ 300K): 80% content, 20% response (generous)
+
+        2. CONTENT SUB-ALLOCATION:
+           - File tokens: 30-40% of content budget for newest file versions
+           - History tokens: 40-50% of content budget for conversation context
+           - Remaining: Available for tool-specific prompt content
+
+        3. CONVERSATION MEMORY INTEGRATION:
+           - History allocation enables conversation reconstruction in reconstruct_thread_context()
+           - File allocation supports newest-first file prioritization in tools
+           - Remaining budget passed to tools via _remaining_tokens parameter
 
         Args:
             reserved_for_response: Override response token reservation
 
         Returns:
-            TokenAllocation with calculated budgets
+            TokenAllocation with calculated budgets for dual prioritization strategy
         """
         total_tokens = self.capabilities.context_window
 

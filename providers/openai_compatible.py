@@ -1,8 +1,10 @@
 """Base class for OpenAI-compatible API providers."""
 
+import base64
 import ipaddress
 import logging
 import os
+import time
 from abc import abstractmethod
 from typing import Optional
 from urllib.parse import urlparse
@@ -149,10 +151,6 @@ class OpenAICompatibleProvider(ModelProvider):
             if hostname in ["localhost", "127.0.0.1", "::1"]:
                 return True
 
-            # Check for Docker internal hostnames (like host.docker.internal)
-            if hostname and ("docker.internal" in hostname or "host.docker.internal" in hostname):
-                return True
-
             # Check for private network ranges (local network)
             if hostname:
                 try:
@@ -199,28 +197,191 @@ class OpenAICompatibleProvider(ModelProvider):
     def client(self):
         """Lazy initialization of OpenAI client with security checks and timeout configuration."""
         if self._client is None:
-            client_kwargs = {
-                "api_key": self.api_key,
-            }
+            import os
 
-            if self.base_url:
-                client_kwargs["base_url"] = self.base_url
+            import httpx
 
-            if self.organization:
-                client_kwargs["organization"] = self.organization
+            # Temporarily disable proxy environment variables to prevent httpx from detecting them
+            original_env = {}
+            proxy_env_vars = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]
 
-            # Add default headers if any
-            if self.DEFAULT_HEADERS:
-                client_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
+            for var in proxy_env_vars:
+                if var in os.environ:
+                    original_env[var] = os.environ[var]
+                    del os.environ[var]
 
-            # Add configured timeout settings
-            if hasattr(self, "timeout_config") and self.timeout_config:
-                client_kwargs["timeout"] = self.timeout_config
-                logging.debug(f"OpenAI client initialized with custom timeout: {self.timeout_config}")
+            try:
+                # Create a custom httpx client that explicitly avoids proxy parameters
+                timeout_config = (
+                    self.timeout_config
+                    if hasattr(self, "timeout_config") and self.timeout_config
+                    else httpx.Timeout(30.0)
+                )
 
-            self._client = OpenAI(**client_kwargs)
+                # Create httpx client with minimal config to avoid proxy conflicts
+                # Note: proxies parameter was removed in httpx 0.28.0
+                http_client = httpx.Client(
+                    timeout=timeout_config,
+                    follow_redirects=True,
+                )
+
+                # Keep client initialization minimal to avoid proxy parameter conflicts
+                client_kwargs = {
+                    "api_key": self.api_key,
+                    "http_client": http_client,
+                }
+
+                if self.base_url:
+                    client_kwargs["base_url"] = self.base_url
+
+                if self.organization:
+                    client_kwargs["organization"] = self.organization
+
+                # Add default headers if any
+                if self.DEFAULT_HEADERS:
+                    client_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
+
+                logging.debug(f"OpenAI client initialized with custom httpx client and timeout: {timeout_config}")
+
+                # Create OpenAI client with custom httpx client
+                self._client = OpenAI(**client_kwargs)
+
+            except Exception as e:
+                # If all else fails, try absolute minimal client without custom httpx
+                logging.warning(f"Failed to create client with custom httpx, falling back to minimal config: {e}")
+                try:
+                    minimal_kwargs = {"api_key": self.api_key}
+                    if self.base_url:
+                        minimal_kwargs["base_url"] = self.base_url
+                    self._client = OpenAI(**minimal_kwargs)
+                except Exception as fallback_error:
+                    logging.error(f"Even minimal OpenAI client creation failed: {fallback_error}")
+                    raise
+            finally:
+                # Restore original proxy environment variables
+                for var, value in original_env.items():
+                    os.environ[var] = value
 
         return self._client
+
+    def _generate_with_responses_endpoint(
+        self,
+        model_name: str,
+        messages: list,
+        temperature: float,
+        max_output_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> ModelResponse:
+        """Generate content using the /v1/responses endpoint for o3-pro via OpenAI library."""
+        # Convert messages to the correct format for responses endpoint
+        input_messages = []
+
+        for message in messages:
+            role = message.get("role", "")
+            content = message.get("content", "")
+
+            if role == "system":
+                # System messages can be treated as user messages for o3-pro
+                input_messages.append(
+                    {"role": "user", "content": [{"type": "input_text", "text": f"System: {content}"}]}
+                )
+            elif role == "user":
+                input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
+            elif role == "assistant":
+                input_messages.append({"role": "assistant", "content": [{"type": "output_text", "text": content}]})
+
+        # Prepare completion parameters for responses endpoint
+        completion_params = {
+            "model": model_name,
+            "input": input_messages,
+            "text": {"format": {"type": "text"}},
+            "reasoning": {"effort": "medium", "summary": "auto"},
+            "tools": [],
+            "store": True,
+        }
+
+        # Temperature is not in the documented parameters for responses endpoint
+        # but we'll try to add it in case it's supported
+
+        # Add max tokens if specified
+        if max_output_tokens:
+            completion_params["max_tokens"] = max_output_tokens
+
+        # Add any additional OpenAI-specific parameters
+        for key, value in kwargs.items():
+            if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop"]:
+                completion_params[key] = value
+
+        # Retry logic with progressive delays
+        max_retries = 4
+        retry_delays = [1, 3, 5, 8]
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                # Use OpenAI client's responses endpoint
+                response = self.client.responses.create(**completion_params)
+
+                # Extract content and usage from responses endpoint format
+                # The response format is different for responses endpoint
+                content = ""
+                if hasattr(response, "output") and response.output:
+                    if hasattr(response.output, "content") and response.output.content:
+                        # Look for output_text in content
+                        for content_item in response.output.content:
+                            if hasattr(content_item, "type") and content_item.type == "output_text":
+                                content = content_item.text
+                                break
+                    elif hasattr(response.output, "text"):
+                        content = response.output.text
+
+                # Try to extract usage information
+                usage = None
+                if hasattr(response, "usage"):
+                    usage = self._extract_usage(response)
+                elif hasattr(response, "input_tokens") and hasattr(response, "output_tokens"):
+                    # Safely extract token counts with None handling
+                    input_tokens = getattr(response, "input_tokens", 0) or 0
+                    output_tokens = getattr(response, "output_tokens", 0) or 0
+                    usage = {
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "total_tokens": input_tokens + output_tokens,
+                    }
+
+                return ModelResponse(
+                    content=content,
+                    usage=usage,
+                    model_name=model_name,
+                    friendly_name=self.FRIENDLY_NAME,
+                    provider=self.get_provider_type(),
+                    metadata={
+                        "model": getattr(response, "model", model_name),
+                        "id": getattr(response, "id", ""),
+                        "created": getattr(response, "created_at", 0),
+                        "endpoint": "responses",
+                    },
+                )
+
+            except Exception as e:
+                last_exception = e
+
+                # Check if this is a retryable error using structured error codes
+                is_retryable = self._is_error_retryable(e)
+
+                if is_retryable and attempt < max_retries - 1:
+                    delay = retry_delays[attempt]
+                    logging.warning(
+                        f"Retryable error for o3-pro responses endpoint, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    break
+
+        # If we get here, all retries failed
+        error_msg = f"o3-pro responses endpoint error after {max_retries} attempts: {str(last_exception)}"
+        logging.error(error_msg)
+        raise RuntimeError(error_msg) from last_exception
 
     def generate_content(
         self,
@@ -229,6 +390,7 @@ class OpenAICompatibleProvider(ModelProvider):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_output_tokens: Optional[int] = None,
+        images: Optional[list[str]] = None,
         **kwargs,
     ) -> ModelResponse:
         """Generate content using the OpenAI-compatible API.
@@ -255,7 +417,32 @@ class OpenAICompatibleProvider(ModelProvider):
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+
+        # Prepare user message with text and potentially images
+        user_content = []
+        user_content.append({"type": "text", "text": prompt})
+
+        # Add images if provided and model supports vision
+        if images and self._supports_vision(model_name):
+            for image_path in images:
+                try:
+                    image_content = self._process_image(image_path)
+                    if image_content:
+                        user_content.append(image_content)
+                except Exception as e:
+                    logging.warning(f"Failed to process image {image_path}: {e}")
+                    # Continue with other images and text
+                    continue
+        elif images and not self._supports_vision(model_name):
+            logging.warning(f"Model {model_name} does not support images, ignoring {len(images)} image(s)")
+
+        # Add user message
+        if len(user_content) == 1:
+            # Only text content, use simple string format for compatibility
+            messages.append({"role": "user", "content": prompt})
+        else:
+            # Text + images, use content array format
+            messages.append({"role": "user", "content": user_content})
 
         # Prepare completion parameters
         completion_params = {
@@ -273,33 +460,76 @@ class OpenAICompatibleProvider(ModelProvider):
             if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "stream"]:
                 completion_params[key] = value
 
-        try:
-            # Generate completion
-            response = self.client.chat.completions.create(**completion_params)
+        # Check if this is o3-pro and needs the responses endpoint
+        resolved_model = model_name
+        if hasattr(self, "_resolve_model_name"):
+            resolved_model = self._resolve_model_name(model_name)
 
-            # Extract content and usage
-            content = response.choices[0].message.content
-            usage = self._extract_usage(response)
-
-            return ModelResponse(
-                content=content,
-                usage=usage,
-                model_name=model_name,
-                friendly_name=self.FRIENDLY_NAME,
-                provider=self.get_provider_type(),
-                metadata={
-                    "finish_reason": response.choices[0].finish_reason,
-                    "model": response.model,  # Actual model used
-                    "id": response.id,
-                    "created": response.created,
-                },
+        if resolved_model == "o3-pro-2025-06-10":
+            # This model requires the /v1/responses endpoint
+            # If it fails, we should not fall back to chat/completions
+            return self._generate_with_responses_endpoint(
+                model_name=resolved_model,
+                messages=messages,
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                **kwargs,
             )
 
-        except Exception as e:
-            # Log error and re-raise with more context
-            error_msg = f"{self.FRIENDLY_NAME} API error for model {model_name}: {str(e)}"
-            logging.error(error_msg)
-            raise RuntimeError(error_msg) from e
+        # Retry logic with progressive delays
+        max_retries = 4  # Total of 4 attempts
+        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
+
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                # Generate completion
+                response = self.client.chat.completions.create(**completion_params)
+
+                # Extract content and usage
+                content = response.choices[0].message.content
+                usage = self._extract_usage(response)
+
+                return ModelResponse(
+                    content=content,
+                    usage=usage,
+                    model_name=model_name,
+                    friendly_name=self.FRIENDLY_NAME,
+                    provider=self.get_provider_type(),
+                    metadata={
+                        "finish_reason": response.choices[0].finish_reason,
+                        "model": response.model,  # Actual model used
+                        "id": response.id,
+                        "created": response.created,
+                    },
+                )
+
+            except Exception as e:
+                last_exception = e
+
+                # Check if this is a retryable error using structured error codes
+                is_retryable = self._is_error_retryable(e)
+
+                # If this is the last attempt or not retryable, give up
+                if attempt == max_retries - 1 or not is_retryable:
+                    break
+
+                # Get progressive delay
+                delay = retry_delays[attempt]
+
+                # Log retry attempt
+                logging.warning(
+                    f"{self.FRIENDLY_NAME} error for model {model_name}, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
+                )
+                time.sleep(delay)
+
+        # If we get here, all retries failed
+        error_msg = (
+            f"{self.FRIENDLY_NAME} API error for model {model_name} after {max_retries} attempts: {str(last_exception)}"
+        )
+        logging.error(error_msg)
+        raise RuntimeError(error_msg) from last_exception
 
     def count_tokens(self, text: str, model_name: str) -> int:
         """Count tokens for the given text.
@@ -388,9 +618,10 @@ class OpenAICompatibleProvider(ModelProvider):
         usage = {}
 
         if hasattr(response, "usage") and response.usage:
-            usage["input_tokens"] = getattr(response.usage, "prompt_tokens", 0)
-            usage["output_tokens"] = getattr(response.usage, "completion_tokens", 0)
-            usage["total_tokens"] = getattr(response.usage, "total_tokens", 0)
+            # Safely extract token counts with None handling
+            usage["input_tokens"] = getattr(response.usage, "prompt_tokens", 0) or 0
+            usage["output_tokens"] = getattr(response.usage, "completion_tokens", 0) or 0
+            usage["total_tokens"] = getattr(response.usage, "total_tokens", 0) or 0
 
         return usage
 
@@ -424,3 +655,149 @@ class OpenAICompatibleProvider(ModelProvider):
         Default is False for OpenAI-compatible providers.
         """
         return False
+
+    def _supports_vision(self, model_name: str) -> bool:
+        """Check if the model supports vision (image processing).
+
+        Default implementation for OpenAI-compatible providers.
+        Subclasses should override with specific model support.
+        """
+        # Common vision-capable models - only include models that actually support images
+        vision_models = {
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4-turbo",
+            "gpt-4-vision-preview",
+            "gpt-4.1-2025-04-14",  # GPT-4.1 supports vision
+            "o3",
+            "o3-mini",
+            "o3-pro",
+            "o4-mini",
+            "o4-mini-high",
+            # Note: Claude models would be handled by a separate provider
+        }
+        supports = model_name.lower() in vision_models
+        logging.debug(f"Model '{model_name}' vision support: {supports}")
+        return supports
+
+    def _is_error_retryable(self, error: Exception) -> bool:
+        """Determine if an error should be retried based on structured error codes.
+
+        Uses OpenAI API error structure instead of text pattern matching for reliability.
+
+        Args:
+            error: Exception from OpenAI API call
+
+        Returns:
+            True if error should be retried, False otherwise
+        """
+        error_str = str(error).lower()
+
+        # Check for 429 errors first - these need special handling
+        if "429" in error_str:
+            # Try to extract structured error information
+            error_type = None
+            error_code = None
+
+            # Parse structured error from OpenAI API response
+            # Format: "Error code: 429 - {'error': {'type': 'tokens', 'code': 'rate_limit_exceeded', ...}}"
+            try:
+                import ast
+                import json
+                import re
+
+                # Extract JSON part from error string using regex
+                # Look for pattern: {...} (from first { to last })
+                json_match = re.search(r"\{.*\}", str(error))
+                if json_match:
+                    json_like_str = json_match.group(0)
+
+                    # First try: parse as Python literal (handles single quotes safely)
+                    try:
+                        error_data = ast.literal_eval(json_like_str)
+                    except (ValueError, SyntaxError):
+                        # Fallback: try JSON parsing with simple quote replacement
+                        # (for cases where it's already valid JSON or simple replacements work)
+                        json_str = json_like_str.replace("'", '"')
+                        error_data = json.loads(json_str)
+
+                    if "error" in error_data:
+                        error_info = error_data["error"]
+                        error_type = error_info.get("type")
+                        error_code = error_info.get("code")
+
+            except (json.JSONDecodeError, ValueError, SyntaxError, AttributeError):
+                # Fall back to checking hasattr for OpenAI SDK exception objects
+                if hasattr(error, "response") and hasattr(error.response, "json"):
+                    try:
+                        response_data = error.response.json()
+                        if "error" in response_data:
+                            error_info = response_data["error"]
+                            error_type = error_info.get("type")
+                            error_code = error_info.get("code")
+                    except Exception:
+                        pass
+
+            # Determine if 429 is retryable based on structured error codes
+            if error_type == "tokens":
+                # Token-related 429s are typically non-retryable (request too large)
+                logging.debug(f"Non-retryable 429: token-related error (type={error_type}, code={error_code})")
+                return False
+            elif error_code in ["invalid_request_error", "context_length_exceeded"]:
+                # These are permanent failures
+                logging.debug(f"Non-retryable 429: permanent failure (type={error_type}, code={error_code})")
+                return False
+            else:
+                # Other 429s (like requests per minute) are retryable
+                logging.debug(f"Retryable 429: rate limiting (type={error_type}, code={error_code})")
+                return True
+
+        # For non-429 errors, check if they're retryable
+        retryable_indicators = [
+            "timeout",
+            "connection",
+            "network",
+            "temporary",
+            "unavailable",
+            "retry",
+            "408",  # Request timeout
+            "500",  # Internal server error
+            "502",  # Bad gateway
+            "503",  # Service unavailable
+            "504",  # Gateway timeout
+            "ssl",  # SSL errors
+            "handshake",  # Handshake failures
+        ]
+
+        return any(indicator in error_str for indicator in retryable_indicators)
+
+    def _process_image(self, image_path: str) -> Optional[dict]:
+        """Process an image for OpenAI-compatible API."""
+        try:
+            if image_path.startswith("data:image/"):
+                # Handle data URL: data:image/png;base64,iVBORw0...
+                return {"type": "image_url", "image_url": {"url": image_path}}
+            else:
+                # Handle file path
+                if not os.path.exists(image_path):
+                    logging.warning(f"Image file not found: {image_path}")
+                    return None
+
+                # Detect MIME type from file extension using centralized mappings
+                from utils.file_types import get_image_mime_type
+
+                ext = os.path.splitext(image_path)[1].lower()
+                mime_type = get_image_mime_type(ext)
+                logging.debug(f"Processing image '{image_path}' with extension '{ext}' as MIME type '{mime_type}'")
+
+                # Read and encode the image
+                with open(image_path, "rb") as f:
+                    image_data = base64.b64encode(f.read()).decode()
+
+                # Create data URL for OpenAI API
+                data_url = f"data:{mime_type};base64,{image_data}"
+
+                return {"type": "image_url", "image_url": {"url": data_url}}
+        except Exception as e:
+            logging.error(f"Error processing image {image_path}: {e}")
+            return None

@@ -169,3 +169,15 @@ test-setup/
 
 # Scratch feature documentation files
 FEATURE_*.md
+# Temporary files
+/tmp/
+
+# Local user instructions
+CLAUDE.local.md
+
+# Standalone mode files
+.zen_venv/
+.docker_cleaned
+logs/
+*.backup
+/.desktop_configured

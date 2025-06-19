@@ -1,13 +1,12 @@
 """OpenRouter model registry for managing model configurations and aliases."""
 
-import json
 import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from utils.file_utils import translate_path_for_environment
+from utils.file_utils import read_json_file
 
 from .base import ModelCapabilities, ProviderType, RangeTemperatureConstraint
 
@@ -24,6 +23,8 @@ class OpenRouterModelConfig:
     supports_streaming: bool = True
     supports_function_calling: bool = False
     supports_json_mode: bool = False
+    supports_images: bool = False  # Whether model can process images
+    max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
     is_custom: bool = False  # True for models that should only be used with custom endpoints
     description: str = ""
 
@@ -38,6 +39,8 @@ class OpenRouterModelConfig:
             supports_system_prompts=self.supports_system_prompts,
             supports_streaming=self.supports_streaming,
             supports_function_calling=self.supports_function_calling,
+            supports_images=self.supports_images,
+            max_image_size_mb=self.max_image_size_mb,
             temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 1.0),
         )
 
@@ -56,18 +59,17 @@ class OpenRouterModelRegistry:
 
         # Determine config path
         if config_path:
-            # Direct config_path parameter - translate for Docker if needed
-            translated_path = translate_path_for_environment(config_path)
-            self.config_path = Path(translated_path)
+            # Direct config_path parameter
+            self.config_path = Path(config_path)
         else:
             # Check environment variable first
             env_path = os.getenv("CUSTOM_MODELS_CONFIG_PATH")
             if env_path:
-                # Environment variable path - translate for Docker if needed
-                translated_path = translate_path_for_environment(env_path)
-                self.config_path = Path(translated_path)
+                # Environment variable path
+                self.config_path = Path(env_path)
             else:
-                # Default to conf/custom_models.json (already in container)
+                # Default to conf/custom_models.json - use relative path from this file
+                # This works in development environment
                 self.config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
 
         # Load configuration
@@ -130,8 +132,10 @@ class OpenRouterModelRegistry:
             return []
 
         try:
-            with open(self.config_path) as f:
-                data = json.load(f)
+            # Use centralized JSON reading utility
+            data = read_json_file(str(self.config_path))
+            if data is None:
+                raise ValueError(f"Could not read or parse JSON from {self.config_path}")
 
             # Parse models
             configs = []
@@ -140,8 +144,9 @@ class OpenRouterModelRegistry:
                 configs.append(config)
 
             return configs
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in {self.config_path}: {e}")
+        except ValueError:
+            # Re-raise ValueError for specific config errors
+            raise
         except Exception as e:
             raise ValueError(f"Error reading config from {self.config_path}: {e}")
 
