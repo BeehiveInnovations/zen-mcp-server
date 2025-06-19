@@ -157,16 +157,18 @@ class DebugIssueTool(BaseTool):
             "DEBUG & ROOT CAUSE ANALYSIS - Systematic self-investigation followed by expert analysis. "
             "This tool guides you through a step-by-step investigation process where you:\n\n"
             "1. Start with step 1: describe the issue to investigate\n"
-            "2. Continue with investigation steps: examine code, trace errors, test hypotheses\n"
-            "3. Track findings, relevant files, and methods throughout\n"
-            "4. Update hypotheses as understanding evolves\n"
-            "5. Backtrack and revise findings when needed\n"
-            "6. Once investigation is complete, receive expert analysis\n\n"
-            "The tool enforces systematic investigation methodology:\n"
-            "- Methodical code examination and evidence collection\n"
-            "- Hypothesis formation and validation\n"
-            "- File and method tracking for context\n"
-            "- Confidence assessment and revision capabilities\n\n"
+            "2. STOP and investigate using appropriate tools\n"
+            "3. Report findings in step 2 with concrete evidence from actual code\n"
+            "4. Continue investigating between each debug step\n"
+            "5. Track findings, relevant files, and methods throughout\n"
+            "6. Update hypotheses as understanding evolves\n"
+            "7. Once investigation is complete, receive expert analysis\n\n"
+            "IMPORTANT: This tool enforces investigation between steps:\n"
+            "- After each debug call, you MUST investigate before calling debug again\n"
+            "- Each step must include NEW evidence from code examination\n"
+            "- No recursive debug calls without actual investigation work\n"
+            "- The tool will specify which step number to use next\n"
+            "- Follow the required_actions list for investigation guidance\n\n"
             "Perfect for: complex bugs, mysterious errors, performance issues, "
             "race conditions, memory leaks, integration problems."
         )
@@ -357,10 +359,6 @@ class DebugIssueTool(BaseTool):
                     "images_collected": len(set(self.consolidated_findings["images"])),
                     "current_confidence": request.confidence,
                 },
-                "output": {
-                    "instructions": "Continue systematic investigation. Present findings clearly and proceed to next step if required.",
-                    "format": "systematic_investigation",
-                },
             }
 
             if continuation_id:
@@ -436,10 +434,72 @@ class DebugIssueTool(BaseTool):
                         "the problem lies."
                     )
             else:
-                response_data["next_steps"] = (
-                    f"Continue investigation with step {request.step_number + 1}. "
-                    f"Focus on: examining relevant code, testing hypotheses, gathering evidence."
-                )
+                # CRITICAL: Force Claude to actually investigate before calling debug again
+                response_data["status"] = "pause_for_investigation"
+                response_data["investigation_required"] = True
+
+                if request.step_number == 1:
+                    # Initial investigation tasks
+                    response_data["required_actions"] = [
+                        "Search for code related to the reported issue or symptoms",
+                        "Examine relevant files and understand the current implementation",
+                        "Understand the project structure and locate relevant modules",
+                        "Identify how the affected functionality is supposed to work",
+                    ]
+                    response_data["next_steps"] = (
+                        f"MANDATORY: DO NOT call the debug tool again immediately. You MUST first investigate "
+                        f"the codebase using appropriate tools. Search for relevant code, examine implementations, "
+                        f"understand the logic flow. Only call debug again AFTER you have gathered concrete evidence "
+                        f"and examined actual code. When you call debug next time, use step_number: {request.step_number + 1} "
+                        f"and report the specific files you've examined and findings you've discovered."
+                    )
+                elif request.step_number >= 2 and request.confidence in ["exploring", "low"]:
+                    # Need deeper investigation
+                    response_data["required_actions"] = [
+                        "Examine the specific files you've identified as relevant",
+                        "Trace method calls and data flow through the system",
+                        "Check for edge cases, boundary conditions, and assumptions in the code",
+                        "Look for related configuration, dependencies, or external factors",
+                    ]
+                    response_data["next_steps"] = (
+                        f"STOP! Do NOT call debug again yet. Based on your findings, you've identified potential areas "
+                        f"but need concrete evidence. MANDATORY ACTIONS before calling debug step {request.step_number + 1}:\n"
+                        f"1. Examine ALL files in your relevant_files list\n"
+                        f"2. Trace how data flows through {', '.join(request.relevant_methods[:3]) if request.relevant_methods else 'the identified components'}\n"
+                        f"3. Look for logic errors, incorrect assumptions, missing validations\n"
+                        f"4. Check interactions between components and external dependencies\n"
+                        f"Only call debug again with step_number: {request.step_number + 1} AFTER completing these investigations."
+                    )
+                elif request.confidence in ["medium", "high"]:
+                    # Close to root cause - need confirmation
+                    response_data["required_actions"] = [
+                        "Examine the exact code sections where you believe the issue occurs",
+                        "Trace the execution path that leads to the failure",
+                        "Verify your hypothesis with concrete code evidence",
+                        "Check for any similar patterns elsewhere in the codebase",
+                    ]
+                    response_data["next_steps"] = (
+                        f"WAIT! Your hypothesis needs verification. DO NOT call debug immediately. REQUIRED ACTIONS:\n"
+                        f"1. Examine the exact lines where the issue occurs\n"
+                        f"2. Trace backwards: how does data get to this point? What transforms it?\n"
+                        f"3. Check all assumptions: are inputs validated? Are nulls handled?\n"
+                        f"4. Look for the EXACT line where expected != actual behavior\n"
+                        f"Document these findings with specific file:line references, then call debug with step_number: {request.step_number + 1}."
+                    )
+                else:
+                    # General investigation needed
+                    response_data["required_actions"] = [
+                        "Continue examining the code paths identified in your hypothesis",
+                        "Gather more evidence using appropriate investigation tools",
+                        "Test edge cases and boundary conditions",
+                        "Look for patterns that confirm or refute your theory",
+                    ]
+                    response_data["next_steps"] = (
+                        f"PAUSE INVESTIGATION. Before calling debug step {request.step_number + 1}, you MUST examine code. "
+                        f"Required: Read files from your files_checked list, search for patterns in your hypothesis, "
+                        f"trace execution flow. Your next debug call (step_number: {request.step_number + 1}) must include "
+                        f"NEW evidence from actual code examination, not just theories. NO recursive debug calls without investigation work!"
+                    )
 
             # Store in conversation memory
             if continuation_id:

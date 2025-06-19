@@ -43,7 +43,7 @@ class TestDebugComprehensiveWorkflow:
         # Verify step 1 response
         assert len(result1) == 1
         response1 = json.loads(result1[0].text)
-        assert response1["status"] == "investigation_in_progress"
+        assert response1["status"] == "pause_for_investigation"
         assert response1["step_number"] == 1
         assert response1["continuation_id"] == "debug-workflow-uuid"
 
@@ -56,7 +56,8 @@ class TestDebugComprehensiveWorkflow:
             if args and len(args) >= 3:
                 assert args[0] == "debug-workflow-uuid"
                 assert args[1] == "assistant"
-                assert json.loads(args[2])["status"] == "investigation_in_progress"
+                # Debug tool now returns "pause_for_investigation" for ongoing steps
+                assert json.loads(args[2])["status"] == "pause_for_investigation"
 
         # Step 2: Continue investigation with findings
         with patch("utils.conversation_memory.add_turn") as mock_add_turn:
@@ -78,7 +79,8 @@ class TestDebugComprehensiveWorkflow:
 
         # Verify step 2 response
         response2 = json.loads(result2[0].text)
-        assert response2["status"] == "investigation_in_progress"
+        # Debug tool now returns "pause_for_investigation" for ongoing steps
+        assert response2["status"] == "pause_for_investigation"
         assert response2["step_number"] == 2
         assert response2["investigation_status"]["files_checked"] == 2
         assert response2["investigation_status"]["relevant_methods"] == 2
@@ -268,9 +270,12 @@ class TestDebugComprehensiveWorkflow:
                 states.append(json.loads(result[0].text))
 
         # Verify initial state
-        assert states[0]["status"] == "investigation_in_progress"
+        # Debug tool now returns "pause_for_investigation" for ongoing steps
+        assert states[0]["status"] == "pause_for_investigation"
         assert states[0]["step_number"] == 1
         assert states[0]["next_step_required"] is True
+        assert states[0]["investigation_required"] is True
+        assert "required_actions" in states[0]
 
         # Final state (triggers expert analysis)
         mock_expert_response = {"status": "analysis_complete", "summary": "Test complete"}

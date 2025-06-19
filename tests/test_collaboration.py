@@ -95,10 +95,13 @@ class TestDynamicContextRequests:
 
         # Parse the response - new debug tool returns structured JSON
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "investigation_in_progress"
+        # Debug tool now returns "pause_for_investigation" to force actual investigation
+        assert response_data["status"] == "pause_for_investigation"
         assert response_data["step_number"] == 1
         assert response_data["next_step_required"] is True
         assert response_data["investigation_status"]["current_confidence"] == "high"
+        assert response_data["investigation_required"] is True
+        assert "required_actions" in response_data
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")

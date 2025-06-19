@@ -45,8 +45,10 @@ class TestDebugCertainConfidence:
 
         # Verify step 1 response
         response1 = json.loads(result1[0].text)
-        assert response1["status"] == "investigation_in_progress"
+        assert response1["status"] == "pause_for_investigation"
         assert response1["step_number"] == 1
+        assert response1["investigation_required"] is True
+        assert "required_actions" in response1
         continuation_id = response1["continuation_id"]
 
         # Step 2: Final step with certain confidence (simple import fix)

@@ -133,13 +133,16 @@ class TestDebugTool:
 
         parsed_response = json.loads(result[0].text)
 
-        assert parsed_response["status"] == "investigation_in_progress"
+        # Debug tool now returns "pause_for_investigation" for ongoing steps
+        assert parsed_response["status"] == "pause_for_investigation"
         assert parsed_response["step_number"] == 1
         assert parsed_response["total_steps"] == 5
         assert parsed_response["next_step_required"] is True
         assert parsed_response["continuation_id"] == "debug-uuid-123"
         assert parsed_response["investigation_status"]["files_checked"] == 1
         assert parsed_response["investigation_status"]["relevant_files"] == 1
+        assert parsed_response["investigation_required"] is True
+        assert "required_actions" in parsed_response
 
     @pytest.mark.asyncio
     async def test_execute_subsequent_investigation_step(self):
@@ -317,6 +320,7 @@ class TestDebugTool:
             result = await tool.execute(arguments)
 
         # Should return a list with TextContent
+        # Debug tool now returns "pause_for_investigation" for ongoing steps
         assert len(result) == 1
         response_text = result[0].text
 
@@ -325,7 +329,7 @@ class TestDebugTool:
 
         parsed_response = json.loads(response_text)
 
-        assert parsed_response["status"] == "investigation_in_progress"
+        assert parsed_response["status"] == "pause_for_investigation"
         # After backtracking from step 2, history should have step 1 plus the new step
         assert len(tool.investigation_history) == 2  # Step 1 + new step 3
         assert tool.investigation_history[0]["step_number"] == 1
@@ -502,6 +506,7 @@ class TestDebugToolIntegration:
                 result = await self.tool.execute(arguments)
 
         # Verify response structure
+        # Debug tool now returns "pause_for_investigation" for ongoing steps
         assert len(result) == 1
         response_text = result[0].text
 
@@ -510,7 +515,7 @@ class TestDebugToolIntegration:
 
         parsed_response = json.loads(response_text)
 
-        assert parsed_response["status"] == "investigation_in_progress"
+        assert parsed_response["status"] == "pause_for_investigation"
         assert parsed_response["step_number"] == 1
         assert parsed_response["continuation_id"] == "debug-flow-uuid"
 

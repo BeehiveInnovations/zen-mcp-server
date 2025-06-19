@@ -39,8 +39,10 @@ class TestDebugContinuation:
 
         assert len(result) == 1
         response = json.loads(result[0].text)
-        assert response["status"] == "investigation_in_progress"
+        assert response["status"] == "pause_for_investigation"
         assert response["continuation_id"] == "debug-test-uuid-123"
+        assert response["investigation_required"] is True
+        assert "required_actions" in response
 
     def test_debug_conversation_formatting(self):
         """Test that debug tool's structured output is properly formatted in conversation history."""

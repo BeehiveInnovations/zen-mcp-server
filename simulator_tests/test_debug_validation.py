@@ -537,10 +537,8 @@ RuntimeError: dictionary changed size during iteration
                 self.logger.error("Missing investigation_status in response")
                 return False
 
-            # Check output guidance exists
-            if "output" not in response_data:
-                self.logger.error("Missing output guidance in response")
-                return False
+            # Output field removed in favor of contextual next_steps
+            # No longer checking for "output" field as it was redundant
 
             # Check next_steps guidance
             if not response_data.get("next_steps"):
