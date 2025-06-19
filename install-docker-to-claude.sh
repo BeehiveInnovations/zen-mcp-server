@@ -67,53 +67,52 @@ else
     exit 1
 fi
 
-# Check if MCP server already exists
-echo -e "\n${YELLOW}🔍 Checking existing MCP servers...${NC}"
-if claude mcp list 2>/dev/null | grep -q "$MCP_NAME"; then
-    echo -e "${YELLOW}⚠️  MCP server '$MCP_NAME' already exists. Removing...${NC}"
-    claude mcp remove "$MCP_NAME"
-    echo -e "${GREEN}✅ Removed existing MCP server${NC}"
-fi
+# Create .mcp.json for project-level MCP configuration
+echo -e "\n${YELLOW}📦 Configuring MCP server for Claude Code...${NC}"
 
-# Add MCP server to Claude Code
-echo -e "\n${YELLOW}📦 Adding MCP server to Claude Code...${NC}"
+# Create the MCP configuration
+cat > "$SCRIPT_DIR/.mcp.json" << EOF
+{
+  "mcpServers": {
+    "$MCP_NAME": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--init",
+        "--env-file",
+        "${SCRIPT_DIR}/.env",
+        "-v",
+        "${SCRIPT_DIR}/logs:/app/logs",
+        "--name",
+        "zen-mcp-container",
+        "${IMAGE_NAME}:${IMAGE_TAG}"
+      ],
+      "transport": "stdio"
+    }
+  }
+}
+EOF
 
-# Add to Claude - command followed by all args
-if claude mcp add "$MCP_NAME" "docker" \
-    "run" \
-    "-i" \
-    "--rm" \
-    "--init" \
-    "--env-file" "${SCRIPT_DIR}/.env" \
-    "-v" "${SCRIPT_DIR}/logs:/app/logs" \
-    "--name" "zen-mcp-container" \
-    "${IMAGE_NAME}:${IMAGE_TAG}"; then
-    echo -e "${GREEN}✅ MCP server added successfully to Claude Code${NC}"
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Created .mcp.json configuration file${NC}"
 else
-    echo -e "${RED}❌ Failed to add MCP server to Claude Code${NC}"
+    echo -e "${RED}❌ Failed to create MCP configuration${NC}"
     exit 1
 fi
 
 # Verify installation
 echo -e "\n${YELLOW}🔍 Verifying installation...${NC}"
-# Small delay to ensure configuration is saved
-sleep 1
 
-# Check if the server is listed
-MCP_LIST=$(claude mcp list 2>/dev/null || echo "")
-if echo "$MCP_LIST" | grep -q "$MCP_NAME"; then
-    echo -e "${GREEN}✅ MCP server is listed in Claude Code${NC}"
-    
-    # Display the configuration
-    echo -e "\n${BLUE}📋 MCP Server Configuration:${NC}"
-    echo "$MCP_LIST" | grep "$MCP_NAME" || true
-elif [ -z "$MCP_LIST" ] || echo "$MCP_LIST" | grep -q "No MCP servers configured"; then
-    echo -e "${YELLOW}⚠️  MCP server may have been added but not visible yet.${NC}"
-    echo -e "${YELLOW}   Please restart Claude Code and check with: claude mcp list${NC}"
+# Check if the server is configured using 'claude mcp get'
+if claude mcp get "$MCP_NAME" 2>&1 | grep -q "$MCP_NAME"; then
+    echo -e "${GREEN}✅ MCP server is configured in Claude Code${NC}"
+    echo -e "${BLUE}📋 Configuration:${NC}"
+    claude mcp get "$MCP_NAME"
 else
-    echo -e "${RED}❌ Failed to verify MCP server installation${NC}"
-    echo -e "${YELLOW}Debug output:${NC}"
-    echo "$MCP_LIST"
+    echo -e "${YELLOW}⚠️  Could not verify MCP server configuration${NC}"
+    echo -e "${YELLOW}   The .mcp.json file has been created in the project directory${NC}"
 fi
 
 # Create logs directory if it doesn't exist

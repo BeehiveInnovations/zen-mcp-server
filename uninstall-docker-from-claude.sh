@@ -25,15 +25,24 @@ fi
 
 # Check if MCP server exists
 echo -e "${YELLOW}🔍 Checking for MCP server...${NC}"
-if ! claude mcp list 2>/dev/null | grep -q "$MCP_NAME"; then
-    echo -e "${YELLOW}⚠️  MCP server '$MCP_NAME' not found in Claude Code.${NC}"
-else
+
+# Check using 'claude mcp get' since 'list' doesn't show project servers
+if claude mcp get "$MCP_NAME" 2>&1 | grep -q "$MCP_NAME"; then
     echo -e "${YELLOW}🗑️  Removing MCP server from Claude Code...${NC}"
-    if claude mcp remove "$MCP_NAME"; then
+    if claude mcp remove "$MCP_NAME" -s project; then
         echo -e "${GREEN}✅ MCP server removed from Claude Code${NC}"
     else
         echo -e "${RED}❌ Failed to remove MCP server${NC}"
     fi
+else
+    echo -e "${YELLOW}⚠️  MCP server '$MCP_NAME' not found in Claude Code.${NC}"
+fi
+
+# Remove .mcp.json file if it exists
+if [ -f ".mcp.json" ]; then
+    echo -e "${YELLOW}🗑️  Removing .mcp.json configuration file...${NC}"
+    rm -f .mcp.json
+    echo -e "${GREEN}✅ Configuration file removed${NC}"
 fi
 
 # Stop any running containers

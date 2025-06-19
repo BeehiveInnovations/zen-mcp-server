@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "zen-mcp-server": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--init",
+        "--env-file",
+        "/home/valtter/zen-mcp-server/.env",
+        "-v",
+        "/home/valtter/zen-mcp-server/logs:/app/logs",
+        "--name",
+        "zen-mcp-container",
+        "zen-mcp-server:latest"
+      ],
+      "transport": "stdio"
+    }
+  }
+}
