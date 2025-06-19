@@ -21,47 +21,62 @@ logger = logging.getLogger(__name__)
 # Field descriptions for the investigation steps
 DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = {
     "step": (
-        "Describe what you're currently investigating by beginning to think deeply about the issue, its root cause"
-        "and possible reasons. Prepare and learn about the related code first. In step 1, clearly state the issue to investigate and begin "
-        "thinking deeply about not just the described issue, but possible underlying causes, side-effects, or external "
-        "components that might contribute to it. Follow the code flow carefully—bugs may originate "
-        "in one part of the code-dependencies, or upstream logic may not be immediately visible. Bugs and issues can "
-        "arise due to poor logic, incorrect assumptions, bad input or failures elsewhere."
-        "In all subsequent steps, continue uncovering relevant code, examining patterns, and formulating hypotheses "
-        "with deliberate attention to detail."
+        "Describe what you're currently investigating by thinking deeply about the issue and its possible causes. "
+        "In step 1, clearly state the issue and begin forming an investigative direction. Consider not only obvious "
+        "failures, but also subtle contributing factors like upstream logic, invalid inputs, missing preconditions, "
+        "or hidden side effects. Map out the flow of related functions or modules. Identify call paths where input "
+        "values or branching logic could cause instability. In concurrent systems, watch for race conditions, shared "
+        "state, or timing dependencies. In all later steps, continue exploring with precision: trace deeper "
+        "dependencies, verify hypotheses, and adapt your understanding as you uncover more evidence."
     ),
-    "step_number": "Current step number in the investigation sequence (starts at 1).",
-    "total_steps": "Estimate of total investigation steps expected (adjustable as the process evolves).",
-    "next_step_required": "Whether another investigation step is needed after this one.",
+    "step_number": (
+        "The index of the current step in the investigation sequence, beginning at 1. Each step should build upon or "
+        "revise the previous one."
+    ),
+    "total_steps": (
+        "Your current estimate for how many steps will be needed to complete the investigation. Adjust as new findings emerge."
+    ),
+    "next_step_required": (
+        "Set to true if you plan to continue the investigation with another step. False means you believe the root "
+        "cause is known or the investigation is complete."
+    ),
     "findings": (
-        "Summarize discoveries in this step. Think critically and include relevant code behavior, suspicious patterns, "
-        "evidence collected, and any partial conclusions or leads."
+        "Summarize everything discovered in this step. Include new clues, unexpected behavior, evidence from code or "
+        "logs, or disproven theories. Be specific and avoid vague language—document what you now know and how it "
+        "affects your hypothesis. In later steps, confirm or disprove past findings with reason."
     ),
     "files_checked": (
         "List all files (as absolute paths, do not clip or shrink file names) examined during the investigation so far. "
         "Include even files ruled out, as this tracks your exploration path."
     ),
     "relevant_files": (
-        "Subset of files_checked (as full absolute paths) that contain code directly relevant to the issue. Only list those that are directly tied to the root cause or its effects."
+        "Subset of files_checked (as full absolute paths) that contain code directly relevant to the issue. Only list "
+        "those that are directly tied to the root cause or its effects. This could include the cause, trigger, or "
+        "place of manifestation."
     ),
     "relevant_methods": (
-        "List specific methods/functions clearly tied to the issue. Use 'ClassName.methodName' or 'functionName' format."
+        "List methods or functions that are central to the issue, in the format 'ClassName.methodName' or 'functionName'. "
+        "Prioritize those that influence or process inputs, drive branching, or pass state between modules."
     ),
     "hypothesis": (
-        "Formulate your current best guess about the underlying cause. This is a working theory and may evolve based on further evidence."
+        "A concrete theory for what's causing the issue based on the evidence so far. This can include suspected "
+        "failures, incorrect assumptions, or violated constraints. You are encouraged to revise or abandon it in later "
+        "steps as needed."
     ),
     "confidence": (
-        "How confident you are in the current hypothesis: "
-        "'low' (initial theory), 'medium' (good evidence), 'high' (strong to very strong evidence), "
-        "'nailedit' (ONLY use for final step and ONLY when you have found the EXACT root cause with 100% certainty AND "
-        "identified a simple, minimal fix that requires no expert consultation. Use this ONLY "
-        "for obvious bugs and logic errors that you ABSOLUTELY are certain about and have no doubts because you have"
-        "successfully mapped out the code flow and the root cause behind the issue."
+        "Indicate your current confidence in the hypothesis. Use: 'exploring' (starting out), 'low' (early idea), "
+        "'medium' (some supporting evidence), 'high' (strong evidence), 'certain' (only when the root cause and minimal "
+        "fix are both confirmed). Do NOT use 'certain' unless the issue can be fully resolved with a fix, use 'high' "
+        "instead when in doubt. Using 'certain' prevents you from taking assistance from another thought-partner."
     ),
-    "backtrack_from_step": "If a previous step needs revision, specify the step number to backtrack from.",
+    "backtrack_from_step": (
+        "If an earlier finding or hypothesis needs to be revised or discarded, specify the step number from which to "
+        "start over. Use this to acknowledge investigative dead ends and correct the course."
+    ),
     "continuation_id": "Continuation token used for linking multi-step investigations and continuing conversations after discovery.",
     "images": (
-        "Optional. Include full absolute paths to visual debugging images (UI issues, logs, error screens) that help clarify the issue."
+        "Optional list of absolute paths to screenshots or UI visuals that clarify the issue. "
+        "Only include if they materially assist understanding or hypothesis formulation."
     ),
 }
 
@@ -204,7 +219,7 @@ class DebugIssueTool(BaseTool):
                 },
                 "confidence": {
                     "type": "string",
-                    "enum": ["low", "medium", "high", "nailedit"],
+                    "enum": ["exploring", "low", "medium", "high", "certain"],
                     "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["confidence"],
                 },
                 "backtrack_from_step": {
@@ -356,9 +371,9 @@ class DebugIssueTool(BaseTool):
                 response_data["investigation_complete"] = True
 
                 # Check if Claude has absolute certainty and can proceed with minimal fix
-                if request.confidence == "nailedit":
-                    # Trust Claude's judgment completely - if it says nailedit, skip expert analysis
-                    response_data["status"] = "nailedit_confidence_proceed_with_fix"
+                if request.confidence == "certain":
+                    # Trust Claude's judgment completely - if it says certain, skip expert analysis
+                    response_data["status"] = "certain_confidence_proceed_with_fix"
 
                     investigation_summary = self._prepare_investigation_summary()
                     response_data["complete_investigation"] = {
@@ -369,20 +384,21 @@ class DebugIssueTool(BaseTool):
                         "relevant_methods": list(self.consolidated_findings["relevant_methods"]),
                         "investigation_summary": investigation_summary,
                         "final_hypothesis": request.hypothesis,
-                        "confidence_level": "nailedit",
+                        "confidence_level": "certain",
                     }
                     response_data["next_steps"] = (
-                        "Investigation complete with NAILED-IT confidence. You have identified the exact "
-                        "root cause and a minimal fix. Proceed directly with implementing the simple fix "
-                        "without requiring expert consultation. Focus on the precise, minimal change needed."
+                        "Investigation complete with CERTAIN confidence. You have identified the exact "
+                        "root cause and a minimal fix. MANDATORY: Present the user with the root cause analysis"
+                        "and IMMEDIATELY proceed with implementing the simple fix without requiring further "
+                        "consultation. Focus on the precise, minimal change needed."
                     )
                     response_data["skip_expert_analysis"] = True
                     response_data["expert_analysis"] = {
-                        "status": "skipped_due_to_nailedit_confidence",
+                        "status": "skipped_due_to_certain_confidence",
                         "reason": "Claude identified exact root cause with minimal fix requirement",
                     }
                 else:
-                    # Standard expert analysis for high/medium/low confidence
+                    # Standard expert analysis for certain/high/medium/low/exploring confidence
                     response_data["status"] = "calling_expert_analysis"
 
                     # Prepare consolidated investigation summary
@@ -413,9 +429,11 @@ class DebugIssueTool(BaseTool):
                         "investigation_summary": investigation_summary,
                     }
                     response_data["next_steps"] = (
-                        "Investigation complete with expert analysis. Present the findings, hypotheses, "
-                        "and recommended fixes to the user. Focus on the most likely root cause and "
-                        "provide actionable implementation guidance."
+                        "INVESTIGATION IS COMPLETE. YOU MUST now summarize and present ALL key findings, confirmed "
+                        "hypotheses, and exact recommended fixes. Clearly identify the most likely root cause and "
+                        "provide concrete, actionable implementation guidance. Highlight affected code paths and display "
+                        "reasoning that led to this conclusion—make it easy for a developer to understand exactly where "
+                        "the problem lies."
                     )
             else:
                 response_data["next_steps"] = (

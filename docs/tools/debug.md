@@ -27,7 +27,8 @@ The debug tool implements a **systematic investigation methodology** where Claud
 5. **Completion**: Once investigation is thorough, Claude signals completion
 
 **Expert Analysis Phase:**
-After Claude completes the investigation, the tool automatically calls the selected AI model with:
+After Claude completes the investigation, it automatically calls the selected AI model with (unless confidence is **certain**, 
+in which case expert analysis is bypassed):
 - Complete investigation summary with all steps and findings
 - Relevant files and methods identified during investigation  
 - Final hypothesis and confidence assessment

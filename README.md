@@ -370,7 +370,10 @@ Nice!
 **[📖 Read More](docs/tools/precommit.md)** - Multi-repository validation and change analysis
 
 ### 7. `debug` - Expert Debugging Assistant
-Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. Claude performs methodical code examination, evidence collection, and hypothesis formation before receiving expert analysis from the selected AI model.
+Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. Claude performs 
+methodical code examination, evidence collection, and hypothesis formation before receiving expert analysis from the
+selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis 
+via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
 
 ```
 See logs under /Users/me/project/diagnostics.log and related code under the sync folder. Logs show that sync

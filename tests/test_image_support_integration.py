@@ -163,7 +163,7 @@ class TestImageSupportIntegration:
         images_field = schema["properties"]["images"]
         assert images_field["type"] == "array"
         assert images_field["items"]["type"] == "string"
-        assert "error screens" in images_field["description"].lower()
+        assert "screenshots" in images_field["description"].lower()
 
     def test_tool_image_validation_limits(self):
         """Test that tools validate image size limits using real provider resolution."""

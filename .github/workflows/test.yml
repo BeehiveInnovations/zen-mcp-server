@@ -53,8 +53,8 @@ jobs:
         pip install -r requirements-dev.txt
     
     - name: Run black formatter check
-      run: black --check .
+      run: black --check . --exclude="test_simulation_files/"
     
     - name: Run ruff linter
-      run: ruff check .
+      run: ruff check . --exclude test_simulation_files
 

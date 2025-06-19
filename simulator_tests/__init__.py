@@ -14,6 +14,7 @@ from .test_content_validation import ContentValidationTest
 from .test_conversation_chain_validation import ConversationChainValidationTest
 from .test_cross_tool_comprehensive import CrossToolComprehensiveTest
 from .test_cross_tool_continuation import CrossToolContinuationTest
+from .test_debug_certain_confidence import DebugCertainConfidenceTest
 from .test_debug_validation import DebugValidationTest
 from .test_line_number_validation import LineNumberValidationTest
 from .test_logs_validation import LogsValidationTest
@@ -55,6 +56,7 @@ TEST_REGISTRY = {
     "testgen_validation": TestGenValidationTest,
     "refactor_validation": RefactorValidationTest,
     "debug_validation": DebugValidationTest,
+    "debug_certain_confidence": DebugCertainConfidenceTest,
     "conversation_chain_validation": ConversationChainValidationTest,
     "vision_capability": VisionCapabilityTest,
     "xai_models": XAIModelsTest,
@@ -86,6 +88,7 @@ __all__ = [
     "TestGenValidationTest",
     "RefactorValidationTest",
     "DebugValidationTest",
+    "DebugCertainConfidenceTest",
     "ConversationChainValidationTest",
     "VisionCapabilityTest",
     "XAIModelsTest",
