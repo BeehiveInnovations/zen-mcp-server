@@ -375,7 +375,7 @@ class PrecommitTool(WorkflowTool):
             try:
                 token_allocation = model_context.calculate_token_allocation()
                 max_tokens = token_allocation.content_tokens  # Correct field for validation
-            except (ValueError, AttributeError, Exception) as e:
+            except (ValueError, AttributeError, Exception):
                 # Model context exists but provider initialization failed - fall back gracefully
                 FALLBACK_TOTAL_TOKENS = 200_000
                 RESPONSE_RESERVATION = 50_000
