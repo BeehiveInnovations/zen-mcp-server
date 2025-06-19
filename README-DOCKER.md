@@ -4,6 +4,25 @@ This document describes how to run the Zen MCP Server using Docker containers.
 
 ## Quick Start
 
+### Automatic Installation (Claude Code)
+
+1. **One-command installation:**
+   ```bash
+   ./install-docker-to-claude.sh
+   ```
+   This script will:
+   - Build the Docker image
+   - Validate your configuration
+   - Add the MCP server to Claude Code
+   - Verify the installation
+
+2. **To uninstall:**
+   ```bash
+   ./uninstall-docker-from-claude.sh
+   ```
+
+### Manual Installation
+
 1. **Build the Docker image:**
    ```bash
    ./docker-build.sh
