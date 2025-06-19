@@ -35,14 +35,20 @@ fi
 
 # Check if .env file exists
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
-    echo -e "${YELLOW}⚠️  No .env file found. Creating from example...${NC}"
-    if [ -f "$SCRIPT_DIR/.env.docker.example" ]; then
-        cp "$SCRIPT_DIR/.env.docker.example" "$SCRIPT_DIR/.env"
-        echo -e "${GREEN}✅ Created .env file from example.${NC}"
-        echo -e "${YELLOW}📝 Please edit $SCRIPT_DIR/.env with your API keys before continuing.${NC}"
-        read -p "Press Enter after you've added your API keys to .env..."
+    echo -e "${YELLOW}⚠️  No .env file found. Running setup...${NC}"
+    echo ""
+    # Run the main setup script to create .env
+    if [ -f "$SCRIPT_DIR/run-server.sh" ]; then
+        echo "Running run-server.sh to create environment configuration..."
+        "$SCRIPT_DIR/run-server.sh" --env-only 2>/dev/null || "$SCRIPT_DIR/run-server.sh"
+        
+        if [ ! -f "$SCRIPT_DIR/.env" ]; then
+            echo -e "${RED}❌ Failed to create .env file.${NC}"
+            echo "Please run ./run-server.sh first to set up the environment."
+            exit 1
+        fi
     else
-        echo -e "${RED}❌ No .env.docker.example file found.${NC}"
+        echo -e "${RED}❌ run-server.sh not found.${NC}"
         exit 1
     fi
 fi
@@ -83,6 +89,8 @@ cat > "$SCRIPT_DIR/.mcp.json" << EOF
         "--init",
         "--env-file",
         "${SCRIPT_DIR}/.env",
+        "-v",
+        "${SCRIPT_DIR}/.env:/app/.env:ro",
         "-v",
         "${SCRIPT_DIR}/logs:/app/logs",
         "--name",
@@ -145,7 +153,7 @@ echo "  • refactor - Code refactoring"
 echo "  • tracer - Code tracing"
 echo ""
 echo -e "${YELLOW}To test the Docker container manually:${NC}"
-echo "  docker run -it --rm --env-file .env -v ./logs:/app/logs zen-mcp-server:latest"
+echo "  docker run -it --rm --env-file .env -v ./.env:/app/.env:ro -v ./logs:/app/logs zen-mcp-server:latest"
 echo ""
 echo -e "${YELLOW}To view logs:${NC}"
 echo "  tail -f $SCRIPT_DIR/logs/mcp_server.log"

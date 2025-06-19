@@ -10,7 +10,7 @@ services:
     stdin_open: true
     tty: true
     
-    # Environment variables
+    # Environment variables from host .env file
     env_file:
       - .env
     
@@ -24,8 +24,8 @@ services:
       # Mount logs directory for persistent logging
       - ./logs:/app/logs
       
-      # Optional: Mount .env file (if not using env_file)
-      # - ./.env:/app/.env:ro
+      # Mount .env file as read-only for the application
+      - ./.env:/app/.env:ro
     
     # Resource limits (following MCP standards)
     deploy:

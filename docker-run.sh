@@ -83,14 +83,19 @@ fi
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
-    echo -e "${YELLOW}⚠️  No .env file found. Creating from example...${NC}"
-    if [ -f ".env.docker.example" ]; then
-        cp .env.docker.example .env
-        echo -e "${GREEN}✅ Created .env file. Please edit it with your API keys.${NC}"
-        echo -e "${YELLOW}   Edit .env and run this script again.${NC}"
-        exit 1
+    echo -e "${YELLOW}⚠️  No .env file found. Running setup...${NC}"
+    # Run the main setup script to create .env
+    if [ -f "./run-server.sh" ]; then
+        echo "Running run-server.sh to create environment configuration..."
+        ./run-server.sh --env-only 2>/dev/null || ./run-server.sh
+        
+        if [ ! -f ".env" ]; then
+            echo -e "${RED}❌ Failed to create .env file.${NC}"
+            echo "Please run ./run-server.sh first to set up the environment."
+            exit 1
+        fi
     else
-        echo -e "${RED}❌ No .env.docker.example file found.${NC}"
+        echo -e "${RED}❌ run-server.sh not found.${NC}"
         exit 1
     fi
 fi
@@ -141,6 +146,7 @@ else
     RUN_CMD="$RUN_CMD --rm --init"
     RUN_CMD="$RUN_CMD --name $CONTAINER_NAME"
     RUN_CMD="$RUN_CMD --env-file .env"
+    RUN_CMD="$RUN_CMD -v $(pwd)/.env:/app/.env:ro"
     RUN_CMD="$RUN_CMD -v $(pwd)/logs:/app/logs"
     RUN_CMD="$RUN_CMD $IMAGE_NAME:$IMAGE_TAG"
     

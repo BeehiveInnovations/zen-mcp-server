@@ -8,6 +8,7 @@
         "--rm",
         "--init",
         "--env-file", ".env",
+        "-v", "./.env:/app/.env:ro",
         "-v", "./logs:/app/logs",
         "--name", "zen-mcp-container",
         "zen-mcp-server:latest"

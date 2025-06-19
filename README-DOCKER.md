@@ -30,8 +30,9 @@ This document describes how to run the Zen MCP Server using Docker containers.
 
 2. **Configure environment variables:**
    ```bash
-   cp .env.docker.example .env
-   # Edit .env with your API keys
+   # Run the setup script to create .env
+   ./run-server.sh
+   # This will create and configure .env with your API keys
    ```
 
 3. **Run the container:**
@@ -57,7 +58,6 @@ The Docker implementation provides:
 - `Dockerfile` - Multi-stage build for optimized image
 - `docker-compose.yml` - Orchestration configuration
 - `.dockerignore` - Excludes unnecessary files from build
-- `.env.docker.example` - Environment template
 - `claude-config-docker.json` - Claude Desktop configuration
 - `docker-build.sh` - Build script with multi-platform support
 - `docker-run.sh` - Run script with various options
@@ -116,7 +116,7 @@ To use with Claude Desktop, add the configuration from `claude-config-docker.jso
 
 ## Environment Variables
 
-Configure these in your `.env` file:
+The `.env` file is created and managed by `run-server.sh`. Configure these variables:
 
 - `GEMINI_API_KEY` - Google Gemini API key
 - `OPENAI_API_KEY` - OpenAI API key
@@ -125,8 +125,11 @@ Configure these in your `.env` file:
 - `LOG_LEVEL` - Logging level (default: INFO)
 - `OLLAMA_API_URL` - Ollama URL (use `http://host.docker.internal:11434` for local)
 
+The Docker container uses the same `.env` file as the standalone installation, ensuring consistency across deployment methods.
+
 ## Volumes
 
+- `./.env:/app/.env:ro` - Environment configuration (read-only)
 - `./logs:/app/logs` - Persistent log storage
 
 ## Security
