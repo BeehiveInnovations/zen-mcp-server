@@ -1947,8 +1947,14 @@ When recommending searches, be specific about what information you need and why 
             # Apply dynamic model-specific approach
             model_context = getattr(self, "_model_context", None)
             if model_context:
-                token_allocation = model_context.calculate_token_allocation()
-                context_window = token_allocation.content_tokens  # Correct field for validation
+                try:
+                    token_allocation = model_context.calculate_token_allocation()
+                    context_window = token_allocation.content_tokens  # Correct field for validation
+                except (ValueError, AttributeError, Exception) as e:
+                    # Model context exists but provider initialization failed - fall back gracefully
+                    FALLBACK_TOTAL_TOKENS = 200_000
+                    RESPONSE_RESERVATION = 50_000
+                    context_window = FALLBACK_TOTAL_TOKENS - RESPONSE_RESERVATION
             else:
                 # Smart fallback with response reservation
                 FALLBACK_TOTAL_TOKENS = 200_000

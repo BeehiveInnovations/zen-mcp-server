@@ -372,8 +372,14 @@ class PrecommitTool(WorkflowTool):
         # Dynamic model-specific token allocation
         model_context = getattr(self, "_model_context", None)
         if model_context:
-            token_allocation = model_context.calculate_token_allocation()
-            max_tokens = token_allocation.content_tokens  # Correct field for validation
+            try:
+                token_allocation = model_context.calculate_token_allocation()
+                max_tokens = token_allocation.content_tokens  # Correct field for validation
+            except (ValueError, AttributeError, Exception) as e:
+                # Model context exists but provider initialization failed - fall back gracefully
+                FALLBACK_TOTAL_TOKENS = 200_000
+                RESPONSE_RESERVATION = 50_000
+                max_tokens = FALLBACK_TOTAL_TOKENS - RESPONSE_RESERVATION
         else:
             # Smart fallback with response reservation
             FALLBACK_TOTAL_TOKENS = 200_000
