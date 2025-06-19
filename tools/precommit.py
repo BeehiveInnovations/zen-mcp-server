@@ -323,6 +323,7 @@ class PrecommitTool(WorkflowTool):
             tool_name=self.get_name(),
         )
 
+<<<<<<< HEAD
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
         """Define required actions for each investigation phase."""
         if step_number == 1:
@@ -352,6 +353,233 @@ class PrecommitTool(WorkflowTool):
                 "Ensure all security, performance, and quality concerns are captured",
                 "Validate that your findings are comprehensive and actionable",
             ]
+=======
+            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
+
+        # File size validation happens at MCP boundary in server.py
+
+        # Find all git repositories
+        repositories = find_git_repositories(request.path, request.max_depth)
+
+        if not repositories:
+            return "No git repositories found in the specified path."
+
+        # Collect all diffs directly
+        all_diffs = []
+        repo_summaries = []
+        total_tokens = 0
+
+        # Dynamic model-specific token allocation
+        model_context = getattr(self, "_model_context", None)
+        if model_context:
+            token_allocation = model_context.calculate_token_allocation()
+            max_tokens = token_allocation.content_tokens  # Correct field for validation
+        else:
+            # Smart fallback with response reservation
+            FALLBACK_TOTAL_TOKENS = 200_000
+            RESPONSE_RESERVATION = 50_000
+            max_tokens = FALLBACK_TOTAL_TOKENS - RESPONSE_RESERVATION
+
+        for repo_path in repositories:
+            repo_name = os.path.basename(repo_path) or "root"
+
+            # Get status information
+            status = get_git_status(repo_path)
+            changed_files = []
+
+            # Process based on mode
+            if request.compare_to:
+                # Validate the ref
+                is_valid_ref, err_msg = run_git_command(
+                    repo_path,
+                    ["rev-parse", "--verify", "--quiet", request.compare_to],
+                )
+                if not is_valid_ref:
+                    repo_summaries.append(
+                        {
+                            "path": repo_path,
+                            "error": f"Invalid or unknown git ref '{request.compare_to}': {err_msg}",
+                            "changed_files": 0,
+                        }
+                    )
+                    continue
+
+                # Get list of changed files
+                success, files_output = run_git_command(
+                    repo_path,
+                    ["diff", "--name-only", f"{request.compare_to}...HEAD"],
+                )
+                if success and files_output.strip():
+                    changed_files = [f for f in files_output.strip().split("\n") if f]
+
+                    # Generate per-file diffs
+                    for file_path in changed_files:
+                        success, diff = run_git_command(
+                            repo_path,
+                            [
+                                "diff",
+                                f"{request.compare_to}...HEAD",
+                                "--",
+                                file_path,
+                            ],
+                        )
+                        if success and diff.strip():
+                            # Format diff with file header
+                            diff_header = (
+                                f"\n--- BEGIN DIFF: {repo_name} / {file_path} (compare to {request.compare_to}) ---\n"
+                            )
+                            diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                            formatted_diff = diff_header + diff + diff_footer
+
+                            # Check token limit
+                            diff_tokens = estimate_tokens(formatted_diff)
+                            if total_tokens + diff_tokens <= max_tokens:
+                                all_diffs.append(formatted_diff)
+                                total_tokens += diff_tokens
+            else:
+                # Handle staged/unstaged/untracked changes
+                staged_files = []
+                unstaged_files = []
+                untracked_files = []
+
+                if request.include_staged:
+                    success, files_output = run_git_command(repo_path, ["diff", "--name-only", "--cached"])
+                    if success and files_output.strip():
+                        staged_files = [f for f in files_output.strip().split("\n") if f]
+
+                        # Generate per-file diffs for staged changes
+                        # Each diff is wrapped with clear markers to distinguish from full file content
+                        for file_path in staged_files:
+                            success, diff = run_git_command(repo_path, ["diff", "--cached", "--", file_path])
+                            if success and diff.strip():
+                                # Use "BEGIN DIFF" markers (distinct from "BEGIN FILE" markers in utils/file_utils.py)
+                                # This allows AI to distinguish between diff context vs complete file content
+                                diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (staged) ---\n"
+                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                formatted_diff = diff_header + diff + diff_footer
+
+                                # Check token limit
+                                diff_tokens = estimate_tokens(formatted_diff)
+                                if total_tokens + diff_tokens <= max_tokens:
+                                    all_diffs.append(formatted_diff)
+                                    total_tokens += diff_tokens
+
+                if request.include_unstaged:
+                    success, files_output = run_git_command(repo_path, ["diff", "--name-only"])
+                    if success and files_output.strip():
+                        unstaged_files = [f for f in files_output.strip().split("\n") if f]
+
+                        # Generate per-file diffs for unstaged changes
+                        # Same clear marker pattern as staged changes above
+                        for file_path in unstaged_files:
+                            success, diff = run_git_command(repo_path, ["diff", "--", file_path])
+                            if success and diff.strip():
+                                diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (unstaged) ---\n"
+                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                formatted_diff = diff_header + diff + diff_footer
+
+                                # Check token limit
+                                diff_tokens = estimate_tokens(formatted_diff)
+                                if total_tokens + diff_tokens <= max_tokens:
+                                    all_diffs.append(formatted_diff)
+                                    total_tokens += diff_tokens
+
+                    # Also include untracked files when include_unstaged is True
+                    # Untracked files are new files that haven't been added to git yet
+                    if status["untracked_files"]:
+                        untracked_files = status["untracked_files"]
+
+                        # For untracked files, show the entire file content as a "new file" diff
+                        for file_path in untracked_files:
+                            file_full_path = os.path.join(repo_path, file_path)
+                            if os.path.exists(file_full_path) and os.path.isfile(file_full_path):
+                                try:
+                                    with open(file_full_path, encoding="utf-8", errors="ignore") as f:
+                                        file_content = f.read()
+
+                                    # Format as a new file diff
+                                    diff_header = (
+                                        f"\n--- BEGIN DIFF: {repo_name} / {file_path} (untracked - new file) ---\n"
+                                    )
+                                    diff_content = f"+++ b/{file_path}\n"
+                                    for _line_num, line in enumerate(file_content.splitlines(), 1):
+                                        diff_content += f"+{line}\n"
+                                    diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
+                                    formatted_diff = diff_header + diff_content + diff_footer
+
+                                    # Check token limit
+                                    diff_tokens = estimate_tokens(formatted_diff)
+                                    if total_tokens + diff_tokens <= max_tokens:
+                                        all_diffs.append(formatted_diff)
+                                        total_tokens += diff_tokens
+                                except Exception:
+                                    # Skip files that can't be read (binary, permission issues, etc.)
+                                    pass
+
+                # Combine unique files
+                changed_files = list(set(staged_files + unstaged_files + untracked_files))
+
+            # Add repository summary
+            if changed_files:
+                repo_summaries.append(
+                    {
+                        "path": repo_path,
+                        "branch": status["branch"],
+                        "ahead": status["ahead"],
+                        "behind": status["behind"],
+                        "changed_files": len(changed_files),
+                        "files": changed_files[:20],  # First 20 for summary
+                    }
+                )
+
+        if not all_diffs:
+            return "No pending changes found in any of the git repositories."
+
+        # Process context files if provided using standardized file reading
+        context_files_content = []
+        context_files_summary = []
+        context_tokens = 0
+
+        if request.files:
+            remaining_tokens = max_tokens - total_tokens
+
+            # Use centralized file handling with filtering for duplicate prevention
+            file_content, processed_files = self._prepare_file_content_for_prompt(
+                request.files,
+                request.continuation_id,
+                "Context files",
+                max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
+                reserve_tokens=1000,  # Small reserve for formatting
+            )
+            self._actually_processed_files = processed_files
+
+            if file_content:
+                context_tokens = estimate_tokens(file_content)
+                context_files_content = [file_content]
+                context_files_summary.append(f"✅ Included: {len(request.files)} context files")
+            else:
+                context_files_summary.append("WARNING: No context files could be read or files too large")
+
+            total_tokens += context_tokens
+
+        # Build the final prompt
+        prompt_parts = []
+
+        # Add original request context if provided
+        if request.prompt:
+            prompt_parts.append(f"## Original Request\n\n{request.prompt}\n")
+
+        # Add review parameters
+        prompt_parts.append("## Review Parameters\n")
+        prompt_parts.append(f"- Review Type: {request.review_type}")
+        prompt_parts.append(f"- Severity Filter: {request.severity_filter}")
+
+        if request.focus_on:
+            prompt_parts.append(f"- Focus Areas: {request.focus_on}")
+
+        if request.compare_to:
+            prompt_parts.append(f"- Comparing Against: {request.compare_to}")
+>>>>>>> f36da7c (Implement dynamic token validation pattern across tools)
         else:
             # General investigation needed
             return [
