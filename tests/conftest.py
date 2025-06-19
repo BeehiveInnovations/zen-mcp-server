@@ -15,12 +15,12 @@ parent_dir = Path(__file__).resolve().parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
-# Set dummy API keys for tests if not already set
-if "GEMINI_API_KEY" not in os.environ:
+# Set dummy API keys for tests if not already set or if empty
+if not os.environ.get("GEMINI_API_KEY"):
     os.environ["GEMINI_API_KEY"] = "dummy-key-for-tests"
-if "OPENAI_API_KEY" not in os.environ:
+if not os.environ.get("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = "dummy-key-for-tests"
-if "XAI_API_KEY" not in os.environ:
+if not os.environ.get("XAI_API_KEY"):
     os.environ["XAI_API_KEY"] = "dummy-key-for-tests"
 
 # Set default model to a specific value for tests to avoid auto mode

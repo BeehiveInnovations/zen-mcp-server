@@ -229,7 +229,7 @@ Just ask Claude naturally:
 - **Need multiple perspectives?** → `consensus` (get diverse expert opinions on proposals and decisions)
 - **Code needs review?** → `codereview` (bugs, security, performance issues)
 - **Pre-commit validation?** → `precommit` (validate git changes before committing)
-- **Something's broken?** → `debug` (root cause analysis, error tracing)
+- **Something's broken?** → `debug` (systematic investigation, step-by-step root cause analysis)
 - **Want to understand code?** → `analyze` (architecture, patterns, dependencies)
 - **Code needs refactoring?** → `refactor` (intelligent refactoring with decomposition focus)
 - **Need call-flow analysis?** → `tracer` (generates prompts for execution tracing and dependency mapping)
@@ -255,7 +255,7 @@ Just ask Claude naturally:
 4. [`consensus`](docs/tools/consensus.md) - Multi-model consensus analysis with stance steering
 5. [`codereview`](docs/tools/codereview.md) - Professional code review with severity levels
 6. [`precommit`](docs/tools/precommit.md) - Validate git changes before committing
-7. [`debug`](docs/tools/debug.md) - Root cause analysis and debugging
+7. [`debug`](docs/tools/debug.md) - Systematic investigation and debugging
 8. [`analyze`](docs/tools/analyze.md) - General-purpose file and code analysis
 9. [`refactor`](docs/tools/refactor.md) - Code refactoring with decomposition focus
 10. [`tracer`](docs/tools/tracer.md) - Static code analysis prompt generator for call-flow mapping
@@ -370,7 +370,7 @@ Nice!
 **[📖 Read More](docs/tools/precommit.md)** - Multi-repository validation and change analysis
 
 ### 7. `debug` - Expert Debugging Assistant
-Root cause analysis for complex problems with systematic hypothesis generation. Supports error context, stack traces, and structured debugging approaches.
+Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. Claude performs methodical code examination, evidence collection, and hypothesis formation before receiving expert analysis from the selected AI model.
 
 ```
 See logs under /Users/me/project/diagnostics.log and related code under the sync folder. Logs show that sync
@@ -378,7 +378,7 @@ works but sometimes it gets stuck and there are no errors displayed to the user.
 why this is happening and what the root cause is and its fix 
 ```
 
-**[📖 Read More](docs/tools/debug.md)** - Advanced debugging methodologies and troubleshooting
+**[📖 Read More](docs/tools/debug.md)** - Step-by-step investigation methodology and expert analysis
 
 ### 8. `analyze` - Smart File Analysis
 General-purpose code understanding and exploration. Supports architecture analysis, pattern detection, and comprehensive codebase exploration.

@@ -1,9 +1,8 @@
-# Debug Tool - Expert Debugging Assistant
+# Debug Tool - Systematic Investigation & Expert Analysis
 
-**Root cause analysis for complex problems**
+**Step-by-step investigation followed by expert debugging assistance**
 
-The `debug` tool provides systematic debugging assistance with root cause analysis, hypothesis generation, and 
-structured problem-solving approaches for complex technical issues.
+The `debug` tool guides Claude through a systematic investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps. Once the investigation is complete, the tool provides expert analysis from the selected AI model based on all gathered findings.
 
 ## Thinking Mode
 
@@ -18,37 +17,60 @@ Get gemini to debug why my API returns 400 errors randomly with the full stack t
 
 ## How It Works 
 
-Just because Claude gets to use a development partner doesn't mean it's off the hook! 
-Claude does the initial groundwork of investigation and then passes this on to the other model - just as a developer 
-would for a second opinion when involving another, with enough context. This results in a significant improvement in
-bug hunting and reduces the chance of wasting precious tokens back and forth.
+The debug tool implements a **systematic investigation methodology** where Claude is guided through structured debugging steps:
+
+**Investigation Phase:**
+1. **Step 1**: Claude describes the issue and begins thinking deeply about possible underlying causes, side-effects, and contributing factors
+2. **Step 2+**: Claude examines relevant code, traces errors, tests hypotheses, and gathers evidence
+3. **Throughout**: Claude tracks findings, relevant files, methods, and evolving hypotheses with confidence levels
+4. **Backtracking**: Claude can revise previous steps when new insights emerge
+5. **Completion**: Once investigation is thorough, Claude signals completion
+
+**Expert Analysis Phase:**
+After Claude completes the investigation, the tool automatically calls the selected AI model with:
+- Complete investigation summary with all steps and findings
+- Relevant files and methods identified during investigation  
+- Final hypothesis and confidence assessment
+- Error context and supporting evidence
+- Visual debugging materials if provided
+
+This structured approach ensures Claude performs methodical groundwork before expert analysis, resulting in significantly better debugging outcomes and more efficient token usage.
 
 ## Key Features
 
-- **Generates multiple ranked hypotheses** for systematic debugging
-- **Accepts error context**, stack traces, and logs
-- **Can reference relevant files** for investigation
-- **Supports runtime info** and previous attempts
-- **Provides structured root cause analysis** with validation steps
-- **Can request additional context** when needed for thorough analysis
-- **Image support**: Include error screenshots, stack traces, console output: `"Debug this error using gemini with the stack trace screenshot and the failing test.py"`
-- **Web search capability**: When enabled (default: true), identifies when searching for error messages, known issues, or documentation would help solve the problem and recommends specific searches for Claude
-- **Large context analysis**: Can analyze extensive log files and multiple related code files simultaneously
+- **Multi-step investigation process** with evidence collection and hypothesis evolution
+- **Systematic code examination** with file and method tracking throughout investigation
+- **Confidence assessment and revision** capabilities for investigative steps
+- **Backtracking support** to revise previous steps when new insights emerge
+- **Expert analysis integration** that provides final debugging recommendations based on complete investigation
+- **Error context support**: Stack traces, logs, and runtime information
+- **Visual debugging**: Include error screenshots, stack traces, console output
+- **Conversation threading**: Continue investigations across multiple sessions
+- **Large context analysis**: Handle extensive log files and multiple related code files
 - **Multi-language support**: Debug issues across Python, JavaScript, Java, C#, Swift, and more
+- **Web search integration**: Identifies when additional research would help solve problems
 
 ## Tool Parameters
 
-- `prompt`: Error message, symptoms, or issue description (required)
-- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
-- `error_context`: Stack trace, logs, or additional error context
-- `files`: Files or directories that might be related to the issue (absolute paths)
-- `images`: Error screenshots, stack traces, console output (absolute paths)
-- `runtime_info`: Environment, versions, or runtime information
-- `previous_attempts`: What has been tried already
-- `temperature`: Temperature for accuracy (0-1, default 0.2)
+**Investigation Step Parameters:**
+- `step`: Current investigation step description (required)
+- `step_number`: Current step number in investigation sequence (required)
+- `total_steps`: Estimated total investigation steps (adjustable as process evolves)
+- `next_step_required`: Whether another investigation step is needed
+- `findings`: Discoveries and evidence collected in this step (required)
+- `files_checked`: All files examined during investigation (tracks exploration path)
+- `relevant_files`: Files directly tied to the root cause or its effects
+- `relevant_methods`: Specific methods/functions involved in the issue
+- `hypothesis`: Current best guess about the underlying cause
+- `confidence`: Confidence level in current hypothesis (low/medium/high)
+- `backtrack_from_step`: Step number to backtrack from (for revisions)
+- `continuation_id`: Thread ID for continuing investigations across sessions
+- `images`: Visual debugging materials (error screenshots, logs, etc.)
+
+**Model Selection:**
+- `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for error messages and solutions (default: true)
-- `continuation_id`: Continue previous debugging sessions
+- `use_websearch`: Enable web search for documentation and solutions (default: true)
 
 ## Usage Examples
 
@@ -82,34 +104,30 @@ bug hunting and reduces the chance of wasting precious tokens back and forth.
 "Debug deployment issues with server startup failures, here's the runtime info: [environment details]"
 ```
 
-## Debugging Methodology
+## Investigation Methodology
 
-The debug tool follows a systematic approach:
+The debug tool enforces a structured investigation process:
 
-**1. Problem Analysis:**
-- Parse error messages and symptoms
-- Identify affected components and subsystems
-- Understand the expected vs actual behavior
+**Step-by-Step Investigation (Claude-Led):**
+1. **Initial Problem Description:** Claude describes the issue and begins thinking about possible causes, side-effects, and contributing factors
+2. **Code Examination:** Claude systematically examines relevant files, traces execution paths, and identifies suspicious patterns
+3. **Evidence Collection:** Claude gathers findings, tracks files checked, and identifies methods/functions involved
+4. **Hypothesis Formation:** Claude develops working theories about the root cause with confidence assessments
+5. **Iterative Refinement:** Claude can backtrack and revise previous steps as understanding evolves
+6. **Investigation Completion:** Claude signals when sufficient evidence has been gathered
 
-**2. Hypothesis Generation:**
-- Generate multiple potential root causes
-- Rank hypotheses by likelihood and impact
-- Consider both obvious and subtle possibilities
+**Expert Analysis Phase (AI Model):**
+Once investigation is complete, the selected AI model performs:
+- **Root Cause Analysis:** Deep analysis of all investigation findings and evidence
+- **Solution Recommendations:** Specific fixes with implementation guidance
+- **Prevention Strategies:** Measures to avoid similar issues in the future
+- **Testing Approaches:** Validation methods for proposed solutions
 
-**3. Investigation Strategy:**
-- Recommend specific files to examine
-- Suggest logging or debugging steps
-- Identify missing information needed
-
-**4. Root Cause Analysis:**
-- Analyze evidence from code, logs, and context
-- Trace execution flow to identify failure points
-- Consider environmental and configuration factors
-
-**5. Solution Recommendations:**
-- Provide specific fixes with code examples
-- Suggest preventive measures
-- Recommend testing strategies
+**Key Benefits:**
+- **Methodical Evidence Collection:** Ensures no critical information is missed
+- **Progressive Understanding:** Hypotheses evolve as investigation deepens
+- **Complete Context:** Expert analysis receives full investigation history
+- **Efficient Token Usage:** Structured approach prevents redundant back-and-forth
 
 ## Debugging Categories
 
@@ -139,13 +157,20 @@ The debug tool follows a systematic approach:
 
 ## Best Practices
 
-- **Provide complete error context**: Include full stack traces, error messages, and relevant logs
-- **Share relevant code**: Include files mentioned in stack traces or related to the issue
-- **Describe expected behavior**: Explain what should happen vs what's actually happening
+**For Investigation Steps:**
+- **Be thorough in step descriptions**: Explain what you're examining and why
+- **Track all files examined**: Include even files that don't contain the bug (tracks investigation path)
+- **Document findings clearly**: Summarize discoveries, suspicious patterns, and evidence
+- **Evolve hypotheses**: Update theories as investigation progresses
+- **Use backtracking wisely**: Revise previous steps when new insights emerge
+- **Include visual evidence**: Screenshots, error dialogs, console output
+
+**For Initial Problem Description:**
+- **Provide complete error context**: Full stack traces, error messages, and logs
+- **Describe expected vs actual behavior**: Clear symptom description
 - **Include environment details**: Runtime versions, configuration, deployment context
 - **Mention previous attempts**: What debugging steps have already been tried
-- **Use visual context**: Screenshots of error dialogs, console output, or debugging tools
-- **Be specific about symptoms**: Describe when, where, and how the issue occurs
+- **Be specific about occurrence**: When, where, and how the issue manifests
 
 ## Advanced Features
 
@@ -169,7 +194,17 @@ After analysis: "Recommended searches for Claude: 'Django 4.2 migration error sp
 
 ## When to Use Debug vs Other Tools
 
-- **Use `debug`** for: Specific runtime errors, exceptions, crashes, performance issues
-- **Use `codereview`** for: Finding potential bugs in code without specific errors
-- **Use `analyze`** for: Understanding code structure and flow without troubleshooting
+- **Use `debug`** for: Specific runtime errors, exceptions, crashes, performance issues requiring systematic investigation
+- **Use `codereview`** for: Finding potential bugs in code without specific errors or symptoms
+- **Use `analyze`** for: Understanding code structure and flow without troubleshooting specific issues
 - **Use `precommit`** for: Validating changes before commit to prevent introducing bugs
+
+## Investigation Example
+
+**Step 1:** "The user authentication fails intermittently with no error logs. I need to investigate the auth flow and identify where failures might occur silently."
+
+**Step 2:** "Examined auth.py and found three potential failure points: token validation, database connectivity, and session management. No obvious bugs yet but need to trace execution flow."
+
+**Step 3:** "Found suspicious async/await pattern in session_manager.py lines 45-67. The await might be missing exception handling. This could explain silent failures."
+
+**Completion:** Investigation reveals likely root cause in exception handling, ready for expert analysis with full context.
