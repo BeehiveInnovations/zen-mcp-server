@@ -161,9 +161,13 @@ class PlannerTool(BaseTool):
             "- Add more steps even after reaching the initial estimate\n\n"
             "Key features:\n"
             "- Sequential thinking with full context awareness\n"
+            "- Forced deep reflection for complex plans (≥5 steps) in early stages\n"
             "- Branching for exploring alternative strategies\n"
             "- Revision capabilities to update earlier decisions\n"
             "- Dynamic step count adjustment\n\n"
+            "ENHANCED: For complex plans (≥5 steps), the first 3 steps enforce deep thinking pauses\n"
+            "to prevent surface-level planning and ensure thorough consideration of alternatives,\n"
+            "dependencies, and strategic decisions before moving to tactical details.\n\n"
             "Perfect for: complex project planning, system design with unknowns, "
             "migration strategies, architectural decisions, problem decomposition."
         )
@@ -417,10 +421,77 @@ class PlannerTool(BaseTool):
             else:
                 response_data["planning_complete"] = False
                 remaining_steps = request.total_steps - request.step_number
-                response_data["next_steps"] = (
-                    f"Continue with step {request.step_number + 1}. Approximately {remaining_steps} steps remaining."
-                )
-                # Result: Intermediate step, planning continues
+
+                # ENHANCED: Add deep thinking pauses for complex plans in early stages
+                # Only for complex plans (>=5 steps) and first 3 steps - force deep reflection
+                if request.total_steps >= 5 and request.step_number <= 3:
+                    response_data["status"] = "pause_for_deep_thinking"
+                    response_data["thinking_required"] = True
+
+                    if request.step_number == 1:
+                        # Initial deep thinking - understand the full scope
+                        response_data["required_thinking"] = [
+                            "Analyze the complete scope and complexity of what needs to be planned",
+                            "Consider multiple approaches and their trade-offs",
+                            "Identify key constraints, dependencies, and potential challenges",
+                            "Think about stakeholders, success criteria, and critical requirements",
+                            "Consider what could go wrong and how to mitigate risks early",
+                        ]
+                        response_data["next_steps"] = (
+                            f"MANDATORY: DO NOT call the planner tool again immediately. This is a complex plan ({request.total_steps} steps) "
+                            f"that requires deep thinking. You MUST first spend time reflecting on the planning challenge:\n\n"
+                            f"REQUIRED DEEP THINKING before calling planner step {request.step_number + 1}:\n"
+                            f"1. Analyze the FULL SCOPE: What exactly needs to be accomplished?\n"
+                            f"2. Consider MULTIPLE APPROACHES: What are 2-3 different ways to tackle this?\n"
+                            f"3. Identify CONSTRAINTS & DEPENDENCIES: What limits our options?\n"
+                            f"4. Think about SUCCESS CRITERIA: How will we know we've succeeded?\n"
+                            f"5. Consider RISKS & MITIGATION: What could go wrong early vs late?\n\n"
+                            f"Only call planner again with step_number: {request.step_number + 1} AFTER this deep analysis."
+                        )
+                    elif request.step_number == 2:
+                        # Refine approach - dig deeper into the chosen direction
+                        response_data["required_thinking"] = [
+                            "Evaluate the approach from step 1 - are there better alternatives?",
+                            "Break down the major phases and identify critical decision points",
+                            "Consider resource requirements and potential bottlenecks",
+                            "Think about how different parts interconnect and affect each other",
+                            "Identify areas that need the most careful planning vs quick wins",
+                        ]
+                        response_data["next_steps"] = (
+                            f"STOP! Complex planning requires reflection between steps. DO NOT call planner immediately.\n\n"
+                            f"MANDATORY REFLECTION before planner step {request.step_number + 1}:\n"
+                            f"1. EVALUATE YOUR APPROACH: Is the direction from step 1 still the best?\n"
+                            f"2. IDENTIFY MAJOR PHASES: What are the 3-5 main chunks of work?\n"
+                            f"3. SPOT DEPENDENCIES: What must happen before what?\n"
+                            f"4. CONSIDER RESOURCES: What skills, tools, or access do we need?\n"
+                            f"5. FIND CRITICAL PATHS: Where could delays hurt the most?\n\n"
+                            f"Think deeply about these aspects, then call planner with step_number: {request.step_number + 1}."
+                        )
+                    elif request.step_number == 3:
+                        # Final deep thinking - validate and prepare for execution planning
+                        response_data["required_thinking"] = [
+                            "Validate that the emerging plan addresses the original requirements",
+                            "Identify any gaps or assumptions that need clarification",
+                            "Consider how to validate progress and adjust course if needed",
+                            "Think about what the first concrete steps should be",
+                            "Prepare for transition from strategic to tactical planning",
+                        ]
+                        response_data["next_steps"] = (
+                            f"PAUSE for final strategic reflection. DO NOT call planner yet.\n\n"
+                            f"FINAL DEEP THINKING before planner step {request.step_number + 1}:\n"
+                            f"1. VALIDATE COMPLETENESS: Does this plan address all original requirements?\n"
+                            f"2. CHECK FOR GAPS: What assumptions need validation? What's unclear?\n"
+                            f"3. PLAN FOR ADAPTATION: How will we know if we need to change course?\n"
+                            f"4. DEFINE FIRST STEPS: What are the first 2-3 concrete actions?\n"
+                            f"5. TRANSITION MINDSET: Ready to shift from strategic to tactical planning?\n\n"
+                            f"After this reflection, call planner with step_number: {request.step_number + 1} to continue with tactical details."
+                        )
+                else:
+                    # Normal flow for simple plans or later steps of complex plans
+                    response_data["next_steps"] = (
+                        f"Continue with step {request.step_number + 1}. Approximately {remaining_steps} steps remaining."
+                    )
+                # Result: Intermediate step, planning continues (with optional deep thinking pause)
 
             # Convert to clean JSON response
             response_content = json.dumps(response_data, indent=2)

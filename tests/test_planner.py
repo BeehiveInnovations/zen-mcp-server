@@ -108,7 +108,11 @@ class TestPlannerTool:
         assert parsed_response["total_steps"] == 10
         assert parsed_response["next_step_required"] is True
         assert parsed_response["continuation_id"] == "test-uuid-123"
-        assert parsed_response["status"] == "planning_success"
+        # For complex plans (>=5 steps) on first step, expect deep thinking pause
+        assert parsed_response["status"] == "pause_for_deep_thinking"
+        assert parsed_response["thinking_required"] is True
+        assert "required_thinking" in parsed_response
+        assert "MANDATORY: DO NOT call the planner tool again immediately" in parsed_response["next_steps"]
 
     @pytest.mark.asyncio
     async def test_execute_subsequent_step(self):
@@ -139,7 +143,11 @@ class TestPlannerTool:
         assert parsed_response["total_steps"] == 8
         assert parsed_response["next_step_required"] is True
         assert parsed_response["continuation_id"] == "existing-uuid-456"
-        assert parsed_response["status"] == "planning_success"
+        # For complex plans (>=5 steps) on step 2, expect deep thinking pause
+        assert parsed_response["status"] == "pause_for_deep_thinking"
+        assert parsed_response["thinking_required"] is True
+        assert "required_thinking" in parsed_response
+        assert "STOP! Complex planning requires reflection between steps" in parsed_response["next_steps"]
 
     @pytest.mark.asyncio
     async def test_execute_with_continuation_context(self):
@@ -410,4 +418,38 @@ class TestPlannerToolIntegration:
         assert parsed_response["step_number"] == 1
         assert parsed_response["total_steps"] == 5
         assert parsed_response["continuation_id"] == "test-flow-uuid"
+        # For complex plans (>=5 steps) on first step, expect deep thinking pause
+        assert parsed_response["status"] == "pause_for_deep_thinking"
+        assert parsed_response["thinking_required"] is True
+
+    @pytest.mark.asyncio
+    async def test_simple_planning_flow(self):
+        """Test simple planning flow without deep thinking pauses."""
+        arguments = {
+            "step": "Plan a simple feature update",
+            "step_number": 1,
+            "total_steps": 3,  # Simple plan < 5 steps
+            "next_step_required": True,
+        }
+
+        # Mock conversation memory functions
+        with patch("utils.conversation_memory.create_thread", return_value="test-simple-uuid"):
+            with patch("utils.conversation_memory.add_turn"):
+                result = await self.tool.execute(arguments)
+
+        # Verify response structure
+        assert len(result) == 1
+        response_text = result[0].text
+
+        # Parse the JSON response
+        import json
+
+        parsed_response = json.loads(response_text)
+
+        assert parsed_response["step_number"] == 1
+        assert parsed_response["total_steps"] == 3
+        assert parsed_response["continuation_id"] == "test-simple-uuid"
+        # For simple plans (< 5 steps), expect normal flow without deep thinking pause
         assert parsed_response["status"] == "planning_success"
+        assert "thinking_required" not in parsed_response
+        assert "Continue with step 2" in parsed_response["next_steps"]
