@@ -328,7 +328,7 @@ class BaseTool(ABC):
                 logging.debug(f"Failed to add custom models to enum: {e}")
 
         # Note: MODEL_CAPABILITIES_DESC already includes both short aliases (e.g., "flash", "o3")
-        # and full model names (e.g., "gemini-2.5-flash-preview-05-20") as keys
+        # and full model names (e.g., "gemini-2.5-flash") as keys
 
         # Remove duplicates while preserving order
         seen = set()
@@ -1097,7 +1097,7 @@ When recommending searches, be specific about what information you need and why 
                 "status": "error",
                 "content": (
                     f"Image support not available: Model '{model_name}' does not support image processing. "
-                    f"Please use a vision-capable model such as 'gemini-2.5-flash-preview-05-20', 'o3', "
+                    f"Please use a vision-capable model such as 'gemini-2.5-flash', 'o3', "
                     f"or 'claude-3-opus' for image analysis tasks."
                 ),
                 "content_type": "text",

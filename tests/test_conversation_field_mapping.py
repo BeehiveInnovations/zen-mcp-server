@@ -74,7 +74,7 @@ async def test_conversation_history_field_mapping():
                         mock_provider = MagicMock()
                         mock_provider.get_capabilities.return_value = ModelCapabilities(
                             provider=ProviderType.GOOGLE,
-                            model_name="gemini-2.5-flash-preview-05-20",
+                            model_name="gemini-2.5-flash",
                             friendly_name="Gemini",
                             context_window=200000,
                             supports_extended_thinking=True,
@@ -132,7 +132,7 @@ async def test_unknown_tool_defaults_to_prompt():
                 # Mock ModelContext to avoid calculation errors
                 with patch("utils.model_context.ModelContext") as mock_model_context_class:
                     mock_model_context = MagicMock()
-                    mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+                    mock_model_context.model_name = "gemini-2.5-flash"
                     mock_model_context.calculate_token_allocation.return_value = MagicMock(
                         total_tokens=200000,
                         content_tokens=120000,

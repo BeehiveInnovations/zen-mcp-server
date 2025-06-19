@@ -201,7 +201,7 @@ class TestAutoModeCustomProviderOnly:
 
                 # Should get a valid model name, not the hardcoded fallback
                 assert (
-                    fallback_model != "gemini-2.5-flash-preview-05-20"
+                    fallback_model != "gemini-2.5-flash"
                 ), "Should not fallback to hardcoded Gemini model when custom provider is available"
 
             except Exception as e:

@@ -418,7 +418,7 @@ class TestThinkingModes:
         from providers.gemini import GeminiModelProvider
 
         provider = GeminiModelProvider(api_key="test-key")
-        flash_model = "gemini-2.5-flash-preview-05-20"
+        flash_model = "gemini-2.5-flash"
         flash_max_tokens = 24576
 
         expected_budgets = {

@@ -124,8 +124,8 @@ OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 - `mini` (shorthand for o4-mini)
 
 **Gemini Models:**
-- `gemini-2.5-flash-preview-05-20` (1M context, fast)
-- `gemini-2.5-pro-preview-06-05` (1M context, powerful)
+- `gemini-2.5-flash` (1M context, fast)
+- `gemini-2.5-pro` (1M context, powerful)
 - `flash` (shorthand for Flash model)
 - `pro` (shorthand for Pro model)
 

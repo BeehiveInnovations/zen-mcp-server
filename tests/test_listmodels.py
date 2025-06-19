@@ -65,8 +65,8 @@ class TestListModelsTool:
 
             # Check Gemini shows as configured
             assert "Google Gemini ✅" in content
-            assert "`flash` → `gemini-2.5-flash-preview-05-20`" in content
-            assert "`pro` → `gemini-2.5-pro-preview-06-05`" in content
+            assert "`flash` → `gemini-2.5-flash`" in content
+            assert "`pro` → `gemini-2.5-pro`" in content
             assert "1M context" in content
 
             # Check summary

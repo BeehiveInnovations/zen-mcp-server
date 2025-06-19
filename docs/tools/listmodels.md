@@ -46,7 +46,7 @@ The tool displays:
 📋 Available Models by Provider
 
 🔹 Google (Gemini) - ✅ Configured
-  • pro (gemini-2.5-pro-preview-06-05) - 1M context, thinking modes
+  • pro (gemini-2.5-pro) - 1M context, thinking modes
   • flash (gemini-2.0-flash-experimental) - 1M context, ultra-fast
 
 🔹 OpenAI - ✅ Configured  

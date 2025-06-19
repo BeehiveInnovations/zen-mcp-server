@@ -39,9 +39,9 @@ class TestAliasTargetRestrictions:
 
         # Should include both aliases and their targets
         assert "flash" in all_known  # alias
-        assert "gemini-2.5-flash-preview-05-20" in all_known  # target of 'flash'
+        assert "gemini-2.5-flash" in all_known  # target of 'flash'
         assert "pro" in all_known  # alias
-        assert "gemini-2.5-pro-preview-06-05" in all_known  # target of 'pro'
+        assert "gemini-2.5-pro" in all_known  # target of 'pro'
 
     @patch.dict(os.environ, {"OPENAI_ALLOWED_MODELS": "o4-mini"})  # Allow target
     def test_restriction_policy_allows_alias_when_target_allowed(self):
@@ -80,7 +80,7 @@ class TestAliasTargetRestrictions:
         # Direct target should NOT be allowed
         assert not provider.validate_model_name("o4-mini")
 
-    @patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "gemini-2.5-flash-preview-05-20"})  # Allow target
+    @patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "gemini-2.5-flash"})  # Allow target
     def test_gemini_restriction_policy_allows_alias_when_target_allowed(self):
         """Test Gemini restriction policy allows alias when target is allowed."""
         # Clear cached restriction service
@@ -91,7 +91,7 @@ class TestAliasTargetRestrictions:
         provider = GeminiModelProvider(api_key="test-key")
 
         # Both target and alias should be allowed
-        assert provider.validate_model_name("gemini-2.5-flash-preview-05-20")
+        assert provider.validate_model_name("gemini-2.5-flash")
         assert provider.validate_model_name("flash")
 
     @patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "flash"})  # Allow alias only
@@ -107,7 +107,7 @@ class TestAliasTargetRestrictions:
         # Only the alias should be allowed
         assert provider.validate_model_name("flash")
         # Direct target should NOT be allowed
-        assert not provider.validate_model_name("gemini-2.5-flash-preview-05-20")
+        assert not provider.validate_model_name("gemini-2.5-flash")
 
     def test_restriction_service_validation_includes_all_targets(self):
         """Test that restriction service validation knows about all aliases and targets."""

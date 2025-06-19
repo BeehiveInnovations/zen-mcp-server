@@ -85,16 +85,16 @@ class TestBuggyBehaviorPrevention:
 
         # Verify both aliases and targets are included
         assert "flash" in all_known  # alias
-        assert "gemini-2.5-flash-preview-05-20" in all_known  # target
+        assert "gemini-2.5-flash" in all_known  # target
         assert "pro" in all_known  # alias
-        assert "gemini-2.5-pro-preview-06-05" in all_known  # target
+        assert "gemini-2.5-pro" in all_known  # target
 
         # Simulate admin restricting to target model names
         service = ModelRestrictionService()
         service.restrictions = {
             ProviderType.GOOGLE: {
-                "gemini-2.5-flash-preview-05-20",  # Target name restriction
-                "gemini-2.5-pro-preview-06-05",  # Target name restriction
+                "gemini-2.5-flash",  # Target name restriction
+                "gemini-2.5-pro",  # Target name restriction
             }
         }
 
@@ -105,8 +105,8 @@ class TestBuggyBehaviorPrevention:
             # Should NOT warn about these valid target models
             all_warnings = [str(call) for call in mock_logger.warning.call_args_list]
             for warning in all_warnings:
-                assert "gemini-2.5-flash-preview-05-20" not in warning or "not a recognized" not in warning
-                assert "gemini-2.5-pro-preview-06-05" not in warning or "not a recognized" not in warning
+                assert "gemini-2.5-flash" not in warning or "not a recognized" not in warning
+                assert "gemini-2.5-pro" not in warning or "not a recognized" not in warning
 
     def test_old_bug_policy_bypass_prevention(self):
         """
@@ -206,7 +206,7 @@ class TestBuggyBehaviorPrevention:
         """
         providers_to_test = [
             (OpenAIModelProvider(api_key="test-key"), "mini", "o4-mini"),
-            (GeminiModelProvider(api_key="test-key"), "flash", "gemini-2.5-flash-preview-05-20"),
+            (GeminiModelProvider(api_key="test-key"), "flash", "gemini-2.5-flash"),
         ]
 
         for provider, alias, target in providers_to_test:

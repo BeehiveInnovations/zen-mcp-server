@@ -14,7 +14,7 @@ import os
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "5.1.0"
+__version__ = "5.1.2"
 # Last update date in ISO format
 __updated__ = "2025-06-18"
 # Primary maintainer
@@ -60,8 +60,8 @@ MODEL_CAPABILITIES_DESC = {
     "grok3": "GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
     "grokfast": "GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
     # Full model names also supported (for explicit specification)
-    "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
-    "gemini-2.5-pro-preview-06-05": (
+    "gemini-2.5-flash": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
+    "gemini-2.5-pro": (
         "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"
     ),
 }
@@ -69,8 +69,8 @@ MODEL_CAPABILITIES_DESC = {
 # OpenRouter/Custom API Fallback Behavior:
 # When only OpenRouter or Custom API is configured (no native API keys), these
 # model aliases automatically map to equivalent models through the proxy:
-# - "flash" → "google/gemini-2.5-flash-preview-05-20" (via OpenRouter)
-# - "pro" → "google/gemini-2.5-pro-preview-06-05" (via OpenRouter)
+# - "flash" → "google/gemini-2.5-flash" (via OpenRouter)
+# - "pro" → "google/gemini-2.5-pro" (via OpenRouter)
 # - "o3" → "openai/o3" (via OpenRouter)
 # - "o3mini" → "openai/o3-mini" (via OpenRouter)
 # - "o4-mini" → "openai/o4-mini" (via OpenRouter)

@@ -89,7 +89,7 @@
       "description": "Google's Gemini 2.5 Pro via OpenRouter with vision"
     },
     {
-      "model_name": "google/gemini-2.5-flash-preview-05-20",
+      "model_name": "google/gemini-2.5-flash",
       "aliases": ["flash","gemini-flash", "flash-openrouter", "flash-2.5"],
       "context_window": 1048576,
       "supports_extended_thinking": false,

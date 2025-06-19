@@ -105,7 +105,7 @@ class ModelProviderRegistry:
         3. OPENROUTER - Catch-all for cloud models via unified API
 
         Args:
-            model_name: Name of the model (e.g., "gemini-2.5-flash-preview-05-20", "o3-mini")
+            model_name: Name of the model (e.g., "gemini-2.5-flash", "o3-mini")
 
         Returns:
             ModelProvider instance that supports this model
@@ -295,7 +295,7 @@ class ModelProviderRegistry:
                 return custom_models[0]
             else:
                 # Fallback to pro if nothing found
-                return "gemini-2.5-pro-preview-06-05"
+                return "gemini-2.5-pro"
 
         elif tool_category == ToolModelCategory.FAST_RESPONSE:
             # Prefer fast, cost-efficient models
@@ -325,7 +325,7 @@ class ModelProviderRegistry:
                 return custom_models[0]
             else:
                 # Default to flash
-                return "gemini-2.5-flash-preview-05-20"
+                return "gemini-2.5-flash"
 
         # BALANCED or no category specified - use existing balanced logic
         if openai_available and "o4-mini" in openai_models:
@@ -353,7 +353,7 @@ class ModelProviderRegistry:
                 # This might happen if all models are restricted
                 logging.warning("No models available due to restrictions")
             # Return a reasonable default for backward compatibility
-            return "gemini-2.5-flash-preview-05-20"
+            return "gemini-2.5-flash"
 
     @classmethod
     def _find_extended_thinking_model(cls) -> Optional[str]:
@@ -383,7 +383,7 @@ class ModelProviderRegistry:
             preferred_models = [
                 "anthropic/claude-3.5-sonnet",
                 "anthropic/claude-3-opus-20240229",
-                "google/gemini-2.5-pro-preview-06-05",
+                "google/gemini-2.5-pro",
                 "google/gemini-pro-1.5",
                 "meta-llama/llama-3.1-70b-instruct",
                 "mistralai/mixtral-8x7b-instruct",

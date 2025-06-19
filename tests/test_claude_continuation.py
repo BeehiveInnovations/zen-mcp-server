@@ -59,7 +59,7 @@ class TestClaudeContinuationOffers:
         # If providers are not registered yet, tool might detect auto mode
         self.tool = ClaudeContinuationTool()
         # Set default model to avoid effective auto mode
-        self.tool.default_model = "gemini-2.5-flash-preview-05-20"
+        self.tool.default_model = "gemini-2.5-flash"
 
     @patch("utils.conversation_memory.get_storage")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -67,7 +67,7 @@ class TestClaudeContinuationOffers:
         """Test that new conversations offer Claude continuation opportunity"""
         # Create tool AFTER providers are registered (in conftest.py fixture)
         tool = ClaudeContinuationTool()
-        tool.default_model = "gemini-2.5-flash-preview-05-20"
+        tool.default_model = "gemini-2.5-flash"
 
         mock_client = Mock()
         mock_storage.return_value = mock_client
@@ -80,7 +80,7 @@ class TestClaudeContinuationOffers:
             mock_provider.generate_content.return_value = Mock(
                 content="Analysis complete.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -137,7 +137,7 @@ class TestClaudeContinuationOffers:
             mock_provider.generate_content.return_value = Mock(
                 content="Continued analysis.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -170,7 +170,7 @@ class TestClaudeContinuationOffers:
             mock_provider.generate_content.return_value = Mock(
                 content="Analysis complete. The code looks good.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -212,7 +212,7 @@ I'd be happy to examine the error handling patterns in more detail if that would
             mock_provider.generate_content.return_value = Mock(
                 content=content_with_followup,
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -257,7 +257,7 @@ I'd be happy to examine the error handling patterns in more detail if that would
             mock_provider.generate_content.return_value = Mock(
                 content="Continued analysis complete.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -313,7 +313,7 @@ I'd be happy to examine the error handling patterns in more detail if that would
             mock_provider.generate_content.return_value = Mock(
                 content="Final response.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -336,7 +336,7 @@ class TestContinuationIntegration:
     def setup_method(self):
         self.tool = ClaudeContinuationTool()
         # Set default model to avoid effective auto mode
-        self.tool.default_model = "gemini-2.5-flash-preview-05-20"
+        self.tool.default_model = "gemini-2.5-flash"
 
     @patch("utils.conversation_memory.get_storage")
     @patch.dict("os.environ", {"PYTEST_CURRENT_TEST": ""}, clear=False)
@@ -364,7 +364,7 @@ class TestContinuationIntegration:
             mock_provider.generate_content.return_value = Mock(
                 content="Analysis result",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -417,7 +417,7 @@ class TestContinuationIntegration:
             mock_provider.generate_content.return_value = Mock(
                 content="Structure analysis done.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -454,7 +454,7 @@ class TestContinuationIntegration:
             mock_provider.generate_content.return_value = Mock(
                 content="Performance analysis done.",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
 

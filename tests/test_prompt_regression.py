@@ -31,7 +31,7 @@ class TestPromptRegression:
             return Mock(
                 content=text,
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
 

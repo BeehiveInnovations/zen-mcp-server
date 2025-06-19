@@ -25,7 +25,7 @@ if "XAI_API_KEY" not in os.environ:
 
 # Set default model to a specific value for tests to avoid auto mode
 # This prevents all tests from failing due to missing model parameter
-os.environ["DEFAULT_MODEL"] = "gemini-2.5-flash-preview-05-20"
+os.environ["DEFAULT_MODEL"] = "gemini-2.5-flash"
 
 # Force reload of config module to pick up the env var
 import config  # noqa: E402
@@ -108,7 +108,7 @@ def mock_provider_availability(request, monkeypatch):
         if model_name in ["unavailable-model", "gpt-5-turbo", "o3"]:
             return None
         # For common test models, return a mock provider
-        if model_name in ["gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-06-05", "pro", "flash"]:
+        if model_name in ["gemini-2.5-flash", "gemini-2.5-pro", "pro", "flash"]:
             # Try to use the real provider first if it exists
             real_provider = original_get_provider(model_name)
             if real_provider:

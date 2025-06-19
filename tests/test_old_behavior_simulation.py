@@ -167,7 +167,7 @@ class TestOldBehaviorSimulation:
             (["mini", "o3mini"], ["mini", "o3mini", "o4-mini", "o3-mini"], "OpenAI"),
             (
                 ["flash", "pro"],
-                ["flash", "pro", "gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-06-05"],
+                ["flash", "pro", "gemini-2.5-flash", "gemini-2.5-pro"],
                 "Gemini",
             ),
         ]

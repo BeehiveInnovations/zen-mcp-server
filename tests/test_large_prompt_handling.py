@@ -76,7 +76,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="This is a test response",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -103,7 +103,7 @@ class TestLargePromptHandling:
             patch("utils.model_context.ModelContext") as mock_model_context_class,
         ):
 
-            mock_provider = create_mock_provider(model_name="gemini-2.5-flash-preview-05-20", context_window=1_048_576)
+            mock_provider = create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576)
             mock_provider.generate_content.return_value.content = "Processed prompt from file"
             mock_get_provider.return_value = mock_provider
 
@@ -111,7 +111,7 @@ class TestLargePromptHandling:
             from utils.model_context import TokenAllocation
 
             mock_model_context = MagicMock()
-            mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+            mock_model_context.model_name = "gemini-2.5-flash"
             mock_model_context.calculate_token_allocation.return_value = TokenAllocation(
                 total_tokens=1_048_576,
                 content_tokens=838_861,
@@ -293,7 +293,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -336,7 +336,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Response to the large prompt",
                 usage={"input_tokens": 12000, "output_tokens": 10, "total_tokens": 12010},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -368,7 +368,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -390,7 +390,7 @@ class TestLargePromptHandling:
             patch("utils.model_context.ModelContext") as mock_model_context_class,
         ):
 
-            mock_provider = create_mock_provider(model_name="gemini-2.5-flash-preview-05-20", context_window=1_048_576)
+            mock_provider = create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576)
             mock_provider.generate_content.return_value.content = "Success"
             mock_get_provider.return_value = mock_provider
 
@@ -398,7 +398,7 @@ class TestLargePromptHandling:
             from utils.model_context import TokenAllocation
 
             mock_model_context = MagicMock()
-            mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+            mock_model_context.model_name = "gemini-2.5-flash"
             mock_model_context.calculate_token_allocation.return_value = TokenAllocation(
                 total_tokens=1_048_576,
                 content_tokens=838_861,
@@ -437,7 +437,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Weather is sunny",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -502,7 +502,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Hi there!",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -555,7 +555,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Continuing our conversation...",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider

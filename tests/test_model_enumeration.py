@@ -96,8 +96,8 @@ class TestModelEnumeration:
             "grok-3-fast",
             "grok3",
             "grokfast",  # X.AI models
-            "gemini-2.5-flash-preview-05-20",
-            "gemini-2.5-pro-preview-06-05",  # Full Gemini names
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",  # Full Gemini names
         ]
 
         for model in native_models:
@@ -264,7 +264,7 @@ class TestModelEnumeration:
             ("flash", True),  # Native Gemini
             ("o3", True),  # Native OpenAI
             ("grok", True),  # Native X.AI
-            ("gemini-2.5-flash-preview-05-20", True),  # Full native name
+            ("gemini-2.5-flash", True),  # Full native name
             ("o4-mini-high", True),  # Native OpenAI variant
             ("grok-3-fast", True),  # Native X.AI variant
         ],
