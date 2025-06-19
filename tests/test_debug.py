@@ -557,13 +557,10 @@ class TestDebugToolIntegration:
             try:
                 # Create mock arguments and request for model resolution
                 from tools.debug import DebugInvestigationRequest
+
                 mock_arguments = {"model": None}  # No model specified, should fall back to DEFAULT_MODEL
                 mock_request = DebugInvestigationRequest(
-                    step="Test step",
-                    step_number=1,
-                    total_steps=1,
-                    next_step_required=False,
-                    findings="Test findings"
+                    step="Test step", step_number=1, total_steps=1, next_step_required=False, findings="Test findings"
                 )
 
                 # This should NOT raise a ModelContext error - the method should set up context itself
@@ -589,6 +586,7 @@ class TestDebugToolIntegration:
                 assert hasattr(tool, "_current_model_name")
                 # Should use DEFAULT_MODEL when no model specified
                 from config import DEFAULT_MODEL
+
                 assert tool._current_model_name == DEFAULT_MODEL
 
             finally:

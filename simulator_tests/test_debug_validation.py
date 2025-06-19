@@ -13,10 +13,10 @@ Tests the debug tool's systematic self-investigation capabilities including:
 import json
 from typing import Optional
 
-from .base_test import BaseSimulatorTest
+from .conversation_base_test import ConversationBaseTest
 
 
-class DebugValidationTest(BaseSimulatorTest):
+class DebugValidationTest(ConversationBaseTest):
     """Test debug tool's self-investigation and expert analysis features"""
 
     @property
@@ -29,11 +29,11 @@ class DebugValidationTest(BaseSimulatorTest):
 
     def run_test(self) -> bool:
         """Test debug tool self-investigation capabilities"""
+        # Set up the test environment
+        self.setUp()
+
         try:
             self.logger.info("Test: Debug tool self-investigation validation")
-
-            # Setup test files directory first
-            self.setup_test_files()
 
             # Create a Python file with a subtle but realistic bug
             self._create_buggy_code()
@@ -56,8 +56,6 @@ class DebugValidationTest(BaseSimulatorTest):
         except Exception as e:
             self.logger.error(f"Debug validation test failed: {e}")
             return False
-        finally:
-            self.cleanup_test_files()
 
     def _create_buggy_code(self):
         """Create test files with a subtle bug for debugging"""
@@ -468,9 +466,9 @@ RuntimeError: dictionary changed size during iteration
             return False
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
-        """Call an MCP tool via standalone server - override for debug-specific response handling"""
-        # Use parent implementation to get the raw response
-        response_text, _ = super().call_mcp_tool(tool_name, params)
+        """Call an MCP tool in-process - override for debug-specific response handling"""
+        # Use in-process implementation to maintain conversation memory
+        response_text, _ = self.call_mcp_tool_direct(tool_name, params)
 
         if not response_text:
             return None, None

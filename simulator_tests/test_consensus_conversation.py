@@ -8,11 +8,16 @@ and builds conversation context correctly when using continuation_id.
 
 import json
 
-from .base_test import BaseSimulatorTest
+from .conversation_base_test import ConversationBaseTest
 
 
-class TestConsensusConversation(BaseSimulatorTest):
+class TestConsensusConversation(ConversationBaseTest):
     """Test consensus tool conversation continuation functionality"""
+
+    def call_mcp_tool(self, tool_name: str, params: dict) -> tuple:
+        """Call an MCP tool in-process"""
+        response_text, continuation_id = self.call_mcp_tool_direct(tool_name, params)
+        return response_text, continuation_id
 
     @property
     def test_name(self) -> str:
@@ -39,6 +44,9 @@ class TestConsensusConversation(BaseSimulatorTest):
         try:
             self.logger.info("Testing consensus tool conversation continuation")
 
+            # Initialize for in-process tool calling
+            self.setUp()
+
             # Setup test files for context
             self.setup_test_files()
 
@@ -49,7 +57,7 @@ class TestConsensusConversation(BaseSimulatorTest):
                 {
                     "prompt": "Please use low thinking mode. I'm working on a web application and need advice on authentication. Can you look at this code?",
                     "files": [self.test_files["python"]],
-                    "model": "local-llama",
+                    "model": "flash",
                 },
             )
 
@@ -73,18 +81,18 @@ class TestConsensusConversation(BaseSimulatorTest):
                     "prompt": "Based on our previous discussion about authentication, I need expert consensus: Should we implement OAuth2 or stick with simple session-based auth?",
                     "models": [
                         {
-                            "model": "local-llama",
+                            "model": "flash",
                             "stance": "for",
                             "stance_prompt": "Focus on OAuth2 benefits: security, scalability, and industry standards.",
                         },
                         {
-                            "model": "local-llama",
+                            "model": "flash",
                             "stance": "against",
                             "stance_prompt": "Focus on OAuth2 complexity: implementation challenges and simpler alternatives.",
                         },
                     ],
                     "continuation_id": continuation_id,
-                    "model": "local-llama",
+                    "model": "flash",
                 },
             )
 
@@ -194,7 +202,7 @@ class TestConsensusConversation(BaseSimulatorTest):
                 {
                     "prompt": "Based on our consensus discussion about authentication, can you summarize the key points?",
                     "continuation_id": continuation_id,
-                    "model": "local-llama",
+                    "model": "flash",
                 },
             )
 

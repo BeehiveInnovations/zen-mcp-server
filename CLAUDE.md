@@ -73,26 +73,34 @@ tail -n 100 logs/mcp_activity.log
 # Follow tool activity in real-time
 tail -f logs/mcp_activity.log
 
-# Use the dedicated log monitor (shows tool calls, completions, errors)
-python log_monitor.py
+# Use simple tail commands to monitor logs
+tail -f logs/mcp_activity.log | grep -E "(TOOL_CALL|TOOL_COMPLETED|ERROR|WARNING)"
 ```
 
-The `log_monitor.py` script provides a real-time view of:
-- Tool calls and completions
-- Conversation resumptions and context
-- Errors and warnings from all log files
-- File rotation handling
+#### Available Log Files
 
-#### All Available Log Files
+**Current log files (with proper rotation):**
 ```bash
-# Main server log (all activity)
+# Main server log (all activity including debug info) - 20MB max, 10 backups
 tail -f logs/mcp_server.log
 
-# Tool activity only (TOOL_CALL, TOOL_COMPLETED, etc.)
+# Tool activity only (TOOL_CALL, TOOL_COMPLETED, etc.) - 20MB max, 5 backups  
 tail -f logs/mcp_activity.log
+```
 
-# Debug information (if configured)
-tail -f logs/debug.log
+**For programmatic log analysis (used by tests):**
+```python
+# Import the LogUtils class from simulator tests
+from simulator_tests.log_utils import LogUtils
+
+# Get recent logs
+recent_logs = LogUtils.get_recent_server_logs(lines=500)
+
+# Check for errors
+errors = LogUtils.check_server_logs_for_errors()
+
+# Search for specific patterns
+matches = LogUtils.search_logs_for_pattern("TOOL_CALL.*debug")
 ```
 
 ### Testing

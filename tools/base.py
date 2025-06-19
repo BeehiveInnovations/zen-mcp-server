@@ -1889,22 +1889,22 @@ When recommending searches, be specific about what information you need and why 
     def _resolve_model_context(self, arguments: dict[str, Any], request) -> tuple[str, Any]:
         """
         Resolve model context and name using centralized logic.
-        
+
         This method extracts the model resolution logic from execute() so it can be
         reused by tools that override execute() (like debug tool) without duplicating code.
-        
+
         Args:
             arguments: Dictionary of arguments from the MCP client
             request: The validated request object
-            
+
         Returns:
             tuple[str, ModelContext]: (resolved_model_name, model_context)
-            
+
         Raises:
             ValueError: If model resolution fails or model selection is required
         """
         logger = logging.getLogger(f"tools.{self.name}")
-        
+
         # MODEL RESOLUTION NOW HAPPENS AT MCP BOUNDARY
         # Extract pre-resolved model context from server.py
         model_context = arguments.get("_model_context")

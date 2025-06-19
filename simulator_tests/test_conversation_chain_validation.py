@@ -22,10 +22,10 @@ This validates the conversation threading system's ability to:
 """
 
 
-from .base_test import BaseSimulatorTest
+from .conversation_base_test import ConversationBaseTest
 
 
-class ConversationChainValidationTest(BaseSimulatorTest):
+class ConversationChainValidationTest(ConversationBaseTest):
     """Test conversation chain and threading functionality"""
 
     @property
@@ -38,11 +38,11 @@ class ConversationChainValidationTest(BaseSimulatorTest):
 
     def run_test(self) -> bool:
         """Test conversation chain and threading functionality"""
+        # Set up the test environment
+        self.setUp()
+
         try:
             self.logger.info("Test: Conversation chain and threading validation")
-
-            # Setup test files
-            self.setup_test_files()
 
             # Create test file for consistent context
             test_file_content = """def example_function():
@@ -106,14 +106,13 @@ class TestClass:
             self.logger.info(f"    ✅ Step A2 completed - thread_id: {continuation_id_a2[:8]}...")
             conversation_chains["A2"] = continuation_id_a2
 
-            # Step A3: Continue with debug tool (creates thread_id_3 with parent=thread_id_2)
-            self.logger.info("    Step A3: Debug tool - continue Chain A")
+            # Step A3: Continue with chat tool (creates thread_id_3 with parent=thread_id_2)
+            self.logger.info("    Step A3: Chat tool - continue Chain A")
 
             response_a3, continuation_id_a3 = self.call_mcp_tool(
-                "debug",
+                "chat",
                 {
-                    "prompt": "Debug any potential issues in this code.",
-                    "files": [test_file_path],
+                    "prompt": "Thank you for the analysis. Can you summarize the key points?",
                     "continuation_id": continuation_id_a2,
                     "model": "flash",
                     "temperature": 0.7,
@@ -173,14 +172,12 @@ class TestClass:
             self.logger.info("  Chain A Branch: Resume original conversation from A1")
 
             # Step A1-Branch: Use original continuation_id_a1 to branch (creates thread_id_6 with parent=thread_id_1)
-            self.logger.info("    Step A1-Branch: Debug tool - branch from original Chain A")
+            self.logger.info("    Step A1-Branch: Chat tool - branch from original Chain A")
 
             response_a1_branch, continuation_id_a1_branch = self.call_mcp_tool(
-                "debug",
+                "chat",
                 {
-                    "prompt": "buggy_function(5, 3) returns 2 but should return 8 for addition",
-                    "error_context": "Unit test failure: expected buggy_function(5, 3) to return 8 (5+3) but got 2. Function appears to be subtracting instead of adding.",
-                    "files": [test_file_path],
+                    "prompt": "Going back to our original discussion, I have another question about the code structure.",
                     "continuation_id": continuation_id_a1,  # Go back to original!
                     "model": "flash",
                     "temperature": 0.7,
@@ -353,8 +350,12 @@ class TestClass:
         except Exception as e:
             self.logger.error(f"Conversation chain validation test failed: {e}")
             return False
-        finally:
-            self.cleanup_test_files()
+
+    def call_mcp_tool(self, tool_name: str, params: dict) -> tuple:
+        """Call an MCP tool in-process"""
+        # Use in-process implementation to maintain conversation memory
+        response_text, continuation_id = self.call_mcp_tool_direct(tool_name, params)
+        return response_text, continuation_id
 
 
 def main():

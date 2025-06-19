@@ -13,10 +13,10 @@ Tests the planner tool's sequential planning capabilities including:
 import json
 from typing import Optional
 
-from .base_test import BaseSimulatorTest
+from .conversation_base_test import ConversationBaseTest
 
 
-class PlannerValidationTest(BaseSimulatorTest):
+class PlannerValidationTest(ConversationBaseTest):
     """Test planner tool's sequential planning and continuation features"""
 
     @property
@@ -29,6 +29,9 @@ class PlannerValidationTest(BaseSimulatorTest):
 
     def run_test(self) -> bool:
         """Test planner tool sequential planning capabilities"""
+        # Set up the test environment
+        self.setUp()
+
         try:
             self.logger.info("Test: Planner tool validation")
 
@@ -311,9 +314,9 @@ class PlannerValidationTest(BaseSimulatorTest):
             return False
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
-        """Call an MCP tool via standalone server - override for planner-specific response handling"""
-        # Use parent implementation to get the raw response
-        response_text, _ = super().call_mcp_tool(tool_name, params)
+        """Call an MCP tool in-process - override for planner-specific response handling"""
+        # Use in-process implementation to maintain conversation memory
+        response_text, _ = self.call_mcp_tool_direct(tool_name, params)
 
         if not response_text:
             return None, None

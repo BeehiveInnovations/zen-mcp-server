@@ -40,9 +40,8 @@ multi-turn file handling:
 import json
 import logging
 import os
-import time
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from .file_types import BINARY_EXTENSIONS, CODE_EXTENSIONS, IMAGE_EXTENSIONS, TEXT_EXTENSIONS
 from .security_config import EXCLUDED_DIRS, is_dangerous_path
@@ -671,95 +670,6 @@ def check_files_size_limit(files: list[str], max_tokens: int, threshold_percent:
 
     within_limit = total_estimated_tokens <= threshold
     return within_limit, total_estimated_tokens, file_count
-
-
-class LogTailer:
-    """
-    General-purpose log file tailer with rotation detection.
-
-    This class provides a reusable way to monitor log files for new content,
-    automatically handling log rotation and maintaining position tracking.
-    """
-
-    def __init__(self, file_path: str, initial_seek_end: bool = True):
-        """
-        Initialize log tailer for a specific file.
-
-        Args:
-            file_path: Path to the log file to monitor
-            initial_seek_end: If True, start monitoring from end of file
-        """
-        self.file_path = file_path
-        self.position = 0
-        self.last_size = 0
-        self.initial_seek_end = initial_seek_end
-
-        # Ensure file exists and initialize position
-        Path(self.file_path).touch()
-        if self.initial_seek_end and os.path.exists(self.file_path):
-            self.last_size = os.path.getsize(self.file_path)
-            self.position = self.last_size
-
-    def read_new_lines(self) -> list[str]:
-        """
-        Read new lines since last call, handling rotation.
-
-        Returns:
-            List of new lines from the file
-        """
-        if not os.path.exists(self.file_path):
-            return []
-
-        try:
-            current_size = os.path.getsize(self.file_path)
-
-            # Check for log rotation (file size decreased)
-            if current_size < self.last_size:
-                self.position = 0
-                self.last_size = current_size
-
-            with open(self.file_path, encoding="utf-8", errors="ignore") as f:
-                f.seek(self.position)
-                new_lines = f.readlines()
-                self.position = f.tell()
-                self.last_size = current_size
-
-                # Strip whitespace from each line
-                return [line.strip() for line in new_lines if line.strip()]
-
-        except OSError:
-            return []
-
-    def monitor_continuously(
-        self,
-        line_handler: Callable[[str], None],
-        check_interval: float = 0.5,
-        stop_condition: Optional[Callable[[], bool]] = None,
-    ):
-        """
-        Monitor file continuously and call handler for each new line.
-
-        Args:
-            line_handler: Function to call for each new line
-            check_interval: Seconds between file checks
-            stop_condition: Optional function that returns True to stop monitoring
-        """
-        while True:
-            try:
-                if stop_condition and stop_condition():
-                    break
-
-                new_lines = self.read_new_lines()
-                for line in new_lines:
-                    line_handler(line)
-
-                time.sleep(check_interval)
-
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                logger.warning(f"Error monitoring log file {self.file_path}: {e}")
-                time.sleep(1)
 
 
 def read_json_file(file_path: str) -> Optional[dict]:

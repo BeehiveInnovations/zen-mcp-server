@@ -500,6 +500,7 @@ class DebugIssueTool(BaseTool):
                 # Last resort fallback if no arguments/request provided
                 from config import DEFAULT_MODEL
                 from utils.model_context import ModelContext
+
                 model_name = DEFAULT_MODEL
                 self._model_context = ModelContext(model_name)
 
