@@ -50,7 +50,14 @@ DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = {
     "hypothesis": (
         "Formulate your current best guess about the underlying cause. This is a working theory and may evolve based on further evidence."
     ),
-    "confidence": "How confident you are in the current hypothesis: 'low', 'medium', or 'high'.",
+    "confidence": (
+        "How confident you are in the current hypothesis: "
+        "'low' (initial theory), 'medium' (good evidence), 'high' (strong to very strong evidence), "
+        "'nailedit' (ONLY use for final step and ONLY when you have found the EXACT root cause with 100% certainty AND "
+        "identified a simple, minimal fix that requires no expert consultation. Use this ONLY "
+        "for obvious bugs and logic errors that you ABSOLUTELY are certain about and have no doubts because you have"
+        "successfully mapped out the code flow and the root cause behind the issue."
+    ),
     "backtrack_from_step": "If a previous step needs revision, specify the step number to backtrack from.",
     "continuation_id": "Continuation token used for linking multi-step investigations and continuing conversations after discovery.",
     "images": (
@@ -197,7 +204,7 @@ class DebugIssueTool(BaseTool):
                 },
                 "confidence": {
                     "type": "string",
-                    "enum": ["low", "medium", "high"],
+                    "enum": ["low", "medium", "high", "nailedit"],
                     "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["confidence"],
                 },
                 "backtrack_from_step": {
@@ -344,43 +351,72 @@ class DebugIssueTool(BaseTool):
             if continuation_id:
                 response_data["continuation_id"] = continuation_id
 
-            # If investigation is complete, call the AI model for expert analysis
+            # If investigation is complete, decide whether to call expert analysis or proceed with minimal fix
             if not request.next_step_required:
-                response_data["status"] = "calling_expert_analysis"
                 response_data["investigation_complete"] = True
 
-                # Prepare consolidated investigation summary
-                investigation_summary = self._prepare_investigation_summary()
+                # Check if Claude has absolute certainty and can proceed with minimal fix
+                if request.confidence == "nailedit":
+                    # Trust Claude's judgment completely - if it says nailedit, skip expert analysis
+                    response_data["status"] = "nailedit_confidence_proceed_with_fix"
 
-                # Call the AI model with full context
-                expert_analysis = await self._call_expert_analysis(
-                    initial_issue=getattr(self, "initial_issue", request.step),
-                    investigation_summary=investigation_summary,
-                    relevant_files=list(self.consolidated_findings["relevant_files"]),
-                    relevant_methods=list(self.consolidated_findings["relevant_methods"]),
-                    final_hypothesis=request.hypothesis,
-                    error_context=self._extract_error_context(),
-                    images=list(set(self.consolidated_findings["images"])),  # Unique images
-                    model_info=arguments.get("_model_context"),  # Use pre-resolved model context from server.py
-                    arguments=arguments,  # Pass arguments for model resolution
-                    request=request,  # Pass request for model resolution
-                )
+                    investigation_summary = self._prepare_investigation_summary()
+                    response_data["complete_investigation"] = {
+                        "initial_issue": getattr(self, "initial_issue", request.step),
+                        "steps_taken": len(self.investigation_history),
+                        "files_examined": list(self.consolidated_findings["files_checked"]),
+                        "relevant_files": list(self.consolidated_findings["relevant_files"]),
+                        "relevant_methods": list(self.consolidated_findings["relevant_methods"]),
+                        "investigation_summary": investigation_summary,
+                        "final_hypothesis": request.hypothesis,
+                        "confidence_level": "nailedit",
+                    }
+                    response_data["next_steps"] = (
+                        "Investigation complete with NAILED-IT confidence. You have identified the exact "
+                        "root cause and a minimal fix. Proceed directly with implementing the simple fix "
+                        "without requiring expert consultation. Focus on the precise, minimal change needed."
+                    )
+                    response_data["skip_expert_analysis"] = True
+                    response_data["expert_analysis"] = {
+                        "status": "skipped_due_to_nailedit_confidence",
+                        "reason": "Claude identified exact root cause with minimal fix requirement",
+                    }
+                else:
+                    # Standard expert analysis for high/medium/low confidence
+                    response_data["status"] = "calling_expert_analysis"
 
-                # Combine investigation and expert analysis
-                response_data["expert_analysis"] = expert_analysis
-                response_data["complete_investigation"] = {
-                    "initial_issue": getattr(self, "initial_issue", request.step),
-                    "steps_taken": len(self.investigation_history),
-                    "files_examined": list(self.consolidated_findings["files_checked"]),
-                    "relevant_files": list(self.consolidated_findings["relevant_files"]),
-                    "relevant_methods": list(self.consolidated_findings["relevant_methods"]),
-                    "investigation_summary": investigation_summary,
-                }
-                response_data["next_steps"] = (
-                    "Investigation complete with expert analysis. Present the findings, hypotheses, "
-                    "and recommended fixes to the user. Focus on the most likely root cause and "
-                    "provide actionable implementation guidance."
-                )
+                    # Prepare consolidated investigation summary
+                    investigation_summary = self._prepare_investigation_summary()
+
+                    # Call the AI model with full context
+                    expert_analysis = await self._call_expert_analysis(
+                        initial_issue=getattr(self, "initial_issue", request.step),
+                        investigation_summary=investigation_summary,
+                        relevant_files=list(self.consolidated_findings["relevant_files"]),
+                        relevant_methods=list(self.consolidated_findings["relevant_methods"]),
+                        final_hypothesis=request.hypothesis,
+                        error_context=self._extract_error_context(),
+                        images=list(set(self.consolidated_findings["images"])),  # Unique images
+                        model_info=arguments.get("_model_context"),  # Use pre-resolved model context from server.py
+                        arguments=arguments,  # Pass arguments for model resolution
+                        request=request,  # Pass request for model resolution
+                    )
+
+                    # Combine investigation and expert analysis
+                    response_data["expert_analysis"] = expert_analysis
+                    response_data["complete_investigation"] = {
+                        "initial_issue": getattr(self, "initial_issue", request.step),
+                        "steps_taken": len(self.investigation_history),
+                        "files_examined": list(self.consolidated_findings["files_checked"]),
+                        "relevant_files": list(self.consolidated_findings["relevant_files"]),
+                        "relevant_methods": list(self.consolidated_findings["relevant_methods"]),
+                        "investigation_summary": investigation_summary,
+                    }
+                    response_data["next_steps"] = (
+                        "Investigation complete with expert analysis. Present the findings, hypotheses, "
+                        "and recommended fixes to the user. Focus on the most likely root cause and "
+                        "provide actionable implementation guidance."
+                    )
             else:
                 response_data["next_steps"] = (
                     f"Continue investigation with step {request.step_number + 1}. "
