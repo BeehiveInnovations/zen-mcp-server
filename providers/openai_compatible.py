@@ -281,36 +281,29 @@ class OpenAICompatibleProvider(ModelProvider):
             content = message.get("content", "")
 
             if role == "system":
-                # System messages can be treated as user messages for o3-pro
-                input_messages.append(
-                    {"role": "user", "content": [{"type": "input_text", "text": f"System: {content}"}]}
-                )
+                # For o3-pro, system messages should be handled carefully to avoid policy violations
+                # Instead of prefixing with "System:", we'll include the system content naturally
+                input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
             elif role == "user":
                 input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
             elif role == "assistant":
                 input_messages.append({"role": "assistant", "content": [{"type": "output_text", "text": content}]})
 
         # Prepare completion parameters for responses endpoint
+        # Based on OpenAI documentation, use nested reasoning object for responses endpoint
         completion_params = {
             "model": model_name,
             "input": input_messages,
-            "text": {"format": {"type": "text"}},
-            "reasoning": {"effort": "medium", "summary": "auto"},
-            "tools": [],
+            "reasoning": {"effort": "medium"},  # Use nested object for responses endpoint
             "store": True,
         }
 
-        # Temperature is not in the documented parameters for responses endpoint
-        # but we'll try to add it in case it's supported
-
-        # Add max tokens if specified
+        # Add max tokens if specified (using max_completion_tokens for responses endpoint)
         if max_output_tokens:
-            completion_params["max_tokens"] = max_output_tokens
+            completion_params["max_completion_tokens"] = max_output_tokens
 
-        # Add any additional OpenAI-specific parameters
-        for key, value in kwargs.items():
-            if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop"]:
-                completion_params[key] = value
+        # For responses endpoint, we only add parameters that are explicitly supported
+        # Remove unsupported chat completion parameters that may cause API errors
 
         # Retry logic with progressive delays
         max_retries = 4
@@ -319,6 +312,11 @@ class OpenAICompatibleProvider(ModelProvider):
 
         for attempt in range(max_retries):
             try:
+                # Log the exact payload being sent for debugging
+                import json
+
+                logging.info(f"o3-pro API request payload: {json.dumps(completion_params, indent=2)}")
+
                 # Use OpenAI client's responses endpoint
                 response = self.client.responses.create(**completion_params)
 
