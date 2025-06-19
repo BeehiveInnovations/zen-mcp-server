@@ -27,6 +27,8 @@
       "supports_function_calling": "Whether the model supports function/tool calling",
       "supports_images": "Whether the model can process images/visual input",
       "max_image_size_mb": "Maximum total size in MB for all images combined (capped at 40MB max for custom models)",
+      "supports_temperature": "Whether the model accepts temperature parameter in API calls (set to false for O3/O4 reasoning models)",
+      "temperature_constraint": "Type of temperature constraint: 'fixed' (fixed value), 'range' (continuous range), 'discrete' (specific values), or omit for default range",
       "is_custom": "Set to true for models that should ONLY be used with custom API endpoints (Ollama, vLLM, etc.). False or omitted for OpenRouter/cloud models.",
       "description": "Human-readable description of the model"
     },
@@ -39,6 +41,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 10.0,
+      "supports_temperature": true,
+      "temperature_constraint": "range",
       "is_custom": true,
       "description": "Example custom/local model for Ollama, vLLM, etc."
     }
@@ -152,6 +156,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 20.0,
+      "supports_temperature": false,
+      "temperature_constraint": "fixed",
       "description": "OpenAI's o3 model - well-rounded and powerful across domains with vision"
     },
     {
@@ -163,6 +169,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 20.0,
+      "supports_temperature": false,
+      "temperature_constraint": "fixed",
       "description": "OpenAI's o3-mini model - balanced performance and speed with vision"
     },
     {
@@ -174,6 +182,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 20.0,
+      "supports_temperature": false,
+      "temperature_constraint": "fixed",
       "description": "OpenAI's o3-mini with high reasoning effort - optimized for complex problems with vision"
     },
     {
@@ -185,6 +195,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 20.0,
+      "supports_temperature": false,
+      "temperature_constraint": "fixed",
       "description": "OpenAI's o3-pro model - professional-grade reasoning and analysis with vision"
     },
     {
@@ -196,6 +208,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 20.0,
+      "supports_temperature": false,
+      "temperature_constraint": "fixed",
       "description": "OpenAI's o4-mini model - optimized for shorter contexts with rapid reasoning and vision"
     },
     {
@@ -207,6 +221,8 @@
       "supports_function_calling": true,
       "supports_images": true,
       "max_image_size_mb": 20.0,
+      "supports_temperature": false,
+      "temperature_constraint": "fixed",
       "description": "OpenAI's o4-mini with high reasoning effort - enhanced for complex tasks with vision"
     },
     {

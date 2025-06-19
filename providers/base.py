@@ -100,6 +100,26 @@ class DiscreteTemperatureConstraint(TemperatureConstraint):
         return self.default_temp
 
 
+def create_temperature_constraint(constraint_type: str) -> TemperatureConstraint:
+    """Create temperature constraint object from configuration string.
+
+    Args:
+        constraint_type: Type of constraint ("fixed", "range", "discrete")
+
+    Returns:
+        TemperatureConstraint object based on configuration
+    """
+    if constraint_type == "fixed":
+        # Fixed temperature models (O3/O4) only support temperature=1.0
+        return FixedTemperatureConstraint(1.0)
+    elif constraint_type == "discrete":
+        # For models with specific allowed values - using common OpenAI values as default
+        return DiscreteTemperatureConstraint([0.0, 0.3, 0.7, 1.0, 1.5, 2.0], 0.7)
+    else:
+        # Default range constraint (for "range" or None)
+        return RangeTemperatureConstraint(0.0, 2.0, 0.7)
+
+
 @dataclass
 class ModelCapabilities:
     """Capabilities and constraints for a specific model."""
@@ -114,6 +134,7 @@ class ModelCapabilities:
     supports_function_calling: bool = False
     supports_images: bool = False  # Whether model can process images
     max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
+    supports_temperature: bool = True  # Whether model accepts temperature parameter in API calls
 
     # Temperature constraint object - preferred way to define temperature limits
     temperature_constraint: TemperatureConstraint = field(
@@ -245,3 +266,17 @@ class ModelProvider(ABC):
             List of all model names and alias targets known by this provider
         """
         pass
+
+    def _resolve_model_name(self, model_name: str) -> str:
+        """Resolve model shorthand to full name.
+
+        Base implementation returns the model name unchanged.
+        Subclasses should override to provide alias resolution.
+
+        Args:
+            model_name: Model name that may be an alias
+
+        Returns:
+            Resolved model name
+        """
+        return model_name

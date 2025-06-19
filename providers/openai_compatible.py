@@ -448,23 +448,41 @@ class OpenAICompatibleProvider(ModelProvider):
         completion_params = {
             "model": model_name,
             "messages": messages,
-            "temperature": temperature,
         }
 
-        # Add max tokens if specified
-        if max_output_tokens:
+        # Check model capabilities once to determine parameter support
+        resolved_model = self._resolve_model_name(model_name)
+
+        # Get model capabilities once to avoid duplicate calls
+        try:
+            capabilities = self.get_capabilities(model_name)
+            # Defensive check for supports_temperature field (backward compatibility)
+            supports_temperature = getattr(capabilities, "supports_temperature", True)
+        except Exception as e:
+            # If capability check fails, fall back to conservative behavior
+            # Default to including temperature for most models (backward compatibility)
+            logging.debug(f"Failed to check temperature support for {model_name}: {e}")
+            supports_temperature = True
+
+        # Add temperature parameter if supported
+        if supports_temperature:
+            completion_params["temperature"] = temperature
+
+        # Add max tokens if specified and model supports it
+        # O3/O4 models that don't support temperature also don't support max_tokens
+        if max_output_tokens and supports_temperature:
             completion_params["max_tokens"] = max_output_tokens
 
         # Add any additional OpenAI-specific parameters
+        # Use capabilities to filter parameters for reasoning models
         for key, value in kwargs.items():
             if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "stream"]:
+                # Reasoning models (those that don't support temperature) also don't support these parameters
+                if not supports_temperature and key in ["top_p", "frequency_penalty", "presence_penalty"]:
+                    continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
 
         # Check if this is o3-pro and needs the responses endpoint
-        resolved_model = model_name
-        if hasattr(self, "_resolve_model_name"):
-            resolved_model = self._resolve_model_name(model_name)
-
         if resolved_model == "o3-pro-2025-06-10":
             # This model requires the /v1/responses endpoint
             # If it fails, we should not fall back to chat/completions

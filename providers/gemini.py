@@ -94,6 +94,7 @@ class GeminiModelProvider(ModelProvider):
             supports_function_calling=True,
             supports_images=config.get("supports_images", False),
             max_image_size_mb=config.get("max_image_size_mb", 0.0),
+            supports_temperature=True,  # Gemini models accept temperature parameter
             temperature_constraint=temp_constraint,
         )
 

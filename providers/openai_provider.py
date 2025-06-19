@@ -4,11 +4,10 @@ import logging
 from typing import Optional
 
 from .base import (
-    FixedTemperatureConstraint,
     ModelCapabilities,
     ModelResponse,
     ProviderType,
-    RangeTemperatureConstraint,
+    create_temperature_constraint,
 )
 from .openai_compatible import OpenAICompatibleProvider
 
@@ -25,18 +24,24 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "supports_extended_thinking": False,
             "supports_images": True,  # O3 models support vision
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
+            "supports_temperature": False,  # O3 models don't accept temperature parameter
+            "temperature_constraint": "fixed",  # Fixed at 1.0
         },
         "o3-mini": {
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
             "supports_images": True,  # O3 models support vision
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
+            "supports_temperature": False,  # O3 models don't accept temperature parameter
+            "temperature_constraint": "fixed",  # Fixed at 1.0
         },
         "o3-pro-2025-06-10": {
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
             "supports_images": True,  # O3 models support vision
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
+            "supports_temperature": False,  # O3 models don't accept temperature parameter
+            "temperature_constraint": "fixed",  # Fixed at 1.0
         },
         # Aliases
         "o3-pro": "o3-pro-2025-06-10",
@@ -45,18 +50,24 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "supports_extended_thinking": False,
             "supports_images": True,  # O4 models support vision
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
+            "supports_temperature": False,  # O4 models don't accept temperature parameter
+            "temperature_constraint": "fixed",  # Fixed at 1.0
         },
         "o4-mini-high": {
             "context_window": 200_000,  # 200K tokens
             "supports_extended_thinking": False,
             "supports_images": True,  # O4 models support vision
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
+            "supports_temperature": False,  # O4 models don't accept temperature parameter
+            "temperature_constraint": "fixed",  # Fixed at 1.0
         },
         "gpt-4.1-2025-04-14": {
             "context_window": 1_000_000,  # 1M tokens
             "supports_extended_thinking": False,
             "supports_images": True,  # GPT-4.1 supports vision
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
+            "supports_temperature": True,  # Regular models accept temperature parameter
+            "temperature_constraint": "range",  # 0.0-2.0 range
         },
         # Shorthands
         "mini": "o4-mini",  # Default 'mini' to latest mini model
@@ -90,13 +101,10 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
         config = self.SUPPORTED_MODELS[resolved_name]
 
-        # Define temperature constraints per model
-        if resolved_name in ["o3", "o3-mini", "o3-pro", "o3-pro-2025-06-10", "o4-mini", "o4-mini-high"]:
-            # O3 and O4 reasoning models only support temperature=1.0
-            temp_constraint = FixedTemperatureConstraint(1.0)
-        else:
-            # Other OpenAI models (including GPT-4.1) support 0.0-2.0 range
-            temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
+        # Get temperature constraints and support from configuration
+        supports_temperature = config.get("supports_temperature", True)  # Default to True for backward compatibility
+        temp_constraint_type = config.get("temperature_constraint", "range")  # Default to range
+        temp_constraint = create_temperature_constraint(temp_constraint_type)
 
         return ModelCapabilities(
             provider=ProviderType.OPENAI,
@@ -109,6 +117,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_function_calling=True,
             supports_images=config.get("supports_images", False),
             max_image_size_mb=config.get("max_image_size_mb", 0.0),
+            supports_temperature=supports_temperature,
             temperature_constraint=temp_constraint,
         )
 

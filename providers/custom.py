@@ -162,6 +162,7 @@ class CustomProvider(OpenAICompatibleProvider):
                 supports_system_prompts=True,
                 supports_streaming=True,
                 supports_function_calling=False,  # Conservative default
+                supports_temperature=True,  # Most custom models accept temperature parameter
                 temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
             )
 

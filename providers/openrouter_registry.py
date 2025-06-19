@@ -8,7 +8,12 @@ from typing import Optional
 
 from utils.file_utils import read_json_file
 
-from .base import ModelCapabilities, ProviderType, RangeTemperatureConstraint
+from .base import (
+    ModelCapabilities,
+    ProviderType,
+    TemperatureConstraint,
+    create_temperature_constraint,
+)
 
 
 @dataclass
@@ -25,8 +30,20 @@ class OpenRouterModelConfig:
     supports_json_mode: bool = False
     supports_images: bool = False  # Whether model can process images
     max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
+    supports_temperature: bool = True  # Whether model accepts temperature parameter in API calls
+    temperature_constraint: Optional[str] = (
+        None  # Type of temperature constraint: "fixed", "range", "discrete", or None for default range
+    )
     is_custom: bool = False  # True for models that should only be used with custom endpoints
     description: str = ""
+
+    def _create_temperature_constraint(self) -> TemperatureConstraint:
+        """Create temperature constraint object from configuration.
+
+        Returns:
+            TemperatureConstraint object based on configuration
+        """
+        return create_temperature_constraint(self.temperature_constraint or "range")
 
     def to_capabilities(self) -> ModelCapabilities:
         """Convert to ModelCapabilities object."""
@@ -41,7 +58,8 @@ class OpenRouterModelConfig:
             supports_function_calling=self.supports_function_calling,
             supports_images=self.supports_images,
             max_image_size_mb=self.max_image_size_mb,
-            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 1.0),
+            supports_temperature=self.supports_temperature,
+            temperature_constraint=self._create_temperature_constraint(),
         )
 
 
