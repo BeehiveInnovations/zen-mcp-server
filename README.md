@@ -45,6 +45,7 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
 
 - **Getting Started**
   - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes
+  - [Docker Installation](#docker-installation) - Run with Docker containers
   - [Available Tools](#available-tools) - Overview of all tools
   - [AI-to-AI Conversations](#ai-to-ai-conversation-threading) - Multi-turn conversations
 
@@ -219,6 +220,50 @@ Just ask Claude naturally:
 - "Brainstorm scaling strategies with pro. Study the code, pick your preferred strategy and debate with pro to settle on two best approaches" → Uses Gemini Pro specifically
 - "Use local-llama to localize and add missing translations to this project" → Uses local Llama 3.2 via custom URL
 - "First use local-llama for a quick local analysis, then use opus for a thorough security review" → Uses both providers in sequence
+
+## Docker Installation
+
+### Quick Start with Docker
+
+For users who prefer containerized deployments, Zen MCP Server provides full Docker support:
+
+```bash
+# One-command installation with Claude Code
+./install-docker-to-claude.sh
+```
+
+This will:
+- Build the Docker image
+- Validate your configuration
+- Add the MCP server to Claude Code
+- Verify the installation
+
+### Manual Docker Setup
+
+```bash
+# 1. Build the image
+./docker-build.sh
+
+# 2. Configure environment
+cp .env.docker.example .env
+# Edit .env with your API keys
+
+# 3. Run with docker-compose
+docker-compose up
+
+# Or run with the script
+./docker-run.sh
+```
+
+### Docker Features
+
+- **Isolated environment** - No Python installation required
+- **Resource limits** - Follows MCP standards (1 CPU, 2GB RAM)
+- **Persistent logs** - Volume mounts for log access
+- **Multi-platform** - Supports x86_64 and ARM64
+- **Security** - Runs as non-root user with minimal permissions
+
+For detailed Docker documentation, see [README-DOCKER.md](README-DOCKER.md).
 
 ## Available Tools
 
