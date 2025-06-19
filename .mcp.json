@@ -10,6 +10,8 @@
         "--env-file",
         "/home/valtter/zen-mcp-server/.env",
         "-v",
+        "/home/valtter/zen-mcp-server/.env:/app/.env:ro",
+        "-v",
         "/home/valtter/zen-mcp-server/logs:/app/logs",
         "--name",
         "zen-mcp-container",

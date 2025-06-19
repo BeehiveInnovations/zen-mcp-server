@@ -14,5 +14,9 @@
       "Bash(rm:*)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "zen-mcp-server"
+  ],
+  "enableAllProjectMcpServers": true
 }
