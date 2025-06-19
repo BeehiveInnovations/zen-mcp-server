@@ -1,0 +1,54 @@
+services:
+  zen-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zen-mcp-server:latest
+    container_name: zen-mcp-server
+    
+    # Enable interactive mode for stdio communication
+    stdin_open: true
+    tty: true
+    
+    # Environment variables
+    env_file:
+      - .env
+    
+    # Additional environment variables for Docker
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DOCKER_CONTAINER=true
+    
+    # Volume mounts
+    volumes:
+      # Mount logs directory for persistent logging
+      - ./logs:/app/logs
+      
+      # Optional: Mount .env file (if not using env_file)
+      # - ./.env:/app/.env:ro
+    
+    # Resource limits (following MCP standards)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Optional: Add a network for isolation
+networks:
+  default:
+    name: zen-mcp-network
