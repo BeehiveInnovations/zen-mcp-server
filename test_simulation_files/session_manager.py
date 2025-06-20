@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import json
 from datetime import datetime, timedelta
+
 
 class SessionManager:
     def __init__(self):

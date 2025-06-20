@@ -86,6 +86,8 @@ class WorkflowSchemaBuilder:
         model_field_schema: dict[str, Any] = None,
         auto_mode: bool = False,
         tool_name: str = None,
+        excluded_workflow_fields: list[str] = None,
+        excluded_common_fields: list[str] = None,
     ) -> dict[str, Any]:
         """
         Build complete schema for workflow tools.
@@ -96,17 +98,27 @@ class WorkflowSchemaBuilder:
             model_field_schema: Schema for the model field
             auto_mode: Whether the tool is in auto mode (affects model requirement)
             tool_name: Name of the tool (for schema title)
+            excluded_workflow_fields: Workflow fields to exclude from schema (e.g., for planning tools)
+            excluded_common_fields: Common fields to exclude from schema
 
         Returns:
             Complete JSON schema for the workflow tool
         """
         properties = {}
 
-        # Add workflow fields first
-        properties.update(WorkflowSchemaBuilder.WORKFLOW_FIELD_SCHEMAS)
+        # Add workflow fields first, excluding any specified fields
+        workflow_fields = WorkflowSchemaBuilder.WORKFLOW_FIELD_SCHEMAS.copy()
+        if excluded_workflow_fields:
+            for field in excluded_workflow_fields:
+                workflow_fields.pop(field, None)
+        properties.update(workflow_fields)
 
-        # Add common fields (temperature, thinking_mode, etc.) from base builder
-        properties.update(SchemaBuilder.COMMON_FIELD_SCHEMAS)
+        # Add common fields (temperature, thinking_mode, etc.) from base builder, excluding any specified fields
+        common_fields = SchemaBuilder.COMMON_FIELD_SCHEMAS.copy()
+        if excluded_common_fields:
+            for field in excluded_common_fields:
+                common_fields.pop(field, None)
+        properties.update(common_fields)
 
         # Add model field if provided
         if model_field_schema:
@@ -118,6 +130,11 @@ class WorkflowSchemaBuilder:
 
         # Build required fields list - workflow tools have standard required fields
         standard_required = ["step", "step_number", "total_steps", "next_step_required", "findings"]
+
+        # Filter out excluded fields from required fields
+        if excluded_workflow_fields:
+            standard_required = [field for field in standard_required if field not in excluded_workflow_fields]
+
         required = standard_required + (required_fields or [])
 
         if auto_mode and "model" not in required:

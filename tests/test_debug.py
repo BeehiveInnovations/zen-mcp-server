@@ -2,7 +2,6 @@
 Tests for the debug tool using new WorkflowTool architecture.
 """
 
-import pytest
 
 from tools.debug import DebugInvestigationRequest, DebugIssueTool
 from tools.models import ToolModelCategory

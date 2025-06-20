@@ -18,7 +18,7 @@ Key features:
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
