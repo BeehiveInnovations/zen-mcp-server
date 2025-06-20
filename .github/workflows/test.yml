@@ -29,9 +29,9 @@ jobs:
     
     - name: Run unit tests
       run: |
-        # Run all unit tests
+        # Run only unit tests (exclude simulation tests that require API keys)
         # These tests use mocks and don't require API keys
-        python -m pytest tests/ -v
+        python -m pytest tests/ -v --ignore=simulator_tests/
       env:
         # Ensure no API key is accidentally used in CI
         GEMINI_API_KEY: ""

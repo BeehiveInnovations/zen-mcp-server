@@ -13,7 +13,7 @@ class MockRequest(BaseModel):
     test_field: str = "test"
 
 
-class TestTool(BaseTool):
+class MockTool(BaseTool):
     """Minimal test tool implementation"""
 
     def get_name(self) -> str:
@@ -40,7 +40,7 @@ class TestSpecialStatusParsing:
 
     def setup_method(self):
         """Setup test tool and request"""
-        self.tool = TestTool()
+        self.tool = MockTool()
         self.request = MockRequest()
 
     def test_full_codereview_required_parsing(self):

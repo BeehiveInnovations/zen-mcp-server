@@ -64,9 +64,9 @@ from tools import (  # noqa: E402
     DebugIssueTool,
     ListModelsTool,
     PlannerTool,
-    Precommit,
+    PrecommitTool,
     RefactorTool,
-    TestGenerationTool,
+    TestGenTool,
     ThinkDeepTool,
     TracerTool,
 )
@@ -161,17 +161,17 @@ server: Server = Server("zen-server")
 # Each tool provides specialized functionality for different development tasks
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
-    "thinkdeep": ThinkDeepTool(),  # Extended reasoning for complex problems
-    "codereview": CodeReviewTool(),  # Comprehensive code review and quality analysis
+    "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
+    "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
     "listmodels": ListModelsTool(),  # List all available AI models by provider
-    "planner": PlannerTool(),  # A task or problem to plan out as several smaller steps
-    "precommit": Precommit(),  # Pre-commit validation of git changes
-    "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
-    "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
+    "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
+    "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
+    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
+    "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
 }
 
@@ -179,13 +179,18 @@ TOOLS = {
 PROMPT_TEMPLATES = {
     "thinkdeep": {
         "name": "thinkdeeper",
-        "description": "Think deeply about the current context or problem",
-        "template": "Think deeper about this with {model} using {thinking_mode} thinking mode",
+        "description": "Step-by-step deep thinking workflow with expert analysis",
+        "template": "Start comprehensive deep thinking workflow with {model} using {thinking_mode} thinking mode",
     },
     "codereview": {
         "name": "review",
         "description": "Perform a comprehensive code review",
         "template": "Perform a comprehensive code review with {model}",
+    },
+    "codereviewworkflow": {
+        "name": "reviewworkflow",
+        "description": "Step-by-step code review workflow with expert analysis",
+        "template": "Start comprehensive code review workflow with {model}",
     },
     "debug": {
         "name": "debug",
@@ -197,6 +202,11 @@ PROMPT_TEMPLATES = {
         "description": "Analyze files and code structure",
         "template": "Analyze these files with {model}",
     },
+    "analyzeworkflow": {
+        "name": "analyzeworkflow",
+        "description": "Step-by-step analysis workflow with expert validation",
+        "template": "Start comprehensive analysis workflow with {model}",
+    },
     "chat": {
         "name": "chat",
         "description": "Chat and brainstorm ideas",
@@ -204,8 +214,8 @@ PROMPT_TEMPLATES = {
     },
     "precommit": {
         "name": "precommit",
-        "description": "Validate changes before committing",
-        "template": "Run precommit validation with {model}",
+        "description": "Step-by-step pre-commit validation workflow",
+        "template": "Start comprehensive pre-commit validation workflow with {model}",
     },
     "testgen": {
         "name": "testgen",
@@ -216,6 +226,11 @@ PROMPT_TEMPLATES = {
         "name": "refactor",
         "description": "Refactor and improve code structure",
         "template": "Refactor this code with {model}",
+    },
+    "refactorworkflow": {
+        "name": "refactorworkflow",
+        "description": "Step-by-step refactoring analysis workflow with expert validation",
+        "template": "Start comprehensive refactoring analysis workflow with {model}",
     },
     "tracer": {
         "name": "tracer",

@@ -1,12 +1,31 @@
 # TestGen Tool - Comprehensive Test Generation
 
-**Generates thorough test suites with edge case coverage based on existing code and test framework used**
+**Generates thorough test suites with edge case coverage through workflow-driven investigation**
 
-The `testgen` tool creates comprehensive test suites by analyzing your code paths, understanding intricate dependencies, and identifying realistic edge cases and failure scenarios that need test coverage.
+The `testgen` tool creates comprehensive test suites by analyzing your code paths, understanding intricate dependencies, and identifying realistic edge cases and failure scenarios that need test coverage. This workflow tool guides Claude through systematic investigation of code functionality, critical paths, edge cases, and integration points across multiple steps before generating comprehensive tests with realistic failure mode analysis.
 
 ## Thinking Mode
 
 **Default is `medium` (8,192 tokens) for extended thinking models.** Use `high` for complex systems with many interactions or `max` for critical systems requiring exhaustive test coverage.
+
+## How the Workflow Works
+
+The testgen tool implements a **structured workflow** for comprehensive test generation:
+
+**Investigation Phase (Claude-Led):**
+1. **Step 1**: Claude describes the test generation plan and begins analyzing code functionality
+2. **Step 2+**: Claude examines critical paths, edge cases, error handling, and integration points
+3. **Throughout**: Claude tracks findings, test scenarios, and coverage gaps
+4. **Completion**: Once investigation is thorough, Claude signals completion
+
+**Test Generation Phase:**
+After Claude completes the investigation:
+- Complete test scenario catalog with all edge cases
+- Framework-specific test generation
+- Realistic failure mode coverage
+- Final test suite with comprehensive coverage
+
+This workflow ensures methodical analysis before test generation, resulting in more thorough and valuable test suites.
 
 ## Model Recommendation
 
@@ -37,11 +56,24 @@ Test generation excels with extended reasoning models like Gemini Pro or O3, whi
 
 ## Tool Parameters
 
-- `files`: Code files or directories to generate tests for (required, absolute paths)
+**Workflow Investigation Parameters (used during step-by-step process):**
+- `step`: Current investigation step description (required for each step)
+- `step_number`: Current step number in test generation sequence (required)
+- `total_steps`: Estimated total investigation steps (adjustable)
+- `next_step_required`: Whether another investigation step is needed
+- `findings`: Discoveries about functionality and test scenarios (required)
+- `files_checked`: All files examined during investigation
+- `relevant_files`: Files directly needing tests (required in step 1)
+- `relevant_context`: Methods/functions/classes requiring test coverage
+- `confidence`: Confidence level in test plan completeness (exploring/low/medium/high/certain)
+- `backtrack_from_step`: Step number to backtrack from (for revisions)
+
+**Initial Configuration (used in step 1):**
 - `prompt`: Description of what to test, testing objectives, and specific scope/focus areas (required)
 - `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `test_examples`: Optional existing test files or directories to use as style/pattern reference (absolute paths)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
+- `use_assistant_model`: Whether to use expert test generation phase (default: true, set to false to use Claude only)
 
 ## Usage Examples
 

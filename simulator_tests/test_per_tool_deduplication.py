@@ -60,14 +60,18 @@ def divide(x, y):
             # Step 1: precommit tool with dummy file (low thinking mode)
             self.logger.info("  Step 1: precommit tool with dummy file")
             precommit_params = {
+                "step": "Initial analysis of dummy_code.py for commit readiness. Please give me a quick one line reply.",
+                "step_number": 1,
+                "total_steps": 2,
+                "next_step_required": True,
+                "findings": "Starting pre-commit validation of dummy_code.py",
                 "path": os.getcwd(),  # Use current working directory as the git repo path
-                "files": [dummy_file_path],
-                "prompt": "Please give me a quick one line reply. Review this code for commit readiness",
+                "relevant_files": [dummy_file_path],
                 "thinking_mode": "low",
                 "model": "flash",
             }
 
-            response1, continuation_id = self.call_mcp_tool_direct("precommit", precommit_params)
+            response1, continuation_id = self.call_mcp_tool("precommit", precommit_params)
             if not response1:
                 self.logger.error("  ❌ Step 1: precommit tool failed")
                 return False
@@ -86,13 +90,17 @@ def divide(x, y):
             # Step 2: codereview tool with same file (NO continuation - fresh conversation)
             self.logger.info("  Step 2: codereview tool with same file (fresh conversation)")
             codereview_params = {
-                "files": [dummy_file_path],
-                "prompt": "Please give me a quick one line reply. General code review for quality and best practices",
+                "step": "Initial code review of dummy_code.py for quality and best practices. Please give me a quick one line reply.",
+                "step_number": 1,
+                "total_steps": 1,
+                "next_step_required": False,
+                "findings": "Starting code review of dummy_code.py",
+                "relevant_files": [dummy_file_path],
                 "thinking_mode": "low",
                 "model": "flash",
             }
 
-            response2, _ = self.call_mcp_tool_direct("codereview", codereview_params)
+            response2, _ = self.call_mcp_tool("codereview", codereview_params)
             if not response2:
                 self.logger.error("  ❌ Step 2: codereview tool failed")
                 return False
@@ -115,14 +123,18 @@ def subtract(a, b):
             # Continue precommit with both files
             continue_params = {
                 "continuation_id": continuation_id,
+                "step": "Continue analysis with new_feature.py added. Please give me a quick one line reply about both files.",
+                "step_number": 2,
+                "total_steps": 2,
+                "next_step_required": False,
+                "findings": "Continuing pre-commit validation with both dummy_code.py and new_feature.py",
                 "path": os.getcwd(),  # Use current working directory as the git repo path
-                "files": [dummy_file_path, new_file_path],  # Old + new file
-                "prompt": "Please give me a quick one line reply. Now also review the new feature file along with the previous one",
+                "relevant_files": [dummy_file_path, new_file_path],  # Old + new file
                 "thinking_mode": "low",
                 "model": "flash",
             }
 
-            response3, _ = self.call_mcp_tool_direct("precommit", continue_params)
+            response3, _ = self.call_mcp_tool("precommit", continue_params)
             if not response3:
                 self.logger.error("  ❌ Step 3: precommit continuation failed")
                 return False

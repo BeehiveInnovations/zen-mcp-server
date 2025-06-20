@@ -157,16 +157,23 @@ async def test_unknown_tool_defaults_to_prompt():
 
 @pytest.mark.asyncio
 async def test_tool_parameter_standardization():
-    """Test that most tools use standardized 'prompt' parameter (debug uses investigation pattern)"""
-    from tools.analyze import AnalyzeRequest
+    """Test that workflow tools use standardized investigation pattern"""
+    from tools.analyze import AnalyzeWorkflowRequest
     from tools.codereview import CodeReviewRequest
     from tools.debug import DebugInvestigationRequest
     from tools.precommit import PrecommitRequest
-    from tools.thinkdeep import ThinkDeepRequest
+    from tools.thinkdeep import ThinkDeepWorkflowRequest
 
-    # Test analyze tool uses prompt
-    analyze = AnalyzeRequest(files=["/test.py"], prompt="What does this do?")
-    assert analyze.prompt == "What does this do?"
+    # Test analyze tool uses workflow pattern
+    analyze = AnalyzeWorkflowRequest(
+        step="What does this do?",
+        step_number=1,
+        total_steps=1,
+        next_step_required=False,
+        findings="Initial analysis",
+        relevant_files=["/test.py"],
+    )
+    assert analyze.step == "What does this do?"
 
     # Debug tool now uses self-investigation pattern with different fields
     debug = DebugInvestigationRequest(
@@ -179,14 +186,32 @@ async def test_tool_parameter_standardization():
     assert debug.step == "Investigating error"
     assert debug.findings == "Initial error analysis"
 
-    # Test codereview tool uses prompt
-    review = CodeReviewRequest(files=["/test.py"], prompt="Review this")
-    assert review.prompt == "Review this"
+    # Test codereview tool uses workflow fields
+    review = CodeReviewRequest(
+        step="Initial code review investigation",
+        step_number=1,
+        total_steps=2,
+        next_step_required=True,
+        findings="Initial review findings",
+        relevant_files=["/test.py"],
+    )
+    assert review.step == "Initial code review investigation"
+    assert review.findings == "Initial review findings"
 
-    # Test thinkdeep tool uses prompt
-    think = ThinkDeepRequest(prompt="My analysis")
-    assert think.prompt == "My analysis"
+    # Test thinkdeep tool uses workflow pattern
+    think = ThinkDeepWorkflowRequest(
+        step="My analysis", step_number=1, total_steps=1, next_step_required=False, findings="Initial thinking analysis"
+    )
+    assert think.step == "My analysis"
 
-    # Test precommit tool uses prompt (optional)
-    precommit = PrecommitRequest(path="/repo", prompt="Fix bug")
-    assert precommit.prompt == "Fix bug"
+    # Test precommit tool uses workflow fields
+    precommit = PrecommitRequest(
+        step="Validating changes for commit",
+        step_number=1,
+        total_steps=2,
+        next_step_required=True,
+        findings="Initial validation findings",
+        path="/repo",  # path only needed for step 1
+    )
+    assert precommit.step == "Validating changes for commit"
+    assert precommit.findings == "Initial validation findings"

@@ -21,7 +21,7 @@ class TestPlannerTool:
         assert "SEQUENTIAL PLANNER" in tool.get_description()
         assert tool.get_default_temperature() == 0.5  # TEMPERATURE_BALANCED
         assert tool.get_model_category() == ToolModelCategory.EXTENDED_REASONING
-        assert tool.get_default_thinking_mode() == "high"
+        assert tool.get_default_thinking_mode() == "medium"
 
     def test_request_validation(self):
         """Test Pydantic request model validation."""
@@ -57,10 +57,10 @@ class TestPlannerTool:
         assert "branch_id" in schema["properties"]
         assert "continuation_id" in schema["properties"]
 
-        # Check excluded fields are NOT present
-        assert "model" not in schema["properties"]
-        assert "images" not in schema["properties"]
-        assert "files" not in schema["properties"]
+        # Check that workflow-based planner includes model field and excludes some fields
+        assert "model" in schema["properties"]  # Workflow tools include model field
+        assert "images" not in schema["properties"]  # Excluded for planning
+        assert "files" not in schema["properties"]  # Excluded for planning
         assert "temperature" not in schema["properties"]
         assert "thinking_mode" not in schema["properties"]
         assert "use_websearch" not in schema["properties"]
@@ -90,8 +90,10 @@ class TestPlannerTool:
             "next_step_required": True,
         }
 
-        # Mock conversation memory functions
-        with patch("utils.conversation_memory.create_thread", return_value="test-uuid-123"):
+        # Mock conversation memory functions and UUID generation
+        with patch("utils.conversation_memory.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value.hex = "test-uuid-123"
+            mock_uuid.return_value.__str__ = lambda x: "test-uuid-123"
             with patch("utils.conversation_memory.add_turn"):
                 result = await tool.execute(arguments)
 
@@ -193,9 +195,10 @@ class TestPlannerTool:
 
         parsed_response = json.loads(response_text)
 
-        # Check for previous plan context in the structured response
-        assert "previous_plan_context" in parsed_response
-        assert "Authentication system" in parsed_response["previous_plan_context"]
+        # Check that the continuation works (workflow architecture handles context differently)
+        assert parsed_response["step_number"] == 1
+        assert parsed_response["continuation_id"] == "test-continuation-id"
+        assert parsed_response["next_step_required"] is True
 
     @pytest.mark.asyncio
     async def test_execute_final_step(self):
@@ -223,7 +226,7 @@ class TestPlannerTool:
         parsed_response = json.loads(response_text)
 
         # Check final step structure
-        assert parsed_response["status"] == "planning_success"
+        assert parsed_response["status"] == "planner_complete"
         assert parsed_response["step_number"] == 10
         assert parsed_response["planning_complete"] is True
         assert "plan_summary" in parsed_response
@@ -293,8 +296,8 @@ class TestPlannerTool:
         assert parsed_response["metadata"]["revises_step_number"] == 2
 
         # Check that step data was stored in history
-        assert len(tool.step_history) > 0
-        latest_step = tool.step_history[-1]
+        assert len(tool.work_history) > 0
+        latest_step = tool.work_history[-1]
         assert latest_step["is_step_revision"] is True
         assert latest_step["revises_step_number"] == 2
 
@@ -326,7 +329,7 @@ class TestPlannerTool:
         # Total steps should be adjusted to match current step
         assert parsed_response["total_steps"] == 8
         assert parsed_response["step_number"] == 8
-        assert parsed_response["status"] == "planning_success"
+        assert parsed_response["status"] == "pause_for_planner"
 
     @pytest.mark.asyncio
     async def test_execute_error_handling(self):
@@ -349,7 +352,7 @@ class TestPlannerTool:
 
         parsed_response = json.loads(response_text)
 
-        assert parsed_response["status"] == "planning_failed"
+        assert parsed_response["status"] == "planner_failed"
         assert "error" in parsed_response
 
     @pytest.mark.asyncio
@@ -375,9 +378,9 @@ class TestPlannerTool:
                 await tool.execute(step2_args)
 
         # Should have tracked both steps
-        assert len(tool.step_history) == 2
-        assert tool.step_history[0]["step"] == "First step"
-        assert tool.step_history[1]["step"] == "Second step"
+        assert len(tool.work_history) == 2
+        assert tool.work_history[0]["step"] == "First step"
+        assert tool.work_history[1]["step"] == "Second step"
 
 
 # Integration test
@@ -401,8 +404,10 @@ class TestPlannerToolIntegration:
             "next_step_required": True,
         }
 
-        # Mock conversation memory functions
-        with patch("utils.conversation_memory.create_thread", return_value="test-flow-uuid"):
+        # Mock conversation memory functions and UUID generation
+        with patch("utils.conversation_memory.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value.hex = "test-flow-uuid"
+            mock_uuid.return_value.__str__ = lambda x: "test-flow-uuid"
             with patch("utils.conversation_memory.add_turn"):
                 result = await self.tool.execute(arguments)
 
@@ -432,8 +437,10 @@ class TestPlannerToolIntegration:
             "next_step_required": True,
         }
 
-        # Mock conversation memory functions
-        with patch("utils.conversation_memory.create_thread", return_value="test-simple-uuid"):
+        # Mock conversation memory functions and UUID generation
+        with patch("utils.conversation_memory.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value.hex = "test-simple-uuid"
+            mock_uuid.return_value.__str__ = lambda x: "test-simple-uuid"
             with patch("utils.conversation_memory.add_turn"):
                 result = await self.tool.execute(arguments)
 
@@ -450,6 +457,6 @@ class TestPlannerToolIntegration:
         assert parsed_response["total_steps"] == 3
         assert parsed_response["continuation_id"] == "test-simple-uuid"
         # For simple plans (< 5 steps), expect normal flow without deep thinking pause
-        assert parsed_response["status"] == "planning_success"
+        assert parsed_response["status"] == "pause_for_planner"
         assert "thinking_required" not in parsed_response
         assert "Continue with step 2" in parsed_response["next_steps"]

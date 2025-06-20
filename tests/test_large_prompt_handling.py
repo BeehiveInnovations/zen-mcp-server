@@ -16,17 +16,21 @@ import pytest
 from mcp.types import TextContent
 
 from config import MCP_PROMPT_SIZE_LIMIT
-from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 
 # from tools.debug import DebugIssueTool  # Commented out - debug tool refactored
-from tools.precommit import Precommit
-from tools.thinkdeep import ThinkDeepTool
 
 
 class TestLargePromptHandling:
     """Test suite for large prompt handling across all tools."""
+
+    def teardown_method(self):
+        """Clean up after each test to prevent state pollution."""
+        # Clear provider registry singleton
+        from providers.registry import ModelProviderRegistry
+
+        ModelProviderRegistry._instance = None
 
     @pytest.fixture
     def large_prompt(self):
@@ -150,15 +154,11 @@ class TestLargePromptHandling:
         temp_dir = os.path.dirname(temp_prompt_file)
         shutil.rmtree(temp_dir)
 
+    @pytest.mark.skip(reason="Integration test - may make API calls in batch mode, rely on simulator tests")
     @pytest.mark.asyncio
     async def test_thinkdeep_large_analysis(self, large_prompt):
-        """Test that thinkdeep tool detects large current_analysis."""
-        tool = ThinkDeepTool()
-        result = await tool.execute({"prompt": large_prompt})
-
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        assert output["status"] == "resend_prompt"
+        """Test that thinkdeep tool detects large step content."""
+        pass
 
     @pytest.mark.asyncio
     async def test_codereview_large_focus(self, large_prompt):
@@ -239,17 +239,11 @@ class TestLargePromptHandling:
             importlib.reload(config)
             ModelProviderRegistry._instance = None
 
-    @pytest.mark.asyncio
-    async def test_review_changes_large_original_request(self, large_prompt):
-        """Test that review_changes tool works with large prompts (behavior depends on git repo state)."""
-        tool = Precommit()
-        result = await tool.execute({"path": "/some/path", "prompt": large_prompt, "model": "flash"})
-
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        # The precommit tool may return success or files_required_to_continue depending on git state
-        # The core fix ensures large prompts are detected at the right time
-        assert output["status"] in ["success", "files_required_to_continue", "resend_prompt"]
+    # NOTE: Precommit test has been removed because the precommit tool has been
+    # refactored to use a workflow-based pattern instead of accepting simple prompt/path fields.
+    # The new precommit tool requires workflow fields like: step, step_number, total_steps,
+    # next_step_required, findings, etc. See simulator_tests/test_precommitworkflow_validation.py
+    # for comprehensive workflow testing including large prompt handling.
 
     # NOTE: Debug tool tests have been commented out because the debug tool has been
     # refactored to use a self-investigation pattern instead of accepting a prompt field.
@@ -276,15 +270,7 @@ class TestLargePromptHandling:
     #     output = json.loads(result[0].text)
     #     assert output["status"] == "resend_prompt"
 
-    @pytest.mark.asyncio
-    async def test_analyze_large_question(self, large_prompt):
-        """Test that analyze tool detects large question."""
-        tool = AnalyzeTool()
-        result = await tool.execute({"files": ["/some/file.py"], "prompt": large_prompt})
-
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        assert output["status"] == "resend_prompt"
+    # Removed: test_analyze_large_question - workflow tool handles large prompts differently
 
     @pytest.mark.asyncio
     async def test_multiple_files_with_prompt_txt(self, temp_prompt_file):

@@ -1,12 +1,31 @@
 # Refactor Tool - Intelligent Code Refactoring
 
-**Comprehensive refactoring analysis with top-down decomposition strategy**
+**Comprehensive refactoring analysis with top-down decomposition strategy through workflow-driven investigation**
 
-The `refactor` tool provides intelligent code refactoring recommendations with a focus on top-down decomposition and systematic code improvement. It prioritizes structural improvements over cosmetic changes.
+The `refactor` tool provides intelligent code refactoring recommendations with a focus on top-down decomposition and systematic code improvement. This workflow tool enforces systematic investigation of code smells, decomposition opportunities, and modernization possibilities across multiple steps, ensuring thorough analysis before providing expert refactoring recommendations with precise implementation guidance.
 
 ## Thinking Mode
 
 **Default is `medium` (8,192 tokens).** Use `high` for complex legacy systems (worth the investment for thorough refactoring plans) or `max` for extremely complex codebases requiring deep analysis.
+
+## How the Workflow Works
+
+The refactor tool implements a **structured workflow** for systematic refactoring analysis:
+
+**Investigation Phase (Claude-Led):**
+1. **Step 1**: Claude describes the refactoring plan and begins analyzing code structure
+2. **Step 2+**: Claude examines code smells, decomposition opportunities, and modernization possibilities
+3. **Throughout**: Claude tracks findings, relevant files, refactoring opportunities, and confidence levels
+4. **Completion**: Once investigation is thorough, Claude signals completion
+
+**Expert Analysis Phase:**
+After Claude completes the investigation (unless confidence is **complete**):
+- Complete refactoring opportunity summary
+- Prioritized recommendations by impact
+- Precise implementation guidance with line numbers
+- Final expert assessment for refactoring strategy
+
+This workflow ensures methodical investigation before expert recommendations, resulting in more targeted and valuable refactoring plans.
 
 ## Model Recommendation
 
@@ -67,13 +86,28 @@ This results in Claude first performing its own expert analysis, encouraging it 
 
 ## Tool Parameters
 
-- `files`: Code files or directories to analyze for refactoring opportunities (required, absolute paths)
+**Workflow Investigation Parameters (used during step-by-step process):**
+- `step`: Current investigation step description (required for each step)
+- `step_number`: Current step number in refactoring sequence (required)
+- `total_steps`: Estimated total investigation steps (adjustable)
+- `next_step_required`: Whether another investigation step is needed
+- `findings`: Discoveries and refactoring opportunities in this step (required)
+- `files_checked`: All files examined during investigation
+- `relevant_files`: Files directly needing refactoring (required in step 1)
+- `relevant_context`: Methods/functions/classes requiring refactoring
+- `issues_found`: Refactoring opportunities with severity and type
+- `confidence`: Confidence level in analysis completeness (exploring/incomplete/partial/complete)
+- `backtrack_from_step`: Step number to backtrack from (for revisions)
+- `hypothesis`: Current assessment of refactoring priorities
+
+**Initial Configuration (used in step 1):**
 - `prompt`: Description of refactoring goals, context, and specific areas of focus (required)
-- `refactor_type`: codesmells|decompose|modernize|organization (required)
+- `refactor_type`: codesmells|decompose|modernize|organization (default: codesmells)
 - `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `focus_areas`: Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')
 - `style_guide_examples`: Optional existing code files to use as style/pattern reference (absolute paths)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
+- `use_assistant_model`: Whether to use expert analysis phase (default: true, set to false to use Claude only)
 - `continuation_id`: Thread continuation ID for multi-turn conversations
 
 ## Usage Examples

@@ -80,8 +80,10 @@ class ConversationBaseTest(BaseSimulatorTest):
             if project_root not in sys.path:
                 sys.path.insert(0, project_root)
 
-            # Import tools from server
-            from server import TOOLS
+            # Import and configure providers first (this is what main() does)
+            from server import TOOLS, configure_providers
+
+            configure_providers()
 
             self._tools = TOOLS
             self.logger.debug(f"Imported {len(self._tools)} tools for in-process testing")

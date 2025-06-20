@@ -1033,9 +1033,14 @@ def _get_tool_formatted_content(turn: ConversationTurn) -> list[str]:
             from server import TOOLS
 
             tool = TOOLS.get(turn.tool_name)
-            if tool and hasattr(tool, "format_conversation_turn"):
-                # Use tool-specific formatting
-                return tool.format_conversation_turn(turn)
+            if tool:
+                # Use inheritance pattern - try to call the method directly
+                # If it doesn't exist or raises AttributeError, fall back to default
+                try:
+                    return tool.format_conversation_turn(turn)
+                except AttributeError:
+                    # Tool doesn't implement format_conversation_turn - use default
+                    pass
         except Exception as e:
             # Log but don't fail - fall back to default formatting
             logger.debug(f"[HISTORY] Could not get tool-specific formatting for {turn.tool_name}: {e}")

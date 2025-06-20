@@ -3,7 +3,6 @@ Tests for the refactor tool functionality
 """
 
 import json
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -68,181 +67,38 @@ class TestRefactorTool:
     def test_get_description(self, refactor_tool):
         """Test that the tool returns a comprehensive description"""
         description = refactor_tool.get_description()
-        assert "INTELLIGENT CODE REFACTORING" in description
-        assert "codesmells" in description
-        assert "decompose" in description
-        assert "modernize" in description
-        assert "organization" in description
+        assert "COMPREHENSIVE REFACTORING WORKFLOW" in description
+        assert "code smell detection" in description
+        assert "decomposition planning" in description
+        assert "modernization opportunities" in description
+        assert "organization improvements" in description
 
     def test_get_input_schema(self, refactor_tool):
-        """Test that the input schema includes all required fields"""
+        """Test that the input schema includes all required workflow fields"""
         schema = refactor_tool.get_input_schema()
 
         assert schema["type"] == "object"
-        assert "files" in schema["properties"]
-        assert "prompt" in schema["properties"]
+
+        # Check workflow-specific fields
+        assert "step" in schema["properties"]
+        assert "step_number" in schema["properties"]
+        assert "total_steps" in schema["properties"]
+        assert "next_step_required" in schema["properties"]
+        assert "findings" in schema["properties"]
+        assert "files_checked" in schema["properties"]
+        assert "relevant_files" in schema["properties"]
+
+        # Check refactor-specific fields
         assert "refactor_type" in schema["properties"]
+        assert "confidence" in schema["properties"]
 
         # Check refactor_type enum values
         refactor_enum = schema["properties"]["refactor_type"]["enum"]
         expected_types = ["codesmells", "decompose", "modernize", "organization"]
         assert all(rt in refactor_enum for rt in expected_types)
 
-    def test_language_detection_python(self, refactor_tool):
-        """Test language detection for Python files"""
-        files = ["/test/file1.py", "/test/file2.py", "/test/utils.py"]
-        language = refactor_tool.detect_primary_language(files)
-        assert language == "python"
-
-    def test_language_detection_javascript(self, refactor_tool):
-        """Test language detection for JavaScript files"""
-        files = ["/test/app.js", "/test/component.jsx", "/test/utils.js"]
-        language = refactor_tool.detect_primary_language(files)
-        assert language == "javascript"
-
-    def test_language_detection_mixed(self, refactor_tool):
-        """Test language detection for mixed language files"""
-        files = ["/test/app.py", "/test/script.js", "/test/main.java"]
-        language = refactor_tool.detect_primary_language(files)
-        assert language == "mixed"
-
-    def test_language_detection_unknown(self, refactor_tool):
-        """Test language detection for unknown file types"""
-        files = ["/test/data.txt", "/test/config.json"]
-        language = refactor_tool.detect_primary_language(files)
-        assert language == "unknown"
-
-    def test_language_specific_guidance_python(self, refactor_tool):
-        """Test language-specific guidance for Python modernization"""
-        guidance = refactor_tool.get_language_specific_guidance("python", "modernize")
-        assert "f-strings" in guidance
-        assert "dataclasses" in guidance
-        assert "type hints" in guidance
-
-    def test_language_specific_guidance_javascript(self, refactor_tool):
-        """Test language-specific guidance for JavaScript modernization"""
-        guidance = refactor_tool.get_language_specific_guidance("javascript", "modernize")
-        assert "async/await" in guidance
-        assert "destructuring" in guidance
-        assert "arrow functions" in guidance
-
-    def test_language_specific_guidance_unknown(self, refactor_tool):
-        """Test language-specific guidance for unknown languages"""
-        guidance = refactor_tool.get_language_specific_guidance("unknown", "modernize")
-        assert guidance == ""
-
-    @pytest.mark.asyncio
-    async def test_execute_basic_refactor(self, refactor_tool, mock_model_response):
-        """Test basic refactor tool execution"""
-        with patch.object(refactor_tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="test")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = mock_model_response()
-            mock_get_provider.return_value = mock_provider
-
-            # Mock file processing
-            with patch.object(refactor_tool, "_prepare_file_content_for_prompt") as mock_prepare:
-                mock_prepare.return_value = ("def test(): pass", ["/test/file.py"])
-
-                result = await refactor_tool.execute(
-                    {
-                        "files": ["/test/file.py"],
-                        "prompt": "Find code smells in this Python code",
-                        "refactor_type": "codesmells",
-                    }
-                )
-
-                assert len(result) == 1
-                output = json.loads(result[0].text)
-                assert output["status"] == "success"
-                # The format_response method adds markdown instructions, so content_type should be "markdown"
-                # It could also be "json" or "text" depending on the response format
-                assert output["content_type"] in ["json", "text", "markdown"]
-
-    @pytest.mark.asyncio
-    async def test_execute_with_style_guide(self, refactor_tool, mock_model_response):
-        """Test refactor tool execution with style guide examples"""
-        with patch.object(refactor_tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="test")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = mock_model_response()
-            mock_get_provider.return_value = mock_provider
-
-            # Mock file processing
-            with patch.object(refactor_tool, "_prepare_file_content_for_prompt") as mock_prepare:
-                mock_prepare.return_value = ("def example(): pass", ["/test/file.py"])
-
-            with patch.object(refactor_tool, "_process_style_guide_examples") as mock_style:
-                mock_style.return_value = ("# style guide content", "")
-
-                result = await refactor_tool.execute(
-                    {
-                        "files": ["/test/file.py"],
-                        "prompt": "Modernize this code following our style guide",
-                        "refactor_type": "modernize",
-                        "style_guide_examples": ["/test/style_example.py"],
-                    }
-                )
-
-                assert len(result) == 1
-                output = json.loads(result[0].text)
-                assert output["status"] == "success"
-
-    def test_format_response_valid_json(self, refactor_tool):
-        """Test response formatting with valid structured JSON"""
-        valid_json_response = json.dumps(
-            {
-                "status": "refactor_analysis_complete",
-                "refactor_opportunities": [
-                    {
-                        "id": "test-001",
-                        "type": "codesmells",
-                        "severity": "medium",
-                        "file": "/test.py",
-                        "start_line": 1,
-                        "end_line": 5,
-                        "context_start_text": "def test():",
-                        "context_end_text": "    pass",
-                        "issue": "Test issue",
-                        "suggestion": "Test suggestion",
-                        "rationale": "Test rationale",
-                        "code_to_replace": "old code",
-                        "replacement_code_snippet": "new code",
-                    }
-                ],
-                "priority_sequence": ["test-001"],
-                "next_actions_for_claude": [],
-            }
-        )
-
-        # Create a mock request
-        request = MagicMock()
-        request.refactor_type = "codesmells"
-
-        formatted = refactor_tool.format_response(valid_json_response, request)
-
-        # Should contain the original response plus implementation instructions
-        assert valid_json_response in formatted
-        assert "MANDATORY NEXT STEPS" in formatted
-        assert "Start executing the refactoring plan immediately" in formatted
-        assert "MANDATORY: MUST start executing the refactor plan" in formatted
-
-    def test_format_response_invalid_json(self, refactor_tool):
-        """Test response formatting with invalid JSON - now handled by base tool"""
-        invalid_response = "This is not JSON content"
-
-        # Create a mock request
-        request = MagicMock()
-        request.refactor_type = "codesmells"
-
-        formatted = refactor_tool.format_response(invalid_response, request)
-
-        # Should contain the original response plus implementation instructions
-        assert invalid_response in formatted
-        assert "MANDATORY NEXT STEPS" in formatted
-        assert "Start executing the refactoring plan immediately" in formatted
+    # Note: Old language detection and execution tests removed -
+    # new workflow-based refactor tool has different architecture
 
     def test_model_category(self, refactor_tool):
         """Test that the refactor tool uses EXTENDED_REASONING category"""
@@ -258,56 +114,7 @@ class TestRefactorTool:
         temp = refactor_tool.get_default_temperature()
         assert temp == TEMPERATURE_ANALYTICAL
 
-    def test_format_response_more_refactor_required(self, refactor_tool):
-        """Test that format_response handles more_refactor_required field"""
-        more_refactor_response = json.dumps(
-            {
-                "status": "refactor_analysis_complete",
-                "refactor_opportunities": [
-                    {
-                        "id": "refactor-001",
-                        "type": "decompose",
-                        "severity": "critical",
-                        "file": "/test/file.py",
-                        "start_line": 1,
-                        "end_line": 10,
-                        "context_start_text": "def test_function():",
-                        "context_end_text": "    return True",
-                        "issue": "Function too large",
-                        "suggestion": "Break into smaller functions",
-                        "rationale": "Improves maintainability",
-                        "code_to_replace": "original code",
-                        "replacement_code_snippet": "refactored code",
-                        "new_code_snippets": [],
-                    }
-                ],
-                "priority_sequence": ["refactor-001"],
-                "next_actions_for_claude": [
-                    {
-                        "action_type": "EXTRACT_METHOD",
-                        "target_file": "/test/file.py",
-                        "source_lines": "1-10",
-                        "description": "Extract method from large function",
-                    }
-                ],
-                "more_refactor_required": True,
-                "continuation_message": "Large codebase requires extensive refactoring across multiple files",
-            }
-        )
-
-        # Create a mock request
-        request = MagicMock()
-        request.refactor_type = "decompose"
-
-        formatted = refactor_tool.format_response(more_refactor_response, request)
-
-        # Should contain the original response plus continuation instructions
-        assert more_refactor_response in formatted
-        assert "MANDATORY NEXT STEPS" in formatted
-        assert "Start executing the refactoring plan immediately" in formatted
-        assert "MANDATORY: MUST start executing the refactor plan" in formatted
-        assert "AFTER IMPLEMENTING ALL ABOVE" in formatted  # Special instruction for more_refactor_required
-        assert "continuation_id" in formatted
+    # Note: format_response tests removed - workflow tools use different response format
 
 
 class TestFileUtilsLineNumbers:

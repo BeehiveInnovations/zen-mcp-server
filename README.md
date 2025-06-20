@@ -60,7 +60,6 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
   - [`refactor`](#9-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
   - [`tracer`](#10-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
   - [`testgen`](#11-testgen---comprehensive-test-generation) - Test generation with edge cases
-  - [`your custom tool`](#add-your-own-tools) - Create custom tools for specialized workflows
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -313,18 +312,17 @@ migrate from REST to GraphQL for our API. I need a definitive answer.
 **[📖 Read More](docs/tools/consensus.md)** - Multi-model orchestration and decision analysis
 
 ### 5. `codereview` - Professional Code Review
-Comprehensive code analysis with prioritized feedback and severity levels. Supports security reviews, performance analysis, and coding standards enforcement.
+Comprehensive code analysis with prioritized feedback and severity levels. This workflow tool guides Claude through systematic investigation steps with forced pauses between each step to ensure thorough code examination, issue identification, and quality assessment before providing expert analysis.
 
 ```
 Perform a codereview with gemini pro especially the auth.py as I feel some of the code is bypassing security checks 
 and there may be more potential vulnerabilities. Find and share related code."
 ```
 
-**[📖 Read More](docs/tools/codereview.md)** - Professional review capabilities and parallel analysis
+**[📖 Read More](docs/tools/codereview.md)** - Professional review workflow with step-by-step analysis
 
 ### 6. `precommit` - Pre-Commit Validation
-Comprehensive review of staged/unstaged git changes across multiple repositories. Validates changes against requirements 
-and detects potential regressions.
+Comprehensive review of staged/unstaged git changes across multiple repositories. This workflow tool guides Claude through systematic investigation of git changes, repository status, and file modifications across multiple steps before providing expert validation to ensure changes meet requirements and prevent regressions.
 
 ```
 Perform a thorough precommit with o3, we want to only highlight critical issues, no blockers, no regressions. I need
@@ -370,10 +368,7 @@ Nice!
 **[📖 Read More](docs/tools/precommit.md)** - Multi-repository validation and change analysis
 
 ### 7. `debug` - Expert Debugging Assistant
-Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. Claude performs 
-methodical code examination, evidence collection, and hypothesis formation before receiving expert analysis from the
-selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis 
-via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
+Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
 
 ```
 See logs under /Users/me/project/diagnostics.log and related code under the sync folder. Logs show that sync
@@ -381,25 +376,25 @@ works but sometimes it gets stuck and there are no errors displayed to the user.
 why this is happening and what the root cause is and its fix 
 ```
 
-**[📖 Read More](docs/tools/debug.md)** - Step-by-step investigation methodology and expert analysis
+**[📖 Read More](docs/tools/debug.md)** - Step-by-step investigation methodology with workflow enforcement
 
 ### 8. `analyze` - Smart File Analysis
-General-purpose code understanding and exploration. Supports architecture analysis, pattern detection, and comprehensive codebase exploration.
+General-purpose code understanding and exploration. This workflow tool guides Claude through systematic investigation of code structure, patterns, and architectural decisions across multiple steps, gathering comprehensive insights before providing expert analysis for architecture assessment, pattern detection, and strategic improvement recommendations.
 
 ```
 Use gemini to analyze main.py to understand how it works
 ```
 
-**[📖 Read More](docs/tools/analyze.md)** - Code analysis types and exploration capabilities
+**[📖 Read More](docs/tools/analyze.md)** - Comprehensive analysis workflow with step-by-step investigation
 
 ### 9. `refactor` - Intelligent Code Refactoring
-Comprehensive refactoring analysis with top-down decomposition strategy. Prioritizes structural improvements and provides precise implementation guidance.
+Comprehensive refactoring analysis with top-down decomposition strategy. This workflow tool enforces systematic investigation of code smells, decomposition opportunities, and modernization possibilities across multiple steps, ensuring thorough analysis before providing expert refactoring recommendations with precise implementation guidance.
 
 ```
 Use gemini pro to decompose my_crazy_big_class.m into smaller extensions
 ```
 
-**[📖 Read More](docs/tools/refactor.md)** - Refactoring strategy and progressive analysis approach
+**[📖 Read More](docs/tools/refactor.md)** - Workflow-driven refactoring with progressive analysis
 
 ### 10. `tracer` - Static Code Analysis Prompt Generator
 Creates detailed analysis prompts for call-flow mapping and dependency tracing. Generates structured analysis requests for precision execution flow or dependency mapping.
@@ -411,13 +406,13 @@ Use zen tracer to analyze how UserAuthManager.authenticate is used and why
 **[📖 Read More](docs/tools/tracer.md)** - Prompt generation and analysis modes
 
 ### 11. `testgen` - Comprehensive Test Generation
-Generates thorough test suites with edge case coverage based on existing code and test framework. Uses multi-agent workflow for realistic failure mode analysis.
+Generates thorough test suites with edge case coverage based on existing code and test framework. This workflow tool guides Claude through systematic investigation of code functionality, critical paths, edge cases, and integration points across multiple steps before generating comprehensive tests with realistic failure mode analysis.
 
 ```
 Use zen to generate tests for User.login() method
 ```
 
-**[📖 Read More](docs/tools/testgen.md)** - Test generation strategy and framework support
+**[📖 Read More](docs/tools/testgen.md)** - Workflow-based test generation with comprehensive coverage
 
 ### 12. `listmodels` - List Available Models
 Display all available AI models organized by provider, showing capabilities, context windows, and configuration status.
@@ -471,18 +466,6 @@ The prompt format is: `/zen:[tool] [your_message]`
 
 **Note:** All prompts will show as "(MCP) [tool]" in Claude Code to indicate they're provided by the MCP server.
 
-### Add Your Own Tools
-
-**Want to create custom tools for your specific workflows?** 
-
-The Zen MCP Server is designed to be extensible - you can easily add your own specialized
-tools for domain-specific tasks, custom analysis workflows, or integration with your favorite 
-services.
-
-**[See Complete Tool Development Guide](docs/adding_tools.md)** - Step-by-step instructions for creating, testing, and integrating new tools
-
-Your custom tools get the same benefits as built-in tools: multi-model support, conversation threading, token management, and automatic model selection.
-
 ## Advanced Features
 
 ### AI-to-AI Conversation Threading
@@ -522,7 +505,6 @@ For information on running tests, see the [Testing Guide](docs/testing.md).
 We welcome contributions! Please see our comprehensive guides:
 - [Contributing Guide](docs/contributions.md) - Code standards, PR process, and requirements
 - [Adding a New Provider](docs/adding_providers.md) - Step-by-step guide for adding AI providers
-- [Adding a New Tool](docs/adding_tools.md) - Step-by-step guide for creating new tools
 
 ## License
 
