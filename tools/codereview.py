@@ -532,16 +532,37 @@ class CodeReviewTool(WorkflowTool):
         """Code review-specific work summary."""
         return self._build_code_review_summary(self.consolidated_findings)
 
-    def get_completion_next_steps_message(self) -> str:
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
         """
         Code review-specific completion message.
         """
-        return (
+        base_message = (
             "CODE REVIEW IS COMPLETE. You MUST now summarize and present ALL review findings organized by "
             "severity (Critical → High → Medium → Low), specific code locations with line numbers, and exact "
             "recommendations for improvement. Clearly prioritize the top 3 issues that need immediate attention. "
             "Provide concrete, actionable guidance for each issue—make it easy for a developer to understand "
             "exactly what needs to be fixed and how to implement the improvements."
+        )
+        
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+        
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Provide specific guidance for handling expert analysis in code reviews.
+        """
+        return (
+            "IMPORTANT: Analysis from an assistant model has been provided above. You MUST critically evaluate and validate "
+            "the expert findings rather than accepting them blindly. Cross-reference the expert analysis with "
+            "your own investigation findings, verify that suggested improvements are appropriate for this "
+            "codebase's context and patterns, and ensure recommendations align with the project's standards. "
+            "Present a synthesis that combines your systematic review with validated expert insights, clearly "
+            "distinguishing between findings you've independently confirmed and additional insights from expert analysis."
         )
 
     def get_step_guidance_message(self, request) -> str:

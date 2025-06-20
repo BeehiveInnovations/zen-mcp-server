@@ -543,7 +543,7 @@ class DebugIssueTool(WorkflowTool):
             "hypotheses, and exact recommended fixes. Clearly identify the most likely root cause and "
             "provide concrete, actionable implementation guidance. Highlight affected code paths and display "
             "reasoning that led to this conclusion—make it easy for a developer to understand exactly where "
-            "the problem lies."
+            "the problem lies. Where necessary, show cause-and-effect / bug-trace call graph."
         )
 
     def get_step_guidance_message(self, request) -> str:

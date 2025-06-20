@@ -928,18 +928,56 @@ class BaseWorkflowMixin(ABC):
         """Get status for skipped expert analysis. Override for tool-specific status."""
         return "skipped_by_tool_design"
 
-    def get_completion_next_steps_message(self) -> str:
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
         """
-        Get the message to show when work is complete and expert analysis was called.
+        Get the message to show when work is complete.
         Tools can override for custom messaging.
+        
+        Args:
+            expert_analysis_used: True if expert analysis was successfully executed
         """
-        return (
+        base_message = (
             f"{self.get_name().upper()} IS COMPLETE. You MUST now summarize and present ALL key findings, confirmed "
             "hypotheses, and exact recommended solutions. Clearly identify the most likely root cause and "
             "provide concrete, actionable implementation guidance. Highlight affected code paths and display "
             "reasoning that led to this conclusion—make it easy for a developer to understand exactly where "
             "the problem lies."
         )
+        
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+        
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Get additional guidance for handling expert analysis results.
+        
+        Subclasses can override this to provide specific instructions about how
+        to validate and use expert analysis findings. Returns empty string by default.
+        
+        When expert analysis is called, this guidance will be:
+        1. Appended to the completion next steps message
+        2. Added as "important_considerations" field in the response data
+        
+        Example implementation:
+        ```python
+        def get_expert_analysis_guidance(self) -> str:
+            return (
+                "IMPORTANT: Expert analysis provided above. You MUST validate "
+                "the expert findings rather than accepting them blindly. "
+                "Cross-reference with your own investigation and ensure "
+                "recommendations align with the codebase context."
+            )
+        ```
+        
+        Returns:
+            Additional guidance text or empty string if no guidance needed
+        """
+        return ""
 
     def customize_workflow_response(self, response_data: dict, request) -> dict:
         """
@@ -1030,7 +1068,13 @@ class BaseWorkflowMixin(ABC):
                 response_data["content_type"] = "text"
                 del response_data["expert_analysis"]
             else:
-                response_data["next_steps"] = self.get_completion_next_steps_message()
+                # Expert analysis was successfully executed - include expert guidance
+                response_data["next_steps"] = self.get_completion_next_steps_message(expert_analysis_used=True)
+                
+                # Add expert analysis guidance as important considerations
+                expert_guidance = self.get_expert_analysis_guidance()
+                if expert_guidance:
+                    response_data["important_considerations"] = expert_guidance
 
             # Prepare complete work summary
             work_summary = self._prepare_work_summary()
