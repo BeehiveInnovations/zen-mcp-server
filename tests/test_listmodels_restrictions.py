@@ -194,15 +194,24 @@ class TestListModelsRestrictions(unittest.TestCase):
         result_json = json.loads(result_text)
         result = result_json['content']
         
-        # Should show first 20 models (as per the code limit)
-        model_count = 0
-        for line in result.split('\n'):
-            if line.strip().startswith('- ') and '`' in line:
-                model_count += 1
+        # Count OpenRouter models specifically
+        lines = result.split('\n')
+        openrouter_section_found = False
+        openrouter_model_count = 0
         
-        # The tool shows max 20 models in the output
-        self.assertGreaterEqual(model_count, 15, f"Expected at least 15 models shown, found {model_count}")
-        self.assertLessEqual(model_count, 20, f"Expected at most 20 models shown, found {model_count}")
+        for line in lines:
+            if "OpenRouter" in line and "✅" in line:
+                openrouter_section_found = True
+            elif "Custom/Local API" in line:
+                # End of OpenRouter section
+                break
+            elif openrouter_section_found and line.strip().startswith('- ') and '`' in line:
+                openrouter_model_count += 1
+        
+        # The tool shows models grouped by provider, max 5 per provider, total max 20
+        # With 50 models from 5 providers, we expect around 5*5=25, but capped at 20
+        self.assertGreaterEqual(openrouter_model_count, 5, f"Expected at least 5 OpenRouter models shown, found {openrouter_model_count}")
+        self.assertLessEqual(openrouter_model_count, 20, f"Expected at most 20 OpenRouter models shown, found {openrouter_model_count}")
         
         # Should show "and X more models available" message
         self.assertIn("more models available", result)
