@@ -228,6 +228,10 @@ class Calculator:
 
             # Look for continuation_id in various places
             if isinstance(response_data, dict):
+                # Check for direct continuation_id field (new workflow tools)
+                if "continuation_id" in response_data:
+                    return response_data["continuation_id"]
+
                 # Check metadata
                 metadata = response_data.get("metadata", {})
                 if "thread_id" in metadata:

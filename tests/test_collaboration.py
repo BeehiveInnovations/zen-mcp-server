@@ -214,13 +214,17 @@ class TestDynamicContextRequests:
                 try:
                     content_json = json.loads(response_data["content"])
                     assert "mandatory_instructions" in content_json
-                    assert ("database configuration" in content_json["mandatory_instructions"] or 
-                           "database" in content_json["mandatory_instructions"])
+                    assert (
+                        "database configuration" in content_json["mandatory_instructions"]
+                        or "database" in content_json["mandatory_instructions"]
+                    )
                     assert "files_needed" in content_json
                     files_needed_str = str(content_json["files_needed"])
-                    assert ("config/database.yml" in files_needed_str or 
-                           "config" in files_needed_str or 
-                           "database" in files_needed_str)
+                    assert (
+                        "config/database.yml" in files_needed_str
+                        or "config" in files_needed_str
+                        or "database" in files_needed_str
+                    )
                 except json.JSONDecodeError:
                     # Content is not JSON, check if it contains required text
                     content = response_data["content"]
@@ -382,7 +386,7 @@ class TestCollaborationWorkflow:
             content=clarification_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
-        
+
         # Mock expert analysis to avoid actual API calls
         mock_expert_analysis.return_value = {
             "status": "analysis_complete",
@@ -448,7 +452,7 @@ class TestCollaborationWorkflow:
             content=clarification_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
-        
+
         # Mock expert analysis to avoid actual API calls
         mock_expert_analysis.return_value = {
             "status": "analysis_complete",
@@ -502,10 +506,10 @@ class TestCollaborationWorkflow:
         mock_provider.generate_content.return_value = Mock(
             content=final_response, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
-        
+
         # Update expert analysis mock for second call
         mock_expert_analysis.return_value = {
-            "status": "analysis_complete", 
+            "status": "analysis_complete",
             "raw_analysis": final_response,
         }
 
@@ -525,7 +529,12 @@ class TestCollaborationWorkflow:
         # Workflow tools should either return expert analysis or handle clarification properly
         # Accept multiple valid statuses as the workflow can handle the additional context differently
         # Include 'error' status in case API calls fail in test environment
-        assert response2["status"] in ["calling_expert_analysis", "files_required_to_continue", "pause_for_analysis", "error"]
+        assert response2["status"] in [
+            "calling_expert_analysis",
+            "files_required_to_continue",
+            "pause_for_analysis",
+            "error",
+        ]
 
         # Check that the response contains the expected content regardless of status
 
