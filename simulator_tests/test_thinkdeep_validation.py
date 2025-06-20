@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-ThinkDeepWorkflow Tool Validation Test
+ThinkDeep Tool Validation Test
 
-Tests the thinkdeepworkflow tool's capabilities using the new workflow architecture.
+Tests the thinkdeep tool's capabilities using the new workflow architecture.
 This validates that the workflow-based deep thinking implementation provides
 step-by-step thinking with expert analysis integration.
 """
@@ -14,18 +14,18 @@ from .conversation_base_test import ConversationBaseTest
 
 
 class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
-    """Test thinkdeepworkflow tool with new workflow architecture"""
+    """Test thinkdeep tool with new workflow architecture"""
 
     @property
     def test_name(self) -> str:
-        return "thinkdeepworkflow_validation"
+        return "thinkdeep_validation"
 
     @property
     def test_description(self) -> str:
         return "ThinkDeep workflow tool validation with new workflow architecture"
 
     def run_test(self) -> bool:
-        """Test thinkdeepworkflow tool capabilities"""
+        """Test thinkdeep tool capabilities"""
         # Set up the test environment
         self.setUp()
 
@@ -59,11 +59,11 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             if not self._test_multi_step_file_context():
                 return False
 
-            self.logger.info("  ✅ All thinkdeepworkflow validation tests passed")
+            self.logger.info("  ✅ All thinkdeep validation tests passed")
             return True
 
         except Exception as e:
-            self.logger.error(f"ThinkDeepWorkflow validation test failed: {e}")
+            self.logger.error(f"ThinkDeep validation test failed: {e}")
             return False
 
     def _create_thinking_context(self):
@@ -148,8 +148,8 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
         self.architecture_file = self.create_additional_test_file("architecture_design.md", architecture_doc)
         self.requirements_file = self.create_additional_test_file("migration_requirements.md", requirements_doc)
         self.performance_file = self.create_additional_test_file("performance_analysis.md", performance_analysis)
-        
-        self.logger.info(f"  ✅ Created thinking context files:")
+
+        self.logger.info("  ✅ Created thinking context files:")
         self.logger.info(f"      - {self.architecture_file}")
         self.logger.info(f"      - {self.requirements_file}")
         self.logger.info(f"      - {self.performance_file}")
@@ -162,7 +162,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 1: Start thinking analysis
             self.logger.info("    1.1.1: Step 1 - Initial thinking analysis")
             response1, continuation_id = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "I need to think deeply about the microservices migration strategy. Let me analyze the trade-offs, risks, and implementation approach systematically.",
                     "step_number": 1,
@@ -188,8 +188,8 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             if not response1_data:
                 return False
 
-            # Validate step 1 response structure - expect pause_for_thinking for next_step_required=True
-            if not self._validate_step_response(response1_data, 1, 4, True, "pause_for_thinking"):
+            # Validate step 1 response structure - expect pause_for_thinkdeep for next_step_required=True
+            if not self._validate_step_response(response1_data, 1, 4, True, "pause_for_thinkdeep"):
                 return False
 
             self.logger.info(f"    ✅ Step 1 successful, continuation_id: {continuation_id}")
@@ -197,7 +197,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 2: Deep analysis
             self.logger.info("    1.1.2: Step 2 - Deep analysis of alternatives")
             response2, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Analyzing different migration approaches: strangler fig pattern vs big bang vs gradual extraction. Each has different risk profiles and timelines.",
                     "step_number": 2,
@@ -209,7 +209,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                     "relevant_context": ["strangler_fig_pattern", "service_extraction", "risk_mitigation"],
                     "issues_found": [
                         {"severity": "high", "description": "Data consistency challenges during migration"},
-                        {"severity": "medium", "description": "Team skill gap in distributed systems"}
+                        {"severity": "medium", "description": "Team skill gap in distributed systems"},
                     ],
                     "confidence": "medium",
                     "continuation_id": continuation_id,
@@ -221,7 +221,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                 return False
 
             response2_data = self._parse_thinkdeep_response(response2)
-            if not self._validate_step_response(response2_data, 2, 4, True, "pause_for_thinking"):
+            if not self._validate_step_response(response2_data, 2, 4, True, "pause_for_thinkdeep"):
                 return False
 
             # Check thinking status tracking
@@ -252,7 +252,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Start a new thinking session for testing backtracking
             self.logger.info("    1.2.1: Start thinking for backtracking test")
             response1, continuation_id = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Thinking about optimal database architecture for the new microservices",
                     "step_number": 1,
@@ -273,7 +273,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 2: Initial direction
             self.logger.info("    1.2.2: Step 2 - Initial analysis direction")
             response2, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Exploring database-per-service pattern implementation",
                     "step_number": 2,
@@ -285,7 +285,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                     "relevant_context": ["database_per_service", "transaction_management"],
                     "issues_found": [
                         {"severity": "high", "description": "Cross-service transactions become complex"},
-                        {"severity": "medium", "description": "Reporting queries span multiple databases"}
+                        {"severity": "medium", "description": "Reporting queries span multiple databases"},
                     ],
                     "confidence": "low",
                     "continuation_id": continuation_id,
@@ -299,7 +299,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 3: Backtrack and revise approach
             self.logger.info("    1.2.3: Step 3 - Backtrack and revise thinking")
             response3, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Backtracking - maybe shared database with service-specific schemas is better initially. Then gradually extract databases as services mature.",
                     "step_number": 3,
@@ -320,7 +320,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                 return False
 
             response3_data = self._parse_thinkdeep_response(response3)
-            if not self._validate_step_response(response3_data, 3, 4, True, "pause_for_thinking"):
+            if not self._validate_step_response(response3_data, 3, 4, True, "pause_for_thinkdeep"):
                 return False
 
             self.logger.info("    ✅ Backtracking working correctly")
@@ -341,7 +341,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                 # Start fresh if no continuation available
                 self.logger.info("    1.3.0: Starting fresh thinking session")
                 response0, continuation_id = self.call_mcp_tool(
-                    "thinkdeepworkflow",
+                    "thinkdeep",
                     {
                         "step": "Thinking about the complete microservices migration strategy",
                         "step_number": 1,
@@ -360,7 +360,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Final step - trigger expert analysis
             self.logger.info("    1.3.1: Final step - complete thinking analysis")
             response_final, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Thinking analysis complete. I've thoroughly considered the migration strategy, risks, and implementation approach.",
                     "step_number": 2,
@@ -372,7 +372,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                     "relevant_context": ["strangler_fig", "migration_strategy", "risk_mitigation", "team_readiness"],
                     "issues_found": [
                         {"severity": "medium", "description": "Team needs distributed systems training"},
-                        {"severity": "low", "description": "Monitoring tools need upgrade"}
+                        {"severity": "low", "description": "Monitoring tools need upgrade"},
                     ],
                     "confidence": "high",
                     "continuation_id": continuation_id,
@@ -412,7 +412,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                 if isinstance(expert_analysis, str):
                     try:
                         expert_analysis = json.loads(expert_analysis)
-                    except:
+                    except (json.JSONDecodeError, TypeError):
                         expert_analysis = {"analysis": expert_analysis}
 
             # Check for expected analysis content (checking common patterns)
@@ -458,7 +458,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Test certain confidence - should skip expert analysis
             self.logger.info("    1.4.1: Certain confidence thinking")
             response_certain, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "I have thoroughly analyzed all aspects of the migration strategy with complete certainty.",
                     "step_number": 1,
@@ -505,37 +505,37 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             return False
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
-        """Call an MCP tool in-process - override for thinkdeepworkflow-specific response handling"""
+        """Call an MCP tool in-process - override for thinkdeep-specific response handling"""
         # Use in-process implementation to maintain conversation memory
         response_text, _ = self.call_mcp_tool_direct(tool_name, params)
 
         if not response_text:
             return None, None
 
-        # Extract continuation_id from thinkdeepworkflow response specifically
+        # Extract continuation_id from thinkdeep response specifically
         continuation_id = self._extract_thinkdeep_continuation_id(response_text)
 
         return response_text, continuation_id
 
     def _extract_thinkdeep_continuation_id(self, response_text: str) -> Optional[str]:
-        """Extract continuation_id from thinkdeepworkflow response"""
+        """Extract continuation_id from thinkdeep response"""
         try:
             # Parse the response
             response_data = json.loads(response_text)
             return response_data.get("continuation_id")
 
         except json.JSONDecodeError as e:
-            self.logger.debug(f"Failed to parse response for thinkdeepworkflow continuation_id: {e}")
+            self.logger.debug(f"Failed to parse response for thinkdeep continuation_id: {e}")
             return None
 
     def _parse_thinkdeep_response(self, response_text: str) -> dict:
-        """Parse thinkdeepworkflow tool JSON response"""
+        """Parse thinkdeep tool JSON response"""
         try:
             # Parse the response - it should be direct JSON
             return json.loads(response_text)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse thinkdeepworkflow response as JSON: {e}")
+            self.logger.error(f"Failed to parse thinkdeep response as JSON: {e}")
             self.logger.error(f"Response text: {response_text[:500]}...")
             return {}
 
@@ -547,7 +547,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
         expected_next_required: bool,
         expected_status: str,
     ) -> bool:
-        """Validate a thinkdeepworkflow thinking step response structure"""
+        """Validate a thinkdeep thinking step response structure"""
         try:
             # Check status
             if response_data.get("status") != expected_status:
@@ -641,7 +641,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Test 1: New conversation, intermediate step - should only reference files
             self.logger.info("    1.5.1: New conversation intermediate step (should reference only)")
             response1, continuation_id = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Starting deep thinking about implementation timeline and technology choices",
                     "step_number": 1,
@@ -679,7 +679,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Test 2: Final step - should embed files for expert analysis
             self.logger.info("    1.5.2: Final step (should embed files)")
             response2, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Thinking analysis complete - comprehensive evaluation of implementation approach",
                     "step_number": 2,
@@ -788,7 +788,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 1: Start thinking analysis (new conversation)
             self.logger.info("    1.6.1: Step 1 - Start thinking analysis")
             response1, continuation_id = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Beginning comprehensive analysis of migration risks and success criteria",
                     "step_number": 1,
@@ -820,7 +820,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 2: Expand thinking analysis
             self.logger.info("    1.6.2: Step 2 - Expand thinking analysis")
             response2, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Deepening analysis by correlating risks with success metrics",
                     "step_number": 2,
@@ -853,7 +853,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 3: Deep analysis
             self.logger.info("    1.6.3: Step 3 - Deep strategic analysis")
             response3, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Synthesizing risk mitigation strategies with measurable success criteria",
                     "step_number": 3,
@@ -886,7 +886,7 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
             # Step 4: Final analysis with expert consultation
             self.logger.info("    1.6.4: Step 4 - Final step with expert analysis")
             response4, _ = self.call_mcp_tool(
-                "thinkdeepworkflow",
+                "thinkdeep",
                 {
                     "step": "Thinking analysis complete - comprehensive strategic framework developed",
                     "step_number": 4,

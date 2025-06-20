@@ -68,7 +68,6 @@ from tools import (  # noqa: E402
     RefactorTool,
     TestGenerationTool,
     ThinkDeepTool,
-    ThinkDeepWorkflowTool,
     TracerTool,
 )
 from tools.models import ToolOutput  # noqa: E402
@@ -162,8 +161,7 @@ server: Server = Server("zen-server")
 # Each tool provides specialized functionality for different development tasks
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
-    "thinkdeep": ThinkDeepTool(),  # Extended reasoning for complex problems
-    "thinkdeepworkflow": ThinkDeepWorkflowTool(),  # Step-by-step deep thinking workflow with expert analysis
+    "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
     "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
@@ -181,13 +179,8 @@ TOOLS = {
 PROMPT_TEMPLATES = {
     "thinkdeep": {
         "name": "thinkdeeper",
-        "description": "Think deeply about the current context or problem",
-        "template": "Think deeper about this with {model} using {thinking_mode} thinking mode",
-    },
-    "thinkdeepworkflow": {
-        "name": "thinkdeepworkflow",
         "description": "Step-by-step deep thinking workflow with expert analysis",
-        "template": "Start comprehensive deep thinking workflow with {model}",
+        "template": "Start comprehensive deep thinking workflow with {model} using {thinking_mode} thinking mode",
     },
     "codereview": {
         "name": "review",

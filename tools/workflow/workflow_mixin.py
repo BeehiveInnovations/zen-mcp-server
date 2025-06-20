@@ -222,21 +222,21 @@ class BaseWorkflowMixin(ABC):
         Override this to customize the thinking mode.
         """
         return "high"
-        
+
     def get_request_temperature(self, request) -> float:
         """Get temperature from request. Override for custom temperature handling."""
         try:
             return request.temperature if request.temperature is not None else self.get_default_temperature()
         except AttributeError:
             return self.get_default_temperature()
-    
+
     def get_request_thinking_mode(self, request) -> str:
         """Get thinking mode from request. Override for custom thinking mode handling."""
         try:
             return request.thinking_mode if request.thinking_mode is not None else self.get_expert_thinking_mode()
         except AttributeError:
             return self.get_expert_thinking_mode()
-    
+
     def get_request_use_websearch(self, request) -> bool:
         """Get use_websearch from request. Override for custom websearch handling."""
         try:
@@ -288,31 +288,32 @@ class BaseWorkflowMixin(ABC):
     def _prepare_files_for_expert_analysis(self) -> str:
         """
         Prepare file content for expert analysis.
-        
+
         EXPERT ANALYSIS REQUIRES ACTUAL FILE CONTENT:
         Expert analysis needs actual file content of all unique files marked as relevant
         throughout the workflow, regardless of conversation history optimization.
-        
+
         SIMPLIFIED LOGIC:
         Expert analysis gets all unique files from relevant_files across the entire workflow.
         This includes:
         - Current step's relevant_files (consolidated_findings.relevant_files)
         - Plus any additional relevant_files from conversation history (if continued workflow)
-        
+
         This ensures expert analysis has complete context without including irrelevant files.
         """
         all_relevant_files = set()
-        
+
         # 1. Get files from current consolidated relevant_files
         all_relevant_files.update(self.consolidated_findings.relevant_files)
-        
+
         # 2. Get additional relevant_files from conversation history (if continued workflow)
         try:
-            if hasattr(self, '_current_arguments') and self._current_arguments:
-                continuation_id = self._current_arguments.get('continuation_id')
-                
+            if hasattr(self, "_current_arguments") and self._current_arguments:
+                continuation_id = self._current_arguments.get("continuation_id")
+
                 if continuation_id:
-                    from utils.conversation_memory import get_thread, get_conversation_file_list
+                    from utils.conversation_memory import get_conversation_file_list, get_thread
+
                     thread_context = get_thread(continuation_id)
                     if thread_context:
                         # Get all files from conversation (these were relevant_files in previous steps)
@@ -323,10 +324,10 @@ class BaseWorkflowMixin(ABC):
                         )
         except Exception as e:
             logger.warning(f"[WORKFLOW_FILES] {self.get_name()}: Could not get conversation files: {e}")
-        
+
         # Convert to list and remove any empty/None values
         files_for_expert = [f for f in all_relevant_files if f and f.strip()]
-        
+
         if not files_for_expert:
             logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: No relevant files found for expert analysis")
             return ""
@@ -334,14 +335,14 @@ class BaseWorkflowMixin(ABC):
         # Expert analysis needs actual file content, bypassing conversation optimization
         try:
             file_content, processed_files = self._force_embed_files_for_expert_analysis(files_for_expert)
-            
+
             logger.info(
                 f"[WORKFLOW_FILES] {self.get_name()}: Prepared {len(processed_files)} unique relevant files for expert analysis "
                 f"(from {len(self.consolidated_findings.relevant_files)} current relevant files)"
             )
-            
+
             return file_content
-            
+
         except Exception as e:
             logger.error(f"[WORKFLOW_FILES] {self.get_name()}: Failed to prepare files for expert analysis: {e}")
             return ""
@@ -349,20 +350,20 @@ class BaseWorkflowMixin(ABC):
     def _force_embed_files_for_expert_analysis(self, files: list[str]) -> tuple[str, list[str]]:
         """
         Force embed files for expert analysis, bypassing conversation history filtering.
-        
+
         Expert analysis has different requirements than normal workflow steps:
         - Normal steps: Optimize tokens by skipping files in conversation history
         - Expert analysis: Needs actual file content regardless of conversation history
-        
+
         Args:
             files: List of file paths to embed
-            
+
         Returns:
             tuple[str, list[str]]: (file_content, processed_files)
         """
         # Use read_files directly with token budgeting, bypassing filter_new_files
-        from utils.file_utils import read_files, expand_paths
-        
+        from utils.file_utils import expand_paths, read_files
+
         # Get token budget for files
         current_model_context = self.get_current_model_context()
         if current_model_context:
@@ -377,7 +378,7 @@ class BaseWorkflowMixin(ABC):
                 max_tokens = 100_000  # Fallback
         else:
             max_tokens = 100_000  # Fallback
-        
+
         # Read files directly without conversation history filtering
         logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Force embedding {len(files)} files for expert analysis")
         file_content = read_files(
@@ -386,15 +387,15 @@ class BaseWorkflowMixin(ABC):
             reserve_tokens=1000,
             include_line_numbers=self.wants_line_numbers_by_default(),
         )
-        
+
         # Expand paths to get individual files for tracking
         processed_files = expand_paths(files)
-        
+
         logger.debug(
             f"[WORKFLOW_FILES] {self.get_name()}: Expert analysis embedding: {len(processed_files)} files, "
             f"{len(file_content):,} characters"
         )
-        
+
         return file_content, processed_files
 
     def wants_line_numbers_by_default(self) -> bool:
