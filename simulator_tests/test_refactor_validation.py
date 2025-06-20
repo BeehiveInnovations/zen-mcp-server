@@ -294,7 +294,6 @@ class UserData:
                     "files_checked": [self.refactor_file],
                     "relevant_files": [self.refactor_file],
                     "confidence": "incomplete",
-                    "files": [self.refactor_file],
                     "refactor_type": "codesmells",
                     "focus_areas": ["maintainability", "readability"],
                 },
@@ -408,7 +407,6 @@ class UserData:
                     "files_checked": [self.small_refactor_file],
                     "relevant_files": [self.small_refactor_file],
                     "confidence": "incomplete",
-                    "files": [self.small_refactor_file],
                     "refactor_type": "decompose",
                 },
             )
@@ -508,7 +506,6 @@ class UserData:
                         "relevant_files": [self.refactor_file],
                         "relevant_context": ["DataProcessorManager.process_user_data"],
                         "confidence": "partial",
-                        "files": [self.refactor_file],
                         "refactor_type": "codesmells",
                     },
                 )
@@ -654,7 +651,6 @@ class UserData:
                         {"type": "codesmells", "severity": "medium", "description": "Replace print with logging"},
                     ],
                     "confidence": "complete",  # Complete confidence should skip expert analysis
-                    "files": [self.small_refactor_file],
                     "refactor_type": "codesmells",
                     "model": "flash",
                 },
@@ -755,7 +751,6 @@ class DataContainer:
                     "relevant_files": [utils_file],  # This should be referenced, not embedded
                     "relevant_context": ["calculate_total"],
                     "confidence": "incomplete",
-                    "files": [utils_file, helpers_file],
                     "refactor_type": "codesmells",
                     "model": "flash",
                 },
@@ -877,7 +872,6 @@ class DataContainer:
                         },
                     ],
                     "confidence": "complete",
-                    "files": [self.refactor_file],
                     "refactor_type": "decompose",
                     "model": "flash",
                 },
@@ -925,7 +919,6 @@ class DataContainer:
                         {"type": "modernize", "severity": "low", "description": "Use pathlib for file operations"},
                     ],
                     "confidence": "complete",
-                    "files": [self.small_refactor_file],
                     "refactor_type": "modernize",
                     "model": "flash",
                 },

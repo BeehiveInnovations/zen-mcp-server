@@ -173,7 +173,6 @@ class ThinkDeepWorkflowValidationTest(ConversationBaseTest):
                     "relevant_files": [self.architecture_file, self.requirements_file],
                     "relevant_context": ["microservices_migration", "service_boundaries", "data_consistency"],
                     "confidence": "low",
-                    "files": [self.architecture_file, self.requirements_file],
                     "problem_context": "Enterprise application migration from monolith to microservices",
                     "focus_areas": ["architecture", "scalability", "risk_assessment"],
                 },

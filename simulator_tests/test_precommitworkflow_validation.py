@@ -399,7 +399,6 @@ REQUIREMENTS:
                     ],
                     "confidence": "high",
                     "continuation_id": continuation_id,
-                    "files": [self.api_file, self.config_file],  # Include files for expert analysis
                     "model": "flash",  # Use flash for expert analysis
                 },
             )
