@@ -684,8 +684,8 @@ class BaseWorkflowMixin(ABC):
             "step": request.step,
             "step_number": request.step_number,
             "findings": request.findings,
-            "files_checked": request.files_checked,
-            "relevant_files": request.relevant_files,
+            "files_checked": self.get_request_files_checked(request),
+            "relevant_files": self.get_request_relevant_files(request),
             "relevant_context": self.get_request_relevant_context(request),
             "issues_found": self.get_request_issues_found(request),
             "confidence": self.get_request_confidence(request),
@@ -887,6 +887,13 @@ class BaseWorkflowMixin(ABC):
         except AttributeError:
             return []
 
+    def get_request_files_checked(self, request: Any) -> list[str]:
+        """Get files checked from request. Override for custom file handling."""
+        try:
+            return request.files_checked or []
+        except AttributeError:
+            return []
+
     def get_current_arguments(self) -> dict[str, Any]:
         """Get current arguments. Returns empty dict if not available."""
         try:
@@ -1038,7 +1045,7 @@ class BaseWorkflowMixin(ABC):
             role="assistant",
             content=clean_content,  # Use cleaned content instead of full response_data
             tool_name=self.get_name(),
-            files=request.relevant_files,
+            files=self.get_request_relevant_files(request),
             images=self.get_request_images(request),
         )
 

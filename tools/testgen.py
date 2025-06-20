@@ -40,7 +40,7 @@ TESTGEN_FIELD_DESCRIPTIONS = {
 }
 
 
-class TestGenerationRequest(ToolRequest):
+class TestGenRequest(ToolRequest):
     """
     Request model for the test generation tool.
 
@@ -54,7 +54,7 @@ class TestGenerationRequest(ToolRequest):
     test_examples: Optional[list[str]] = Field(None, description=TESTGEN_FIELD_DESCRIPTIONS["test_examples"])
 
 
-class TestGenerationTool(BaseTool):
+class TestGenTool(BaseTool):
     """
     Test generation tool implementation.
 
@@ -134,7 +134,7 @@ class TestGenerationTool(BaseTool):
         return ToolModelCategory.EXTENDED_REASONING
 
     def get_request_model(self):
-        return TestGenerationRequest
+        return TestGenRequest
 
     def _process_test_examples(
         self, test_examples: list[str], continuation_id: Optional[str], available_tokens: int = None
@@ -235,7 +235,7 @@ class TestGenerationTool(BaseTool):
             logger.error(f"[TESTGEN] Failed to process test examples: {type(e).__name__}: {e}")
             return "", f"Warning: Could not process test examples: {str(e)}"
 
-    async def prepare_prompt(self, request: TestGenerationRequest) -> str:
+    async def prepare_prompt(self, request: TestGenRequest) -> str:
         """
         Prepare the test generation prompt with code analysis and optional test examples.
 
@@ -409,7 +409,7 @@ class TestGenerationTool(BaseTool):
 
         return full_prompt
 
-    def format_response(self, response: str, request: TestGenerationRequest, model_info: Optional[dict] = None) -> str:
+    def format_response(self, response: str, request: TestGenRequest, model_info: Optional[dict] = None) -> str:
         """
         Format the test generation response.
 

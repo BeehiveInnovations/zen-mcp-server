@@ -6,6 +6,8 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
+
 from tools.consensus import ConsensusTool, ModelConfig
 
 
@@ -164,6 +166,7 @@ class TestConsensusTool(unittest.TestCase):
         self.assertEqual(output_data["models_errored"], ["grok"])
         self.assertIn("next_steps", output_data)
 
+    @pytest.mark.asyncio
     @patch("tools.consensus.ConsensusTool.get_model_provider")
     async def test_execute_with_model_configs(self, mock_get_provider):
         """Test execute with ModelConfig objects"""
