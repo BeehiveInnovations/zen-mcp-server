@@ -14,17 +14,22 @@ from systemprompts import ANALYZE_PROMPT
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+ANALYZE_FIELD_DESCRIPTIONS = {
+    "files": "Files or directories to analyze (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+    "prompt": "What to analyze or look for",
+    "analysis_type": "Type of analysis to perform",
+    "output_format": "How to format the output",
+}
+
 
 class AnalyzeRequest(ToolRequest):
     """Request model for analyze tool"""
 
-    files: list[str] = Field(..., description="Files or directories to analyze (must be absolute paths)")
-    prompt: str = Field(..., description="What to analyze or look for")
-    analysis_type: Optional[str] = Field(
-        None,
-        description="Type of analysis: architecture|performance|security|quality|general",
-    )
-    output_format: Optional[str] = Field("detailed", description="Output format: summary|detailed|actionable")
+    files: list[str] = Field(..., description=ANALYZE_FIELD_DESCRIPTIONS["files"])
+    prompt: str = Field(..., description=ANALYZE_FIELD_DESCRIPTIONS["prompt"])
+    analysis_type: Optional[str] = Field(None, description=ANALYZE_FIELD_DESCRIPTIONS["analysis_type"])
+    output_format: Optional[str] = Field("detailed", description=ANALYZE_FIELD_DESCRIPTIONS["output_format"])
 
 
 class AnalyzeTool(BaseTool):
@@ -50,12 +55,12 @@ class AnalyzeTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Files or directories to analyze (must be absolute paths)",
+                    "description": ANALYZE_FIELD_DESCRIPTIONS["files"],
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "What to analyze or look for",
+                    "description": ANALYZE_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "analysis_type": {
                     "type": "string",
@@ -66,13 +71,13 @@ class AnalyzeTool(BaseTool):
                         "quality",
                         "general",
                     ],
-                    "description": "Type of analysis to perform",
+                    "description": ANALYZE_FIELD_DESCRIPTIONS["analysis_type"],
                 },
                 "output_format": {
                     "type": "string",
                     "enum": ["summary", "detailed", "actionable"],
                     "default": "detailed",
-                    "description": "How to format the output",
+                    "description": ANALYZE_FIELD_DESCRIPTIONS["output_format"],
                 },
                 "temperature": {
                     "type": "number",
@@ -87,7 +92,13 @@ class AnalyzeTool(BaseTool):
                 },
                 "use_websearch": {
                     "type": "boolean",
-                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "description": (
+                        "Enable web search for documentation, best practices, and current information. "
+                        "Particularly useful for: brainstorming sessions, architectural design discussions, "
+                        "exploring industry best practices, working with specific frameworks/technologies, "
+                        "researching solutions to complex problems, or when current documentation and "
+                        "community insights would enhance the analysis."
+                    ),
                     "default": True,
                 },
                 "continuation_id": {
@@ -135,13 +146,7 @@ class AnalyzeTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # MCP boundary check - STRICT REJECTION
-        if request.files:
-            file_size_check = self.check_total_file_size(request.files)
-            if file_size_check:
-                from tools.models import ToolOutput
-
-                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
+        # File size validation happens at MCP boundary in server.py
 
         # Use centralized file processing logic
         continuation_id = getattr(request, "continuation_id", None)

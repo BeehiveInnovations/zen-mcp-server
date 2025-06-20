@@ -10,7 +10,7 @@ import pytest
 from tests.mock_helpers import create_mock_provider
 from tools.analyze import AnalyzeTool
 from tools.debug import DebugIssueTool
-from tools.models import ClarificationRequest, ToolOutput
+from tools.models import FilesNeededRequest, ToolOutput
 
 
 class TestDynamicContextRequests:
@@ -31,8 +31,8 @@ class TestDynamicContextRequests:
         # Mock model to return a clarification request
         clarification_json = json.dumps(
             {
-                "status": "clarification_required",
-                "question": "I need to see the package.json file to understand dependencies",
+                "status": "files_required_to_continue",
+                "mandatory_instructions": "I need to see the package.json file to understand dependencies",
                 "files_needed": ["package.json", "package-lock.json"],
             }
         )
@@ -41,7 +41,7 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -56,57 +56,64 @@ class TestDynamicContextRequests:
 
         # Parse the response
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "clarification_required"
+        assert response_data["status"] == "files_required_to_continue"
         assert response_data["content_type"] == "json"
 
         # Parse the clarification request
         clarification = json.loads(response_data["content"])
-        assert clarification["question"] == "I need to see the package.json file to understand dependencies"
+        # Check that the enhanced instructions contain the original message and additional guidance
+        expected_start = "I need to see the package.json file to understand dependencies"
+        assert clarification["mandatory_instructions"].startswith(expected_start)
+        assert "IMPORTANT GUIDANCE:" in clarification["mandatory_instructions"]
+        assert "Use FULL absolute paths" in clarification["mandatory_instructions"]
         assert clarification["files_needed"] == ["package.json", "package-lock.json"]
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
-    async def test_normal_response_not_parsed_as_clarification(self, mock_get_provider, debug_tool):
-        """Test that normal responses are not mistaken for clarification requests"""
-        normal_response = """
-        ## Summary
-        The error is caused by a missing import statement.
-
-        ## Hypotheses (Ranked by Likelihood)
-
-        ### 1. Missing Import (Confidence: High)
-        **Root Cause:** The module 'utils' is not imported
-        """
-
-        mock_provider = create_mock_provider()
-        mock_provider.get_provider_type.return_value = Mock(value="google")
-        mock_provider.supports_thinking_mode.return_value = False
-        mock_provider.generate_content.return_value = Mock(
-            content=normal_response, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+    @patch("utils.conversation_memory.create_thread", return_value="debug-test-uuid")
+    @patch("utils.conversation_memory.add_turn")
+    async def test_normal_response_not_parsed_as_clarification(
+        self, mock_add_turn, mock_create_thread, mock_get_provider, debug_tool
+    ):
+        """Test that normal investigation responses work correctly with new debug tool"""
+        # The new debug tool uses self-investigation pattern
+        result = await debug_tool.execute(
+            {
+                "step": "Investigating NameError: name 'utils' is not defined",
+                "step_number": 1,
+                "total_steps": 3,
+                "next_step_required": True,
+                "findings": "The error indicates 'utils' module is not imported or defined",
+                "files_checked": ["/code/main.py"],
+                "relevant_files": ["/code/main.py"],
+                "hypothesis": "Missing import statement for utils module",
+                "confidence": "high",
+            }
         )
-        mock_get_provider.return_value = mock_provider
-
-        result = await debug_tool.execute({"prompt": "NameError: name 'utils' is not defined"})
 
         assert len(result) == 1
 
-        # Parse the response
+        # Parse the response - new debug tool returns structured JSON
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "success"
-        assert response_data["content_type"] in ["text", "markdown"]
-        assert "Summary" in response_data["content"]
+        # Debug tool now returns "pause_for_investigation" to force actual investigation
+        assert response_data["status"] == "pause_for_investigation"
+        assert response_data["step_number"] == 1
+        assert response_data["next_step_required"] is True
+        assert response_data["investigation_status"]["current_confidence"] == "high"
+        assert response_data["investigation_required"] is True
+        assert "required_actions" in response_data
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
     async def test_malformed_clarification_request_treated_as_normal(self, mock_get_provider, analyze_tool):
         """Test that malformed JSON clarification requests are treated as normal responses"""
-        malformed_json = '{"status": "clarification_required", "prompt": "Missing closing brace"'
+        malformed_json = '{"status": "files_required_to_continue", "prompt": "Missing closing brace"'
 
         mock_provider = create_mock_provider()
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=malformed_json, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            content=malformed_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -121,17 +128,17 @@ class TestDynamicContextRequests:
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
-    async def test_clarification_with_suggested_action(self, mock_get_provider, debug_tool):
+    async def test_clarification_with_suggested_action(self, mock_get_provider, analyze_tool):
         """Test clarification request with suggested next action"""
         clarification_json = json.dumps(
             {
-                "status": "clarification_required",
-                "question": "I need to see the database configuration to diagnose the connection error",
+                "status": "files_required_to_continue",
+                "mandatory_instructions": "I need to see the database configuration to analyze the connection error",
                 "files_needed": ["config/database.yml", "src/db.py"],
                 "suggested_next_action": {
-                    "tool": "debug",
+                    "tool": "analyze",
                     "args": {
-                        "prompt": "Connection timeout to database",
+                        "prompt": "Analyze database connection timeout issue",
                         "files": [
                             "/config/database.yml",
                             "/src/db.py",
@@ -146,13 +153,13 @@ class TestDynamicContextRequests:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
-        result = await debug_tool.execute(
+        result = await analyze_tool.execute(
             {
-                "prompt": "Connection timeout to database",
+                "prompt": "Analyze database connection timeout issue",
                 "files": ["/absolute/logs/error.log"],
             }
         )
@@ -160,11 +167,11 @@ class TestDynamicContextRequests:
         assert len(result) == 1
 
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "clarification_required"
+        assert response_data["status"] == "files_required_to_continue"
 
         clarification = json.loads(response_data["content"])
         assert "suggested_next_action" in clarification
-        assert clarification["suggested_next_action"]["tool"] == "debug"
+        assert clarification["suggested_next_action"]["tool"] == "analyze"
 
     def test_tool_output_model_serialization(self):
         """Test ToolOutput model serialization"""
@@ -184,16 +191,53 @@ class TestDynamicContextRequests:
         assert parsed["metadata"]["tool_name"] == "test"
 
     def test_clarification_request_model(self):
-        """Test ClarificationRequest model"""
-        request = ClarificationRequest(
-            question="Need more context",
+        """Test FilesNeededRequest model"""
+        request = FilesNeededRequest(
+            mandatory_instructions="Need more context",
             files_needed=["file1.py", "file2.py"],
             suggested_next_action={"tool": "analyze", "args": {}},
         )
 
-        assert request.question == "Need more context"
+        assert request.mandatory_instructions == "Need more context"
         assert len(request.files_needed) == 2
         assert request.suggested_next_action["tool"] == "analyze"
+
+    def test_mandatory_instructions_enhancement(self):
+        """Test that mandatory_instructions are enhanced with additional guidance"""
+        from tools.base import BaseTool
+
+        # Create a dummy tool instance for testing
+        class TestTool(BaseTool):
+            def get_name(self):
+                return "test"
+
+            def get_description(self):
+                return "test"
+
+            def get_request_model(self):
+                return None
+
+            def prepare_prompt(self, request):
+                return ""
+
+            def get_system_prompt(self):
+                return ""
+
+            def get_input_schema(self):
+                return {}
+
+        tool = TestTool()
+        original = "I need additional files to proceed"
+        enhanced = tool._enhance_mandatory_instructions(original)
+
+        # Verify the original instructions are preserved
+        assert enhanced.startswith(original)
+
+        # Verify additional guidance is added
+        assert "IMPORTANT GUIDANCE:" in enhanced
+        assert "CRITICAL for providing accurate analysis" in enhanced
+        assert "Use FULL absolute paths" in enhanced
+        assert "continuation_id to continue" in enhanced
 
     @pytest.mark.asyncio
     @patch("tools.base.BaseTool.get_model_provider")
@@ -223,8 +267,8 @@ class TestCollaborationWorkflow:
         # Mock Gemini to request package.json when asked about dependencies
         clarification_json = json.dumps(
             {
-                "status": "clarification_required",
-                "question": "I need to see the package.json file to analyze npm dependencies",
+                "status": "files_required_to_continue",
+                "mandatory_instructions": "I need to see the package.json file to analyze npm dependencies",
                 "files_needed": ["package.json", "package-lock.json"],
             }
         )
@@ -233,7 +277,7 @@ class TestCollaborationWorkflow:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
@@ -247,7 +291,7 @@ class TestCollaborationWorkflow:
 
         response = json.loads(result[0].text)
         assert (
-            response["status"] == "clarification_required"
+            response["status"] == "files_required_to_continue"
         ), "Should request clarification when asked about dependencies without package files"
 
         clarification = json.loads(response["content"])
@@ -257,13 +301,13 @@ class TestCollaborationWorkflow:
     @patch("tools.base.BaseTool.get_model_provider")
     async def test_multi_step_collaboration(self, mock_get_provider):
         """Test a multi-step collaboration workflow"""
-        tool = DebugIssueTool()
+        tool = AnalyzeTool()
 
         # Step 1: Initial request returns clarification needed
         clarification_json = json.dumps(
             {
-                "status": "clarification_required",
-                "question": "I need to see the configuration file to understand the connection settings",
+                "status": "files_required_to_continue",
+                "mandatory_instructions": "I need to see the configuration file to understand the connection settings",
                 "files_needed": ["config.py"],
             }
         )
@@ -272,19 +316,19 @@ class TestCollaborationWorkflow:
         mock_provider.get_provider_type.return_value = Mock(value="google")
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content.return_value = Mock(
-            content=clarification_json, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            content=clarification_json, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
         mock_get_provider.return_value = mock_provider
 
         result1 = await tool.execute(
             {
-                "prompt": "Database connection timeout",
-                "error_context": "Timeout after 30s",
+                "prompt": "Analyze database connection timeout issue",
+                "files": ["/logs/error.log"],
             }
         )
 
         response1 = json.loads(result1[0].text)
-        assert response1["status"] == "clarification_required"
+        assert response1["status"] == "files_required_to_continue"
 
         # Step 2: Claude would provide additional context and re-invoke
         # This simulates the second call with more context
@@ -299,14 +343,13 @@ class TestCollaborationWorkflow:
         """
 
         mock_provider.generate_content.return_value = Mock(
-            content=final_response, usage={}, model_name="gemini-2.5-flash-preview-05-20", metadata={}
+            content=final_response, usage={}, model_name="gemini-2.5-flash", metadata={}
         )
 
         result2 = await tool.execute(
             {
-                "prompt": "Database connection timeout",
-                "error_context": "Timeout after 30s",
-                "files": ["/absolute/path/config.py"],  # Additional context provided
+                "prompt": "Analyze database connection timeout issue with config file",
+                "files": ["/absolute/path/config.py", "/logs/error.log"],  # Additional context provided
             }
         )
 

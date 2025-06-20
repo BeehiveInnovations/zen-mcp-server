@@ -14,18 +14,29 @@ from systemprompts import CHAT_PROMPT
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+CHAT_FIELD_DESCRIPTIONS = {
+    "prompt": (
+        "You MUST provide a thorough, expressive question or share an idea with as much context as possible. "
+        "Remember: you're talking to an assistant who has deep expertise and can provide nuanced insights. Include your "
+        "current thinking, specific challenges, background context, what you've already tried, and what "
+        "kind of response would be most helpful. The more context and detail you provide, the more "
+        "valuable and targeted the response will be."
+    ),
+    "files": "Optional files for context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+    "images": (
+        "Optional images for visual context. Useful for UI discussions, diagrams, visual problems, "
+        "error screens, or architectural mockups. (must be FULL absolute paths to real files / folders - DO NOT SHORTEN - OR these can be bas64 data)"
+    ),
+}
+
 
 class ChatRequest(ToolRequest):
     """Request model for chat tool"""
 
-    prompt: str = Field(
-        ...,
-        description="Your question, topic, or current thinking to discuss",
-    )
-    files: Optional[list[str]] = Field(
-        default_factory=list,
-        description="Optional files for context (must be absolute paths)",
-    )
+    prompt: str = Field(..., description=CHAT_FIELD_DESCRIPTIONS["prompt"])
+    files: Optional[list[str]] = Field(default_factory=list, description=CHAT_FIELD_DESCRIPTIONS["files"])
+    images: Optional[list[str]] = Field(default_factory=list, description=CHAT_FIELD_DESCRIPTIONS["images"])
 
 
 class ChatTool(BaseTool):
@@ -42,7 +53,8 @@ class ChatTool(BaseTool):
             "Also great for: explanations, comparisons, general development questions. "
             "Use this when you want to ask questions, brainstorm ideas, get opinions, discuss topics, "
             "share your thinking, or need explanations about concepts and approaches. "
-            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can "
+            "provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
@@ -51,12 +63,17 @@ class ChatTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Your question, topic, or current thinking to discuss",
+                    "description": CHAT_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional files for context (must be absolute paths)",
+                    "description": CHAT_FIELD_DESCRIPTIONS["files"],
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": CHAT_FIELD_DESCRIPTIONS["images"],
                 },
                 "model": self.get_model_field_schema(),
                 "temperature": {
@@ -68,16 +85,29 @@ class ChatTool(BaseTool):
                 "thinking_mode": {
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
+                    "description": (
+                        "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), "
+                        "max (100% of model max)"
+                    ),
                 },
                 "use_websearch": {
                     "type": "boolean",
-                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "description": (
+                        "Enable web search for documentation, best practices, and current information. "
+                        "Particularly useful for: brainstorming sessions, architectural design discussions, "
+                        "exploring industry best practices, working with specific frameworks/technologies, "
+                        "researching solutions to complex problems, or when current documentation and "
+                        "community insights would enhance the analysis."
+                    ),
                     "default": True,
                 },
                 "continuation_id": {
                     "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
+                    "description": (
+                        "Thread continuation ID for multi-turn conversations. Can be used to continue "
+                        "conversations across different tools. Only provide this if continuing a previous "
+                        "conversation thread."
+                    ),
                 },
             },
             "required": ["prompt"] + (["model"] if self.is_effective_auto_mode() else []),
@@ -157,4 +187,7 @@ Please provide a thoughtful, comprehensive response:"""
 
     def format_response(self, response: str, request: ChatRequest, model_info: Optional[dict] = None) -> str:
         """Format the chat response"""
-        return f"{response}\n\n---\n\n**Claude's Turn:** Evaluate this perspective alongside your analysis to form a comprehensive solution and continue with the user's request and task at hand."
+        return (
+            f"{response}\n\n---\n\n**Claude's Turn:** Evaluate this perspective alongside your analysis to "
+            "form a comprehensive solution and continue with the user's request and task at hand."
+        )

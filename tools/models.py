@@ -35,7 +35,7 @@ class ToolOutput(BaseModel):
     status: Literal[
         "success",
         "error",
-        "clarification_required",
+        "files_required_to_continue",
         "full_codereview_required",
         "focused_review_required",
         "test_sample_needed",
@@ -45,6 +45,7 @@ class ToolOutput(BaseModel):
         "resend_prompt",
         "code_too_large",
         "continuation_available",
+        "no_bug_found",
     ] = "success"
     content: Optional[str] = Field(None, description="The main content/response from the tool")
     content_type: Literal["text", "markdown", "json"] = "text"
@@ -54,11 +55,11 @@ class ToolOutput(BaseModel):
     )
 
 
-class ClarificationRequest(BaseModel):
-    """Request for additional context or clarification"""
+class FilesNeededRequest(BaseModel):
+    """Request for missing files / code to continue"""
 
-    status: Literal["clarification_required"] = "clarification_required"
-    question: str = Field(..., description="Question to ask Claude for more context")
+    status: Literal["files_required_to_continue"] = "files_required_to_continue"
+    mandatory_instructions: str = Field(..., description="Critical instructions for Claude regarding required context")
     files_needed: Optional[list[str]] = Field(
         default_factory=list, description="Specific files that are needed for analysis"
     )
@@ -284,20 +285,6 @@ class TraceComplete(BaseModel):
     state_access: Optional[list[StateAccess]] = Field(default_factory=list, description="State access information")
 
 
-# Registry mapping status strings to their corresponding Pydantic models
-SPECIAL_STATUS_MODELS = {
-    "clarification_required": ClarificationRequest,
-    "full_codereview_required": FullCodereviewRequired,
-    "focused_review_required": FocusedReviewRequired,
-    "test_sample_needed": TestSampleNeeded,
-    "more_tests_required": MoreTestsRequired,
-    "refactor_analysis_complete": RefactorAnalysisComplete,
-    "trace_complete": TraceComplete,
-    "resend_prompt": ResendPromptRequest,
-    "code_too_large": CodeTooLargeRequest,
-}
-
-
 class DiagnosticHypothesis(BaseModel):
     """A debugging hypothesis with context and next steps"""
 
@@ -321,3 +308,69 @@ class StructuredDebugResponse(BaseModel):
         default_factory=list,
         description="Additional files or information that would help with analysis",
     )
+
+
+class DebugHypothesis(BaseModel):
+    """A debugging hypothesis with detailed analysis"""
+
+    name: str = Field(..., description="Name/title of the hypothesis")
+    confidence: Literal["High", "Medium", "Low"] = Field(..., description="Confidence level")
+    root_cause: str = Field(..., description="Technical explanation of the root cause")
+    evidence: str = Field(..., description="Logs or code clues supporting this hypothesis")
+    correlation: str = Field(..., description="How symptoms map to the cause")
+    validation: str = Field(..., description="Quick test to confirm the hypothesis")
+    minimal_fix: str = Field(..., description="Smallest change to resolve the issue")
+    regression_check: str = Field(..., description="Why this fix is safe")
+    file_references: list[str] = Field(default_factory=list, description="File:line format for exact locations")
+
+
+class DebugAnalysisComplete(BaseModel):
+    """Complete debugging analysis with systematic investigation tracking"""
+
+    status: Literal["analysis_complete"] = "analysis_complete"
+    investigation_id: str = Field(..., description="Auto-generated unique ID for this investigation")
+    summary: str = Field(..., description="Brief description of the problem and its impact")
+    investigation_steps: list[str] = Field(..., description="Steps taken during the investigation")
+    hypotheses: list[DebugHypothesis] = Field(..., description="Ranked hypotheses with detailed analysis")
+    key_findings: list[str] = Field(..., description="Important discoveries made during analysis")
+    immediate_actions: list[str] = Field(..., description="Steps to take regardless of which hypothesis is correct")
+    recommended_tools: list[str] = Field(default_factory=list, description="Additional tools recommended for analysis")
+    prevention_strategy: Optional[str] = Field(
+        None, description="Targeted measures to prevent this exact issue from recurring"
+    )
+    investigation_summary: str = Field(
+        ..., description="Comprehensive summary of the complete investigation process and conclusions"
+    )
+
+
+class NoBugFound(BaseModel):
+    """Response when thorough investigation finds no concrete evidence of a bug"""
+
+    status: Literal["no_bug_found"] = "no_bug_found"
+    summary: str = Field(..., description="Summary of what was thoroughly investigated")
+    investigation_steps: list[str] = Field(..., description="Steps taken during the investigation")
+    areas_examined: list[str] = Field(..., description="Code areas and potential failure points examined")
+    confidence_level: Literal["High", "Medium", "Low"] = Field(
+        ..., description="Confidence level in the no-bug finding"
+    )
+    alternative_explanations: list[str] = Field(
+        ..., description="Possible alternative explanations for reported symptoms"
+    )
+    recommended_questions: list[str] = Field(..., description="Questions to clarify the issue with the user")
+    next_steps: list[str] = Field(..., description="Suggested actions to better understand the reported issue")
+
+
+# Registry mapping status strings to their corresponding Pydantic models
+SPECIAL_STATUS_MODELS = {
+    "files_required_to_continue": FilesNeededRequest,
+    "full_codereview_required": FullCodereviewRequired,
+    "focused_review_required": FocusedReviewRequired,
+    "test_sample_needed": TestSampleNeeded,
+    "more_tests_required": MoreTestsRequired,
+    "refactor_analysis_complete": RefactorAnalysisComplete,
+    "trace_complete": TraceComplete,
+    "resend_prompt": ResendPromptRequest,
+    "code_too_large": CodeTooLargeRequest,
+    "analysis_complete": DebugAnalysisComplete,
+    "no_bug_found": NoBugFound,
+}

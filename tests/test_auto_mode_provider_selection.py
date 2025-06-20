@@ -59,9 +59,9 @@ class TestAutoModeProviderSelection:
             balanced = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.BALANCED)
 
             # Should select appropriate Gemini models
-            assert extended_reasoning in ["gemini-2.5-pro-preview-06-05", "pro"]
-            assert fast_response in ["gemini-2.5-flash-preview-05-20", "flash"]
-            assert balanced in ["gemini-2.5-flash-preview-05-20", "flash"]
+            assert extended_reasoning in ["gemini-2.5-pro", "pro"]
+            assert fast_response in ["gemini-2.5-flash", "flash"]
+            assert balanced in ["gemini-2.5-flash", "flash"]
 
         finally:
             # Restore original environment
@@ -86,7 +86,7 @@ class TestAutoModeProviderSelection:
                 os.environ.pop(key, None)
 
             # Register only OpenAI provider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 
@@ -127,7 +127,7 @@ class TestAutoModeProviderSelection:
 
             # Register both providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
@@ -212,7 +212,7 @@ class TestAutoModeProviderSelection:
 
             # Register both providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
@@ -229,8 +229,8 @@ class TestAutoModeProviderSelection:
             assert "o3-mini" not in available_models
 
             # Should include all Gemini models (no restrictions)
-            assert "gemini-2.5-flash-preview-05-20" in available_models
-            assert available_models["gemini-2.5-flash-preview-05-20"] == ProviderType.GOOGLE
+            assert "gemini-2.5-flash" in available_models
+            assert available_models["gemini-2.5-flash"] == ProviderType.GOOGLE
 
         finally:
             # Restore original environment
@@ -256,7 +256,7 @@ class TestAutoModeProviderSelection:
 
             # Register all providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
             from providers.xai import XAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -307,7 +307,7 @@ class TestAutoModeProviderSelection:
 
             # Register all providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
             from providers.xai import XAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -316,8 +316,8 @@ class TestAutoModeProviderSelection:
 
             # Test that providers resolve aliases correctly
             test_cases = [
-                ("flash", ProviderType.GOOGLE, "gemini-2.5-flash-preview-05-20"),
-                ("pro", ProviderType.GOOGLE, "gemini-2.5-pro-preview-06-05"),
+                ("flash", ProviderType.GOOGLE, "gemini-2.5-flash"),
+                ("pro", ProviderType.GOOGLE, "gemini-2.5-pro"),
                 ("mini", ProviderType.OPENAI, "o4-mini"),
                 ("o3mini", ProviderType.OPENAI, "o3-mini"),
                 ("grok", ProviderType.XAI, "grok-3"),

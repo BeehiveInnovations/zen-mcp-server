@@ -12,6 +12,27 @@ from pydantic import Field
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+TRACER_FIELD_DESCRIPTIONS = {
+    "prompt": (
+        "Detailed description of what to trace and WHY you need this analysis. MUST include context about what "
+        "you're trying to understand, debug, analyze or find. For precision mode: describe the specific "
+        "method/function and what aspect of its execution flow you need to understand. For dependencies "
+        "mode: describe the class/module and what relationships you need to map. Example: 'I need to "
+        "understand how BookingManager.finalizeInvoice method is called throughout the system and what "
+        "side effects it has, as I'm debugging payment processing issues' rather than just "
+        "'BookingManager finalizeInvoice method'"
+    ),
+    "trace_mode": (
+        "Trace mode: 'precision' (for methods/functions - shows execution flow and usage patterns) or "
+        "'dependencies' (for classes/modules/protocols - shows structural relationships)"
+    ),
+    "images": (
+        "Optional images of system architecture diagrams, flow charts, or visual references to help "
+        "understand the tracing context"
+    ),
+}
+
 
 class TracerRequest(ToolRequest):
     """
@@ -20,14 +41,9 @@ class TracerRequest(ToolRequest):
     This model defines the parameters for generating analysis prompts.
     """
 
-    prompt: str = Field(
-        ...,
-        description="Detailed description of what to trace and WHY you need this analysis. Include context about what you're trying to understand, debug, or analyze. For precision mode: describe the specific method/function and what aspect of its execution flow you need to understand. For dependencies mode: describe the class/module and what relationships you need to map. Example: 'I need to understand how BookingManager.finalizeInvoice method is called throughout the system and what side effects it has, as I'm debugging payment processing issues' rather than just 'BookingManager finalizeInvoice method'",
-    )
-    trace_mode: Literal["precision", "dependencies"] = Field(
-        ...,
-        description="Trace mode: 'precision' (for methods/functions - shows execution flow and usage patterns) or 'dependencies' (for classes/modules/protocols - shows structural relationships)",
-    )
+    prompt: str = Field(..., description=TRACER_FIELD_DESCRIPTIONS["prompt"])
+    trace_mode: Literal["precision", "dependencies"] = Field(..., description=TRACER_FIELD_DESCRIPTIONS["trace_mode"])
+    images: list[str] = Field(default_factory=list, description=TRACER_FIELD_DESCRIPTIONS["images"])
 
 
 class TracerTool(BaseTool):
@@ -44,11 +60,15 @@ class TracerTool(BaseTool):
     def get_description(self) -> str:
         return (
             "ANALYSIS PROMPT GENERATOR - Creates structured prompts for static code analysis. "
-            "Helps generate detailed analysis requests with specific method/function names, file paths, and component context. "
-            "Type 'precision': For methods/functions - traces execution flow, call chains, call stacks, and shows when/how they are used. "
-            "Type 'dependencies': For classes/modules/protocols - maps structural relationships and bidirectional dependencies. "
+            "Helps generate detailed analysis requests with specific method/function names, file paths, and "
+            "component context. "
+            "Type 'precision': For methods/functions - traces execution flow, call chains, call stacks, and "
+            "shows when/how they are used. "
+            "Type 'dependencies': For classes/modules/protocols - maps structural relationships and "
+            "bidirectional dependencies. "
             "Returns detailed instructions on how to perform the analysis and format the results. "
-            "Use this to create focused analysis requests that can be fed back to Claude with the appropriate code files. "
+            "Use this to create focused analysis requests that can be fed back to Claude with the appropriate "
+            "code files. "
         )
 
     def get_input_schema(self) -> dict[str, Any]:
@@ -57,12 +77,17 @@ class TracerTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Detailed description of what to trace and WHY you need this analysis. Include context about what you're trying to understand, debug, or analyze. For precision mode: describe the specific method/function and what aspect of its execution flow you need to understand. For dependencies mode: describe the class/module and what relationships you need to map. Example: 'I need to understand how BookingManager.finalizeInvoice method is called throughout the system and what side effects it has, as I'm debugging payment processing issues' rather than just 'BookingManager finalizeInvoice method'",
+                    "description": TRACER_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "trace_mode": {
                     "type": "string",
                     "enum": ["precision", "dependencies"],
-                    "description": "Trace mode: 'precision' (for methods/functions - shows execution flow and usage patterns) or 'dependencies' (for classes/modules/protocols - shows structural relationships)",
+                    "description": TRACER_FIELD_DESCRIPTIONS["trace_mode"],
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": TRACER_FIELD_DESCRIPTIONS["images"],
                 },
             },
             "required": ["prompt", "trace_mode"],

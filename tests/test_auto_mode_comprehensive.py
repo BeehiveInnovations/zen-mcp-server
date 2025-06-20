@@ -61,7 +61,7 @@ class TestAutoModeComprehensive:
 
         # Re-register providers for subsequent tests (like conftest.py does)
         from providers.gemini import GeminiModelProvider
-        from providers.openai import OpenAIModelProvider
+        from providers.openai_provider import OpenAIModelProvider
         from providers.xai import XAIModelProvider
 
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -80,9 +80,9 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "gemini-2.5-pro-preview-06-05",  # Pro for deep thinking
-                    "FAST_RESPONSE": "gemini-2.5-flash-preview-05-20",  # Flash for speed
-                    "BALANCED": "gemini-2.5-flash-preview-05-20",  # Flash as balanced
+                    "EXTENDED_REASONING": "gemini-2.5-pro",  # Pro for deep thinking
+                    "FAST_RESPONSE": "gemini-2.5-flash",  # Flash for speed
+                    "BALANCED": "gemini-2.5-flash",  # Flash as balanced
                 },
             ),
             # Only OpenAI API available
@@ -178,7 +178,7 @@ class TestAutoModeComprehensive:
 
             # Register providers based on configuration
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
             from providers.openrouter import OpenRouterProvider
             from providers.xai import XAIModelProvider
 
@@ -313,8 +313,8 @@ class TestAutoModeComprehensive:
             # Should include Gemini models
             assert "flash" in available_models
             assert "pro" in available_models
-            assert "gemini-2.5-flash-preview-05-20" in available_models
-            assert "gemini-2.5-pro-preview-06-05" in available_models
+            assert "gemini-2.5-flash" in available_models
+            assert "gemini-2.5-pro" in available_models
 
             # Should also include other models (users might have OpenRouter configured)
             # The schema should show all options; validation happens at runtime
@@ -349,7 +349,7 @@ class TestAutoModeComprehensive:
 
             # Register all native providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
             from providers.xai import XAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -460,7 +460,7 @@ class TestAutoModeComprehensive:
 
             # Register providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
@@ -476,8 +476,8 @@ class TestAutoModeComprehensive:
             assert "o3-mini" not in available_models
 
             # Should still include all Gemini models (no restrictions)
-            assert "gemini-2.5-flash-preview-05-20" in available_models
-            assert "gemini-2.5-pro-preview-06-05" in available_models
+            assert "gemini-2.5-flash" in available_models
+            assert "gemini-2.5-pro" in available_models
 
     def test_openrouter_fallback_when_no_native_apis(self):
         """Test that OpenRouter provides fallback models when no native APIs are available."""
@@ -511,8 +511,8 @@ class TestAutoModeComprehensive:
             # Mock OpenRouter registry to return known models
             mock_registry = MagicMock()
             mock_registry.list_models.return_value = [
-                "google/gemini-2.5-flash-preview-05-20",
-                "google/gemini-2.5-pro-preview-06-05",
+                "google/gemini-2.5-flash",
+                "google/gemini-2.5-pro",
                 "openai/o3",
                 "openai/o4-mini",
                 "anthropic/claude-3-opus",
@@ -564,12 +564,10 @@ class TestAutoModeComprehensive:
             mock_provider = MagicMock()
             mock_response = MagicMock()
             mock_response.content = "test response"
-            mock_response.model_name = "gemini-2.5-flash-preview-05-20"  # The resolved name
+            mock_response.model_name = "gemini-2.5-flash"  # The resolved name
             mock_response.usage = {"input_tokens": 10, "output_tokens": 5}
             # Mock _resolve_model_name to simulate alias resolution
-            mock_provider._resolve_model_name = lambda alias: (
-                "gemini-2.5-flash-preview-05-20" if alias == "flash" else alias
-            )
+            mock_provider._resolve_model_name = lambda alias: ("gemini-2.5-flash" if alias == "flash" else alias)
             mock_provider.generate_content.return_value = mock_response
 
             with patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider):

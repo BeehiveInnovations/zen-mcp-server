@@ -22,14 +22,16 @@ class TestServerTools:
         assert "debug" in tool_names
         assert "analyze" in tool_names
         assert "chat" in tool_names
+        assert "consensus" in tool_names
         assert "precommit" in tool_names
         assert "testgen" in tool_names
         assert "refactor" in tool_names
         assert "tracer" in tool_names
+        assert "planner" in tool_names
         assert "version" in tool_names
 
-        # Should have exactly 10 tools (including refactor and tracer)
-        assert len(tools) == 10
+        # Should have exactly 13 tools (including consensus, refactor, tracer, listmodels, and planner)
+        assert len(tools) == 13
 
         # Check descriptions are verbose
         for tool in tools:

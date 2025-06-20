@@ -23,6 +23,30 @@ from systemprompts import CODEREVIEW_PROMPT
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+CODEREVIEW_FIELD_DESCRIPTIONS = {
+    "files": "Code files or directories to review that are relevant to the code that needs review or are closely "
+    "related to the code or component that needs to be reviewed (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)."
+    "Validate that these files exist on disk before sharing and only share code that is relevant.",
+    "prompt": (
+        "User's summary of what the code does, expected behavior, constraints, and review objectives. "
+        "IMPORTANT: Before using this tool, you should first perform its own preliminary review - "
+        "examining the code structure, identifying potential issues, understanding the business logic, "
+        "and noting areas of concern. Include your initial observations about code quality, potential "
+        "bugs, architectural patterns, and specific areas that need deeper scrutiny. This dual-perspective "
+        "approach (your analysis + external model's review) provides more comprehensive feedback and "
+        "catches issues that either reviewer might miss alone."
+    ),
+    "images": (
+        "Optional images of architecture diagrams, UI mockups, design documents, or visual references "
+        "for code review context"
+    ),
+    "review_type": "Type of review to perform",
+    "focus_on": "Specific aspects to focus on, or additional context that would help understand areas of concern",
+    "standards": "Coding standards to enforce",
+    "severity_filter": "Minimum severity level to report",
+}
+
 
 class CodeReviewRequest(ToolRequest):
     """
@@ -33,24 +57,13 @@ class CodeReviewRequest(ToolRequest):
     review focus and standards.
     """
 
-    files: list[str] = Field(
-        ...,
-        description="Code files or directories to review (must be absolute paths)",
-    )
-    prompt: str = Field(
-        ...,
-        description="User's summary of what the code does, expected behavior, constraints, and review objectives",
-    )
-    review_type: str = Field("full", description="Type of review: full|security|performance|quick")
-    focus_on: Optional[str] = Field(
-        None,
-        description="Specific aspects to focus on, or additional context that would help understand areas of concern",
-    )
-    standards: Optional[str] = Field(None, description="Coding standards or guidelines to enforce")
-    severity_filter: str = Field(
-        "all",
-        description="Minimum severity to report: critical|high|medium|all",
-    )
+    files: list[str] = Field(..., description=CODEREVIEW_FIELD_DESCRIPTIONS["files"])
+    prompt: str = Field(..., description=CODEREVIEW_FIELD_DESCRIPTIONS["prompt"])
+    images: Optional[list[str]] = Field(None, description=CODEREVIEW_FIELD_DESCRIPTIONS["images"])
+    review_type: str = Field("full", description=CODEREVIEW_FIELD_DESCRIPTIONS["review_type"])
+    focus_on: Optional[str] = Field(None, description=CODEREVIEW_FIELD_DESCRIPTIONS["focus_on"])
+    standards: Optional[str] = Field(None, description=CODEREVIEW_FIELD_DESCRIPTIONS["standards"])
+    severity_filter: str = Field("all", description=CODEREVIEW_FIELD_DESCRIPTIONS["severity_filter"])
 
 
 class CodeReviewTool(BaseTool):
@@ -77,7 +90,8 @@ class CodeReviewTool(BaseTool):
             "Choose thinking_mode based on review scope: 'low' for small code snippets, "
             "'medium' for standard files/modules (default), 'high' for complex systems/architectures, "
             "'max' for critical security audits or large codebases requiring deepest analysis. "
-            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
+            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools "
+            "can provide enhanced capabilities."
         )
 
     def get_input_schema(self) -> dict[str, Any]:
@@ -87,32 +101,37 @@ class CodeReviewTool(BaseTool):
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Code files or directories to review (must be absolute paths)",
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["files"],
                 },
                 "model": self.get_model_field_schema(),
                 "prompt": {
                     "type": "string",
-                    "description": "User's summary of what the code does, expected behavior, constraints, and review objectives",
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["prompt"],
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["images"],
                 },
                 "review_type": {
                     "type": "string",
                     "enum": ["full", "security", "performance", "quick"],
                     "default": "full",
-                    "description": "Type of review to perform",
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["review_type"],
                 },
                 "focus_on": {
                     "type": "string",
-                    "description": "Specific aspects to focus on, or additional context that would help understand areas of concern",
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["focus_on"],
                 },
                 "standards": {
                     "type": "string",
-                    "description": "Coding standards to enforce",
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["standards"],
                 },
                 "severity_filter": {
                     "type": "string",
-                    "enum": ["critical", "high", "medium", "all"],
+                    "enum": ["critical", "high", "medium", "low", "all"],
                     "default": "all",
-                    "description": "Minimum severity level to report",
+                    "description": CODEREVIEW_FIELD_DESCRIPTIONS["severity_filter"],
                 },
                 "temperature": {
                     "type": "number",
@@ -123,16 +142,29 @@ class CodeReviewTool(BaseTool):
                 "thinking_mode": {
                     "type": "string",
                     "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
+                    "description": (
+                        "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), "
+                        "max (100% of model max)"
+                    ),
                 },
                 "use_websearch": {
                     "type": "boolean",
-                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
+                    "description": (
+                        "Enable web search for documentation, best practices, and current information. "
+                        "Particularly useful for: brainstorming sessions, architectural design discussions, "
+                        "exploring industry best practices, working with specific frameworks/technologies, "
+                        "researching solutions to complex problems, or when current documentation and community "
+                        "insights would enhance the analysis."
+                    ),
                     "default": True,
                 },
                 "continuation_id": {
                     "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
+                    "description": (
+                        "Thread continuation ID for multi-turn conversations. Can be used to continue "
+                        "conversations across different tools. Only provide this if continuing a previous "
+                        "conversation thread."
+                    ),
                 },
             },
             "required": ["files", "prompt"] + (["model"] if self.is_effective_auto_mode() else []),
@@ -178,13 +210,7 @@ class CodeReviewTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # MCP boundary check - STRICT REJECTION
-        if request.files:
-            file_size_check = self.check_total_file_size(request.files)
-            if file_size_check:
-                from tools.models import ToolOutput
-
-                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
+        # File size validation happens at MCP boundary in server.py
 
         # Check user input size at MCP transport boundary (before adding internal content)
         user_content = request.prompt
@@ -254,7 +280,8 @@ class CodeReviewTool(BaseTool):
 {file_content}
 === END CODE ===
 
-Please provide a code review aligned with the user's context and expectations, following the format specified in the system prompt."""
+Please provide a code review aligned with the user's context and expectations, following the format specified """
+        "in the system prompt." ""
 
         return full_prompt
 
@@ -274,12 +301,16 @@ Please provide a code review aligned with the user's context and expectations, f
 
 ---
 
-**Claude's Next Steps:**
+**Your Next Steps:**
 
-1. **Understand the Context**: First examine the specific functions, files, and code sections mentioned in the review to understand each issue thoroughly.
+1. **Understand the Context**: First examine the specific functions, files, and code sections mentioned in """
+        """the review to understand each issue thoroughly.
 
-2. **Present Options to User**: After understanding the issues, ask the user which specific improvements they would like to implement, presenting them as a clear list of options.
+2. **Present Options to User**: After understanding the issues, ask the user which specific improvements """
+        """they would like to implement, presenting them as a clear list of options.
 
-3. **Implement Selected Fixes**: Only implement the fixes the user chooses, ensuring each change is made correctly and maintains code quality.
+3. **Implement Selected Fixes**: Only implement the fixes the user chooses, ensuring each change is made """
+        """correctly and maintains code quality.
 
-Remember: Always understand the code context before suggesting fixes, and let the user decide which improvements to implement."""
+Remember: Always understand the code context before suggesting fixes, and let the user decide which """
+        """improvements to implement."""

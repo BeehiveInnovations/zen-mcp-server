@@ -91,13 +91,13 @@ class TestModelSelection:
         with patch.object(ModelProviderRegistry, "get_available_models") as mock_get_available:
             # Mock only Gemini models available
             mock_get_available.return_value = {
-                "gemini-2.5-pro-preview-06-05": ProviderType.GOOGLE,
-                "gemini-2.5-flash-preview-05-20": ProviderType.GOOGLE,
+                "gemini-2.5-pro": ProviderType.GOOGLE,
+                "gemini-2.5-flash": ProviderType.GOOGLE,
             }
 
             model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.EXTENDED_REASONING)
             # Should find the pro model for extended reasoning
-            assert "pro" in model or model == "gemini-2.5-pro-preview-06-05"
+            assert "pro" in model or model == "gemini-2.5-pro"
 
     def test_fast_response_with_openai(self):
         """Test FAST_RESPONSE prefers o4-mini when OpenAI is available."""
@@ -117,13 +117,13 @@ class TestModelSelection:
         with patch.object(ModelProviderRegistry, "get_available_models") as mock_get_available:
             # Mock only Gemini models available
             mock_get_available.return_value = {
-                "gemini-2.5-pro-preview-06-05": ProviderType.GOOGLE,
-                "gemini-2.5-flash-preview-05-20": ProviderType.GOOGLE,
+                "gemini-2.5-pro": ProviderType.GOOGLE,
+                "gemini-2.5-flash": ProviderType.GOOGLE,
             }
 
             model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.FAST_RESPONSE)
             # Should find the flash model for fast response
-            assert "flash" in model or model == "gemini-2.5-flash-preview-05-20"
+            assert "flash" in model or model == "gemini-2.5-flash"
 
     def test_balanced_category_fallback(self):
         """Test BALANCED category uses existing logic."""
@@ -143,13 +143,13 @@ class TestModelSelection:
         with patch.object(ModelProviderRegistry, "get_available_models") as mock_get_available:
             # Mock only Gemini models available
             mock_get_available.return_value = {
-                "gemini-2.5-pro-preview-06-05": ProviderType.GOOGLE,
-                "gemini-2.5-flash-preview-05-20": ProviderType.GOOGLE,
+                "gemini-2.5-pro": ProviderType.GOOGLE,
+                "gemini-2.5-flash": ProviderType.GOOGLE,
             }
 
             model = ModelProviderRegistry.get_preferred_fallback_model()
             # Should pick a reasonable default, preferring flash for balanced use
-            assert "flash" in model or model == "gemini-2.5-flash-preview-05-20"
+            assert "flash" in model or model == "gemini-2.5-flash"
 
 
 class TestFlexibleModelSelection:
@@ -168,8 +168,8 @@ class TestFlexibleModelSelection:
             # Case 2: Mix of Gemini shorthands and full names
             {
                 "available": {
-                    "gemini-2.5-flash-preview-05-20": ProviderType.GOOGLE,
-                    "gemini-2.5-pro-preview-06-05": ProviderType.GOOGLE,
+                    "gemini-2.5-flash": ProviderType.GOOGLE,
+                    "gemini-2.5-pro": ProviderType.GOOGLE,
                 },
                 "category": ToolModelCategory.FAST_RESPONSE,
                 "expected_contains": "flash",
@@ -220,7 +220,7 @@ class TestCustomProviderFallback:
             mock_find_thinking.return_value = None
 
             model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.EXTENDED_REASONING)
-            assert model == "gemini-2.5-pro-preview-06-05"
+            assert model == "gemini-2.5-pro"
 
 
 class TestAutoModeErrorMessages:
@@ -234,8 +234,8 @@ class TestAutoModeErrorMessages:
                 with patch.object(ModelProviderRegistry, "get_available_models") as mock_get_available:
                     # Mock only Gemini models available
                     mock_get_available.return_value = {
-                        "gemini-2.5-pro-preview-06-05": ProviderType.GOOGLE,
-                        "gemini-2.5-flash-preview-05-20": ProviderType.GOOGLE,
+                        "gemini-2.5-pro": ProviderType.GOOGLE,
+                        "gemini-2.5-flash": ProviderType.GOOGLE,
                     }
 
                     tool = ThinkDeepTool()
@@ -245,7 +245,7 @@ class TestAutoModeErrorMessages:
                     assert "Model parameter is required in auto mode" in result[0].text
                     # Should suggest a model suitable for extended reasoning (either full name or with 'pro')
                     response_text = result[0].text
-                    assert "gemini-2.5-pro-preview-06-05" in response_text or "pro" in response_text
+                    assert "gemini-2.5-pro" in response_text or "pro" in response_text
                     assert "(category: extended_reasoning)" in response_text
 
     @pytest.mark.asyncio
@@ -291,16 +291,22 @@ class TestFileContentPreparation:
             tool = ThinkDeepTool()
             tool._current_model_name = "auto"
 
+            # Set up model context to simulate normal execution flow
+            from utils.model_context import ModelContext
+
+            tool._model_context = ModelContext("gemini-2.5-pro")
+
             # Call the method
             content, processed_files = tool._prepare_file_content_for_prompt(["/test/file.py"], None, "test")
 
-            # Check that it logged the correct message
-            debug_calls = [call for call in mock_logger.debug.call_args_list if "Auto mode detected" in str(call)]
+            # Check that it logged the correct message about using model context
+            debug_calls = [call for call in mock_logger.debug.call_args_list if "Using model context" in str(call)]
             assert len(debug_calls) > 0
             debug_message = str(debug_calls[0])
-            # Should use a model suitable for extended reasoning
-            assert "gemini-2.5-pro-preview-06-05" in debug_message or "pro" in debug_message
-            assert "extended_reasoning" in debug_message
+            # Should mention the model being used
+            assert "gemini-2.5-pro" in debug_message
+            # Should mention file tokens (not content tokens)
+            assert "file tokens" in debug_message
 
 
 class TestProviderHelperMethods:

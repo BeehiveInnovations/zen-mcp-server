@@ -14,25 +14,31 @@ from systemprompts import THINKDEEP_PROMPT
 
 from .base import BaseTool, ToolRequest
 
+# Field descriptions to avoid duplication between Pydantic and JSON schema
+THINKDEEP_FIELD_DESCRIPTIONS = {
+    "prompt": (
+        "MANDATORY: you MUST first think hard and establish a deep understanding of the topic and question by thinking through all "
+        "relevant details, context, constraints, and implications. Provide your thought-partner all of your current thinking/analysis "
+        "to extend and validate. Share these extended thoughts and ideas in "
+        "the prompt so your assistant has comprehensive information to work with for the best analysis."
+    ),
+    "problem_context": "Provate additional context about the problem or goal. Be as expressive as possible. More information will "
+    "be very helpful to your thought-partner.",
+    "focus_areas": "Specific aspects to focus on (architecture, performance, security, etc.)",
+    "files": "Optional absolute file paths or directories for additional context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+    "images": "Optional images for visual analysis - diagrams, charts, system architectures, or any visual information to analyze. "
+    "(must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+}
+
 
 class ThinkDeepRequest(ToolRequest):
     """Request model for thinkdeep tool"""
 
-    prompt: str = Field(
-        ...,
-        description="Your current thinking/analysis to extend and validate. IMPORTANT: Before using this tool, Claude MUST first think hard and establish a deep understanding of the topic and question by thinking through all relevant details, context, constraints, and implications. Share these extended thoughts and ideas in the prompt so the model has comprehensive information to work with for the best analysis.",
-    )
-    problem_context: Optional[str] = Field(
-        None, description="Additional context about the problem or goal. Be as expressive as possible."
-    )
-    focus_areas: Optional[list[str]] = Field(
-        None,
-        description="Specific aspects to focus on (architecture, performance, security, etc.)",
-    )
-    files: Optional[list[str]] = Field(
-        None,
-        description="Optional file paths or directories for additional context (must be absolute paths)",
-    )
+    prompt: str = Field(..., description=THINKDEEP_FIELD_DESCRIPTIONS["prompt"])
+    problem_context: Optional[str] = Field(None, description=THINKDEEP_FIELD_DESCRIPTIONS["problem_context"])
+    focus_areas: Optional[list[str]] = Field(None, description=THINKDEEP_FIELD_DESCRIPTIONS["focus_areas"])
+    files: Optional[list[str]] = Field(None, description=THINKDEEP_FIELD_DESCRIPTIONS["files"])
+    images: Optional[list[str]] = Field(None, description=THINKDEEP_FIELD_DESCRIPTIONS["images"])
 
 
 class ThinkDeepTool(BaseTool):
@@ -60,22 +66,27 @@ class ThinkDeepTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Your current thinking/analysis to extend and validate. IMPORTANT: Before using this tool, Claude MUST first think deeply and establish a deep understanding of the topic and question by thinking through all relevant details, context, constraints, and implications. Share these extended thoughts and ideas in the prompt so the model has comprehensive information to work with for the best analysis.",
+                    "description": THINKDEEP_FIELD_DESCRIPTIONS["prompt"],
                 },
                 "model": self.get_model_field_schema(),
                 "problem_context": {
                     "type": "string",
-                    "description": "Additional context about the problem or goal. Be as expressive as possible.",
+                    "description": THINKDEEP_FIELD_DESCRIPTIONS["problem_context"],
                 },
                 "focus_areas": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Specific aspects to focus on (architecture, performance, security, etc.)",
+                    "description": THINKDEEP_FIELD_DESCRIPTIONS["focus_areas"],
                 },
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Optional file paths or directories for additional context (must be absolute paths)",
+                    "description": THINKDEEP_FIELD_DESCRIPTIONS["files"],
+                },
+                "images": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": THINKDEEP_FIELD_DESCRIPTIONS["images"],
                 },
                 "temperature": {
                     "type": "number",
@@ -143,13 +154,7 @@ class ThinkDeepTool(BaseTool):
         if updated_files is not None:
             request.files = updated_files
 
-        # MCP boundary check - STRICT REJECTION
-        if request.files:
-            file_size_check = self.check_total_file_size(request.files)
-            if file_size_check:
-                from tools.models import ToolOutput
-
-                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
+        # File size validation happens at MCP boundary in server.py
 
         # Build context parts
         context_parts = [f"=== CLAUDE'S CURRENT ANALYSIS ===\n{current_analysis}\n=== END ANALYSIS ==="]

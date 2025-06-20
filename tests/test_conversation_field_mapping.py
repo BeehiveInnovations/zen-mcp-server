@@ -74,7 +74,7 @@ async def test_conversation_history_field_mapping():
                         mock_provider = MagicMock()
                         mock_provider.get_capabilities.return_value = ModelCapabilities(
                             provider=ProviderType.GOOGLE,
-                            model_name="gemini-2.5-flash-preview-05-20",
+                            model_name="gemini-2.5-flash",
                             friendly_name="Gemini",
                             context_window=200000,
                             supports_extended_thinking=True,
@@ -132,7 +132,7 @@ async def test_unknown_tool_defaults_to_prompt():
                 # Mock ModelContext to avoid calculation errors
                 with patch("utils.model_context.ModelContext") as mock_model_context_class:
                     mock_model_context = MagicMock()
-                    mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
+                    mock_model_context.model_name = "gemini-2.5-flash"
                     mock_model_context.calculate_token_allocation.return_value = MagicMock(
                         total_tokens=200000,
                         content_tokens=120000,
@@ -157,10 +157,10 @@ async def test_unknown_tool_defaults_to_prompt():
 
 @pytest.mark.asyncio
 async def test_tool_parameter_standardization():
-    """Test that all tools use standardized 'prompt' parameter"""
+    """Test that most tools use standardized 'prompt' parameter (debug uses investigation pattern)"""
     from tools.analyze import AnalyzeRequest
     from tools.codereview import CodeReviewRequest
-    from tools.debug import DebugIssueRequest
+    from tools.debug import DebugInvestigationRequest
     from tools.precommit import PrecommitRequest
     from tools.thinkdeep import ThinkDeepRequest
 
@@ -168,9 +168,16 @@ async def test_tool_parameter_standardization():
     analyze = AnalyzeRequest(files=["/test.py"], prompt="What does this do?")
     assert analyze.prompt == "What does this do?"
 
-    # Test debug tool uses prompt
-    debug = DebugIssueRequest(prompt="Error occurred")
-    assert debug.prompt == "Error occurred"
+    # Debug tool now uses self-investigation pattern with different fields
+    debug = DebugInvestigationRequest(
+        step="Investigating error",
+        step_number=1,
+        total_steps=3,
+        next_step_required=True,
+        findings="Initial error analysis",
+    )
+    assert debug.step == "Investigating error"
+    assert debug.findings == "Initial error analysis"
 
     # Test codereview tool uses prompt
     review = CodeReviewRequest(files=["/test.py"], prompt="Review this")

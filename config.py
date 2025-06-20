@@ -14,9 +14,9 @@ import os
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "4.7.3"
+__version__ = "5.2.4"
 # Last update date in ISO format
-__updated__ = "2025-06-16"
+__updated__ = "2025-06-19"
 # Primary maintainer
 __author__ = "Fahad Gilani"
 
@@ -68,17 +68,15 @@ MODEL_CAPABILITIES_DESC = {
     "devstral": "Devstral Small (131K context) via Requesty - Mistral's coding-focused model",
     "mistral-large": "Mistral Large Latest (131K context) via Requesty - Mistral's most capable model",
     # Full model names also supported (for explicit specification)
-    "gemini-2.5-flash-preview-05-20": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
-    "gemini-2.5-pro-preview-06-05": (
-        "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"
-    ),
+    "gemini-2.5-flash": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
+    "gemini-2.5-pro": ("Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis"),
 }
 
 # Requesty/OpenRouter/Custom API Fallback Behavior:
 # When only Requesty, OpenRouter or Custom API is configured (no native API keys), these
 # model aliases automatically map to equivalent models through the proxy:
-# - "flash" → "google/gemini-2.5-flash-preview-05-20" (via OpenRouter)
-# - "pro" → "google/gemini-2.5-pro-preview-06-05" (via OpenRouter)
+# - "flash" → "google/gemini-2.5-flash" (via OpenRouter)
+# - "pro" → "google/gemini-2.5-pro" (via OpenRouter)
 # - "o3" → "openai/o3" (via OpenRouter)
 # - "o3mini" → "openai/o3-mini" (via OpenRouter)
 # - "o4-mini" → "openai/o4-mini" (via OpenRouter)
@@ -109,6 +107,14 @@ TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
 # Higher modes use more computational budget but provide deeper analysis
 DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "high")
 
+# Consensus Tool Defaults
+# Consensus timeout and rate limiting settings
+DEFAULT_CONSENSUS_TIMEOUT = 120.0  # 2 minutes per model
+DEFAULT_CONSENSUS_MAX_INSTANCES_PER_COMBINATION = 2
+
+# NOTE: Consensus tool now uses sequential processing for MCP compatibility
+# Concurrent processing was removed to avoid async pattern violations
+
 # MCP Protocol Transport Limits
 #
 # IMPORTANT: This limit ONLY applies to the Claude CLI ↔ MCP Server transport boundary.
@@ -136,7 +142,7 @@ DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "
 # What is NOT limited by this constant:
 # - System prompts added internally by tools
 # - File content embedded by tools
-# - Conversation history loaded from Redis
+# - Conversation history loaded from storage
 # - Web search instructions or other internal additions
 # - Complete prompts sent to external models (managed by model-specific token limits)
 #
@@ -145,6 +151,5 @@ DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "
 MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
 
 # Threading configuration
-# Simple Redis-based conversation threading for stateless MCP environment
-# Set REDIS_URL environment variable to connect to your Redis instance
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Simple in-memory conversation threading for stateless MCP environment
+# Conversations persist only during the Claude session

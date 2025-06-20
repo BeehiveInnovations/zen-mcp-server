@@ -19,7 +19,8 @@ from config import MCP_PROMPT_SIZE_LIMIT
 from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
-from tools.debug import DebugIssueTool
+
+# from tools.debug import DebugIssueTool  # Commented out - debug tool refactored
 from tools.precommit import Precommit
 from tools.thinkdeep import ThinkDeepTool
 
@@ -76,7 +77,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="This is a test response",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -91,22 +92,35 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_chat_prompt_file_handling(self, temp_prompt_file):
         """Test that chat tool correctly handles prompt.txt files with reasonable size."""
+        from tests.mock_helpers import create_mock_provider
+
         tool = ChatTool()
         # Use a smaller prompt that won't exceed limit when combined with system prompt
         reasonable_prompt = "This is a reasonable sized prompt for testing prompt.txt file handling."
 
-        # Mock the model
-        with patch.object(tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="google")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = MagicMock(
-                content="Processed prompt from file",
-                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
-                metadata={"finish_reason": "STOP"},
-            )
+        # Mock the model with proper capabilities and ModelContext
+        with (
+            patch.object(tool, "get_model_provider") as mock_get_provider,
+            patch("utils.model_context.ModelContext") as mock_model_context_class,
+        ):
+
+            mock_provider = create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576)
+            mock_provider.generate_content.return_value.content = "Processed prompt from file"
             mock_get_provider.return_value = mock_provider
+
+            # Mock ModelContext to avoid the comparison issue
+            from utils.model_context import TokenAllocation
+
+            mock_model_context = MagicMock()
+            mock_model_context.model_name = "gemini-2.5-flash"
+            mock_model_context.calculate_token_allocation.return_value = TokenAllocation(
+                total_tokens=1_048_576,
+                content_tokens=838_861,
+                response_tokens=209_715,
+                file_tokens=335_544,
+                history_tokens=335_544,
+            )
+            mock_model_context_class.return_value = mock_model_context
 
             # Mock read_file_content to avoid security checks
             with patch("tools.base.read_file_content") as mock_read_file:
@@ -233,29 +247,34 @@ class TestLargePromptHandling:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        # The precommit tool may return success or clarification_required depending on git state
+        # The precommit tool may return success or files_required_to_continue depending on git state
         # The core fix ensures large prompts are detected at the right time
-        assert output["status"] in ["success", "clarification_required", "resend_prompt"]
+        assert output["status"] in ["success", "files_required_to_continue", "resend_prompt"]
 
-    @pytest.mark.asyncio
-    async def test_debug_large_error_description(self, large_prompt):
-        """Test that debug tool detects large error_description."""
-        tool = DebugIssueTool()
-        result = await tool.execute({"prompt": large_prompt})
+    # NOTE: Debug tool tests have been commented out because the debug tool has been
+    # refactored to use a self-investigation pattern instead of accepting a prompt field.
+    # The new debug tool requires fields like: step, step_number, total_steps, next_step_required, findings
+    # and doesn't have the "resend_prompt" functionality for large prompts.
 
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        assert output["status"] == "resend_prompt"
+    # @pytest.mark.asyncio
+    # async def test_debug_large_error_description(self, large_prompt):
+    #     """Test that debug tool detects large error_description."""
+    #     tool = DebugIssueTool()
+    #     result = await tool.execute({"prompt": large_prompt})
+    #
+    #     assert len(result) == 1
+    #     output = json.loads(result[0].text)
+    #     assert output["status"] == "resend_prompt"
 
-    @pytest.mark.asyncio
-    async def test_debug_large_error_context(self, large_prompt, normal_prompt):
-        """Test that debug tool detects large error_context."""
-        tool = DebugIssueTool()
-        result = await tool.execute({"prompt": normal_prompt, "error_context": large_prompt})
-
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        assert output["status"] == "resend_prompt"
+    # @pytest.mark.asyncio
+    # async def test_debug_large_error_context(self, large_prompt, normal_prompt):
+    #     """Test that debug tool detects large error_context."""
+    #     tool = DebugIssueTool()
+    #     result = await tool.execute({"prompt": normal_prompt, "error_context": large_prompt})
+    #
+    #     assert len(result) == 1
+    #     output = json.loads(result[0].text)
+    #     assert output["status"] == "resend_prompt"
 
     @pytest.mark.asyncio
     async def test_analyze_large_question(self, large_prompt):
@@ -280,22 +299,31 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
 
-            # Mock the centralized file preparation method to avoid file system access
-            with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
-                mock_prepare_files.return_value = ("File content", [other_file])
+            # Mock handle_prompt_file to verify prompt.txt is handled
+            with patch.object(tool, "handle_prompt_file") as mock_handle_prompt:
+                # Return the prompt content and updated files list (without prompt.txt)
+                mock_handle_prompt.return_value = ("Large prompt content from file", [other_file])
 
-                await tool.execute({"prompt": "", "files": [temp_prompt_file, other_file]})
+                # Mock the centralized file preparation method
+                with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files:
+                    mock_prepare_files.return_value = ("File content", [other_file])
 
-                # Verify prompt.txt was removed from files list
-                mock_prepare_files.assert_called_once()
-                files_arg = mock_prepare_files.call_args[0][0]
-                assert len(files_arg) == 1
-                assert files_arg[0] == other_file
+                    # Use a small prompt to avoid triggering size limit
+                    await tool.execute({"prompt": "Test prompt", "files": [temp_prompt_file, other_file]})
+
+                    # Verify handle_prompt_file was called with the original files list
+                    mock_handle_prompt.assert_called_once_with([temp_prompt_file, other_file])
+
+                    # Verify _prepare_file_content_for_prompt was called with the updated files list (without prompt.txt)
+                    mock_prepare_files.assert_called_once()
+                    files_arg = mock_prepare_files.call_args[0][0]
+                    assert len(files_arg) == 1
+                    assert files_arg[0] == other_file
 
         temp_dir = os.path.dirname(temp_prompt_file)
         shutil.rmtree(temp_dir)
@@ -314,7 +342,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Response to the large prompt",
                 usage={"input_tokens": 12000, "output_tokens": 10, "total_tokens": 12010},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -346,7 +374,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Success",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -358,20 +386,33 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_prompt_file_read_error(self):
         """Test handling when prompt.txt can't be read."""
+        from tests.mock_helpers import create_mock_provider
+
         tool = ChatTool()
         bad_file = "/nonexistent/prompt.txt"
 
-        with patch.object(tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="google")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = MagicMock(
-                content="Success",
-                usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
-                metadata={"finish_reason": "STOP"},
-            )
+        with (
+            patch.object(tool, "get_model_provider") as mock_get_provider,
+            patch("utils.model_context.ModelContext") as mock_model_context_class,
+        ):
+
+            mock_provider = create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576)
+            mock_provider.generate_content.return_value.content = "Success"
             mock_get_provider.return_value = mock_provider
+
+            # Mock ModelContext to avoid the comparison issue
+            from utils.model_context import TokenAllocation
+
+            mock_model_context = MagicMock()
+            mock_model_context.model_name = "gemini-2.5-flash"
+            mock_model_context.calculate_token_allocation.return_value = TokenAllocation(
+                total_tokens=1_048_576,
+                content_tokens=838_861,
+                response_tokens=209_715,
+                file_tokens=335_544,
+                history_tokens=335_544,
+            )
+            mock_model_context_class.return_value = mock_model_context
 
             # Should continue with empty prompt when file can't be read
             result = await tool.execute({"prompt": "", "files": [bad_file]})
@@ -402,7 +443,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Weather is sunny",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -467,7 +508,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Hi there!",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider
@@ -520,7 +561,7 @@ class TestLargePromptHandling:
             mock_provider.generate_content.return_value = MagicMock(
                 content="Continuing our conversation...",
                 usage={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.5-flash",
                 metadata={"finish_reason": "STOP"},
             )
             mock_get_provider.return_value = mock_provider

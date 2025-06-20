@@ -6,9 +6,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from utils.file_utils import read_json_file, translate_path_for_environment
+from utils.file_utils import read_json_file
 
-from .base import ModelCapabilities, ProviderType, RangeTemperatureConstraint
+from .base import (
+    ModelCapabilities,
+    ProviderType,
+    TemperatureConstraint,
+    create_temperature_constraint,
+)
 
 
 @dataclass
@@ -23,8 +28,22 @@ class OpenRouterModelConfig:
     supports_streaming: bool = True
     supports_function_calling: bool = False
     supports_json_mode: bool = False
+    supports_images: bool = False  # Whether model can process images
+    max_image_size_mb: float = 0.0  # Maximum total size for all images in MB
+    supports_temperature: bool = True  # Whether model accepts temperature parameter in API calls
+    temperature_constraint: Optional[str] = (
+        None  # Type of temperature constraint: "fixed", "range", "discrete", or None for default range
+    )
     is_custom: bool = False  # True for models that should only be used with custom endpoints
     description: str = ""
+
+    def _create_temperature_constraint(self) -> TemperatureConstraint:
+        """Create temperature constraint object from configuration.
+
+        Returns:
+            TemperatureConstraint object based on configuration
+        """
+        return create_temperature_constraint(self.temperature_constraint or "range")
 
     def to_capabilities(self) -> ModelCapabilities:
         """Convert to ModelCapabilities object."""
@@ -37,7 +56,10 @@ class OpenRouterModelConfig:
             supports_system_prompts=self.supports_system_prompts,
             supports_streaming=self.supports_streaming,
             supports_function_calling=self.supports_function_calling,
-            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 1.0),
+            supports_images=self.supports_images,
+            max_image_size_mb=self.max_image_size_mb,
+            supports_temperature=self.supports_temperature,
+            temperature_constraint=self._create_temperature_constraint(),
         )
 
 
@@ -55,18 +77,17 @@ class OpenRouterModelRegistry:
 
         # Determine config path
         if config_path:
-            # Direct config_path parameter - translate for Docker if needed
-            translated_path = translate_path_for_environment(config_path)
-            self.config_path = Path(translated_path)
+            # Direct config_path parameter
+            self.config_path = Path(config_path)
         else:
             # Check environment variable first
             env_path = os.getenv("CUSTOM_MODELS_CONFIG_PATH")
             if env_path:
-                # Environment variable path - translate for Docker if needed
-                translated_path = translate_path_for_environment(env_path)
-                self.config_path = Path(translated_path)
+                # Environment variable path
+                self.config_path = Path(env_path)
             else:
-                # Default to conf/custom_models.json (already in container)
+                # Default to conf/custom_models.json - use relative path from this file
+                # This works in development environment
                 self.config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
 
         # Load configuration
