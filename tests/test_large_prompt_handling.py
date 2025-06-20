@@ -21,7 +21,6 @@ from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 
 # from tools.debug import DebugIssueTool  # Commented out - debug tool refactored
-from tools.precommit import Precommit
 from tools.thinkdeep import ThinkDeepTool
 
 
@@ -239,17 +238,11 @@ class TestLargePromptHandling:
             importlib.reload(config)
             ModelProviderRegistry._instance = None
 
-    @pytest.mark.asyncio
-    async def test_review_changes_large_original_request(self, large_prompt):
-        """Test that review_changes tool works with large prompts (behavior depends on git repo state)."""
-        tool = Precommit()
-        result = await tool.execute({"path": "/some/path", "prompt": large_prompt, "model": "flash"})
-
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        # The precommit tool may return success or files_required_to_continue depending on git state
-        # The core fix ensures large prompts are detected at the right time
-        assert output["status"] in ["success", "files_required_to_continue", "resend_prompt"]
+    # NOTE: Precommit test has been removed because the precommit tool has been
+    # refactored to use a workflow-based pattern instead of accepting simple prompt/path fields.
+    # The new precommit tool requires workflow fields like: step, step_number, total_steps,
+    # next_step_required, findings, etc. See simulator_tests/test_precommitworkflow_validation.py
+    # for comprehensive workflow testing including large prompt handling.
 
     # NOTE: Debug tool tests have been commented out because the debug tool has been
     # refactored to use a self-investigation pattern instead of accepting a prompt field.

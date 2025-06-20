@@ -14,7 +14,7 @@ from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
 from tools.models import ToolModelCategory
-from tools.precommit import Precommit
+from tools.precommit import PrecommitTool as Precommit
 from tools.thinkdeep import ThinkDeepTool
 
 

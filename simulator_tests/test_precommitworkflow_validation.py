@@ -2,7 +2,7 @@
 """
 PrecommitWorkflow Tool Validation Test
 
-Tests the precommitworkflow tool's capabilities using the new workflow architecture.
+Tests the precommit tool's capabilities using the new workflow architecture.
 This validates that the workflow-based pre-commit validation provides step-by-step
 analysis with proper investigation guidance and expert analysis integration.
 """
@@ -14,18 +14,18 @@ from .conversation_base_test import ConversationBaseTest
 
 
 class PrecommitWorkflowValidationTest(ConversationBaseTest):
-    """Test precommitworkflow tool with new workflow architecture"""
+    """Test precommit tool with new workflow architecture"""
 
     @property
     def test_name(self) -> str:
-        return "precommitworkflow_validation"
+        return "precommit_validation"
 
     @property
     def test_description(self) -> str:
         return "PrecommitWorkflow tool validation with new workflow architecture"
 
     def run_test(self) -> bool:
-        """Test precommitworkflow tool capabilities"""
+        """Test precommit tool capabilities"""
         # Set up the test environment
         self.setUp()
 
@@ -59,7 +59,7 @@ class PrecommitWorkflowValidationTest(ConversationBaseTest):
             if not self._test_multi_step_file_context():
                 return False
 
-            self.logger.info("  ✅ All precommitworkflow validation tests passed")
+            self.logger.info("  ✅ All precommit validation tests passed")
             return True
 
         except Exception as e:
@@ -176,7 +176,7 @@ REQUIREMENTS:
             # Step 1: Start validation
             self.logger.info("    1.1.1: Step 1 - Initial validation plan")
             response1, continuation_id = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "I need to perform comprehensive pre-commit validation for new API endpoints. Let me start by analyzing the changes and identifying potential issues.",
                     "step_number": 1,
@@ -209,7 +209,7 @@ REQUIREMENTS:
             # Step 2: Examine the code for issues
             self.logger.info("    1.1.2: Step 2 - Code examination")
             response2, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Now examining the API endpoint implementation and configuration for security vulnerabilities and best practices violations.",
                     "step_number": 2,
@@ -271,7 +271,7 @@ REQUIREMENTS:
             # Start a new validation for testing backtracking
             self.logger.info("    1.2.1: Start validation for backtracking test")
             response1, continuation_id = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Validating database connection optimization changes",
                     "step_number": 1,
@@ -291,7 +291,7 @@ REQUIREMENTS:
             # Step 2: Wrong direction
             self.logger.info("    1.2.2: Step 2 - Wrong validation focus")
             response2, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Focusing on connection pool size optimization",
                     "step_number": 2,
@@ -313,7 +313,7 @@ REQUIREMENTS:
             # Step 3: Backtrack from step 2
             self.logger.info("    1.2.3: Step 3 - Backtrack and revise approach")
             response3, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Backtracking - the issue might not be database configuration. Let me examine the actual SQL queries and data access patterns instead.",
                     "step_number": 3,
@@ -359,7 +359,7 @@ REQUIREMENTS:
                 # Start fresh if no continuation available
                 self.logger.info("    1.3.0: Starting fresh validation")
                 response0, continuation_id = self.call_mcp_tool(
-                    "precommitworkflow",
+                    "precommit",
                     {
                         "step": "Validating the security fixes for API endpoints",
                         "step_number": 1,
@@ -380,7 +380,7 @@ REQUIREMENTS:
             # Final step - trigger expert analysis
             self.logger.info("    1.3.1: Final step - complete validation")
             response_final, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Validation complete. I have identified all critical security issues and missing safeguards in the new API endpoints.",
                     "step_number": 2,
@@ -397,9 +397,9 @@ REQUIREMENTS:
                         {"severity": "medium", "description": "Missing authentication on admin endpoint"},
                         {"severity": "medium", "description": "Debug mode enabled in production configuration"},
                     ],
-                    "assessment": "Multiple critical security vulnerabilities require fixes before commit. Changes are not ready for production.",
                     "confidence": "high",
                     "continuation_id": continuation_id,
+                    "files": [self.api_file, self.config_file],  # Include files for expert analysis
                     "model": "flash",  # Use flash for expert analysis
                 },
             )
@@ -473,7 +473,7 @@ REQUIREMENTS:
             # Test certain confidence - should skip expert analysis
             self.logger.info("    1.4.1: Certain confidence validation")
             response_certain, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "I have confirmed all security issues with 100% certainty: SQL injection, hardcoded secrets, and missing authentication.",
                     "step_number": 1,
@@ -554,7 +554,7 @@ REQUIREMENTS:
             return None
 
     def _parse_precommit_response(self, response_text: str) -> dict:
-        """Parse precommitworkflow tool JSON response"""
+        """Parse precommit tool JSON response"""
         try:
             # Parse the response - it should be direct JSON
             return json.loads(response_text)
@@ -671,7 +671,7 @@ def rate_limiting_middleware(app):
             # Test 1: New conversation, intermediate step - should only reference files
             self.logger.info("    1.5.1: New conversation intermediate step (should reference only)")
             response1, continuation_id = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Starting validation of new authentication and security middleware",
                     "step_number": 1,
@@ -711,7 +711,7 @@ def rate_limiting_middleware(app):
             # Test 2: Intermediate step with continuation - should still only reference
             self.logger.info("    1.5.2: Intermediate step with continuation (should reference only)")
             response2, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Continuing validation with detailed security analysis",
                     "step_number": 2,
@@ -760,7 +760,7 @@ def rate_limiting_middleware(app):
             # Test 3: Final step - should embed files for expert analysis
             self.logger.info("    1.5.3: Final step (should embed files)")
             response3, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Validation complete - identified security gaps and improvement areas",
                     "step_number": 3,
@@ -906,7 +906,7 @@ if __name__ == '__main__':
             # Step 1: Start validation (new conversation)
             self.logger.info("    1.6.1: Step 1 - Start validation")
             response1, continuation_id = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Validating new database manager implementation and corresponding tests",
                     "step_number": 1,
@@ -940,7 +940,7 @@ if __name__ == '__main__':
             # Step 2: Expand validation
             self.logger.info("    1.6.2: Step 2 - Expand validation")
             response2, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Found good database implementation - now examining test coverage",
                     "step_number": 2,
@@ -980,7 +980,7 @@ if __name__ == '__main__':
             # Step 3: Deep analysis
             self.logger.info("    1.6.3: Step 3 - Deep analysis")
             response3, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Performing comprehensive security and best practices analysis",
                     "step_number": 3,
@@ -1015,7 +1015,7 @@ if __name__ == '__main__':
             # Step 4: Final validation with expert consultation
             self.logger.info("    1.6.4: Step 4 - Final step with expert analysis")
             response4, _ = self.call_mcp_tool(
-                "precommitworkflow",
+                "precommit",
                 {
                     "step": "Validation complete - code is ready for commit",
                     "step_number": 4,

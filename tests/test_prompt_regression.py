@@ -15,7 +15,6 @@ from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 
 # from tools.debug import DebugIssueTool  # Commented out - debug tool refactored
-from tools.precommit import Precommit
 from tools.thinkdeep import ThinkDeepTool
 
 
@@ -145,43 +144,11 @@ class TestPromptRegression:
                 assert output["status"] == "success"
                 assert "Found 3 issues" in output["content"]
 
-    @pytest.mark.asyncio
-    async def test_review_changes_normal_request(self, mock_model_response):
-        """Test review_changes tool with normal original_request."""
-        tool = Precommit()
-
-        with patch.object(tool, "get_model_provider") as mock_get_provider:
-            mock_provider = MagicMock()
-            mock_provider.get_provider_type.return_value = MagicMock(value="google")
-            mock_provider.supports_thinking_mode.return_value = False
-            mock_provider.generate_content.return_value = mock_model_response(
-                "Changes look good, implementing feature as requested..."
-            )
-            mock_get_provider.return_value = mock_provider
-
-            # Mock git operations
-            with patch("tools.precommit.find_git_repositories") as mock_find_repos:
-                with patch("tools.precommit.get_git_status") as mock_git_status:
-                    mock_find_repos.return_value = ["/path/to/repo"]
-                    mock_git_status.return_value = {
-                        "branch": "main",
-                        "ahead": 0,
-                        "behind": 0,
-                        "staged_files": ["file.py"],
-                        "unstaged_files": [],
-                        "untracked_files": [],
-                    }
-
-                    result = await tool.execute(
-                        {
-                            "path": "/path/to/repo",
-                            "prompt": "Add user authentication feature with JWT tokens",
-                        }
-                    )
-
-                    assert len(result) == 1
-                    output = json.loads(result[0].text)
-                    assert output["status"] == "success"
+    # NOTE: Precommit test has been removed because the precommit tool has been
+    # refactored to use a workflow-based pattern instead of accepting simple prompt/path fields.
+    # The new precommit tool requires workflow fields like: step, step_number, total_steps,
+    # next_step_required, findings, etc. See simulator_tests/test_precommitworkflow_validation.py
+    # for comprehensive workflow testing.
 
     # NOTE: Debug tool test has been commented out because the debug tool has been
     # refactored to use a self-investigation pattern instead of accepting prompt/error_context fields.

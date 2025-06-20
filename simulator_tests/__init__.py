@@ -53,7 +53,7 @@ TEST_REGISTRY = {
     "openrouter_models": OpenRouterModelsTest,
     "planner_validation": PlannerValidationTest,
     "planner_continuation_history": PlannerContinuationHistoryTest,
-    "precommitworkflow_validation": PrecommitWorkflowValidationTest,
+    "precommit_validation": PrecommitWorkflowValidationTest,
     "token_allocation_validation": TokenAllocationValidationTest,
     "testgen_validation": TestGenValidationTest,
     "refactor_validation": RefactorValidationTest,

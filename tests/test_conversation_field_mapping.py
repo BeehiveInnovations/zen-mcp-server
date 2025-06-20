@@ -187,6 +187,14 @@ async def test_tool_parameter_standardization():
     think = ThinkDeepRequest(prompt="My analysis")
     assert think.prompt == "My analysis"
 
-    # Test precommit tool uses prompt (optional)
-    precommit = PrecommitRequest(path="/repo", prompt="Fix bug")
-    assert precommit.prompt == "Fix bug"
+    # Test precommit tool uses workflow fields
+    precommit = PrecommitRequest(
+        step="Validating changes for commit",
+        step_number=1,
+        total_steps=2,
+        next_step_required=True,
+        findings="Initial validation findings",
+        path="/repo"  # path only needed for step 1
+    )
+    assert precommit.step == "Validating changes for commit"
+    assert precommit.findings == "Initial validation findings"
