@@ -5,6 +5,7 @@ Tool implementations for Zen MCP Server
 from .analyze import AnalyzeTool
 from .chat import ChatTool
 from .codereview import CodeReviewTool
+from .codereviewworkflow import CodeReviewWorkflowTool
 from .consensus import ConsensusTool
 from .debug import DebugIssueTool
 from .listmodels import ListModelsTool
@@ -18,6 +19,7 @@ from .tracer import TracerTool
 __all__ = [
     "ThinkDeepTool",
     "CodeReviewTool",
+    "CodeReviewWorkflowTool",
     "DebugIssueTool",
     "AnalyzeTool",
     "ChatTool",
