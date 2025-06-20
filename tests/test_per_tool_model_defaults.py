@@ -43,7 +43,7 @@ class TestToolModelCategories:
 
     def test_codereview_category(self):
         tool = CodeReviewTool()
-        assert tool.get_model_category() == ToolModelCategory.BALANCED
+        assert tool.get_model_category() == ToolModelCategory.EXTENDED_REASONING
 
     def test_base_tool_default_category(self):
         # Test that BaseTool defaults to BALANCED

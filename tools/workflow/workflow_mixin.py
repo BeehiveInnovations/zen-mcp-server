@@ -1201,7 +1201,7 @@ class BaseWorkflowMixin(ABC):
             reserve_tokens: Optional reserved token count
         """
         # Base implementation does nothing - subclasses override as needed
-        pass
+        return None
 
     def format_response(self, response: str, request, model_info=None):
         """

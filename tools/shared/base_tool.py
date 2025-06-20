@@ -1058,14 +1058,14 @@ When recommending searches, be specific about what information you need and why 
         """Execute the tool - will be inherited from existing base.py for now."""
         # This will be implemented by importing from the current base.py
         # for backward compatibility during the migration
-        pass
+        raise NotImplementedError("Subclasses must implement execute method")
 
     def _resolve_model_context(self, arguments: dict, request) -> tuple[str, Any]:
         """Resolve model context - will be inherited for now."""
         # Implementation inherited from current base.py
-        pass
+        raise NotImplementedError("Subclasses must implement _resolve_model_context method")
 
     def _parse_response(self, raw_text: str, request, model_info: Optional[dict] = None):
         """Parse response - will be inherited for now."""
         # Implementation inherited from current base.py
-        pass
+        raise NotImplementedError("Subclasses must implement _parse_response method")

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CodeReviewWorkflow Tool Validation Test
+CodeReview Tool Validation Test
 
-Tests the codereviewworkflow tool's capabilities using the new workflow architecture.
+Tests the codereview tool's capabilities using the new workflow architecture.
 This validates that the workflow-based code review provides step-by-step
 analysis with proper investigation guidance and expert analysis integration.
 """
@@ -13,19 +13,19 @@ from typing import Optional
 from .conversation_base_test import ConversationBaseTest
 
 
-class CodeReviewWorkflowValidationTest(ConversationBaseTest):
-    """Test codereviewworkflow tool with new workflow architecture"""
+class CodeReviewValidationTest(ConversationBaseTest):
+    """Test codereview tool with new workflow architecture"""
 
     @property
     def test_name(self) -> str:
-        return "codereviewworkflow_validation"
+        return "codereview_validation"
 
     @property
     def test_description(self) -> str:
-        return "CodeReviewWorkflow tool validation with new workflow architecture"
+        return "CodeReview tool validation with new workflow architecture"
 
     def run_test(self) -> bool:
-        """Test codereviewworkflow tool capabilities"""
+        """Test codereview tool capabilities"""
         # Set up the test environment
         self.setUp()
 
@@ -59,7 +59,7 @@ class CodeReviewWorkflowValidationTest(ConversationBaseTest):
             if not self._test_multi_step_file_context():
                 return False
 
-            self.logger.info("  ✅ All codereviewworkflow validation tests passed")
+            self.logger.info("  ✅ All codereview validation tests passed")
             return True
 
         except Exception as e:
@@ -244,7 +244,7 @@ class ConfigurationManager:
             # Step 1: Start review
             self.logger.info("    1.1.1: Step 1 - Initial review")
             response1, continuation_id = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "I need to perform a comprehensive code review of the payment processing module. Let me start by examining the code structure and identifying potential issues.",
                     "step_number": 1,
@@ -277,7 +277,7 @@ class ConfigurationManager:
             # Step 2: Detailed analysis
             self.logger.info("    1.1.2: Step 2 - Detailed security analysis")
             response2, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Now performing detailed security analysis of the payment processor code to identify vulnerabilities and code quality issues.",
                     "step_number": 2,
@@ -348,7 +348,7 @@ class ConfigurationManager:
             # Start a new review for testing backtracking
             self.logger.info("    1.2.1: Start review for backtracking test")
             response1, continuation_id = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Reviewing configuration management code for best practices",
                     "step_number": 1,
@@ -369,7 +369,7 @@ class ConfigurationManager:
             # Step 2: Initial direction
             self.logger.info("    1.2.2: Step 2 - Initial analysis direction")
             response2, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Focusing on configuration architecture patterns",
                     "step_number": 2,
@@ -393,7 +393,7 @@ class ConfigurationManager:
             # Step 3: Backtrack and focus on security
             self.logger.info("    1.2.3: Step 3 - Backtrack to focus on security issues")
             response3, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Backtracking - need to focus on the critical security issues I initially missed. Found hardcoded secrets and credentials in plain text.",
                     "step_number": 3,
@@ -440,7 +440,7 @@ class ConfigurationManager:
                 # Start fresh if no continuation available
                 self.logger.info("    1.3.0: Starting fresh review")
                 response0, continuation_id = self.call_mcp_tool(
-                    "codereviewworkflow",
+                    "codereview",
                     {
                         "step": "Reviewing payment processor for security and quality issues",
                         "step_number": 1,
@@ -460,7 +460,7 @@ class ConfigurationManager:
             # Final step - trigger expert analysis
             self.logger.info("    1.3.1: Final step - complete review")
             response_final, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Code review complete. Identified comprehensive security, performance, and maintainability issues throughout the payment processing module.",
                     "step_number": 2,
@@ -469,7 +469,11 @@ class ConfigurationManager:
                     "findings": "Complete analysis reveals critical security vulnerabilities, performance bottlenecks, over-engineering patterns, and maintainability concerns. All issues documented with severity levels.",
                     "files_checked": [self.payment_file],
                     "relevant_files": [self.payment_file],
-                    "relevant_context": ["PaymentProcessor.process_payment", "PaymentProcessor._generate_complex_hash", "PaymentProcessor.get_payment_history"],
+                    "relevant_context": [
+                        "PaymentProcessor.process_payment",
+                        "PaymentProcessor._generate_complex_hash",
+                        "PaymentProcessor.get_payment_history",
+                    ],
                     "issues_found": [
                         {"severity": "critical", "description": "API key stored in plain text"},
                         {"severity": "critical", "description": "Sensitive payment data logged"},
@@ -552,7 +556,7 @@ class ConfigurationManager:
             # Test certain confidence - should skip expert analysis
             self.logger.info("    1.4.1: Certain confidence review")
             response_certain, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "I have completed a thorough code review with 100% certainty of all issues identified.",
                     "step_number": 1,
@@ -650,7 +654,7 @@ def validate_credit_card(card_number):
             # Test 1: New conversation, intermediate step - should only reference files
             self.logger.info("    1.5.1: New conversation intermediate step (should reference only)")
             response1, continuation_id = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Starting comprehensive code review of utility modules",
                     "step_number": 1,
@@ -689,7 +693,7 @@ def validate_credit_card(card_number):
             # Test 2: Final step - should embed files for expert analysis
             self.logger.info("    1.5.2: Final step (should embed files)")
             response3, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Code review complete - identified all issues and recommendations",
                     "step_number": 3,
@@ -758,7 +762,7 @@ def validate_credit_card(card_number):
             # Step 1: Start review (new conversation)
             self.logger.info("    1.6.1: Step 1 - Start comprehensive review")
             response1, continuation_id = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Starting comprehensive security and quality review of payment system components",
                     "step_number": 1,
@@ -792,7 +796,7 @@ def validate_credit_card(card_number):
             # Step 2: Security analysis
             self.logger.info("    1.6.2: Step 2 - Security analysis")
             response2, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Focusing on critical security vulnerabilities across both modules",
                     "step_number": 2,
@@ -829,7 +833,7 @@ def validate_credit_card(card_number):
             # Step 3: Performance and architecture analysis
             self.logger.info("    1.6.3: Step 3 - Performance and architecture analysis")
             response3, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Analyzing performance bottlenecks and architectural concerns",
                     "step_number": 3,
@@ -839,7 +843,10 @@ def validate_credit_card(card_number):
                     "findings": "Performance issues: unbounded lists, inefficient algorithms, over-engineered patterns",
                     "files_checked": files_to_review,
                     "relevant_files": files_to_review,
-                    "relevant_context": ["PaymentProcessor.get_payment_history", "PaymentProcessor._generate_complex_hash"],
+                    "relevant_context": [
+                        "PaymentProcessor.get_payment_history",
+                        "PaymentProcessor._generate_complex_hash",
+                    ],
                     "issues_found": [
                         {"severity": "high", "description": "O(n²) algorithm in payment history"},
                         {"severity": "medium", "description": "Over-engineered hash generation"},
@@ -867,7 +874,7 @@ def validate_credit_card(card_number):
             # Step 4: Final comprehensive analysis
             self.logger.info("    1.6.4: Step 4 - Final comprehensive analysis")
             response4, _ = self.call_mcp_tool(
-                "codereviewworkflow",
+                "codereview",
                 {
                     "step": "Code review complete - comprehensive analysis of all security, performance, and quality issues",
                     "step_number": 4,
@@ -937,20 +944,20 @@ def validate_credit_card(card_number):
             return False
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
-        """Call an MCP tool in-process - override for codereviewworkflow-specific response handling"""
+        """Call an MCP tool in-process - override for codereview-specific response handling"""
         # Use in-process implementation to maintain conversation memory
         response_text, _ = self.call_mcp_tool_direct(tool_name, params)
 
         if not response_text:
             return None, None
 
-        # Extract continuation_id from codereviewworkflow response specifically
+        # Extract continuation_id from codereview response specifically
         continuation_id = self._extract_review_continuation_id(response_text)
 
         return response_text, continuation_id
 
     def _extract_review_continuation_id(self, response_text: str) -> Optional[str]:
-        """Extract continuation_id from codereviewworkflow response"""
+        """Extract continuation_id from codereview response"""
         try:
             # Parse the response
             response_data = json.loads(response_text)
@@ -961,7 +968,7 @@ def validate_credit_card(card_number):
             return None
 
     def _parse_review_response(self, response_text: str) -> dict:
-        """Parse codereviewworkflow tool JSON response"""
+        """Parse codereview tool JSON response"""
         try:
             # Parse the response - it should be direct JSON
             return json.loads(response_text)
@@ -979,7 +986,7 @@ def validate_credit_card(card_number):
         expected_next_required: bool,
         expected_status: str,
     ) -> bool:
-        """Validate a codereviewworkflow step response structure"""
+        """Validate a codereview step response structure"""
         try:
             # Check status
             if response_data.get("status") != expected_status:

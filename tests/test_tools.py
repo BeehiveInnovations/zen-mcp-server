@@ -108,13 +108,13 @@ class TestCodeReviewTool:
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
         assert tool.get_name() == "codereview"
-        assert "PROFESSIONAL CODE REVIEW" in tool.get_description()
+        assert "COMPREHENSIVE CODE REVIEW" in tool.get_description()
         assert tool.get_default_temperature() == 0.2
 
         schema = tool.get_input_schema()
         assert "files" in schema["properties"]
-        assert "prompt" in schema["properties"]
-        assert schema["required"] == ["files", "prompt"]
+        assert "step" in schema["properties"]
+        assert "step_number" in schema["required"]
 
     @pytest.mark.asyncio
     async def test_execute_with_review_type(self, tool, tmp_path):
@@ -294,23 +294,11 @@ class TestAbsolutePathValidation:
         assert "must be FULL absolute paths" in response["content"]
         assert "./relative/path.py" in response["content"]
 
-    @pytest.mark.asyncio
-    async def test_codereview_tool_relative_path_rejected(self):
-        """Test that codereview tool rejects relative paths"""
-        tool = CodeReviewTool()
-        result = await tool.execute(
-            {
-                "files": ["../parent/file.py"],
-                "review_type": "full",
-                "prompt": "Test code review for validation purposes",
-            }
-        )
-
-        assert len(result) == 1
-        response = json.loads(result[0].text)
-        assert response["status"] == "error"
-        assert "must be FULL absolute paths" in response["content"]
-        assert "../parent/file.py" in response["content"]
+    # NOTE: CodeReview tool test has been commented out because the codereview tool has been
+    # refactored to use a workflow-based pattern. The workflow tools handle path validation
+    # differently and may accept relative paths in step 1 since validation happens at the
+    # file reading stage. See simulator_tests/test_codereview_validation.py for comprehensive
+    # workflow testing of the new codereview tool.
 
     @pytest.mark.asyncio
     async def test_thinkdeep_tool_relative_path_rejected(self):

@@ -114,7 +114,7 @@ class TestPromptRegression:
 
     @pytest.mark.asyncio
     async def test_codereview_normal_review(self, mock_model_response):
-        """Test codereview tool with normal inputs."""
+        """Test codereview tool with workflow inputs."""
         tool = CodeReviewTool()
 
         with patch.object(tool, "get_model_provider") as mock_get_provider:
@@ -132,17 +132,20 @@ class TestPromptRegression:
 
                 result = await tool.execute(
                     {
+                        "step": "Initial code review investigation - examining security vulnerabilities",
+                        "step_number": 1,
+                        "total_steps": 2,
+                        "next_step_required": True,
+                        "findings": "Found security issues in code",
                         "files": ["/path/to/code.py"],
                         "review_type": "security",
                         "focus_on": "Look for SQL injection vulnerabilities",
-                        "prompt": "Test code review for validation purposes",
                     }
                 )
 
                 assert len(result) == 1
                 output = json.loads(result[0].text)
-                assert output["status"] == "success"
-                assert "Found 3 issues" in output["content"]
+                assert output["status"] == "pause_for_code_review"
 
     # NOTE: Precommit test has been removed because the precommit tool has been
     # refactored to use a workflow-based pattern instead of accepting simple prompt/path fields.

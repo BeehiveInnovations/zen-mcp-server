@@ -60,7 +60,6 @@ from tools import (  # noqa: E402
     AnalyzeTool,
     ChatTool,
     CodeReviewTool,
-    CodeReviewWorkflowTool,
     ConsensusTool,
     DebugIssueTool,
     ListModelsTool,
@@ -163,8 +162,7 @@ server: Server = Server("zen-server")
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
     "thinkdeep": ThinkDeepTool(),  # Extended reasoning for complex problems
-    "codereview": CodeReviewTool(),  # Comprehensive code review and quality analysis
-    "codereviewworkflow": CodeReviewWorkflowTool(),  # Step-by-step code review workflow with expert analysis
+    "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming

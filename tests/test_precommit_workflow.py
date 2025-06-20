@@ -46,7 +46,7 @@ class TestPrecommitWorkflowTool:
             total_steps=3,
             next_step_required=True,
             findings="Initial findings",
-            path="/test/repo"  # Required for step 1
+            path="/test/repo",  # Required for step 1
         )
 
         assert request.step == "Initial validation step"
@@ -65,7 +65,7 @@ class TestPrecommitWorkflowTool:
                 step_number=1,
                 total_steps=3,
                 next_step_required=True,
-                findings="Initial findings"
+                findings="Initial findings",
                 # Missing path for step 1
             )
 
@@ -77,7 +77,7 @@ class TestPrecommitWorkflowTool:
             step_number=2,
             total_steps=3,
             next_step_required=True,
-            findings="Detailed findings"
+            findings="Detailed findings",
             # No path needed for step 2+
         )
 
@@ -98,7 +98,7 @@ class TestPrecommitWorkflowTool:
             relevant_files=["/file1.py"],
             relevant_context=["function_name", "class_name"],
             issues_found=[{"severity": "medium", "description": "Test issue"}],
-            images=["/screenshot.png"]
+            images=["/screenshot.png"],
         )
 
         assert request.confidence == "high"
@@ -116,7 +116,7 @@ class TestPrecommitWorkflowTool:
             total_steps=4,
             next_step_required=True,
             findings="Revised findings after backtracking",
-            backtrack_from_step=2  # Backtrack from step 2
+            backtrack_from_step=2,  # Backtrack from step 2
         )
 
         assert request.backtrack_from_step == 2
@@ -135,7 +135,7 @@ class TestPrecommitWorkflowTool:
             include_staged=True,
             include_unstaged=False,
             focus_on="security issues",
-            severity_filter="high"
+            severity_filter="high",
         )
 
         assert request.compare_to == "main"
@@ -156,7 +156,7 @@ class TestPrecommitWorkflowTool:
                 next_step_required=False,
                 findings="Test findings",
                 path="/repo",
-                confidence=confidence
+                confidence=confidence,
             )
             assert request.confidence == confidence
 
@@ -172,7 +172,7 @@ class TestPrecommitWorkflowTool:
                 next_step_required=False,
                 findings="Test findings",
                 path="/repo",
-                severity_filter=severity
+                severity_filter=severity,
             )
             assert request.severity_filter == severity
 

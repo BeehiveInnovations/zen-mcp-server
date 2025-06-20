@@ -179,9 +179,17 @@ async def test_tool_parameter_standardization():
     assert debug.step == "Investigating error"
     assert debug.findings == "Initial error analysis"
 
-    # Test codereview tool uses prompt
-    review = CodeReviewRequest(files=["/test.py"], prompt="Review this")
-    assert review.prompt == "Review this"
+    # Test codereview tool uses workflow fields
+    review = CodeReviewRequest(
+        step="Initial code review investigation",
+        step_number=1,
+        total_steps=2,
+        next_step_required=True,
+        findings="Initial review findings",
+        files=["/test.py"],
+    )
+    assert review.step == "Initial code review investigation"
+    assert review.findings == "Initial review findings"
 
     # Test thinkdeep tool uses prompt
     think = ThinkDeepRequest(prompt="My analysis")
@@ -194,7 +202,7 @@ async def test_tool_parameter_standardization():
         total_steps=2,
         next_step_required=True,
         findings="Initial validation findings",
-        path="/repo"  # path only needed for step 1
+        path="/repo",  # path only needed for step 1
     )
     assert precommit.step == "Validating changes for commit"
     assert precommit.findings == "Initial validation findings"
