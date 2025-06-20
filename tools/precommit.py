@@ -88,7 +88,7 @@ PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS = {
         "Indicate your current confidence in the assessment. Use: 'exploring' (starting analysis), 'low' (early "
         "investigation), 'medium' (some evidence gathered), 'high' (strong evidence), 'certain' (only when the "
         "analysis is complete and all issues are identified). Do NOT use 'certain' unless the pre-commit validation "
-        "is thoroughly complete, use 'high' instead when in doubt. Using 'certain' prevents additional expert analysis."
+        "is thoroughly complete, use 'high' instead not 100% sure. Using 'certain' prevents additional expert analysis."
     ),
     "backtrack_from_step": (
         "If an earlier finding or assessment needs to be revised or discarded, specify the step number from which to "

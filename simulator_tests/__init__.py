@@ -33,6 +33,7 @@ from .test_precommitworkflow_validation import PrecommitWorkflowValidationTest
 # Redis validation test removed - no longer needed for standalone server
 from .test_refactor_validation import RefactorValidationTest
 from .test_testgen_validation import TestGenValidationTest
+from .test_thinkdeepworkflow_validation import ThinkDeepWorkflowValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
 from .test_vision_capability import VisionCapabilityTest
 from .test_xai_models import XAIModelsTest
@@ -58,6 +59,7 @@ TEST_REGISTRY = {
     "precommit_validation": PrecommitWorkflowValidationTest,
     "token_allocation_validation": TokenAllocationValidationTest,
     "testgen_validation": TestGenValidationTest,
+    "thinkdeepworkflow_validation": ThinkDeepWorkflowValidationTest,
     "refactor_validation": RefactorValidationTest,
     "debug_validation": DebugValidationTest,
     "debug_certain_confidence": DebugCertainConfidenceTest,
@@ -91,6 +93,7 @@ __all__ = [
     "PrecommitWorkflowValidationTest",
     "TokenAllocationValidationTest",
     "TestGenValidationTest",
+    "ThinkDeepWorkflowValidationTest",
     "RefactorValidationTest",
     "DebugValidationTest",
     "DebugCertainConfidenceTest",

@@ -13,10 +13,12 @@ from .precommit import PrecommitTool
 from .refactor import RefactorTool
 from .testgen import TestGenerationTool
 from .thinkdeep import ThinkDeepTool
+from .thinkdeepworkflow import ThinkDeepWorkflowTool
 from .tracer import TracerTool
 
 __all__ = [
     "ThinkDeepTool",
+    "ThinkDeepWorkflowTool",
     "CodeReviewTool",
     "DebugIssueTool",
     "AnalyzeTool",

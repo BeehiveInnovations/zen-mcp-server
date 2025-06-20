@@ -94,7 +94,7 @@ DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = {
         "'medium' (some supporting evidence), 'high' (strong evidence), 'certain' (only when "
         "the root cause and minimal "
         "fix are both confirmed). Do NOT use 'certain' unless the issue can be fully resolved with a fix, use 'high' "
-        "instead when in doubt. Using 'certain' prevents you from taking assistance from another thought-partner."
+        "instead when not 100% sure. Using 'certain' prevents you from taking assistance from another thought-partner."
     ),
     "backtrack_from_step": (
         "If an earlier finding or hypothesis needs to be revised or discarded, specify the step number from which to "
