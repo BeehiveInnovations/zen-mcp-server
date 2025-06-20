@@ -92,6 +92,7 @@ class PlannerRequest(WorkflowRequest):
     temperature: Optional[float] = Field(default=None, exclude=True)
     thinking_mode: Optional[str] = Field(default=None, exclude=True)
     use_websearch: Optional[bool] = Field(default=None, exclude=True)
+    use_assistant_model: Optional[bool] = Field(default=False, exclude=True, description="Planning is self-contained")
     images: Optional[list] = Field(default=None, exclude=True, description="Planning doesn't use images")
 
     @field_validator("step_number")
@@ -289,7 +290,7 @@ class PlannerTool(WorkflowTool):
                 "Prepare for execution planning and resource allocation",
             ]
 
-    def should_call_expert_analysis(self, consolidated_findings) -> bool:
+    def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """Planner is self-contained and doesn't need expert analysis."""
         return False
 

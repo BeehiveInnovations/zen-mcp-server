@@ -70,6 +70,11 @@ WORKFLOW_FIELD_DESCRIPTIONS = {
     "confidence": "Confidence level in findings: exploring, low, medium, high, certain",
     "hypothesis": "Current theory about the issue/goal based on work",
     "backtrack_from_step": "Step number to backtrack from if work needs revision",
+    "use_assistant_model": (
+        "Whether to use assistant model for expert analysis after completing the workflow steps. "
+        "Set to False to skip expert analysis and rely solely on Claude's investigation. "
+        "Defaults to True for comprehensive validation."
+    ),
 }
 
 
@@ -143,6 +148,7 @@ class WorkflowRequest(BaseWorkflowRequest):
     backtrack_from_step: Optional[int] = Field(
         None, ge=1, description=WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"]
     )
+    use_assistant_model: Optional[bool] = Field(True, description=WORKFLOW_FIELD_DESCRIPTIONS["use_assistant_model"])
 
     @field_validator("files_checked", "relevant_files", "relevant_context", mode="before")
     @classmethod

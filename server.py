@@ -65,6 +65,7 @@ from tools import (  # noqa: E402
     ListModelsTool,
     PlannerTool,
     Precommit,
+    PrecommitWorkflowTool,
     RefactorTool,
     TestGenerationTool,
     ThinkDeepTool,
@@ -170,6 +171,7 @@ TOOLS = {
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "precommit": Precommit(),  # Pre-commit validation of git changes
+    "precommitworkflow": PrecommitWorkflowTool(),  # Step-by-step pre-commit validation workflow
     "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
@@ -206,6 +208,11 @@ PROMPT_TEMPLATES = {
         "name": "precommit",
         "description": "Validate changes before committing",
         "template": "Run precommit validation with {model}",
+    },
+    "precommitworkflow": {
+        "name": "precommitworkflow",
+        "description": "Step-by-step pre-commit validation workflow",
+        "template": "Start comprehensive pre-commit validation workflow with {model}",
     },
     "testgen": {
         "name": "testgen",

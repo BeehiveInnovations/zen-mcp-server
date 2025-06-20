@@ -27,6 +27,7 @@ from .test_openrouter_models import OpenRouterModelsTest
 from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_planner_continuation_history import PlannerContinuationHistoryTest
 from .test_planner_validation import PlannerValidationTest
+from .test_precommitworkflow_validation import PrecommitWorkflowValidationTest
 
 # Redis validation test removed - no longer needed for standalone server
 from .test_refactor_validation import RefactorValidationTest
@@ -52,6 +53,7 @@ TEST_REGISTRY = {
     "openrouter_models": OpenRouterModelsTest,
     "planner_validation": PlannerValidationTest,
     "planner_continuation_history": PlannerContinuationHistoryTest,
+    "precommitworkflow_validation": PrecommitWorkflowValidationTest,
     "token_allocation_validation": TokenAllocationValidationTest,
     "testgen_validation": TestGenValidationTest,
     "refactor_validation": RefactorValidationTest,
@@ -84,6 +86,7 @@ __all__ = [
     "OpenRouterModelsTest",
     "PlannerValidationTest",
     "PlannerContinuationHistoryTest",
+    "PrecommitWorkflowValidationTest",
     "TokenAllocationValidationTest",
     "TestGenValidationTest",
     "RefactorValidationTest",

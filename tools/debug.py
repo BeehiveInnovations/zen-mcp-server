@@ -316,12 +316,16 @@ class DebugIssueTool(WorkflowTool):
                 "Look for patterns that confirm or refute your theory",
             ]
 
-    def should_call_expert_analysis(self, consolidated_findings) -> bool:
+    def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """
         Decide when to call external model based on investigation completeness.
 
         Don't call expert analysis if Claude has certain confidence - trust their judgment.
         """
+        # Check if user requested to skip assistant model
+        if request and not self.get_request_use_assistant_model(request):
+            return False
+
         # Check if we have meaningful investigation data
         return (
             len(consolidated_findings.relevant_files) > 0
@@ -591,6 +595,10 @@ class DebugIssueTool(WorkflowTool):
         # Map the completion flag to match original debug tool
         if f"{tool_name}_complete" in response_data:
             response_data["investigation_complete"] = response_data.pop(f"{tool_name}_complete")
+
+        # Map the required flag to match original debug tool
+        if f"{tool_name}_required" in response_data:
+            response_data["investigation_required"] = response_data.pop(f"{tool_name}_required")
 
         return response_data
 

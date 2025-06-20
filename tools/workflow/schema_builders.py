@@ -77,6 +77,11 @@ class WorkflowSchemaBuilder:
             "minimum": 1,
             "description": WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"],
         },
+        "use_assistant_model": {
+            "type": "boolean",
+            "default": True,
+            "description": WORKFLOW_FIELD_DESCRIPTIONS["use_assistant_model"],
+        },
     }
 
     @staticmethod

@@ -143,14 +143,22 @@ class BaseWorkflowMixin(ABC):
     # Hook Methods - Default Implementations with Override Capability
     # ================================================================================
 
-    def should_call_expert_analysis(self, consolidated_findings: ConsolidatedFindings) -> bool:
+    def should_call_expert_analysis(self, consolidated_findings: ConsolidatedFindings, request=None) -> bool:
         """
         Decide when to call external model based on tool-specific criteria.
 
         Default implementation for tools that don't use expert analysis.
         Override this for tools that do use expert analysis.
+
+        Args:
+            consolidated_findings: Findings from workflow steps
+            request: Current request object (optional for backwards compatibility)
         """
         if not self.requires_expert_analysis():
+            return False
+
+        # Check if user requested to skip assistant model
+        if request and not self.get_request_use_assistant_model(request):
             return False
 
         # Default logic for tools that support expert analysis
@@ -221,6 +229,21 @@ class BaseWorkflowMixin(ABC):
         Override this to provide tool-specific instructions.
         """
         return "Please provide expert analysis based on the investigation findings."
+
+    def get_request_use_assistant_model(self, request) -> bool:
+        """
+        Get use_assistant_model from request. Override for custom assistant model handling.
+
+        Args:
+            request: Current request object
+
+        Returns:
+            True if assistant model should be used, False otherwise
+        """
+        try:
+            return request.use_assistant_model if request.use_assistant_model is not None else True
+        except AttributeError:
+            return True
 
     def get_step_guidance_message(self, request) -> str:
         """
@@ -869,7 +892,7 @@ class BaseWorkflowMixin(ABC):
             # Handle completion without expert analysis
             completion_response = self.handle_completion_without_expert_analysis(request, self.consolidated_findings)
             response_data.update(completion_response)
-        elif self.requires_expert_analysis() and self.should_call_expert_analysis(self.consolidated_findings):
+        elif self.requires_expert_analysis() and self.should_call_expert_analysis(self.consolidated_findings, request):
             # Standard expert analysis path
             response_data["status"] = "calling_expert_analysis"
 
