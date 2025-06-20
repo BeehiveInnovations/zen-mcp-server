@@ -6,6 +6,7 @@ organized by their provider (Gemini, OpenAI, X.AI, OpenRouter, Custom).
 It shows which providers are configured and what models can be used.
 """
 
+import logging
 import os
 from typing import Any, Optional
 
@@ -13,6 +14,8 @@ from mcp.types import TextContent
 
 from tools.base import BaseTool, ToolRequest
 from tools.models import ToolModelCategory, ToolOutput
+
+logger = logging.getLogger(__name__)
 
 
 class ListModelsTool(BaseTool):
@@ -209,8 +212,8 @@ class ListModelsTool(BaseTool):
                             output_lines.append(
                                 f"\n**Note**: Restricted to models matching: {', '.join(sorted(allowed_set))}"
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"Error checking OpenRouter restrictions: {e}")
                 else:
                     output_lines.append("**Error**: Could not load OpenRouter provider")
 
@@ -284,8 +287,8 @@ class ListModelsTool(BaseTool):
             available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
             total_models = len(available_models)
             output_lines.append(f"**Total Available Models**: {total_models}")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error getting total available models: {e}")
 
         # Add usage tips
         output_lines.append("\n**Usage Tips**:")
