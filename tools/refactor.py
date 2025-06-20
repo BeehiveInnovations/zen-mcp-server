@@ -1,136 +1,214 @@
 """
-Refactor tool - Intelligent code refactoring suggestions with precise line-number references
+Refactor tool - Step-by-step refactoring analysis with expert validation
 
-This tool analyzes code for refactoring opportunities across four main categories:
-- codesmells: Detect and suggest fixes for common code smells
-- decompose: Break down large functions, classes, and modules into smaller, focused components
-- modernize: Update code to use modern language features and patterns
-- organization: Suggest better organization and logical grouping of related functionality
+This tool provides a structured workflow for comprehensive code refactoring analysis.
+It guides Claude through systematic investigation steps with forced pauses between each step
+to ensure thorough code examination, refactoring opportunity identification, and quality
+assessment before proceeding. The tool supports complex refactoring scenarios including
+code smell detection, decomposition planning, modernization opportunities, and organization improvements.
 
-Key Features:
-- Cross-language support with language-specific guidance
-- Precise line-number references for Claude
-- Large context handling with token budgeting
-- Structured JSON responses for easy parsing
-- Style guide integration for project-specific patterns
+Key features:
+- Step-by-step refactoring investigation workflow with progress tracking
+- Context-aware file embedding (references during investigation, full content for analysis)
+- Automatic refactoring opportunity tracking with type and severity classification
+- Expert analysis integration with external models
+- Support for focused refactoring types (codesmells, decompose, modernize, organization)
+- Confidence-based workflow optimization with refactor completion tracking
 """
 
 import logging
-import os
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
+
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
 
 from config import TEMPERATURE_ANALYTICAL
 from systemprompts import REFACTOR_PROMPT
+from tools.shared.base_models import WorkflowRequest
 
-from .base import BaseTool, ToolRequest
+from .workflow.base import WorkflowTool
 
 logger = logging.getLogger(__name__)
 
-
-# Field descriptions to avoid duplication between Pydantic and JSON schema
+# Tool-specific field descriptions for refactor tool
 REFACTOR_FIELD_DESCRIPTIONS = {
-    "files": "Code files or directories to analyze for refactoring opportunities. MUST be FULL absolute paths to real files / folders - DO NOT SHORTEN."
-    "The files also MUST directly involve the classes, functions etc that need to be refactored. Closely related or dependent files"
-    "will also help.",
-    "prompt": "Description of refactoring goals, context, and specific areas of focus.",
-    "refactor_type": "Type of refactoring analysis to perform",
+    "step": (
+        "Describe what you're currently investigating for refactoring by thinking deeply about the code structure, "
+        "patterns, and potential improvements. In step 1, clearly state your refactoring investigation plan and begin "
+        "forming a systematic approach after thinking carefully about what needs to be analyzed. CRITICAL: Remember to "
+        "thoroughly examine code quality, performance implications, maintainability concerns, and architectural patterns. "
+        "Consider not only obvious code smells and issues but also opportunities for decomposition, modernization, "
+        "organization improvements, and ways to reduce complexity while maintaining functionality. Map out the codebase "
+        "structure, understand the business logic, and identify areas requiring refactoring. In all later steps, continue "
+        "exploring with precision: trace dependencies, verify assumptions, and adapt your understanding as you uncover "
+        "more refactoring opportunities."
+    ),
+    "step_number": (
+        "The index of the current step in the refactoring investigation sequence, beginning at 1. Each step should "
+        "build upon or revise the previous one."
+    ),
+    "total_steps": (
+        "Your current estimate for how many steps will be needed to complete the refactoring investigation. "
+        "Adjust as new opportunities emerge."
+    ),
+    "next_step_required": (
+        "Set to true if you plan to continue the investigation with another step. False means you believe the "
+        "refactoring analysis is complete and ready for expert validation."
+    ),
+    "findings": (
+        "Summarize everything discovered in this step about refactoring opportunities in the code. Include analysis of "
+        "code smells, decomposition opportunities, modernization possibilities, organization improvements, architectural "
+        "patterns, design decisions, potential performance optimizations, and maintainability enhancements. Be specific "
+        "and avoid vague language—document what you now know about the code and how it could be improved. IMPORTANT: "
+        "Document both positive aspects (good patterns, well-designed components) and improvement opportunities "
+        "(code smells, overly complex functions, outdated patterns, organization issues). In later steps, confirm or "
+        "update past findings with additional evidence."
+    ),
+    "files_checked": (
+        "List all files (as absolute paths, do not clip or shrink file names) examined during the refactoring "
+        "investigation so far. Include even files ruled out or found to need no refactoring, as this tracks your "
+        "exploration path."
+    ),
+    "relevant_files": (
+        "Subset of files_checked (as full absolute paths) that contain code requiring refactoring or are directly "
+        "relevant to the refactoring opportunities identified. Only list those that are directly tied to specific "
+        "refactoring opportunities, code smells, decomposition needs, or improvement areas. This could include files "
+        "with code smells, overly large functions/classes, outdated patterns, or organization issues."
+    ),
+    "relevant_context": (
+        "List methods, functions, classes, or modules that are central to the refactoring opportunities identified, "
+        "in the format 'ClassName.methodName', 'functionName', or 'module.ClassName'. Prioritize those that contain "
+        "code smells, need decomposition, could benefit from modernization, or require organization improvements."
+    ),
+    "issues_found": (
+        "List of refactoring opportunities identified during the investigation. Each opportunity should be a dictionary "
+        "with 'severity' (critical, high, medium, low), 'type' (codesmells, decompose, modernize, organization), and "
+        "'description' fields. Include code smells, decomposition opportunities, modernization possibilities, "
+        "organization improvements, performance optimizations, maintainability enhancements, etc."
+    ),
+    "confidence": (
+        "Indicate your current confidence in the refactoring analysis completeness. Use: 'exploring' (starting "
+        "analysis), 'incomplete' (just started or significant work remaining), 'partial' (some refactoring "
+        "opportunities identified but more analysis needed), 'complete' (comprehensive refactoring analysis "
+        "finished with all major opportunities identified and Claude can handle 100% confidently without help). "
+        "Use 'complete' ONLY when you have fully analyzed all code, identified all significant refactoring "
+        "opportunities, and can provide comprehensive recommendations without expert assistance. When files are "
+        "too large to read fully or analysis is uncertain, use 'partial'. Using 'complete' prevents expert "
+        "analysis to save time and money."
+    ),
+    "backtrack_from_step": (
+        "If an earlier finding or assessment needs to be revised or discarded, specify the step number from which to "
+        "start over. Use this to acknowledge investigative dead ends and correct the course."
+    ),
+    "images": (
+        "Optional list of absolute paths to architecture diagrams, UI mockups, design documents, or visual references "
+        "that help with refactoring context. Only include if they materially assist understanding or assessment."
+    ),
+    "refactor_type": "Type of refactoring analysis to perform (codesmells, decompose, modernize, organization)",
     "focus_areas": "Specific areas to focus on (e.g., 'performance', 'readability', 'maintainability', 'security')",
     "style_guide_examples": (
-        "Optional existing code files to use as style/pattern reference (must be FULL absolute paths to real files / folders - DO NOT SHORTEN). "
-        "These files represent the target coding style and patterns for the project."
+        "Optional existing code files to use as style/pattern reference (must be FULL absolute paths to real files / "
+        "folders - DO NOT SHORTEN). These files represent the target coding style and patterns for the project."
     ),
 }
 
 
-class RefactorRequest(ToolRequest):
-    """
-    Request model for the refactor tool.
+class RefactorRequest(WorkflowRequest):
+    """Request model for refactor workflow investigation steps"""
 
-    This model defines all parameters that can be used to customize
-    the refactoring analysis process.
-    """
+    # Required fields for each investigation step
+    step: str = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["step"])
+    step_number: int = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["step_number"])
+    total_steps: int = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["total_steps"])
+    next_step_required: bool = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["next_step_required"])
 
-    files: list[str] = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["files"])
-    prompt: str = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["prompt"])
-    refactor_type: Literal["codesmells", "decompose", "modernize", "organization"] = Field(
-        ..., description=REFACTOR_FIELD_DESCRIPTIONS["refactor_type"]
+    # Investigation tracking fields
+    findings: str = Field(..., description=REFACTOR_FIELD_DESCRIPTIONS["findings"])
+    files_checked: list[str] = Field(default_factory=list, description=REFACTOR_FIELD_DESCRIPTIONS["files_checked"])
+    relevant_files: list[str] = Field(default_factory=list, description=REFACTOR_FIELD_DESCRIPTIONS["relevant_files"])
+    relevant_context: list[str] = Field(
+        default_factory=list, description=REFACTOR_FIELD_DESCRIPTIONS["relevant_context"]
+    )
+    issues_found: list[dict] = Field(default_factory=list, description=REFACTOR_FIELD_DESCRIPTIONS["issues_found"])
+    confidence: Optional[Literal["exploring", "incomplete", "partial", "complete"]] = Field(
+        "incomplete", description=REFACTOR_FIELD_DESCRIPTIONS["confidence"]
+    )
+
+    # Optional backtracking field
+    backtrack_from_step: Optional[int] = Field(None, description=REFACTOR_FIELD_DESCRIPTIONS["backtrack_from_step"])
+
+    # Optional images for visual context
+    images: Optional[list[str]] = Field(default=None, description=REFACTOR_FIELD_DESCRIPTIONS["images"])
+
+    # Refactor-specific fields (only used in step 1 to initialize)
+    files: Optional[list[str]] = Field(
+        None,
+        description="Code files or directories to analyze for refactoring opportunities (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+    )
+    refactor_type: Optional[Literal["codesmells", "decompose", "modernize", "organization"]] = Field(
+        "codesmells", description=REFACTOR_FIELD_DESCRIPTIONS["refactor_type"]
     )
     focus_areas: Optional[list[str]] = Field(None, description=REFACTOR_FIELD_DESCRIPTIONS["focus_areas"])
     style_guide_examples: Optional[list[str]] = Field(
         None, description=REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"]
     )
 
+    # Override inherited fields to exclude them from schema (except model which needs to be available)
+    temperature: Optional[float] = Field(default=None, exclude=True)
+    thinking_mode: Optional[str] = Field(default=None, exclude=True)
+    use_websearch: Optional[bool] = Field(default=None, exclude=True)
 
-class RefactorTool(BaseTool):
-    """
-    Refactor tool implementation.
+    @model_validator(mode="after")
+    def validate_step_one_requirements(self):
+        """Ensure step 1 has required files field."""
+        if self.step_number == 1 and not self.files:
+            raise ValueError(
+                "Step 1 requires 'files' field to specify code files or directories to analyze for refactoring"
+            )
+        return self
 
-    This tool analyzes code to provide intelligent refactoring suggestions
-    with precise line-number references for Claude to implement.
+
+class RefactorTool(WorkflowTool):
     """
+    Refactor tool for step-by-step refactoring analysis and expert validation.
+
+    This tool implements a structured refactoring workflow that guides users through
+    methodical investigation steps, ensuring thorough code examination, refactoring opportunity
+    identification, and improvement assessment before reaching conclusions. It supports complex
+    refactoring scenarios including code smell detection, decomposition planning, modernization
+    opportunities, and organization improvements.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.initial_request = None
+        self.refactor_config = {}
 
     def get_name(self) -> str:
         return "refactor"
 
     def get_description(self) -> str:
         return (
-            "INTELLIGENT CODE REFACTORING - Analyzes code for refactoring opportunities with precise line-number guidance. "
-            "Supports four refactor types: 'codesmells' (detect anti-patterns), 'decompose' (break down large functions/classes/modules into smaller components), "
-            "'modernize' (update to modern language features), and 'organization' (improve organization and grouping of related functionality). "
-            "Provides specific, actionable refactoring steps that Claude can implement directly. "
-            "Choose thinking_mode based on codebase complexity: 'medium' for standard modules (default), "
-            "'high' for complex systems, 'max' for legacy codebases requiring deep analysis. "
-            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
+            "COMPREHENSIVE REFACTORING WORKFLOW - Step-by-step refactoring analysis with expert validation. "
+            "This tool guides you through a systematic investigation process where you:\\n\\n"
+            "1. Start with step 1: describe your refactoring investigation plan\\n"
+            "2. STOP and investigate code structure, patterns, and potential improvements\\n"
+            "3. Report findings in step 2 with concrete evidence from actual code analysis\\n"
+            "4. Continue investigating between each step\\n"
+            "5. Track findings, relevant files, and refactoring opportunities throughout\\n"
+            "6. Update assessments as understanding evolves\\n"
+            "7. Once investigation is complete, receive expert analysis\\n\\n"
+            "IMPORTANT: This tool enforces investigation between steps:\\n"
+            "- After each call, you MUST investigate before calling again\\n"
+            "- Each step must include NEW evidence from code examination\\n"
+            "- No recursive calls without actual investigation work\\n"
+            "- The tool will specify which step number to use next\\n"
+            "- Follow the required_actions list for investigation guidance\\n\\n"
+            "Perfect for: comprehensive refactoring analysis, code smell detection, decomposition planning, "
+            "modernization opportunities, organization improvements, maintainability enhancements."
         )
-
-    def get_input_schema(self) -> dict[str, Any]:
-        schema = {
-            "type": "object",
-            "properties": {
-                "files": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": REFACTOR_FIELD_DESCRIPTIONS["files"],
-                },
-                "model": self.get_model_field_schema(),
-                "prompt": {
-                    "type": "string",
-                    "description": REFACTOR_FIELD_DESCRIPTIONS["prompt"],
-                },
-                "refactor_type": {
-                    "type": "string",
-                    "enum": ["codesmells", "decompose", "modernize", "organization"],
-                    "description": REFACTOR_FIELD_DESCRIPTIONS["refactor_type"],
-                },
-                "focus_areas": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": REFACTOR_FIELD_DESCRIPTIONS["focus_areas"],
-                },
-                "style_guide_examples": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"],
-                },
-                "thinking_mode": {
-                    "type": "string",
-                    "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth: minimal (0.5% of model max), low (8%), medium (33%), high (67%), max (100% of model max)",
-                },
-                "continuation_id": {
-                    "type": "string",
-                    "description": (
-                        "Thread continuation ID for multi-turn conversations. Can be used to continue conversations "
-                        "across different tools. Only provide this if continuing a previous conversation thread."
-                    ),
-                },
-            },
-            "required": ["files", "prompt", "refactor_type"] + (["model"] if self.is_effective_auto_mode() else []),
-        }
-
-        return schema
 
     def get_system_prompt(self) -> str:
         return REFACTOR_PROMPT
@@ -138,473 +216,456 @@ class RefactorTool(BaseTool):
     def get_default_temperature(self) -> float:
         return TEMPERATURE_ANALYTICAL
 
-    # Line numbers are enabled by default from base class for precise targeting
-
-    def get_model_category(self):
-        """Refactor tool requires extended reasoning for comprehensive analysis"""
+    def get_model_category(self) -> "ToolModelCategory":
+        """Refactor workflow requires thorough analysis and reasoning"""
         from tools.models import ToolModelCategory
 
         return ToolModelCategory.EXTENDED_REASONING
 
-    def get_request_model(self):
+    def get_workflow_request_model(self):
+        """Return the refactor workflow-specific request model."""
         return RefactorRequest
 
-    def detect_primary_language(self, file_paths: list[str]) -> str:
-        """
-        Detect the primary programming language from file extensions.
+    def get_input_schema(self) -> dict[str, Any]:
+        """Generate input schema using WorkflowSchemaBuilder with refactor-specific overrides."""
+        from .workflow.schema_builders import WorkflowSchemaBuilder
 
-        Args:
-            file_paths: List of file paths to analyze
-
-        Returns:
-            str: Detected language or "mixed" if multiple languages found
-        """
-        # Language detection based on file extensions
-        language_extensions = {
-            "python": {".py"},
-            "javascript": {".js", ".jsx", ".mjs"},
-            "typescript": {".ts", ".tsx"},
-            "java": {".java"},
-            "csharp": {".cs"},
-            "cpp": {".cpp", ".cc", ".cxx", ".c", ".h", ".hpp"},
-            "go": {".go"},
-            "rust": {".rs"},
-            "swift": {".swift"},
-            "kotlin": {".kt"},
-            "ruby": {".rb"},
-            "php": {".php"},
-            "scala": {".scala"},
+        # Refactor workflow-specific field overrides
+        refactor_field_overrides = {
+            "step": {
+                "type": "string",
+                "description": REFACTOR_FIELD_DESCRIPTIONS["step"],
+            },
+            "step_number": {
+                "type": "integer",
+                "minimum": 1,
+                "description": REFACTOR_FIELD_DESCRIPTIONS["step_number"],
+            },
+            "total_steps": {
+                "type": "integer",
+                "minimum": 1,
+                "description": REFACTOR_FIELD_DESCRIPTIONS["total_steps"],
+            },
+            "next_step_required": {
+                "type": "boolean",
+                "description": REFACTOR_FIELD_DESCRIPTIONS["next_step_required"],
+            },
+            "findings": {
+                "type": "string",
+                "description": REFACTOR_FIELD_DESCRIPTIONS["findings"],
+            },
+            "files_checked": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": REFACTOR_FIELD_DESCRIPTIONS["files_checked"],
+            },
+            "relevant_files": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": REFACTOR_FIELD_DESCRIPTIONS["relevant_files"],
+            },
+            "confidence": {
+                "type": "string",
+                "enum": ["exploring", "incomplete", "partial", "complete"],
+                "default": "incomplete",
+                "description": REFACTOR_FIELD_DESCRIPTIONS["confidence"],
+            },
+            "backtrack_from_step": {
+                "type": "integer",
+                "minimum": 1,
+                "description": REFACTOR_FIELD_DESCRIPTIONS["backtrack_from_step"],
+            },
+            "issues_found": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": REFACTOR_FIELD_DESCRIPTIONS["issues_found"],
+            },
+            "images": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": REFACTOR_FIELD_DESCRIPTIONS["images"],
+            },
+            # Refactor-specific fields (for step 1)
+            "files": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Code files or directories to analyze for refactoring opportunities (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
+            },
+            "refactor_type": {
+                "type": "string",
+                "enum": ["codesmells", "decompose", "modernize", "organization"],
+                "default": "codesmells",
+                "description": REFACTOR_FIELD_DESCRIPTIONS["refactor_type"],
+            },
+            "focus_areas": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": REFACTOR_FIELD_DESCRIPTIONS["focus_areas"],
+            },
+            "style_guide_examples": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": REFACTOR_FIELD_DESCRIPTIONS["style_guide_examples"],
+            },
         }
 
-        # Count files by language
-        language_counts = {}
-        for file_path in file_paths:
-            extension = os.path.splitext(file_path.lower())[1]
-            for lang, exts in language_extensions.items():
-                if extension in exts:
-                    language_counts[lang] = language_counts.get(lang, 0) + 1
-                    break
-
-        if not language_counts:
-            return "unknown"
-
-        # Return most common language, or "mixed" if multiple languages
-        max_count = max(language_counts.values())
-        dominant_languages = [lang for lang, count in language_counts.items() if count == max_count]
-
-        if len(dominant_languages) == 1:
-            return dominant_languages[0]
-        else:
-            return "mixed"
-
-    def get_language_specific_guidance(self, language: str, refactor_type: str) -> str:
-        """
-        Generate language-specific guidance for the refactoring prompt.
-
-        Args:
-            language: Detected programming language
-            refactor_type: Type of refactoring being performed
-
-        Returns:
-            str: Language-specific guidance to inject into the prompt
-        """
-        if language == "unknown" or language == "mixed":
-            return ""
-
-        # Language-specific modernization features
-        modernization_features = {
-            "python": "f-strings, dataclasses, type hints, pathlib, async/await, context managers, list/dict comprehensions, walrus operator",
-            "javascript": "async/await, destructuring, arrow functions, template literals, optional chaining, nullish coalescing, modules (import/export)",
-            "typescript": "strict type checking, utility types, const assertions, template literal types, mapped types",
-            "java": "streams API, lambda expressions, optional, records, pattern matching, var declarations, text blocks",
-            "csharp": "LINQ, nullable reference types, pattern matching, records, async streams, using declarations",
-            "swift": "value types, protocol-oriented programming, property wrappers, result builders, async/await",
-            "go": "modules, error wrapping, context package, generics (Go 1.18+)",
-            "rust": "ownership patterns, iterator adapters, error handling with Result, async/await",
-        }
-
-        # Language-specific code splitting patterns
-        splitting_patterns = {
-            "python": "modules, classes, functions, decorators for cross-cutting concerns",
-            "javascript": "modules (ES6), classes, functions, higher-order functions",
-            "java": "packages, classes, interfaces, abstract classes, composition over inheritance",
-            "csharp": "namespaces, classes, interfaces, extension methods, dependency injection",
-            "swift": "extensions, protocols, structs, enums with associated values",
-            "go": "packages, interfaces, struct composition, function types",
-        }
-
-        guidance_parts = []
-
-        if refactor_type == "modernize" and language in modernization_features:
-            guidance_parts.append(
-                f"LANGUAGE-SPECIFIC MODERNIZATION ({language.upper()}): Focus on {modernization_features[language]}"
-            )
-
-        if refactor_type == "decompose" and language in splitting_patterns:
-            guidance_parts.append(
-                f"LANGUAGE-SPECIFIC DECOMPOSITION ({language.upper()}): Use {splitting_patterns[language]} to break down large components"
-            )
-
-        # General language guidance
-        general_guidance = {
-            "python": "Follow PEP 8, use descriptive names, prefer composition over inheritance",
-            "javascript": "Use consistent naming conventions, avoid global variables, prefer functional patterns",
-            "java": "Follow Java naming conventions, use interfaces for abstraction, consider immutability",
-            "csharp": "Follow C# naming conventions, use nullable reference types, prefer async methods",
-        }
-
-        if language in general_guidance:
-            guidance_parts.append(f"GENERAL GUIDANCE ({language.upper()}): {general_guidance[language]}")
-
-        return "\n".join(guidance_parts) if guidance_parts else ""
-
-    def _process_style_guide_examples(
-        self, style_examples: list[str], continuation_id: Optional[str], available_tokens: int = None
-    ) -> tuple[str, str]:
-        """
-        Process style guide example files using available token budget.
-
-        Args:
-            style_examples: List of style guide file paths
-            continuation_id: Continuation ID for filtering already embedded files
-            available_tokens: Available token budget for examples
-
-        Returns:
-            tuple: (formatted_content, summary_note)
-        """
-        logger.debug(f"[REFACTOR] Processing {len(style_examples)} style guide examples")
-
-        if not style_examples:
-            logger.debug("[REFACTOR] No style guide examples provided")
-            return "", ""
-
-        # Use existing file filtering to avoid duplicates in continuation
-        examples_to_process = self.filter_new_files(style_examples, continuation_id)
-        logger.debug(f"[REFACTOR] After filtering: {len(examples_to_process)} new style examples to process")
-
-        if not examples_to_process:
-            logger.info(f"[REFACTOR] All {len(style_examples)} style examples already in conversation history")
-            return "", ""
-
-        logger.debug(f"[REFACTOR] Processing {len(examples_to_process)} file paths")
-
-        # Calculate token budget for style examples (20% of available tokens, or fallback)
-        if available_tokens:
-            style_examples_budget = int(available_tokens * 0.20)  # 20% for style examples
-            logger.debug(
-                f"[REFACTOR] Allocating {style_examples_budget:,} tokens (20% of {available_tokens:,}) for style examples"
-            )
-        else:
-            style_examples_budget = 25000  # Fallback if no budget provided
-            logger.debug(f"[REFACTOR] Using fallback budget of {style_examples_budget:,} tokens for style examples")
-
-        original_count = len(examples_to_process)
-        logger.debug(
-            f"[REFACTOR] Processing {original_count} style example files with {style_examples_budget:,} token budget"
+        # Use WorkflowSchemaBuilder with refactor-specific tool fields
+        return WorkflowSchemaBuilder.build_schema(
+            tool_specific_fields=refactor_field_overrides,
+            model_field_schema=self.get_model_field_schema(),
+            auto_mode=self.is_effective_auto_mode(),
+            tool_name=self.get_name(),
         )
 
-        # Sort by file size (smallest first) for pattern-focused selection
-        file_sizes = []
-        for file_path in examples_to_process:
-            try:
-                size = os.path.getsize(file_path)
-                file_sizes.append((file_path, size))
-                logger.debug(f"[REFACTOR] Style example {os.path.basename(file_path)}: {size:,} bytes")
-            except (OSError, FileNotFoundError) as e:
-                logger.warning(f"[REFACTOR] Could not get size for {file_path}: {e}")
-                file_sizes.append((file_path, float("inf")))
-
-        # Sort by size and take smallest files for pattern reference
-        file_sizes.sort(key=lambda x: x[1])
-        examples_to_process = [f[0] for f in file_sizes]
-        logger.debug(
-            f"[REFACTOR] Sorted style examples by size (smallest first): {[os.path.basename(f) for f in examples_to_process]}"
-        )
-
-        # Use standard file content preparation with dynamic token budget and line numbers
-        try:
-            logger.debug(f"[REFACTOR] Preparing file content for {len(examples_to_process)} style examples")
-            content, processed_files = self._prepare_file_content_for_prompt(
-                examples_to_process,
-                continuation_id,
-                "Style guide examples",
-                max_tokens=style_examples_budget,
-                reserve_tokens=1000,
-            )
-            # Store processed files for tracking - style examples are tracked separately from main code files
-
-            # Determine how many files were actually included
-            if content:
-                from utils.token_utils import estimate_tokens
-
-                used_tokens = estimate_tokens(content)
-                logger.info(
-                    f"[REFACTOR] Successfully embedded style examples: {used_tokens:,} tokens used ({style_examples_budget:,} available)"
-                )
-                if original_count > 1:
-                    truncation_note = f"Note: Used {used_tokens:,} tokens ({style_examples_budget:,} available) for style guide examples from {original_count} files to determine coding patterns."
-                else:
-                    truncation_note = ""
-            else:
-                logger.warning("[REFACTOR] No content generated for style examples")
-                truncation_note = ""
-
-            return content, truncation_note
-
-        except Exception as e:
-            # If style example processing fails, continue without examples rather than failing
-            logger.error(f"[REFACTOR] Failed to process style examples: {type(e).__name__}: {e}")
-            return "", f"Warning: Could not process style guide examples: {str(e)}"
-
-    async def prepare_prompt(self, request: RefactorRequest) -> str:
-        """
-        Prepare the refactoring prompt with code analysis and optional style examples.
-
-        This method reads the requested files, processes any style guide examples,
-        and constructs a detailed prompt for comprehensive refactoring analysis.
-
-        Args:
-            request: The validated refactor request
-
-        Returns:
-            str: Complete prompt for the model
-
-        Raises:
-            ValueError: If the code exceeds token limits
-        """
-        logger.info(f"[REFACTOR] prepare_prompt called with {len(request.files)} files, type={request.refactor_type}")
-        logger.debug(f"[REFACTOR] Preparing prompt for {len(request.files)} code files")
-        logger.debug(f"[REFACTOR] Refactor type: {request.refactor_type}")
-        if request.style_guide_examples:
-            logger.debug(f"[REFACTOR] Including {len(request.style_guide_examples)} style guide examples")
-
-        # Check for prompt.txt in files
-        prompt_content, updated_files = self.handle_prompt_file(request.files)
-
-        # If prompt.txt was found, incorporate it into the prompt
-        if prompt_content:
-            logger.debug("[REFACTOR] Found prompt.txt file, incorporating content")
-            request.prompt = prompt_content + "\n\n" + request.prompt
-
-        # Update request files list
-        if updated_files is not None:
-            logger.debug(f"[REFACTOR] Updated files list after prompt.txt processing: {len(updated_files)} files")
-            request.files = updated_files
-
-        # Check user input size at MCP transport boundary (before adding internal content)
-        user_content = request.prompt
-        size_check = self.check_prompt_size(user_content)
-        if size_check:
-            from tools.models import ToolOutput
-
-            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
-
-        # Calculate available token budget for dynamic allocation
-        continuation_id = getattr(request, "continuation_id", None)
-
-        # Get model context for token budget calculation
-        available_tokens = None
-
-        if hasattr(self, "_model_context") and self._model_context:
-            try:
-                capabilities = self._model_context.capabilities
-                # Use 75% of context for content (code + style examples), 25% for response
-                available_tokens = int(capabilities.context_window * 0.75)
-                logger.debug(
-                    f"[REFACTOR] Token budget calculation: {available_tokens:,} tokens (75% of {capabilities.context_window:,}) for model {self._model_context.model_name}"
-                )
-            except Exception as e:
-                # Fallback to conservative estimate
-                logger.warning(f"[REFACTOR] Could not get model capabilities: {e}")
-                available_tokens = 120000  # Conservative fallback
-                logger.debug(f"[REFACTOR] Using fallback token budget: {available_tokens:,} tokens")
+    def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
+        """Define required actions for each investigation phase."""
+        if step_number == 1:
+            # Initial refactoring investigation tasks
+            return [
+                "Read and understand the code files specified for refactoring analysis",
+                "Examine the overall structure, architecture, and design patterns used",
+                "Identify potential code smells: long methods, large classes, duplicate code, complex conditionals",
+                "Look for decomposition opportunities: oversized components that could be broken down",
+                "Check for modernization opportunities: outdated patterns, deprecated features, newer language constructs",
+                "Assess organization: logical grouping, file structure, naming conventions, module boundaries",
+                "Document specific refactoring opportunities with file locations and line numbers",
+            ]
+        elif confidence in ["exploring", "incomplete"]:
+            # Need deeper investigation
+            return [
+                "Examine specific code sections you've identified as needing refactoring",
+                "Analyze code smells in detail: complexity, coupling, cohesion issues",
+                "Investigate decomposition opportunities: identify natural breaking points for large components",
+                "Look for modernization possibilities: language features, patterns, libraries that could improve the code",
+                "Check organization issues: related functionality that could be better grouped or structured",
+                "Trace dependencies and relationships between components to understand refactoring impact",
+                "Prioritize refactoring opportunities by impact and effort required",
+            ]
+        elif confidence == "partial":
+            # Close to completion - need final verification
+            return [
+                "Verify all identified refactoring opportunities have been properly documented with locations",
+                "Check for any missed opportunities in areas not yet thoroughly examined",
+                "Confirm that refactoring suggestions align with the specified refactor_type and focus_areas",
+                "Ensure refactoring opportunities are prioritized by severity and impact",
+                "Validate that proposed changes would genuinely improve code quality without breaking functionality",
+                "Double-check that all relevant files and code elements are captured in your analysis",
+            ]
         else:
-            # No model context available (shouldn't happen in normal flow)
-            available_tokens = 120000  # Conservative fallback
-            logger.debug(f"[REFACTOR] No model context, using fallback token budget: {available_tokens:,} tokens")
-
-        # Process style guide examples first to determine token allocation
-        style_examples_content = ""
-        style_examples_note = ""
-
-        if request.style_guide_examples:
-            logger.debug(f"[REFACTOR] Processing {len(request.style_guide_examples)} style guide examples")
-            style_examples_content, style_examples_note = self._process_style_guide_examples(
-                request.style_guide_examples, continuation_id, available_tokens
-            )
-            if style_examples_content:
-                logger.info("[REFACTOR] Style guide examples processed successfully for pattern reference")
-            else:
-                logger.info("[REFACTOR] No style guide examples content after processing")
-
-        # Remove files that appear in both 'files' and 'style_guide_examples' to avoid duplicate embedding
-        code_files_to_process = request.files.copy()
-        if request.style_guide_examples:
-            # Normalize paths for comparison
-            style_example_set = {os.path.normpath(os.path.abspath(f)) for f in request.style_guide_examples}
-            original_count = len(code_files_to_process)
-
-            code_files_to_process = [
-                f for f in code_files_to_process if os.path.normpath(os.path.abspath(f)) not in style_example_set
+            # General investigation needed
+            return [
+                "Continue examining the codebase for additional refactoring opportunities",
+                "Gather more evidence using appropriate code analysis techniques",
+                "Test your assumptions about code quality and improvement possibilities",
+                "Look for patterns that confirm or refute your current refactoring assessment",
+                "Focus on areas that haven't been thoroughly examined for refactoring potential",
             ]
 
-            duplicates_removed = original_count - len(code_files_to_process)
-            if duplicates_removed > 0:
-                logger.info(
-                    f"[REFACTOR] Removed {duplicates_removed} duplicate files from code files list "
-                    f"(already included in style guide examples for pattern reference)"
-                )
-
-        # Calculate remaining tokens for main code after style examples
-        if style_examples_content and available_tokens:
-            from utils.token_utils import estimate_tokens
-
-            style_tokens = estimate_tokens(style_examples_content)
-            remaining_tokens = available_tokens - style_tokens - 5000  # Reserve for prompt structure
-            logger.debug(
-                f"[REFACTOR] Token allocation: {style_tokens:,} for examples, {remaining_tokens:,} remaining for code files"
-            )
-        else:
-            if available_tokens:
-                remaining_tokens = available_tokens - 10000
-            else:
-                remaining_tokens = 110000  # Conservative fallback (120000 - 10000)
-            logger.debug(
-                f"[REFACTOR] Token allocation: {remaining_tokens:,} tokens available for code files (no style examples)"
-            )
-
-        # Use centralized file processing logic for main code files (with line numbers enabled)
-        logger.debug(f"[REFACTOR] Preparing {len(code_files_to_process)} code files for analysis")
-        code_content, processed_files = self._prepare_file_content_for_prompt(
-            code_files_to_process, continuation_id, "Code to analyze", max_tokens=remaining_tokens, reserve_tokens=2000
-        )
-        self._actually_processed_files = processed_files
-
-        if code_content:
-            from utils.token_utils import estimate_tokens
-
-            code_tokens = estimate_tokens(code_content)
-            logger.info(f"[REFACTOR] Code files embedded successfully: {code_tokens:,} tokens")
-        else:
-            logger.warning("[REFACTOR] No code content after file processing")
-
-        # Detect primary language for language-specific guidance
-        primary_language = self.detect_primary_language(request.files)
-        logger.debug(f"[REFACTOR] Detected primary language: {primary_language}")
-
-        # Get language-specific guidance
-        language_guidance = self.get_language_specific_guidance(primary_language, request.refactor_type)
-
-        # Build the complete prompt
-        prompt_parts = []
-
-        # Add system prompt with dynamic language guidance
-        base_system_prompt = self.get_system_prompt()
-        if language_guidance:
-            enhanced_system_prompt = f"{base_system_prompt}\n\n{language_guidance}"
-        else:
-            enhanced_system_prompt = base_system_prompt
-        prompt_parts.append(enhanced_system_prompt)
-
-        # Add user context
-        prompt_parts.append("=== USER CONTEXT ===")
-        prompt_parts.append(f"Refactor Type: {request.refactor_type}")
-        if request.focus_areas:
-            prompt_parts.append(f"Focus Areas: {', '.join(request.focus_areas)}")
-        prompt_parts.append(f"User Goals: {request.prompt}")
-        prompt_parts.append("=== END CONTEXT ===")
-
-        # Add style guide examples if provided
-        if style_examples_content:
-            prompt_parts.append("\n=== STYLE GUIDE EXAMPLES ===")
-            if style_examples_note:
-                prompt_parts.append(f"// {style_examples_note}")
-            prompt_parts.append(style_examples_content)
-            prompt_parts.append("=== END STYLE GUIDE EXAMPLES ===")
-
-        # Add main code to analyze
-        prompt_parts.append("\n=== CODE TO ANALYZE ===")
-        prompt_parts.append(code_content)
-        prompt_parts.append("=== END CODE ===")
-
-        # Add generation instructions
-        prompt_parts.append(
-            f"\nPlease analyze the code for {request.refactor_type} refactoring opportunities following the multi-expert workflow specified in the system prompt."
-        )
-        if style_examples_content:
-            prompt_parts.append(
-                "Use the provided style guide examples as a reference for target coding patterns and style."
-            )
-
-        full_prompt = "\n".join(prompt_parts)
-
-        # Log final prompt statistics
-        from utils.token_utils import estimate_tokens
-
-        total_tokens = estimate_tokens(full_prompt)
-        logger.info(f"[REFACTOR] Complete prompt prepared: {total_tokens:,} tokens, {len(full_prompt):,} characters")
-
-        return full_prompt
-
-    def format_response(self, response: str, request: RefactorRequest, model_info: Optional[dict] = None) -> str:
+    def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """
-        Format the refactoring response with immediate implementation directives.
+        Decide when to call external model based on investigation completeness.
 
-        The base tool handles structured response validation via SPECIAL_STATUS_MODELS,
-        so this method focuses on ensuring Claude immediately implements the refactorings.
-
-        Args:
-            response: The raw refactoring analysis from the model
-            request: The original request for context
-            model_info: Optional dict with model metadata
-
-        Returns:
-            str: The response with clear implementation directives
+        Don't call expert analysis if Claude has certain confidence and complete refactoring - trust their judgment.
         """
-        logger.debug(f"[REFACTOR] Formatting response for {request.refactor_type} refactoring")
+        # Check if user requested to skip assistant model
+        if request and not self.get_request_use_assistant_model(request):
+            return False
 
-        # Check if this response indicates more refactoring is required
-        is_more_required = False
-        try:
-            import json
+        # Check if refactoring work is complete
+        if request and request.confidence == "complete":
+            return False
 
-            parsed = json.loads(response)
-            if isinstance(parsed, dict) and parsed.get("more_refactor_required") is True:
-                is_more_required = True
-        except (json.JSONDecodeError, ValueError):
-            # Not JSON or parsing error
-            pass
+        # Check if we have meaningful investigation data
+        return (
+            len(consolidated_findings.relevant_files) > 0
+            or len(consolidated_findings.findings) >= 2
+            or len(consolidated_findings.issues_found) > 0
+        )
 
-        continuation_instruction = ""
-        if is_more_required:
-            continuation_instruction = """
+    def prepare_expert_analysis_context(self, consolidated_findings) -> str:
+        """Prepare context for external model call for final refactoring validation."""
+        context_parts = [
+            f"=== REFACTORING ANALYSIS REQUEST ===\\n{self.initial_request or 'Refactoring workflow initiated'}\\n=== END REQUEST ==="
+        ]
 
-AFTER IMPLEMENTING ALL ABOVE: Use the refactor tool again with the SAME parameters but include the continuation_id from this response to get additional refactoring opportunities."""
-        # endif
+        # Add investigation summary
+        investigation_summary = self._build_refactoring_summary(consolidated_findings)
+        context_parts.append(
+            f"\\n=== CLAUDE'S REFACTORING INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
+        )
 
-        # Return response + steps
-        return f"""{response}
+        # Add refactor configuration context if available
+        if self.refactor_config:
+            config_text = "\\n".join(f"- {key}: {value}" for key, value in self.refactor_config.items() if value)
+            context_parts.append(f"\\n=== REFACTOR CONFIGURATION ===\\n{config_text}\\n=== END CONFIGURATION ===")
 
----
+        # Add relevant code elements if available
+        if consolidated_findings.relevant_context:
+            methods_text = "\\n".join(f"- {method}" for method in consolidated_findings.relevant_context)
+            context_parts.append(f"\\n=== RELEVANT CODE ELEMENTS ===\\n{methods_text}\\n=== END CODE ELEMENTS ===")
 
-MANDATORY NEXT STEPS:
+        # Add refactoring opportunities found if available
+        if consolidated_findings.issues_found:
+            opportunities_text = "\\n".join(
+                f"[{issue.get('severity', 'unknown').upper()}] {issue.get('type', 'unknown').upper()}: {issue.get('description', 'No description')}"
+                for issue in consolidated_findings.issues_found
+            )
+            context_parts.append(
+                f"\\n=== REFACTORING OPPORTUNITIES ===\\n{opportunities_text}\\n=== END OPPORTUNITIES ==="
+            )
 
-Start executing the refactoring plan immediately:
-1. INFORM USER by displaying a brief summary of required refactorings
-2. CREATE A CHECKLIST of each refactoring to keep a record of what is to change, how and why
-3. IMPLEMENT each refactoring opportunity immediately - think carefully about each change as you implement
-4. CREATE new files as needed where decomposition is suggested
-5. MODIFY existing files to apply improvements as needed
-6. UPDATE all imports, references, and dependencies as needed
-7. VERIFY each change works before moving to the next
+        # Add assessment evolution if available
+        if consolidated_findings.hypotheses:
+            assessments_text = "\\n".join(
+                f"Step {h['step']} ({h['confidence']} confidence): {h['hypothesis']}"
+                for h in consolidated_findings.hypotheses
+            )
+            context_parts.append(f"\\n=== ASSESSMENT EVOLUTION ===\\n{assessments_text}\\n=== END ASSESSMENTS ===")
 
-After each refactoring is implemented:
-Show: `IMPLEMENTED: [brief description] - Files: [list]` to the user
+        # Add images if available
+        if consolidated_findings.images:
+            images_text = "\\n".join(f"- {img}" for img in consolidated_findings.images)
+            context_parts.append(
+                f"\\n=== VISUAL REFACTORING INFORMATION ===\\n{images_text}\\n=== END VISUAL INFORMATION ==="
+            )
 
-IMPORTANT:
-- DO NOT SKIP any refactorings - implement them all one after another
-- VALIDATE each change doesn't break functionality
-- UPDATE any imports and references properly and think and search for any other reference that may need updating
-- TEST if possible to ensure changes work where tests are available
+        return "\\n".join(context_parts)
 
-MANDATORY: MUST start executing the refactor plan and follow each step listed above{continuation_instruction}"""
+    def _build_refactoring_summary(self, consolidated_findings) -> str:
+        """Prepare a comprehensive summary of the refactoring investigation."""
+        summary_parts = [
+            "=== SYSTEMATIC REFACTORING INVESTIGATION SUMMARY ===",
+            f"Total steps: {len(consolidated_findings.findings)}",
+            f"Files examined: {len(consolidated_findings.files_checked)}",
+            f"Relevant files identified: {len(consolidated_findings.relevant_files)}",
+            f"Code elements analyzed: {len(consolidated_findings.relevant_context)}",
+            f"Refactoring opportunities identified: {len(consolidated_findings.issues_found)}",
+            "",
+            "=== INVESTIGATION PROGRESSION ===",
+        ]
+
+        for finding in consolidated_findings.findings:
+            summary_parts.append(finding)
+
+        return "\\n".join(summary_parts)
+
+    def should_include_files_in_expert_prompt(self) -> bool:
+        """Include files in expert analysis for comprehensive refactoring validation."""
+        return True
+
+    def should_embed_system_prompt(self) -> bool:
+        """Embed system prompt in expert analysis for proper context."""
+        return True
+
+    def get_expert_thinking_mode(self) -> str:
+        """Use high thinking mode for thorough refactoring analysis."""
+        return "high"
+
+    def get_expert_analysis_instruction(self) -> str:
+        """Get specific instruction for refactoring expert analysis."""
+        return (
+            "Please provide comprehensive refactoring analysis based on the investigation findings. "
+            "Focus on validating the identified opportunities, ensuring completeness of the analysis, "
+            "and providing final recommendations for refactoring implementation, following the structured "
+            "format specified in the system prompt."
+        )
+
+    # Hook method overrides for refactor-specific behavior
+
+    def prepare_step_data(self, request) -> dict:
+        """
+        Map refactor workflow-specific fields for internal processing.
+        """
+        step_data = {
+            "step": request.step,
+            "step_number": request.step_number,
+            "findings": request.findings,
+            "files_checked": request.files_checked,
+            "relevant_files": request.relevant_files,
+            "relevant_context": request.relevant_context,
+            "issues_found": request.issues_found,
+            "confidence": request.confidence,
+            "hypothesis": request.findings,  # Map findings to hypothesis for compatibility
+            "images": request.images or [],
+        }
+        return step_data
+
+    def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
+        """
+        Refactor workflow skips expert analysis when Claude has "complete" confidence.
+        """
+        return request.confidence == "complete" and not request.next_step_required
+
+    def store_initial_issue(self, step_description: str):
+        """Store initial request for expert analysis."""
+        self.initial_request = step_description
+
+    # Inheritance hook methods for refactor-specific behavior
+
+    # Override inheritance hooks for refactor-specific behavior
+
+    def get_completion_status(self) -> str:
+        """Refactor tools use refactor-specific status."""
+        return "refactoring_analysis_complete_ready_for_implementation"
+
+    def get_completion_data_key(self) -> str:
+        """Refactor uses 'complete_refactoring' key."""
+        return "complete_refactoring"
+
+    def get_final_analysis_from_request(self, request):
+        """Refactor tools use 'findings' field."""
+        return request.findings
+
+    def get_confidence_level(self, request) -> str:
+        """Refactor tools use 'complete' for high confidence."""
+        return "complete"
+
+    def get_completion_message(self) -> str:
+        """Refactor-specific completion message."""
+        return (
+            "Refactoring analysis complete with COMPLETE confidence. You have identified all significant "
+            "refactoring opportunities and provided comprehensive analysis. MANDATORY: Present the user with "
+            "the complete refactoring results organized by type and severity, and IMMEDIATELY proceed with "
+            "implementing the highest priority refactoring opportunities or provide specific guidance for "
+            "improvements. Focus on actionable refactoring steps."
+        )
+
+    def get_skip_reason(self) -> str:
+        """Refactor-specific skip reason."""
+        return "Claude completed comprehensive refactoring analysis with full confidence"
+
+    def get_skip_expert_analysis_status(self) -> str:
+        """Refactor-specific expert analysis skip status."""
+        return "skipped_due_to_complete_refactoring_confidence"
+
+    def prepare_work_summary(self) -> str:
+        """Refactor-specific work summary."""
+        return self._build_refactoring_summary(self.consolidated_findings)
+
+    def get_completion_next_steps_message(self) -> str:
+        """
+        Refactor-specific completion message.
+        """
+        return (
+            "REFACTORING ANALYSIS IS COMPLETE. You MUST now summarize and present ALL refactoring opportunities "
+            "organized by type (codesmells → decompose → modernize → organization) and severity (Critical → High → "
+            "Medium → Low), specific code locations with line numbers, and exact recommendations for improvement. "
+            "Clearly prioritize the top 3 refactoring opportunities that need immediate attention. Provide concrete, "
+            "actionable guidance for each opportunity—make it easy for a developer to understand exactly what needs "
+            "to be refactored and how to implement the improvements."
+        )
+
+    def get_step_guidance_message(self, request) -> str:
+        """
+        Refactor-specific step guidance with detailed investigation instructions.
+        """
+        step_guidance = self.get_refactor_step_guidance(request.step_number, request.confidence, request)
+        return step_guidance["next_steps"]
+
+    def get_refactor_step_guidance(self, step_number: int, confidence: str, request) -> dict[str, Any]:
+        """
+        Provide step-specific guidance for refactor workflow.
+        """
+        # Generate the next steps instruction based on required actions
+        required_actions = self.get_required_actions(step_number, confidence, request.findings, request.total_steps)
+
+        if step_number == 1:
+            next_steps = (
+                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first examine "
+                f"the code files thoroughly for refactoring opportunities using appropriate tools. CRITICAL AWARENESS: "
+                f"You need to identify code smells, decomposition opportunities, modernization possibilities, and "
+                f"organization improvements across the specified refactor_type. Look for complexity issues, outdated "
+                f"patterns, oversized components, and structural problems. Use file reading tools, code analysis, and "
+                f"systematic examination to gather comprehensive refactoring information. Only call {self.get_name()} "
+                f"again AFTER completing your investigation. When you call {self.get_name()} next time, use "
+                f"step_number: {step_number + 1} and report specific files examined, refactoring opportunities found, "
+                f"and improvement assessments discovered."
+            )
+        elif confidence in ["exploring", "incomplete"]:
+            next_steps = (
+                f"STOP! Do NOT call {self.get_name()} again yet. Based on your findings, you've identified areas that need "
+                f"deeper refactoring analysis. MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\\n"
+                + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                + f"\\n\\nOnly call {self.get_name()} again with step_number: {step_number + 1} AFTER "
+                + "completing these refactoring analysis tasks."
+            )
+        elif confidence == "partial":
+            next_steps = (
+                f"WAIT! Your refactoring analysis needs final verification. DO NOT call {self.get_name()} immediately. REQUIRED ACTIONS:\\n"
+                + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                + f"\\n\\nREMEMBER: Ensure you have identified all significant refactoring opportunities across all types and "
+                f"verified the completeness of your analysis. Document opportunities with specific file references and "
+                f"line numbers where applicable, then call {self.get_name()} with step_number: {step_number + 1}."
+            )
+        else:
+            next_steps = (
+                f"PAUSE REFACTORING ANALYSIS. Before calling {self.get_name()} step {step_number + 1}, you MUST examine more code thoroughly. "
+                + "Required: "
+                + ", ".join(required_actions[:2])
+                + ". "
+                + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
+                f"NEW evidence from actual refactoring analysis, not just theories. NO recursive {self.get_name()} calls "
+                f"without investigation work!"
+            )
+
+        return {"next_steps": next_steps}
+
+    def customize_workflow_response(self, response_data: dict, request) -> dict:
+        """
+        Customize response to match refactor workflow format.
+        """
+        # Store initial request on first step
+        if request.step_number == 1:
+            self.initial_request = request.step
+            # Store refactor configuration for expert analysis
+            if request.files:
+                self.refactor_config = {
+                    "files": request.files,
+                    "refactor_type": request.refactor_type,
+                    "focus_areas": request.focus_areas,
+                    "style_guide_examples": request.style_guide_examples,
+                }
+
+        # Convert generic status names to refactor-specific ones
+        tool_name = self.get_name()
+        status_mapping = {
+            f"{tool_name}_in_progress": "refactoring_analysis_in_progress",
+            f"pause_for_{tool_name}": "pause_for_refactoring_analysis",
+            f"{tool_name}_required": "refactoring_analysis_required",
+            f"{tool_name}_complete": "refactoring_analysis_complete",
+        }
+
+        if response_data["status"] in status_mapping:
+            response_data["status"] = status_mapping[response_data["status"]]
+
+        # Rename status field to match refactor workflow
+        if f"{tool_name}_status" in response_data:
+            response_data["refactoring_status"] = response_data.pop(f"{tool_name}_status")
+            # Add refactor-specific status fields
+            refactor_types = {}
+            for issue in self.consolidated_findings.issues_found:
+                issue_type = issue.get("type", "unknown")
+                if issue_type not in refactor_types:
+                    refactor_types[issue_type] = 0
+                refactor_types[issue_type] += 1
+            response_data["refactoring_status"]["opportunities_by_type"] = refactor_types
+            response_data["refactoring_status"]["refactor_confidence"] = request.confidence
+
+        # Map complete_refactorworkflow to complete_refactoring
+        if f"complete_{tool_name}" in response_data:
+            response_data["complete_refactoring"] = response_data.pop(f"complete_{tool_name}")
+
+        # Map the completion flag to match refactor workflow
+        if f"{tool_name}_complete" in response_data:
+            response_data["refactoring_complete"] = response_data.pop(f"{tool_name}_complete")
+
+        return response_data
+
+    # Required abstract methods from BaseTool
+    def get_request_model(self):
+        """Return the refactor workflow-specific request model."""
+        return RefactorRequest
+
+    async def prepare_prompt(self, request) -> str:
+        """Not used - workflow tools use execute_workflow()."""
+        return ""  # Workflow tools use execute_workflow() directly

@@ -66,7 +66,6 @@ from tools import (  # noqa: E402
     PlannerTool,
     PrecommitTool,
     RefactorTool,
-    RefactorWorkflowTool,
     TestGenerationTool,
     ThinkDeepTool,
     TracerTool,
@@ -172,8 +171,7 @@ TOOLS = {
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
     "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
-    "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references
-    "refactorworkflow": RefactorWorkflowTool(),  # Step-by-step refactoring analysis workflow with expert validation
+    "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
 }
 
