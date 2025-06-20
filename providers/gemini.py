@@ -434,13 +434,17 @@ class GeminiModelProvider(ModelProvider):
         return any(indicator in error_str for indicator in retryable_indicators)
 
     def _build_contents(self, parts: list[dict]) -> list[dict]:
-        """Build contents structure. Can be overridden by subclasses."""
+        """Build contents structure. Can be overridden by subclasses.
+        Subclasses can modify the structure as needed.
+        """
         return [{"parts": parts}]
 
     def _build_response(
         self, response, model_name: str, thinking_mode: str, capabilities, usage: dict
     ) -> ModelResponse:
-        """Build response object. Can be overridden by subclasses."""
+        """Build response object. Can be overridden by subclasses.
+        Subclasses can customize the response object as needed.
+        """
         return ModelResponse(
             content=response.text,
             usage=usage,

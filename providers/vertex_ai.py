@@ -82,7 +82,7 @@ class VertexAIProvider(GeminiModelProvider):
                 ) from e
             except Exception as e:
                 logger.error(f"An unexpected error occurred during Google credentials initialization: {e}")
-                raise ValueError("An unexpected error occurred while initializing Google Cloud credentials.") from e
+                raise ValueError(f"An unexpected error occurred while initializing Google Cloud credentials: {e}") from e
         return self._credentials
 
     @property
