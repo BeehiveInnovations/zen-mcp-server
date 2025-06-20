@@ -543,13 +543,13 @@ class CodeReviewTool(WorkflowTool):
             "Provide concrete, actionable guidance for each issue—make it easy for a developer to understand "
             "exactly what needs to be fixed and how to implement the improvements."
         )
-        
+
         # Add expert analysis guidance only when expert analysis was actually used
         if expert_analysis_used:
             expert_guidance = self.get_expert_analysis_guidance()
             if expert_guidance:
                 return f"{base_message}\n\n{expert_guidance}"
-        
+
         return base_message
 
     def get_expert_analysis_guidance(self) -> str:

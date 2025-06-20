@@ -58,7 +58,6 @@ from config import (  # noqa: E402
 )
 from tools import (  # noqa: E402
     AnalyzeTool,
-    AnalyzeWorkflowTool,
     ChatTool,
     CodeReviewTool,
     ConsensusTool,
@@ -166,7 +165,6 @@ TOOLS = {
     "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
-    "analyzeworkflow": AnalyzeWorkflowTool(),  # Step-by-step analysis workflow with expert validation
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
     "listmodels": ListModelsTool(),  # List all available AI models by provider

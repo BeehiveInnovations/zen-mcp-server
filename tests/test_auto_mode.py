@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tools.analyze import AnalyzeTool
+from tools.chat import ChatTool
 
 
 class TestAutoMode:
@@ -65,7 +65,7 @@ class TestAutoMode:
 
             importlib.reload(config)
 
-            tool = AnalyzeTool()
+            tool = ChatTool()
             schema = tool.get_input_schema()
 
             # Model should be required
@@ -89,7 +89,7 @@ class TestAutoMode:
         """Test that tool schemas don't require model in normal mode"""
         # This test uses the default from conftest.py which sets non-auto mode
         # The conftest.py mock_provider_availability fixture ensures the model is available
-        tool = AnalyzeTool()
+        tool = ChatTool()
         schema = tool.get_input_schema()
 
         # Model should not be required
@@ -114,12 +114,12 @@ class TestAutoMode:
 
             importlib.reload(config)
 
-            tool = AnalyzeTool()
+            tool = ChatTool()
 
             # Mock the provider to avoid real API calls
             with patch.object(tool, "get_model_provider"):
                 # Execute without model parameter
-                result = await tool.execute({"files": ["/tmp/test.py"], "prompt": "Analyze this"})
+                result = await tool.execute({"prompt": "Test prompt"})
 
             # Should get error
             assert len(result) == 1
@@ -165,7 +165,7 @@ class TestAutoMode:
 
             ModelProviderRegistry._instance = None
 
-            tool = AnalyzeTool()
+            tool = ChatTool()
 
             # Test with real provider resolution - this should attempt to use a model
             # that doesn't exist in the OpenAI provider's model list

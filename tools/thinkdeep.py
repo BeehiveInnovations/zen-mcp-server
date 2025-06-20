@@ -220,7 +220,7 @@ class ThinkDeepTool(WorkflowTool):
         # Add thinking_complete field for final steps (test expects this)
         if not request.next_step_required:
             response_data["thinking_complete"] = True
-            
+
             # Add complete_thinking summary (test expects this)
             response_data["complete_thinking"] = {
                 "steps_completed": len(self.work_history),
@@ -350,49 +350,57 @@ but also acknowledge strong insights and valid conclusions.
         Return required actions for the current thinking step.
         """
         actions = []
-        
+
         if step_number == 1:
-            actions.extend([
-                "Begin systematic thinking analysis",
-                "Identify key aspects and assumptions to explore",
-                "Establish initial investigation approach"
-            ])
+            actions.extend(
+                [
+                    "Begin systematic thinking analysis",
+                    "Identify key aspects and assumptions to explore",
+                    "Establish initial investigation approach",
+                ]
+            )
         elif confidence == "low":
-            actions.extend([
-                "Continue gathering evidence and insights",
-                "Test initial hypotheses",
-                "Explore alternative perspectives"
-            ])
+            actions.extend(
+                [
+                    "Continue gathering evidence and insights",
+                    "Test initial hypotheses",
+                    "Explore alternative perspectives",
+                ]
+            )
         elif confidence == "medium":
-            actions.extend([
-                "Deepen analysis of promising approaches",
-                "Validate key assumptions",
-                "Consider implementation challenges"
-            ])
+            actions.extend(
+                [
+                    "Deepen analysis of promising approaches",
+                    "Validate key assumptions",
+                    "Consider implementation challenges",
+                ]
+            )
         elif confidence == "high":
-            actions.extend([
-                "Synthesize findings into cohesive recommendations",
-                "Validate conclusions against evidence",
-                "Prepare for expert analysis"
-            ])
+            actions.extend(
+                [
+                    "Synthesize findings into cohesive recommendations",
+                    "Validate conclusions against evidence",
+                    "Prepare for expert analysis",
+                ]
+            )
         else:  # certain
             actions.append("Analysis complete - ready for implementation")
-        
+
         return actions
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """
         Determine if expert analysis should be called based on confidence and completion.
         """
-        if request and hasattr(request, 'confidence'):
+        if request and hasattr(request, "confidence"):
             # Don't call expert analysis if confidence is "certain"
             if request.confidence == "certain":
                 return False
-        
+
         # Call expert analysis if investigation is complete (when next_step_required is False)
-        if request and hasattr(request, 'next_step_required'):
+        if request and hasattr(request, "next_step_required"):
             return not request.next_step_required
-        
+
         # Fallback: call expert analysis if we have meaningful findings
         return (
             len(consolidated_findings.relevant_files) > 0
@@ -405,30 +413,32 @@ but also acknowledge strong insights and valid conclusions.
         Prepare context for expert analysis specific to deep thinking.
         """
         context_parts = []
-        
+
         context_parts.append("DEEP THINKING ANALYSIS SUMMARY:")
         context_parts.append(f"Steps completed: {len(consolidated_findings.findings)}")
         context_parts.append(f"Final confidence: {consolidated_findings.confidence}")
-        
+
         if consolidated_findings.findings:
-            context_parts.append(f"\nKEY FINDINGS:")
+            context_parts.append("\nKEY FINDINGS:")
             for i, finding in enumerate(consolidated_findings.findings, 1):
                 context_parts.append(f"{i}. {finding}")
-        
+
         if consolidated_findings.relevant_context:
             context_parts.append(f"\nRELEVANT CONTEXT:\n{', '.join(consolidated_findings.relevant_context)}")
-        
+
         # Get hypothesis from latest hypotheses entry if available
         if consolidated_findings.hypotheses:
-            latest_hypothesis = consolidated_findings.hypotheses[-1].get('hypothesis', '')
+            latest_hypothesis = consolidated_findings.hypotheses[-1].get("hypothesis", "")
             if latest_hypothesis:
                 context_parts.append(f"\nFINAL HYPOTHESIS:\n{latest_hypothesis}")
-        
+
         if consolidated_findings.issues_found:
             context_parts.append(f"\nISSUES IDENTIFIED: {len(consolidated_findings.issues_found)} issues")
             for issue in consolidated_findings.issues_found:
-                context_parts.append(f"- {issue.get('severity', 'unknown')}: {issue.get('description', 'No description')}")
-        
+                context_parts.append(
+                    f"- {issue.get('severity', 'unknown')}: {issue.get('description', 'No description')}"
+                )
+
         return "\n".join(context_parts)
 
     def get_step_guidance_message(self, request) -> str:

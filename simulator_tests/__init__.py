@@ -6,6 +6,7 @@ Each test is in its own file for better organization and maintainability.
 """
 
 from .base_test import BaseSimulatorTest
+from .test_analyze_validation import AnalyzeValidationTest
 from .test_basic_conversation import BasicConversationTest
 from .test_codereview_validation import CodeReviewValidationTest
 from .test_consensus_conversation import TestConsensusConversation
@@ -37,7 +38,6 @@ from .test_thinkdeep_validation import ThinkDeepWorkflowValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
 from .test_vision_capability import VisionCapabilityTest
 from .test_xai_models import XAIModelsTest
-from .test_analyzeworkflow_validation import AnalyzeWorkflowValidationTest
 
 # Test registry for dynamic loading
 TEST_REGISTRY = {
@@ -70,7 +70,7 @@ TEST_REGISTRY = {
     "consensus_conversation": TestConsensusConversation,
     "consensus_stance": TestConsensusStance,
     "consensus_three_models": TestConsensusThreeModels,
-    "analyzeworkflow_validation": AnalyzeWorkflowValidationTest,
+    "analyze_validation": AnalyzeValidationTest,
     # "o3_pro_expensive": O3ProExpensiveTest,  # COMMENTED OUT - too expensive to run by default
 }
 
@@ -105,6 +105,6 @@ __all__ = [
     "TestConsensusConversation",
     "TestConsensusStance",
     "TestConsensusThreeModels",
-    "AnalyzeWorkflowValidationTest",
+    "AnalyzeValidationTest",
     "TEST_REGISTRY",
 ]

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-AnalyzeWorkflow Tool Validation Test
+Analyze Tool Validation Test
 
-Tests the analyzeworkflow tool's capabilities using the new workflow architecture.
+Tests the analyze tool's capabilities using the new workflow architecture.
 This validates that the new workflow-based implementation provides step-by-step
 analysis with expert validation following the same patterns as debug/codereview tools.
 """
@@ -13,19 +13,19 @@ from typing import Optional
 from .conversation_base_test import ConversationBaseTest
 
 
-class AnalyzeWorkflowValidationTest(ConversationBaseTest):
-    """Test analyzeworkflow tool with new workflow architecture"""
+class AnalyzeValidationTest(ConversationBaseTest):
+    """Test analyze tool with new workflow architecture"""
 
     @property
     def test_name(self) -> str:
-        return "analyzeworkflow_validation"
+        return "analyze_validation"
 
     @property
     def test_description(self) -> str:
         return "AnalyzeWorkflow tool validation with new workflow architecture"
 
     def run_test(self) -> bool:
-        """Test analyzeworkflow tool capabilities"""
+        """Test analyze tool capabilities"""
         # Set up the test environment
         self.setUp()
 
@@ -59,7 +59,7 @@ class AnalyzeWorkflowValidationTest(ConversationBaseTest):
             if not self._test_analysis_types():
                 return False
 
-            self.logger.info("  ✅ All analyzeworkflow validation tests passed")
+            self.logger.info("  ✅ All analyze validation tests passed")
             return True
 
         except Exception as e:
@@ -102,45 +102,45 @@ class UserService:
     async def get_user(self, user_id: int) -> Optional[Dict]:
         # Cache key generation - could be centralized
         cache_key = f"user:{user_id}"
-        
+
         # Check cache first
         cached = self.cache.get(cache_key)
         if cached:
             return json.loads(cached)
-        
+
         # Database query - no error handling
         result = await self.db.execute(
             "SELECT * FROM users WHERE id = %s", (user_id,)
         )
         user_data = result.fetchone()
-        
+
         if user_data:
             # Cache for 1 hour - magic number
             self.cache.setex(cache_key, 3600, json.dumps(user_data))
-            
+
         return user_data
 
     async def create_user(self, user_data: Dict) -> Dict:
         # Input validation missing
         # No transaction handling
         # No audit logging
-        
+
         query = "INSERT INTO users (name, email) VALUES (%s, %s) RETURNING id"
         result = await self.db.execute(query, (user_data['name'], user_data['email']))
         user_id = result.fetchone()[0]
-        
+
         # Cache invalidation strategy missing
-        
+
         return {"id": user_id, **user_data}
 
 @app.get("/users/{user_id}")
 async def get_user_endpoint(user_id: int, db: AsyncSession = Depends(get_db)):
     service = UserService(db)
     user = await service.get_user(user_id)
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return user
 
 @app.post("/users")
@@ -167,7 +167,7 @@ class DatabaseConfig:
     max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "10"))
     echo: bool = os.getenv("DB_ECHO", "false").lower() == "true"
 
-@dataclass  
+@dataclass
 class CacheConfig:
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     default_ttl: int = int(os.getenv("CACHE_TTL", "3600"))
@@ -178,16 +178,16 @@ class AppConfig:
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    
+
     # Nested config objects
     database: DatabaseConfig = DatabaseConfig()
     cache: CacheConfig = CacheConfig()
-    
+
     # Security settings scattered
     secret_key: str = os.getenv("SECRET_KEY", "dev-key-not-secure")
     jwt_algorithm: str = "HS256"
     jwt_expiration: int = 86400  # 24 hours
-    
+
     def __post_init__(self):
         # Validation logic could be centralized
         if self.environment == "production" and self.secret_key == "dev-key-not-secure":
@@ -227,18 +227,18 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True)
     email = Column(String(255), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationship could be optimized
     profiles = relationship("UserProfile", back_populates="user", lazy="select")
     audit_logs = relationship("AuditLog", back_populates="user")
-    
+
     def to_dict(self) -> dict:
         # Serialization logic mixed with model - could be separated
         return {
@@ -249,7 +249,7 @@ class User(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
-    
+
     def update_from_dict(self, data: dict):
         # Update logic could be more robust
         for key, value in data.items():
@@ -259,28 +259,28 @@ class User(Base):
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
-    
+
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     bio = Column(Text)
     avatar_url = Column(String(500))
     preferences = Column(Text)  # JSON stored as text - could use JSON column
-    
+
     user = relationship("User", back_populates="profiles")
-    
+
     def get_preferences(self) -> dict:
         # JSON handling could be centralized
         try:
             return json.loads(self.preferences) if self.preferences else {}
         except json.JSONDecodeError:
             return {}
-    
+
     def set_preferences(self, prefs: dict):
         self.preferences = json.dumps(prefs)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
-    
+
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     action = Column(String(100), nullable=False)
@@ -288,11 +288,11 @@ class AuditLog(Base):
     ip_address = Column(String(45))  # IPv6 support
     user_agent = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    
+
     user = relationship("User", back_populates="audit_logs")
-    
+
     @classmethod
-    def log_action(cls, db_session, user_id: int, action: str, details: dict = None, 
+    def log_action(cls, db_session, user_id: int, action: str, details: dict = None,
                    ip_address: str = None, user_agent: str = None):
         # Factory method pattern - could be improved
         log = cls(
@@ -324,23 +324,23 @@ class ValidationError(Exception):
 
 def validate_email(email: str) -> bool:
     # Email validation - could use more robust library
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 
 def validate_password(password: str) -> tuple[bool, str]:
     # Password validation rules - could be configurable
     if len(password) < 8:
         return False, "Password must be at least 8 characters"
-    
+
     if not re.search(r'[A-Z]', password):
         return False, "Password must contain uppercase letter"
-    
+
     if not re.search(r'[a-z]', password):
         return False, "Password must contain lowercase letter"
-    
+
     if not re.search(r'[0-9]', password):
         return False, "Password must contain number"
-    
+
     return True, "Valid password"
 
 def hash_password(password: str) -> str:
@@ -373,13 +373,13 @@ def parse_datetime(date_string: str) -> Optional[datetime]:
         "%Y-%m-%dT%H:%M:%S.%f",
         "%Y-%m-%d"
     ]
-    
+
     for fmt in formats:
         try:
             return datetime.strptime(date_string, fmt)
         except ValueError:
             continue
-    
+
     logger.warning(f"Unable to parse datetime: {date_string}")
     return None
 
@@ -390,17 +390,17 @@ def calculate_expiry(hours: int = 24) -> datetime:
 def sanitize_input(data: Dict[str, Any]) -> Dict[str, Any]:
     # Input sanitization - basic implementation
     sanitized = {}
-    
+
     for key, value in data.items():
         if isinstance(value, str):
             # Basic HTML/script tag removal
             value = re.sub(r'<[^>]*>', '', value)
             value = value.strip()
-        
+
         # Type validation could be more comprehensive
         if value is not None and value != "":
             sanitized[key] = value
-    
+
     return sanitized
 
 def format_response(data: Any, status: str = "success", message: str = None) -> Dict[str, Any]:
@@ -410,10 +410,10 @@ def format_response(data: Any, status: str = "success", message: str = None) -> 
         "data": data,
         "timestamp": datetime.utcnow().isoformat()
     }
-    
+
     if message:
         response["message"] = message
-    
+
     return response
 
 class PerformanceTimer:
@@ -421,11 +421,11 @@ class PerformanceTimer:
     def __init__(self, name: str):
         self.name = name
         self.start_time = None
-    
+
     def __enter__(self):
         self.start_time = datetime.now()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.start_time:
             duration = datetime.now() - self.start_time
@@ -438,7 +438,7 @@ class PerformanceTimer:
         self.models_file = self.create_additional_test_file("models.py", models_module)
         self.utils_file = self.create_additional_test_file("utils.py", utils_module)
 
-        self.logger.info(f"  ✅ Created test codebase with 4 files for analysis")
+        self.logger.info("  ✅ Created test codebase with 4 files for analysis")
 
     def _test_single_analysis_session(self) -> bool:
         """Test a complete analysis session with multiple steps"""
@@ -448,7 +448,7 @@ class PerformanceTimer:
             # Step 1: Start analysis
             self.logger.info("    1.1.1: Step 1 - Initial analysis")
             response1, continuation_id = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "I need to analyze this Python microservice codebase for architectural patterns, design decisions, and improvement opportunities. Let me start by examining the overall structure and understanding the technology stack.",
                     "step_number": 1,
@@ -481,7 +481,7 @@ class PerformanceTimer:
             # Step 2: Deeper examination
             self.logger.info("    1.1.2: Step 2 - Architecture examination")
             response2, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Now examining the configuration and models modules to understand data architecture and configuration management patterns.",
                     "step_number": 2,
@@ -492,8 +492,11 @@ class PerformanceTimer:
                     "relevant_files": [self.main_service_file, self.config_file, self.models_file],
                     "relevant_context": ["UserService", "AppConfig", "User.to_dict"],
                     "issues_found": [
-                        {"severity": "medium", "description": "Direct dependency on global Redis client in UserService"},
-                        {"severity": "low", "description": "Global configuration instance could cause testing issues"}
+                        {
+                            "severity": "medium",
+                            "description": "Direct dependency on global Redis client in UserService",
+                        },
+                        {"severity": "low", "description": "Global configuration instance could cause testing issues"},
                     ],
                     "confidence": "medium",
                     "continuation_id": continuation_id,
@@ -540,7 +543,7 @@ class PerformanceTimer:
             # Start a new analysis for testing backtracking
             self.logger.info("    1.2.1: Start analysis for backtracking test")
             response1, continuation_id = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Analyzing performance characteristics of the data processing pipeline",
                     "step_number": 1,
@@ -562,7 +565,7 @@ class PerformanceTimer:
             # Step 2: Wrong direction
             self.logger.info("    1.2.2: Step 2 - Incorrect analysis path")
             response2, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Focusing on database optimization strategies",
                     "step_number": 2,
@@ -585,7 +588,7 @@ class PerformanceTimer:
             # Step 3: Backtrack from step 2
             self.logger.info("    1.2.3: Step 3 - Backtrack and revise approach")
             response3, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Backtracking - the performance issue might not be database related. Let me examine the caching and serialization patterns instead.",
                     "step_number": 3,
@@ -597,7 +600,7 @@ class PerformanceTimer:
                     "relevant_context": ["generate_cache_key", "User.to_dict", "sanitize_input"],
                     "issues_found": [
                         {"severity": "medium", "description": "JSON serialization in model classes could be optimized"},
-                        {"severity": "low", "description": "Cache key generation lacks proper escaping"}
+                        {"severity": "low", "description": "Cache key generation lacks proper escaping"},
                     ],
                     "confidence": "medium",
                     "backtrack_from_step": 2,  # Backtrack from step 2
@@ -631,7 +634,7 @@ class PerformanceTimer:
                 # Start fresh if no continuation available
                 self.logger.info("    1.3.0: Starting fresh analysis")
                 response0, continuation_id = self.call_mcp_tool(
-                    "analyzeworkflow",
+                    "analyze",
                     {
                         "step": "Analyzing the microservice architecture for improvement opportunities",
                         "step_number": 1,
@@ -653,7 +656,7 @@ class PerformanceTimer:
             # Final step - trigger expert validation
             self.logger.info("    1.3.1: Final step - complete analysis")
             response_final, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Analysis complete. I have identified key architectural patterns and strategic improvement opportunities across scalability, maintainability, and performance dimensions.",
                     "step_number": 2,
@@ -667,7 +670,7 @@ class PerformanceTimer:
                         {"severity": "high", "description": "Tight coupling via global Redis client and configuration"},
                         {"severity": "medium", "description": "Missing transaction management in create_user"},
                         {"severity": "medium", "description": "Serialization logic mixed with model classes"},
-                        {"severity": "low", "description": "Magic numbers and hardcoded values scattered throughout"}
+                        {"severity": "low", "description": "Magic numbers and hardcoded values scattered throughout"},
                     ],
                     "confidence": "high",
                     "continuation_id": continuation_id,
@@ -744,7 +747,7 @@ class PerformanceTimer:
             # Test certain confidence - should skip expert analysis
             self.logger.info("    1.4.1: Certain confidence analysis")
             response_certain, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "I have completed a comprehensive analysis with 100% certainty about the architectural patterns and improvement opportunities.",
                     "step_number": 1,
@@ -756,7 +759,7 @@ class PerformanceTimer:
                     "relevant_context": ["UserService", "AppConfig", "User", "validate_email"],
                     "issues_found": [
                         {"severity": "high", "description": "Global dependencies create tight coupling"},
-                        {"severity": "medium", "description": "Transaction management missing in critical operations"}
+                        {"severity": "medium", "description": "Transaction management missing in critical operations"},
                     ],
                     "confidence": "certain",  # This should skip expert analysis
                     "files": [self.main_service_file, self.config_file, self.models_file, self.utils_file],
@@ -805,7 +808,7 @@ class PerformanceTimer:
             # Test 1: New conversation, intermediate step - should only reference files
             self.logger.info("    1.5.1: New conversation intermediate step (should reference only)")
             response1, continuation_id = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Starting architectural analysis of microservice components",
                     "step_number": 1,
@@ -815,9 +818,7 @@ class PerformanceTimer:
                     "files_checked": [self.main_service_file, self.config_file],
                     "relevant_files": [self.main_service_file],  # This should be referenced, not embedded
                     "relevant_context": ["UserService"],
-                    "issues_found": [
-                        {"severity": "medium", "description": "Direct Redis dependency in service class"}
-                    ],
+                    "issues_found": [{"severity": "medium", "description": "Direct Redis dependency in service class"}],
                     "confidence": "low",
                     "files": [self.main_service_file, self.config_file],
                     "prompt": "Analyze service architecture patterns",
@@ -849,7 +850,7 @@ class PerformanceTimer:
             # Test 2: Final step - should embed files for expert validation
             self.logger.info("    1.5.2: Final step (should embed files)")
             response2, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Analysis complete - identified key architectural patterns and improvement opportunities",
                     "step_number": 2,
@@ -862,7 +863,7 @@ class PerformanceTimer:
                     "relevant_context": ["UserService", "AppConfig"],
                     "issues_found": [
                         {"severity": "high", "description": "Global dependencies create architectural coupling"},
-                        {"severity": "medium", "description": "Configuration management lacks flexibility"}
+                        {"severity": "medium", "description": "Configuration management lacks flexibility"},
                     ],
                     "confidence": "high",
                     "model": "flash",
@@ -913,7 +914,7 @@ class PerformanceTimer:
             # Test security analysis
             self.logger.info("    1.6.1: Security analysis")
             response_security, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Conducting security analysis of authentication and data handling patterns",
                     "step_number": 1,
@@ -925,7 +926,7 @@ class PerformanceTimer:
                     "relevant_context": ["hash_password", "validate_email", "sanitize_input"],
                     "issues_found": [
                         {"severity": "critical", "description": "Weak default secret key in production detection"},
-                        {"severity": "medium", "description": "Input sanitization not consistently applied"}
+                        {"severity": "medium", "description": "Input sanitization not consistently applied"},
                     ],
                     "confidence": "high",
                     "files": [self.main_service_file, self.utils_file],
@@ -946,7 +947,7 @@ class PerformanceTimer:
             # Check that security analysis was processed
             issues = response_security_data.get("complete_analysis", {}).get("issues_found", [])
             critical_issues = [issue for issue in issues if issue.get("severity") == "critical"]
-            
+
             if not critical_issues:
                 self.logger.warning("Security analysis should have identified critical security issues")
             else:
@@ -955,7 +956,7 @@ class PerformanceTimer:
             # Test quality analysis
             self.logger.info("    1.6.2: Quality analysis")
             response_quality, _ = self.call_mcp_tool(
-                "analyzeworkflow",
+                "analyze",
                 {
                     "step": "Conducting code quality analysis focusing on maintainability and best practices",
                     "step_number": 1,
@@ -967,7 +968,7 @@ class PerformanceTimer:
                     "relevant_context": ["User.to_dict", "ValidationError", "PerformanceTimer"],
                     "issues_found": [
                         {"severity": "medium", "description": "Serialization logic mixed with model classes"},
-                        {"severity": "low", "description": "Inconsistent error handling patterns"}
+                        {"severity": "low", "description": "Inconsistent error handling patterns"},
                     ],
                     "confidence": "high",
                     "files": [self.models_file, self.utils_file],
@@ -1000,20 +1001,20 @@ class PerformanceTimer:
             return False
 
     def call_mcp_tool(self, tool_name: str, params: dict) -> tuple[Optional[str], Optional[str]]:
-        """Call an MCP tool in-process - override for analyzeworkflow-specific response handling"""
+        """Call an MCP tool in-process - override for analyze-specific response handling"""
         # Use in-process implementation to maintain conversation memory
         response_text, _ = self.call_mcp_tool_direct(tool_name, params)
 
         if not response_text:
             return None, None
 
-        # Extract continuation_id from analyzeworkflow response specifically
+        # Extract continuation_id from analyze response specifically
         continuation_id = self._extract_analyze_continuation_id(response_text)
 
         return response_text, continuation_id
 
     def _extract_analyze_continuation_id(self, response_text: str) -> Optional[str]:
-        """Extract continuation_id from analyzeworkflow response"""
+        """Extract continuation_id from analyze response"""
         try:
             # Parse the response
             response_data = json.loads(response_text)
@@ -1024,13 +1025,13 @@ class PerformanceTimer:
             return None
 
     def _parse_analyze_response(self, response_text: str) -> dict:
-        """Parse analyzeworkflow tool JSON response"""
+        """Parse analyze tool JSON response"""
         try:
             # Parse the response - it should be direct JSON
             return json.loads(response_text)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse analyzeworkflow response as JSON: {e}")
+            self.logger.error(f"Failed to parse analyze response as JSON: {e}")
             self.logger.error(f"Response text: {response_text[:500]}...")
             return {}
 
@@ -1042,7 +1043,7 @@ class PerformanceTimer:
         expected_next_required: bool,
         expected_status: str,
     ) -> bool:
-        """Validate an analyzeworkflow investigation step response structure"""
+        """Validate an analyze investigation step response structure"""
         try:
             # Check status
             if response_data.get("status") != expected_status:
