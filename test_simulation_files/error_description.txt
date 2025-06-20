@@ -1,0 +1,13 @@
+ISSUE DESCRIPTION:
+Our session management system is experiencing intermittent failures during cleanup operations.
+
+SYMPTOMS:
+- Random RuntimeError: dictionary changed size during iteration
+- Occurs during high load when many sessions expire simultaneously
+- Error happens in cleanup_expired_sessions method
+- Affects about 5% of cleanup operations
+
+ERROR LOG:
+RuntimeError: dictionary changed size during iteration
+  File "session_manager.py", line 44, in cleanup_expired_sessions
+    for session_id, session in self.active_sessions.items():

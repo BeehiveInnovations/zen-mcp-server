@@ -71,6 +71,7 @@ from tools import (  # noqa: E402
     TracerTool,
 )
 from tools.models import ToolOutput  # noqa: E402
+from tools.workflow.debugworkflow import DebugWorkflowTool  # noqa: E402
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
@@ -164,6 +165,7 @@ TOOLS = {
     "thinkdeep": ThinkDeepTool(),  # Extended reasoning for complex problems
     "codereview": CodeReviewTool(),  # Comprehensive code review and quality analysis
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
+    "debugworkflow": DebugWorkflowTool(),  # NEW ARCHITECTURE: Debug tool using WorkflowTool base
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
@@ -191,6 +193,11 @@ PROMPT_TEMPLATES = {
         "name": "debug",
         "description": "Debug an issue or error",
         "template": "Help debug this issue with {model}",
+    },
+    "debugworkflow": {
+        "name": "debugworkflow",
+        "description": "Debug using new workflow architecture (validation)",
+        "template": "Help debug this issue with {model} using new workflow architecture",
     },
     "analyze": {
         "name": "analyze",
