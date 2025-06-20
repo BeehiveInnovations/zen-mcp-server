@@ -143,10 +143,6 @@ class RefactorRequest(WorkflowRequest):
     images: Optional[list[str]] = Field(default=None, description=REFACTOR_FIELD_DESCRIPTIONS["images"])
 
     # Refactor-specific fields (only used in step 1 to initialize)
-    files: Optional[list[str]] = Field(
-        None,
-        description="Code files or directories to analyze for refactoring opportunities (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
-    )
     refactor_type: Optional[Literal["codesmells", "decompose", "modernize", "organization"]] = Field(
         "codesmells", description=REFACTOR_FIELD_DESCRIPTIONS["refactor_type"]
     )
@@ -162,10 +158,10 @@ class RefactorRequest(WorkflowRequest):
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
-        """Ensure step 1 has required files field."""
-        if self.step_number == 1 and not self.files:
+        """Ensure step 1 has required relevant_files field."""
+        if self.step_number == 1 and not self.relevant_files:
             raise ValueError(
-                "Step 1 requires 'files' field to specify code files or directories to analyze for refactoring"
+                "Step 1 requires 'relevant_files' field to specify code files or directories to analyze for refactoring"
             )
         return self
 
@@ -286,11 +282,7 @@ class RefactorTool(WorkflowTool):
                 "description": REFACTOR_FIELD_DESCRIPTIONS["images"],
             },
             # Refactor-specific fields (for step 1)
-            "files": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Code files or directories to analyze for refactoring opportunities (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
-            },
+            # Note: Use relevant_files field instead of files for consistency
             "refactor_type": {
                 "type": "string",
                 "enum": ["codesmells", "decompose", "modernize", "organization"],
@@ -618,9 +610,9 @@ class RefactorTool(WorkflowTool):
         if request.step_number == 1:
             self.initial_request = request.step
             # Store refactor configuration for expert analysis
-            if request.files:
+            if request.relevant_files:
                 self.refactor_config = {
-                    "files": request.files,
+                    "relevant_files": request.relevant_files,
                     "refactor_type": request.refactor_type,
                     "focus_areas": request.focus_areas,
                     "style_guide_examples": request.style_guide_examples,

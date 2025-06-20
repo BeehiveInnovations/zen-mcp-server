@@ -57,7 +57,7 @@ class SimpleTool(BaseTool):
     """
 
     # Common field definitions that simple tools can reuse
-    FILES_FIELD = SchemaBuilder.COMMON_FIELD_SCHEMAS["files"]
+    FILES_FIELD = SchemaBuilder.SIMPLE_FIELD_SCHEMAS["files"]
     IMAGES_FIELD = SchemaBuilder.COMMON_FIELD_SCHEMAS["images"]
 
     @abstractmethod

@@ -1012,14 +1012,81 @@ class BaseWorkflowMixin(ABC):
         """
         Store the conversation turn. Tools can override for custom memory storage.
         """
+        # CRITICAL: Extract clean content for conversation history (exclude internal workflow metadata)
+        clean_content = self._extract_clean_workflow_content_for_history(response_data)
+
         add_turn(
             thread_id=continuation_id,
             role="assistant",
-            content=json.dumps(response_data, indent=2),
+            content=clean_content,  # Use cleaned content instead of full response_data
             tool_name=self.get_name(),
             files=request.relevant_files,
             images=self.get_request_images(request),
         )
+
+    def _extract_clean_workflow_content_for_history(self, response_data: dict) -> str:
+        """
+        Extract clean content from workflow response suitable for conversation history.
+
+        This method removes internal workflow metadata, continuation offers, and
+        status information that should not appear when the conversation is
+        reconstructed for expert models or other tools.
+
+        Args:
+            response_data: The full workflow response data
+
+        Returns:
+            str: Clean content suitable for conversation history storage
+        """
+        # Create a clean copy with only essential content for conversation history
+        clean_data = {}
+
+        # Include core content if present
+        if "content" in response_data:
+            clean_data["content"] = response_data["content"]
+
+        # Include expert analysis if present (but clean it)
+        if "expert_analysis" in response_data:
+            expert_analysis = response_data["expert_analysis"]
+            if isinstance(expert_analysis, dict):
+                # Only include the actual analysis content, not metadata
+                clean_expert = {}
+                if "raw_analysis" in expert_analysis:
+                    clean_expert["analysis"] = expert_analysis["raw_analysis"]
+                elif "content" in expert_analysis:
+                    clean_expert["analysis"] = expert_analysis["content"]
+                if clean_expert:
+                    clean_data["expert_analysis"] = clean_expert
+
+        # Include findings/issues if present (core workflow output)
+        if "complete_analysis" in response_data:
+            complete_analysis = response_data["complete_analysis"]
+            if isinstance(complete_analysis, dict):
+                clean_complete = {}
+                # Include essential analysis data without internal metadata
+                for key in ["findings", "issues_found", "relevant_context", "insights"]:
+                    if key in complete_analysis:
+                        clean_complete[key] = complete_analysis[key]
+                if clean_complete:
+                    clean_data["analysis_summary"] = clean_complete
+
+        # Include step information for context but remove internal workflow metadata
+        if "step_number" in response_data:
+            clean_data["step_info"] = {
+                "step": response_data.get("step", ""),
+                "step_number": response_data.get("step_number", 1),
+                "total_steps": response_data.get("total_steps", 1),
+            }
+
+        # Exclude problematic fields that should never appear in conversation history:
+        # - continuation_id (confuses LLMs with old IDs)
+        # - status (internal workflow state)
+        # - next_step_required (internal control flow)
+        # - analysis_status (internal tracking)
+        # - file_context (internal optimization info)
+        # - required_actions (internal workflow instructions)
+
+        return json.dumps(clean_data, indent=2)
 
     # Core workflow logic methods
 

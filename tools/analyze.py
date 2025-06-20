@@ -134,10 +134,7 @@ class AnalyzeWorkflowRequest(WorkflowRequest):
     images: Optional[list[str]] = Field(default=None, description=ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["images"])
 
     # Analyze-specific fields (only used in step 1 to initialize)
-    files: Optional[list[str]] = Field(
-        None,
-        description="Files or directories to analyze (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
-    )
+    # Note: Use relevant_files field instead of files for consistency across workflow tools
     analysis_type: Optional[Literal["architecture", "performance", "security", "quality", "general"]] = Field(
         "general", description=ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["analysis_type"]
     )
@@ -150,10 +147,10 @@ class AnalyzeWorkflowRequest(WorkflowRequest):
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
-        """Ensure step 1 has required files."""
+        """Ensure step 1 has required relevant_files."""
         if self.step_number == 1:
-            if not self.files:
-                raise ValueError("Step 1 requires 'files' field to specify files or directories to analyze")
+            if not self.relevant_files:
+                raise ValueError("Step 1 requires 'relevant_files' field to specify files or directories to analyze")
         return self
 
 
@@ -272,12 +269,6 @@ class AnalyzeTool(WorkflowTool):
                 "type": "array",
                 "items": {"type": "object"},
                 "description": "Issues or concerns identified during analysis, each with severity level (critical, high, medium, low)",
-            },
-            # Analyze-specific fields (for step 1)
-            "files": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Files or directories to analyze (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
             },
             "analysis_type": {
                 "type": "string",
@@ -582,9 +573,9 @@ class AnalyzeTool(WorkflowTool):
         if request.step_number == 1:
             self.initial_request = request.step
             # Store analysis configuration for expert analysis
-            if request.files:
+            if request.relevant_files:
                 self.analysis_config = {
-                    "files": request.files,
+                    "relevant_files": request.relevant_files,
                     "analysis_type": request.analysis_type,
                     "output_format": request.output_format,
                 }

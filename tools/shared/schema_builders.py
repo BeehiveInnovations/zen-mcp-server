@@ -19,7 +19,7 @@ class SchemaBuilder:
     Workflow tools use WorkflowSchemaBuilder in workflow/schema_builders.py.
     """
 
-    # Common field schemas that can be reused across tools
+    # Common field schemas that can be reused across all tool types
     COMMON_FIELD_SCHEMAS = {
         "temperature": {
             "type": "number",
@@ -46,6 +46,10 @@ class SchemaBuilder:
             "items": {"type": "string"},
             "description": COMMON_FIELD_DESCRIPTIONS["images"],
         },
+    }
+
+    # Simple tool-specific field schemas (workflow tools use relevant_files instead)
+    SIMPLE_FIELD_SCHEMAS = {
         "files": {
             "type": "array",
             "items": {"type": "string"},
@@ -76,6 +80,9 @@ class SchemaBuilder:
 
         # Add common fields (temperature, thinking_mode, etc.)
         properties.update(SchemaBuilder.COMMON_FIELD_SCHEMAS)
+
+        # Add simple tool-specific fields (files field for simple tools)
+        properties.update(SchemaBuilder.SIMPLE_FIELD_SCHEMAS)
 
         # Add model field if provided
         if model_field_schema:

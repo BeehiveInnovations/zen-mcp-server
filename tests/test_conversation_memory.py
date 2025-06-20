@@ -507,7 +507,7 @@ class TestConversationFlow:
         mock_storage.return_value = mock_client
 
         # Start conversation with files
-        thread_id = create_thread("analyze", {"prompt": "Analyze this codebase", "files": ["/project/src/"]})
+        thread_id = create_thread("analyze", {"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]})
 
         # Turn 1: Claude provides context with multiple files
         initial_context = ThreadContext(
@@ -516,7 +516,7 @@ class TestConversationFlow:
             last_updated_at="2023-01-01T00:00:00Z",
             tool_name="analyze",
             turns=[],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
         mock_client.get.return_value = initial_context.model_dump_json()
 
@@ -545,7 +545,7 @@ class TestConversationFlow:
                     tool_name="analyze",
                 )
             ],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
         mock_client.get.return_value = context_turn_1.model_dump_json()
 
@@ -576,7 +576,7 @@ class TestConversationFlow:
                     files=["/project/tests/", "/project/test_main.py"],
                 ),
             ],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
         mock_client.get.return_value = context_turn_2.model_dump_json()
 
@@ -617,7 +617,7 @@ class TestConversationFlow:
                     tool_name="analyze",
                 ),
             ],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
 
         history, tokens = build_conversation_history(final_context)

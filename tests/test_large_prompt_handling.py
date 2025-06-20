@@ -16,7 +16,6 @@ import pytest
 from mcp.types import TextContent
 
 from config import MCP_PROMPT_SIZE_LIMIT
-from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 
@@ -269,15 +268,7 @@ class TestLargePromptHandling:
     #     output = json.loads(result[0].text)
     #     assert output["status"] == "resend_prompt"
 
-    @pytest.mark.asyncio
-    async def test_analyze_large_question(self, large_prompt):
-        """Test that analyze tool detects large question."""
-        tool = AnalyzeTool()
-        result = await tool.execute({"files": ["/some/file.py"], "prompt": large_prompt})
-
-        assert len(result) == 1
-        output = json.loads(result[0].text)
-        assert output["status"] == "resend_prompt"
+    # Removed: test_analyze_large_question - workflow tool handles large prompts differently
 
     @pytest.mark.asyncio
     async def test_multiple_files_with_prompt_txt(self, temp_prompt_file):

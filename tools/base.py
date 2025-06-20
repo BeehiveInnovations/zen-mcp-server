@@ -691,6 +691,65 @@ class BaseTool(ABC):
 
         return parts
 
+    def _extract_clean_content_for_history(self, formatted_content: str) -> str:
+        """
+        Extract clean content suitable for conversation history storage.
+
+        This method removes internal metadata, continuation offers, and other
+        tool-specific formatting that should not appear in conversation history
+        when passed to expert models or other tools.
+
+        Args:
+            formatted_content: The full formatted response from the tool
+
+        Returns:
+            str: Clean content suitable for conversation history storage
+        """
+        try:
+            # Try to parse as JSON first (for structured responses)
+            import json
+
+            response_data = json.loads(formatted_content)
+
+            # If it's a ToolOutput-like structure, extract just the content
+            if isinstance(response_data, dict) and "content" in response_data:
+                # Remove continuation_offer and other metadata fields
+                clean_data = {
+                    "content": response_data.get("content", ""),
+                    "status": response_data.get("status", "success"),
+                    "content_type": response_data.get("content_type", "text"),
+                }
+                return json.dumps(clean_data, indent=2)
+            else:
+                # For non-ToolOutput JSON, return as-is but ensure no continuation_offer
+                if "continuation_offer" in response_data:
+                    clean_data = {k: v for k, v in response_data.items() if k != "continuation_offer"}
+                    return json.dumps(clean_data, indent=2)
+                return formatted_content
+
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON, treat as plain text
+            # Remove any lines that contain continuation metadata
+            lines = formatted_content.split("\n")
+            clean_lines = []
+
+            for line in lines:
+                # Skip lines containing internal metadata patterns
+                if any(
+                    pattern in line.lower()
+                    for pattern in [
+                        "continuation_id",
+                        "remaining_turns",
+                        "suggested_tool_params",
+                        "if you'd like to continue",
+                        "continuation available",
+                    ]
+                ):
+                    continue
+                clean_lines.append(line)
+
+            return "\n".join(clean_lines).strip()
+
     def _prepare_file_content_for_prompt(
         self,
         request_files: list[str],
@@ -1605,10 +1664,13 @@ When recommending searches, be specific about what information you need and why 
                 if model_response:
                     model_metadata = {"usage": model_response.usage, "metadata": model_response.metadata}
 
+            # CRITICAL: Store clean content for conversation history (exclude internal metadata)
+            clean_content = self._extract_clean_content_for_history(formatted_content)
+
             success = add_turn(
                 continuation_id,
                 "assistant",
-                formatted_content,
+                clean_content,  # Use cleaned content instead of full formatted response
                 files=request_files,
                 images=request_images,
                 tool_name=self.name,
@@ -1728,10 +1790,13 @@ When recommending searches, be specific about what information you need and why 
                 if model_response:
                     model_metadata = {"usage": model_response.usage, "metadata": model_response.metadata}
 
+            # CRITICAL: Store clean content for conversation history (exclude internal metadata)
+            clean_content = self._extract_clean_content_for_history(content)
+
             add_turn(
                 thread_id,
                 "assistant",
-                content,
+                clean_content,  # Use cleaned content instead of full formatted response
                 files=request_files,
                 images=request_images,
                 tool_name=self.name,

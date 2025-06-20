@@ -112,7 +112,7 @@ class TestCodeReviewTool:
         assert tool.get_default_temperature() == 0.2
 
         schema = tool.get_input_schema()
-        assert "files" in schema["properties"]
+        assert "relevant_files" in schema["properties"]
         assert "step" in schema["properties"]
         assert "step_number" in schema["required"]
 
@@ -193,13 +193,22 @@ class TestAnalyzeTool:
     def test_tool_metadata(self, tool):
         """Test tool metadata"""
         assert tool.get_name() == "analyze"
-        assert "ANALYZE FILES & CODE" in tool.get_description()
+        assert "COMPREHENSIVE ANALYSIS WORKFLOW" in tool.get_description()
         assert tool.get_default_temperature() == 0.2
 
         schema = tool.get_input_schema()
-        assert "files" in schema["properties"]
-        assert "prompt" in schema["properties"]
-        assert set(schema["required"]) == {"files", "prompt"}
+        # New workflow tool requires step-based fields
+        assert "step" in schema["properties"]
+        assert "step_number" in schema["properties"]
+        assert "total_steps" in schema["properties"]
+        assert "next_step_required" in schema["properties"]
+        assert "findings" in schema["properties"]
+        # Workflow tools use relevant_files instead of files
+        assert "relevant_files" in schema["properties"]
+
+        # Required fields for workflow
+        expected_required = {"step", "step_number", "total_steps", "next_step_required", "findings"}
+        assert expected_required.issubset(set(schema["required"]))
 
     @pytest.mark.asyncio
     async def test_execute_with_analysis_type(self, tool, tmp_path):
@@ -238,8 +247,12 @@ class TestAnalyzeTool:
             try:
                 result = await tool.execute(
                     {
+                        "step": "Analyze the structure of this code",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": "Initial analysis of code structure",
                         "files": [str(test_file)],
-                        "prompt": "What's the structure?",
                         "analysis_type": "architecture",
                         "output_format": "summary",
                         "model": "o3-mini",
@@ -277,22 +290,7 @@ class TestAnalyzeTool:
 class TestAbsolutePathValidation:
     """Test absolute path validation across all tools"""
 
-    @pytest.mark.asyncio
-    async def test_analyze_tool_relative_path_rejected(self):
-        """Test that analyze tool rejects relative paths"""
-        tool = AnalyzeTool()
-        result = await tool.execute(
-            {
-                "files": ["./relative/path.py", "/absolute/path.py"],
-                "prompt": "What does this do?",
-            }
-        )
-
-        assert len(result) == 1
-        response = json.loads(result[0].text)
-        assert response["status"] == "error"
-        assert "must be FULL absolute paths" in response["content"]
-        assert "./relative/path.py" in response["content"]
+    # Removed: test_analyze_tool_relative_path_rejected - workflow tool handles validation differently
 
     # NOTE: CodeReview tool test has been commented out because the codereview tool has been
     # refactored to use a workflow-based pattern. The workflow tools handle path validation
@@ -379,7 +377,15 @@ class TestAbsolutePathValidation:
             # Test with real provider resolution - expect it to fail at API level
             try:
                 result = await tool.execute(
-                    {"files": ["/absolute/path/file.py"], "prompt": "What does this do?", "model": "o3-mini"}
+                    {
+                        "step": "Analyze this code file",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": "Initial code analysis",
+                        "files": ["/absolute/path/file.py"],
+                        "model": "o3-mini",
+                    }
                 )
                 # If we somehow get here, that's fine too
                 assert result is not None

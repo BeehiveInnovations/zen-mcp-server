@@ -740,19 +740,19 @@ class PerformanceTimer:
             return False
 
     def _test_certain_confidence(self) -> bool:
-        """Test certain confidence behavior - should skip expert analysis"""
+        """Test final step analysis completion (analyze tool doesn't use confidence levels)"""
         try:
-            self.logger.info("  1.4: Testing certain confidence behavior")
+            self.logger.info("  1.4: Testing final step analysis completion")
 
-            # Test certain confidence - should skip expert analysis
-            self.logger.info("    1.4.1: Certain confidence analysis")
-            response_certain, _ = self.call_mcp_tool(
+            # Test final step - analyze tool doesn't use confidence levels, but we test completion
+            self.logger.info("    1.4.1: Final step analysis")
+            response_final, _ = self.call_mcp_tool(
                 "analyze",
                 {
-                    "step": "I have completed a comprehensive analysis with 100% certainty about the architectural patterns and improvement opportunities.",
+                    "step": "I have completed a comprehensive analysis of the architectural patterns and improvement opportunities.",
                     "step_number": 1,
                     "total_steps": 1,
-                    "next_step_required": False,  # Final step
+                    "next_step_required": False,  # Final step - should trigger expert analysis
                     "findings": "Complete architectural analysis reveals: FastAPI microservice with clear separation needs, dependency injection opportunities, and performance optimization potential. Key patterns identified: service layer, repository-like data access, configuration management, and utility functions.",
                     "files_checked": [self.main_service_file, self.config_file, self.models_file, self.utils_file],
                     "relevant_files": [self.main_service_file, self.config_file, self.models_file, self.utils_file],
@@ -761,7 +761,6 @@ class PerformanceTimer:
                         {"severity": "high", "description": "Global dependencies create tight coupling"},
                         {"severity": "medium", "description": "Transaction management missing in critical operations"},
                     ],
-                    "confidence": "certain",  # This should skip expert analysis
                     "files": [self.main_service_file, self.config_file, self.models_file, self.utils_file],
                     "prompt": "Comprehensive architectural analysis",
                     "analysis_type": "architecture",
@@ -769,35 +768,38 @@ class PerformanceTimer:
                 },
             )
 
-            if not response_certain:
-                self.logger.error("Failed to test certain confidence")
+            if not response_final:
+                self.logger.error("Failed to test final step analysis")
                 return False
 
-            response_certain_data = self._parse_analyze_response(response_certain)
-            if not response_certain_data:
+            response_final_data = self._parse_analyze_response(response_final)
+            if not response_final_data:
                 return False
 
-            # Validate certain confidence response - should skip expert analysis
-            if response_certain_data.get("status") != "analysis_complete_ready_for_implementation":
+            # Validate final step response - should trigger expert analysis
+            expected_status = "calling_expert_analysis"
+            if response_final_data.get("status") != expected_status:
+                self.logger.error(f"Expected status '{expected_status}', got '{response_final_data.get('status')}'")
+                return False
+
+            # Check that expert analysis was performed
+            expert_analysis = response_final_data.get("expert_analysis", {})
+            if not expert_analysis:
+                self.logger.error("Expert analysis should be present for final step")
+                return False
+
+            # Expert analysis should complete successfully
+            if expert_analysis.get("status") != "analysis_complete":
                 self.logger.error(
-                    f"Expected status 'analysis_complete_ready_for_implementation', got '{response_certain_data.get('status')}'"
+                    f"Expert analysis status: {expert_analysis.get('status')} (expected analysis_complete)"
                 )
                 return False
 
-            if not response_certain_data.get("skip_expert_analysis"):
-                self.logger.error("Expected skip_expert_analysis=true for certain confidence")
-                return False
-
-            expert_analysis = response_certain_data.get("expert_analysis", {})
-            if expert_analysis.get("status") != "skipped_due_to_certain_analysis_confidence":
-                self.logger.error("Expert analysis should be skipped for certain confidence")
-                return False
-
-            self.logger.info("    ✅ Certain confidence behavior working correctly")
+            self.logger.info("    ✅ Final step analysis completion working correctly")
             return True
 
         except Exception as e:
-            self.logger.error(f"Certain confidence test failed: {e}")
+            self.logger.error(f"Final step analysis test failed: {e}")
             return False
 
     def _test_context_aware_file_embedding(self) -> bool:

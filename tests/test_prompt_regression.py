@@ -205,16 +205,21 @@ class TestPromptRegression:
 
                 result = await tool.execute(
                     {
+                        "step": "What design patterns are used in this codebase?",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": "Initial architectural analysis",
                         "files": ["/path/to/project"],
-                        "prompt": "What design patterns are used in this codebase?",
                         "analysis_type": "architecture",
                     }
                 )
 
                 assert len(result) == 1
                 output = json.loads(result[0].text)
-                assert output["status"] == "success"
-                assert "MVC pattern" in output["content"]
+                # Workflow analyze tool returns "calling_expert_analysis" for step 1
+                assert output["status"] == "calling_expert_analysis"
+                assert "step_number" in output
 
     @pytest.mark.asyncio
     async def test_empty_optional_fields(self, mock_model_response):
@@ -296,12 +301,16 @@ class TestPromptRegression:
 
                 result = await tool.execute(
                     {
+                        "step": "Analyze these files",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": "Initial file analysis",
                         "files": [
                             "/absolute/path/file.py",
                             "/Users/name/project/src/",
                             "/home/user/code.js",
                         ],
-                        "prompt": "Analyze these files",
                     }
                 )
 

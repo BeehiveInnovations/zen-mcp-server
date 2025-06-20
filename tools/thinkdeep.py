@@ -119,10 +119,6 @@ class ThinkDeepWorkflowRequest(WorkflowRequest):
     )
 
     # Context files and investigation scope
-    files: Optional[list[str]] = Field(
-        default=None,
-        description="Optional files for additional context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)",
-    )
     problem_context: Optional[str] = Field(
         default=None,
         description="Provide additional context about the problem or goal. Be as expressive as possible. More information will be very helpful for the analysis.",
