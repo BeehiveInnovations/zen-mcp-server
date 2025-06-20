@@ -21,14 +21,12 @@ class TestWorkflowFileEmbedding:
     def setup_method(self):
         """Set up test fixtures"""
         # Create a mock workflow tool
-        self.mock_tool = Mock(spec=BaseWorkflowMixin)
+        self.mock_tool = Mock()
         self.mock_tool.get_name.return_value = "test_workflow"
         
-        # Initialize the mixin methods
-        BaseWorkflowMixin.__init__(self.mock_tool)
-        
-        # Bind the methods we want to test
+        # Bind the methods we want to test - use bound methods
         self.mock_tool._should_embed_files_in_workflow_step = BaseWorkflowMixin._should_embed_files_in_workflow_step.__get__(self.mock_tool)
+        self.mock_tool._force_embed_files_for_expert_analysis = BaseWorkflowMixin._force_embed_files_for_expert_analysis.__get__(self.mock_tool)
         
         # Create test files
         self.test_files = []
@@ -100,6 +98,71 @@ class TestWorkflowFileEmbedding:
 
     @patch('utils.file_utils.read_files')
     @patch('utils.file_utils.expand_paths')
+    @patch('utils.conversation_memory.get_thread')
+    @patch('utils.conversation_memory.get_conversation_file_list')
+    def test_comprehensive_file_collection_for_expert_analysis(self, mock_get_conversation_file_list, mock_get_thread, mock_expand_paths, mock_read_files):
+        """Test that expert analysis collects relevant files from current workflow and conversation history"""
+        # Setup test files for different sources
+        conversation_files = [self.test_files[0]]  # relevant_files from conversation history
+        current_relevant_files = [self.test_files[0], self.test_files[1]]  # current step's relevant_files (overlap with conversation)
+        
+        # Setup mocks
+        mock_thread_context = Mock()
+        mock_get_thread.return_value = mock_thread_context
+        mock_get_conversation_file_list.return_value = conversation_files
+        mock_expand_paths.return_value = self.test_files
+        mock_read_files.return_value = "# File content\nprint('test')"
+        
+        # Mock model context for token allocation
+        mock_model_context = Mock()
+        mock_token_allocation = Mock()
+        mock_token_allocation.file_tokens = 100000
+        mock_model_context.calculate_token_allocation.return_value = mock_token_allocation
+        
+        # Set up the tool methods and state
+        self.mock_tool.get_current_model_context.return_value = mock_model_context
+        self.mock_tool.wants_line_numbers_by_default.return_value = True
+        self.mock_tool.get_name.return_value = "test_workflow"
+        
+        # Set up consolidated findings
+        self.mock_tool.consolidated_findings = Mock()
+        self.mock_tool.consolidated_findings.relevant_files = set(current_relevant_files)
+        
+        # Set up current arguments with continuation
+        self.mock_tool._current_arguments = {
+            'continuation_id': 'test-thread-123'
+        }
+        
+        # Bind the method we want to test
+        self.mock_tool._prepare_files_for_expert_analysis = BaseWorkflowMixin._prepare_files_for_expert_analysis.__get__(self.mock_tool)
+        self.mock_tool._force_embed_files_for_expert_analysis = BaseWorkflowMixin._force_embed_files_for_expert_analysis.__get__(self.mock_tool)
+        
+        # Call the method
+        file_content = self.mock_tool._prepare_files_for_expert_analysis()
+        
+        # Verify it collected files from conversation history
+        mock_get_thread.assert_called_once_with('test-thread-123')
+        mock_get_conversation_file_list.assert_called_once_with(mock_thread_context)
+        
+        # Verify it called read_files with ALL unique relevant files
+        # Should include files from: conversation_files + current_relevant_files
+        # But deduplicated: [test_files[0], test_files[1]] (unique set)
+        expected_unique_files = list(set(conversation_files + current_relevant_files))
+        
+        # The actual call will be with whatever files were collected and deduplicated
+        mock_read_files.assert_called_once()
+        call_args = mock_read_files.call_args
+        called_files = call_args[0][0]  # First positional argument
+        
+        # Verify all expected files are included
+        for expected_file in expected_unique_files:
+            assert expected_file in called_files, f"Expected file {expected_file} not found in {called_files}"
+        
+        # Verify return value
+        assert file_content == "# File content\nprint('test')"
+
+    @patch('utils.file_utils.read_files')
+    @patch('utils.file_utils.expand_paths')
     def test_force_embed_bypasses_conversation_history(self, mock_expand_paths, mock_read_files):
         """Test that _force_embed_files_for_expert_analysis bypasses conversation filtering"""
         # Setup mocks
@@ -112,8 +175,7 @@ class TestWorkflowFileEmbedding:
         mock_token_allocation.file_tokens = 100000
         mock_model_context.calculate_token_allocation.return_value = mock_token_allocation
         
-        # Bind the method and set up the tool
-        self.mock_tool._force_embed_files_for_expert_analysis = BaseWorkflowMixin._force_embed_files_for_expert_analysis.__get__(self.mock_tool)
+        # Set up the tool methods
         self.mock_tool.get_current_model_context.return_value = mock_model_context
         self.mock_tool.wants_line_numbers_by_default.return_value = True
         

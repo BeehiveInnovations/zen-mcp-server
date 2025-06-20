@@ -290,22 +290,54 @@ class BaseWorkflowMixin(ABC):
         Prepare file content for expert analysis.
         
         EXPERT ANALYSIS REQUIRES ACTUAL FILE CONTENT:
-        Expert analysis needs actual file content of all unique files referenced
+        Expert analysis needs actual file content of all unique files marked as relevant
         throughout the workflow, regardless of conversation history optimization.
-        This bypasses the normal file filtering to ensure expert analysis has
-        complete information.
+        
+        SIMPLIFIED LOGIC:
+        Expert analysis gets all unique files from relevant_files across the entire workflow.
+        This includes:
+        - Current step's relevant_files (consolidated_findings.relevant_files)
+        - Plus any additional relevant_files from conversation history (if continued workflow)
+        
+        This ensures expert analysis has complete context without including irrelevant files.
         """
-        if not self.consolidated_findings.relevant_files:
+        all_relevant_files = set()
+        
+        # 1. Get files from current consolidated relevant_files
+        all_relevant_files.update(self.consolidated_findings.relevant_files)
+        
+        # 2. Get additional relevant_files from conversation history (if continued workflow)
+        try:
+            if hasattr(self, '_current_arguments') and self._current_arguments:
+                continuation_id = self._current_arguments.get('continuation_id')
+                
+                if continuation_id:
+                    from utils.conversation_memory import get_thread, get_conversation_file_list
+                    thread_context = get_thread(continuation_id)
+                    if thread_context:
+                        # Get all files from conversation (these were relevant_files in previous steps)
+                        conversation_files = get_conversation_file_list(thread_context)
+                        all_relevant_files.update(conversation_files)
+                        logger.debug(
+                            f"[WORKFLOW_FILES] {self.get_name()}: Added {len(conversation_files)} files from conversation history"
+                        )
+        except Exception as e:
+            logger.warning(f"[WORKFLOW_FILES] {self.get_name()}: Could not get conversation files: {e}")
+        
+        # Convert to list and remove any empty/None values
+        files_for_expert = [f for f in all_relevant_files if f and f.strip()]
+        
+        if not files_for_expert:
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: No relevant files found for expert analysis")
             return ""
 
-        # Expert analysis needs actual file content, not conversation optimization
+        # Expert analysis needs actual file content, bypassing conversation optimization
         try:
-            file_content, processed_files = self._force_embed_files_for_expert_analysis(
-                list(self.consolidated_findings.relevant_files)
-            )
+            file_content, processed_files = self._force_embed_files_for_expert_analysis(files_for_expert)
             
             logger.info(
-                f"[WORKFLOW_FILES] {self.get_name()}: Prepared {len(processed_files)} files for expert analysis"
+                f"[WORKFLOW_FILES] {self.get_name()}: Prepared {len(processed_files)} unique relevant files for expert analysis "
+                f"(from {len(self.consolidated_findings.relevant_files)} current relevant files)"
             )
             
             return file_content
