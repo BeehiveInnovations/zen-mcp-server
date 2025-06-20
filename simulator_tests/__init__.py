@@ -30,6 +30,7 @@ from .test_planner_validation import PlannerValidationTest
 
 # Redis validation test removed - no longer needed for standalone server
 from .test_refactor_validation import RefactorValidationTest
+from .test_requesty_models import TestRequestyModels
 from .test_testgen_validation import TestGenValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
 from .test_vision_capability import VisionCapabilityTest
@@ -60,6 +61,7 @@ TEST_REGISTRY = {
     "conversation_chain_validation": ConversationChainValidationTest,
     "vision_capability": VisionCapabilityTest,
     "xai_models": XAIModelsTest,
+    "requesty_models": TestRequestyModels,
     "consensus_conversation": TestConsensusConversation,
     "consensus_stance": TestConsensusStance,
     "consensus_three_models": TestConsensusThreeModels,
@@ -92,6 +94,7 @@ __all__ = [
     "ConversationChainValidationTest",
     "VisionCapabilityTest",
     "XAIModelsTest",
+    "TestRequestyModels",
     "TestConsensusConversation",
     "TestConsensusStance",
     "TestConsensusThreeModels",
