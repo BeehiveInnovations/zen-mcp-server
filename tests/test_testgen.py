@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from tests.mock_helpers import create_mock_provider
-from tools.testgen import TestGenerationRequest, TestGenerationTool
+from tools.testgen import CodeTestGenerationRequest, CodeTestGenerationTool
 
 
 class TestTestGenTool:
@@ -18,7 +18,7 @@ class TestTestGenTool:
 
     @pytest.fixture
     def tool(self):
-        return TestGenerationTool()
+        return CodeTestGenerationTool()
 
     @pytest.fixture
     def temp_files(self):
@@ -127,20 +127,22 @@ class TestComprehensive(unittest.TestCase):
     def test_request_model_validation(self):
         """Test request model validation"""
         # Valid request
-        valid_request = TestGenerationRequest(files=["/tmp/test.py"], prompt="Generate tests for calculator functions")
+        valid_request = CodeTestGenerationRequest(
+            files=["/tmp/test.py"], prompt="Generate tests for calculator functions"
+        )
         assert valid_request.files == ["/tmp/test.py"]
         assert valid_request.prompt == "Generate tests for calculator functions"
         assert valid_request.test_examples is None
 
         # With test examples
-        request_with_examples = TestGenerationRequest(
+        request_with_examples = CodeTestGenerationRequest(
             files=["/tmp/test.py"], prompt="Generate tests", test_examples=["/tmp/test_example.py"]
         )
         assert request_with_examples.test_examples == ["/tmp/test_example.py"]
 
         # Invalid request (missing required fields)
         with pytest.raises(ValueError):
-            TestGenerationRequest(files=["/tmp/test.py"])  # Missing prompt
+            CodeTestGenerationRequest(files=["/tmp/test.py"])  # Missing prompt
 
     @pytest.mark.asyncio
     async def test_execute_success(self, tool, temp_files):
@@ -332,7 +334,7 @@ class TestComprehensive(unittest.TestCase):
     @pytest.mark.asyncio
     async def test_prepare_prompt_structure(self, tool, temp_files):
         """Test prompt preparation structure"""
-        request = TestGenerationRequest(files=[temp_files["code_file"]], prompt="Test the calculator functions")
+        request = CodeTestGenerationRequest(files=[temp_files["code_file"]], prompt="Test the calculator functions")
 
         with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare:
             mock_prepare.return_value = ("mocked file content", [temp_files["code_file"]])
@@ -349,7 +351,7 @@ class TestComprehensive(unittest.TestCase):
     @pytest.mark.asyncio
     async def test_prepare_prompt_with_examples(self, tool, temp_files):
         """Test prompt preparation with test examples"""
-        request = TestGenerationRequest(
+        request = CodeTestGenerationRequest(
             files=[temp_files["code_file"]], prompt="Generate tests", test_examples=[temp_files["small_test"]]
         )
 
@@ -368,7 +370,7 @@ class TestComprehensive(unittest.TestCase):
 
     def test_format_response(self, tool):
         """Test response formatting"""
-        request = TestGenerationRequest(files=["/tmp/test.py"], prompt="Generate tests")
+        request = CodeTestGenerationRequest(files=["/tmp/test.py"], prompt="Generate tests")
 
         raw_response = "Generated test cases with edge cases"
         formatted = tool.format_response(raw_response, request)
@@ -421,7 +423,7 @@ class TestComprehensive(unittest.TestCase):
                 with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare:
                     mock_prepare.return_value = ("code content", ["/tmp/test.py"])
 
-                    request = TestGenerationRequest(
+                    request = CodeTestGenerationRequest(
                         files=["/tmp/test.py"], prompt="Test prompt", test_examples=["/tmp/example.py"]
                     )
 
@@ -465,7 +467,7 @@ class TestComprehensive(unittest.TestCase):
         with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare:
             mock_prepare.return_value = ("code content", [temp_files["code_file"]])
 
-            request = TestGenerationRequest(
+            request = CodeTestGenerationRequest(
                 files=[temp_files["code_file"]], prompt="Continue testing", continuation_id="test-thread-123"
             )
 
@@ -484,7 +486,7 @@ class TestComprehensive(unittest.TestCase):
 
     def test_no_websearch_in_prompt(self, tool, temp_files):
         """Test that web search instructions are not included"""
-        request = TestGenerationRequest(files=[temp_files["code_file"]], prompt="Generate tests")
+        request = CodeTestGenerationRequest(files=[temp_files["code_file"]], prompt="Generate tests")
 
         with patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare:
             mock_prepare.return_value = ("code content", [temp_files["code_file"]])
@@ -503,7 +505,7 @@ class TestComprehensive(unittest.TestCase):
         # Create a scenario where the same file appears in both files and test_examples
         duplicate_file = temp_files["code_file"]
 
-        request = TestGenerationRequest(
+        request = CodeTestGenerationRequest(
             files=[duplicate_file, temp_files["large_test"]],  # code_file appears in both
             prompt="Generate tests",
             test_examples=[temp_files["small_test"], duplicate_file],  # code_file also here
@@ -535,7 +537,7 @@ class TestComprehensive(unittest.TestCase):
     @pytest.mark.asyncio
     async def test_no_deduplication_when_no_test_examples(self, tool, temp_files):
         """Test that no deduplication occurs when test_examples is None/empty"""
-        request = TestGenerationRequest(
+        request = CodeTestGenerationRequest(
             files=[temp_files["code_file"], temp_files["large_test"]],
             prompt="Generate tests",
             # No test_examples
@@ -565,7 +567,7 @@ class TestComprehensive(unittest.TestCase):
         # Add some path variations that should normalize to the same file
         variant_path = os.path.join(os.path.dirname(base_file), ".", os.path.basename(base_file))
 
-        request = TestGenerationRequest(
+        request = CodeTestGenerationRequest(
             files=[variant_path, temp_files["large_test"]],  # variant path in files
             prompt="Generate tests",
             test_examples=[base_file],  # base path in test_examples

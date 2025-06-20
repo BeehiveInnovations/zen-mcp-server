@@ -359,9 +359,9 @@ class TestAbsolutePathValidation:
     @pytest.mark.asyncio
     async def test_testgen_tool_relative_path_rejected(self):
         """Test that testgen tool rejects relative paths"""
-        from tools import TestGenerationTool
+        from tools import CodeTestGenerationTool
 
-        tool = TestGenerationTool()
+        tool = CodeTestGenerationTool()
         result = await tool.execute(
             {"files": ["src/main.py"], "prompt": "Generate tests for the functions"}  # relative path
         )
