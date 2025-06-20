@@ -8,7 +8,7 @@ import json
 import os
 import tempfile
 
-from tools.debugworkflow import DebugWorkflowTool
+from tools.debug import DebugIssueTool
 
 
 async def debug_file_context():
@@ -25,7 +25,7 @@ async def debug_file_context():
 
     try:
         # Create the tool
-        tool = DebugWorkflowTool()
+        tool = DebugIssueTool()
 
         print("Testing intermediate step with continuation...")
 

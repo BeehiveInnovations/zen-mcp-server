@@ -8,7 +8,7 @@ import json
 import os
 import tempfile
 
-from tools.debugworkflow import DebugWorkflowTool
+from tools.debug import DebugIssueTool
 
 
 async def test_workflow_file_context():
@@ -29,7 +29,7 @@ async def test_workflow_file_context():
 
     try:
         # Create the tool
-        tool = DebugWorkflowTool()
+        tool = DebugIssueTool()
 
         print("=" * 80)
         print("TEST 1: New conversation, step 1 - should NOT embed files (more work needed)")

@@ -6,7 +6,7 @@ Debug the certain confidence behavior.
 import asyncio
 import json
 
-from tools.debugworkflow import DebugWorkflowTool
+from tools.debug import DebugIssueTool
 
 
 async def test_certain_confidence():
@@ -17,7 +17,7 @@ async def test_certain_confidence():
     configure_providers()
 
     # Create the tool
-    tool = DebugWorkflowTool()
+    tool = DebugIssueTool()
 
     # Create a request with certain confidence
     arguments = {
