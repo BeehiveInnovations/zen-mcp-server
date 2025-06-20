@@ -206,7 +206,7 @@ class TestDynamicContextRequests:
         assert "files_needed" in response_data
         assert "config/database.yml" in response_data["files_needed"]
         assert "src/db.py" in response_data["files_needed"]
-        
+
         # Check for suggested next action
         if "suggested_next_action" in response_data:
             action = response_data["suggested_next_action"]

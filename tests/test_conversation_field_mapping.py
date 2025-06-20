@@ -162,7 +162,7 @@ async def test_tool_parameter_standardization():
     from tools.codereview import CodeReviewRequest
     from tools.debug import DebugInvestigationRequest
     from tools.precommit import PrecommitRequest
-    from tools.thinkdeep import ThinkDeepRequest
+    from tools.thinkdeep import ThinkDeepWorkflowRequest
 
     # Test analyze tool uses workflow pattern
     analyze = AnalyzeWorkflowRequest(
@@ -171,7 +171,7 @@ async def test_tool_parameter_standardization():
         total_steps=1,
         next_step_required=False,
         findings="Initial analysis",
-        files=["/test.py"],
+        relevant_files=["/test.py"],
     )
     assert analyze.step == "What does this do?"
 
@@ -193,14 +193,16 @@ async def test_tool_parameter_standardization():
         total_steps=2,
         next_step_required=True,
         findings="Initial review findings",
-        files=["/test.py"],
+        relevant_files=["/test.py"],
     )
     assert review.step == "Initial code review investigation"
     assert review.findings == "Initial review findings"
 
-    # Test thinkdeep tool uses prompt
-    think = ThinkDeepRequest(prompt="My analysis")
-    assert think.prompt == "My analysis"
+    # Test thinkdeep tool uses workflow pattern
+    think = ThinkDeepWorkflowRequest(
+        step="My analysis", step_number=1, total_steps=1, next_step_required=False, findings="Initial thinking analysis"
+    )
+    assert think.step == "My analysis"
 
     # Test precommit tool uses workflow fields
     precommit = PrecommitRequest(

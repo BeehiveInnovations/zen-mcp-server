@@ -506,7 +506,17 @@ class BaseTool(ABC):
             Optional[str]: Error message if validation fails, None if all paths are valid
         """
         # Only validate files/paths if they exist in the request
-        file_fields = ["files", "file", "path", "directory", "notebooks", "test_examples", "style_guide_examples"]
+        file_fields = [
+            "files",
+            "file",
+            "path",
+            "directory",
+            "notebooks",
+            "test_examples",
+            "style_guide_examples",
+            "files_checked",
+            "relevant_files",
+        ]
 
         for field_name in file_fields:
             if hasattr(request, field_name):

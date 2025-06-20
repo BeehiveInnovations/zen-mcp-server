@@ -308,8 +308,9 @@ class BaseWorkflowMixin(ABC):
 
         # 2. Get additional relevant_files from conversation history (if continued workflow)
         try:
-            if hasattr(self, "_current_arguments") and self._current_arguments:
-                continuation_id = self._current_arguments.get("continuation_id")
+            current_arguments = self.get_current_arguments()
+            if current_arguments:
+                continuation_id = current_arguments.get("continuation_id")
 
                 if continuation_id:
                     from utils.conversation_memory import get_conversation_file_list, get_thread
@@ -593,6 +594,23 @@ class BaseWorkflowMixin(ABC):
 
             # Validate request using tool-specific model
             request = self.get_workflow_request_model()(**arguments)
+
+            # Validate file paths for security (same as base tool)
+            # Use try/except instead of hasattr as per coding standards
+            try:
+                path_error = self.validate_file_paths(request)
+                if path_error:
+                    from tools.models import ToolOutput
+
+                    error_output = ToolOutput(
+                        status="error",
+                        content=path_error,
+                        content_type="text",
+                    )
+                    return [TextContent(type="text", text=error_output.model_dump_json())]
+            except AttributeError:
+                # validate_file_paths method not available - skip validation
+                pass
 
             # Adjust total steps if needed
             if request.step_number > request.total_steps:

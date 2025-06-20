@@ -14,7 +14,7 @@ Key Features:
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import Field
 
@@ -173,6 +173,31 @@ class ThinkDeepTool(WorkflowTool):
     def get_workflow_request_model(self):
         """Return the workflow request model for this tool"""
         return ThinkDeepWorkflowRequest
+
+    def get_input_schema(self) -> dict[str, Any]:
+        """Generate input schema using WorkflowSchemaBuilder with thinkdeep-specific overrides."""
+        from .workflow.schema_builders import WorkflowSchemaBuilder
+
+        # ThinkDeep workflow-specific field overrides
+        thinkdeep_field_overrides = {
+            "problem_context": {
+                "type": "string",
+                "description": "Provide additional context about the problem or goal. Be as expressive as possible. More information will be very helpful for the analysis.",
+            },
+            "focus_areas": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Specific aspects to focus on (architecture, performance, security, etc.)",
+            },
+        }
+
+        # Use WorkflowSchemaBuilder with thinkdeep-specific tool fields
+        return WorkflowSchemaBuilder.build_schema(
+            tool_specific_fields=thinkdeep_field_overrides,
+            model_field_schema=self.get_model_field_schema(),
+            auto_mode=self.is_effective_auto_mode(),
+            tool_name=self.get_name(),
+        )
 
     def get_system_prompt(self) -> str:
         """Return the system prompt for this workflow tool"""

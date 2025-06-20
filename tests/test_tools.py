@@ -23,8 +23,16 @@ class TestThinkDeepTool:
         assert tool.get_default_temperature() == 0.7
 
         schema = tool.get_input_schema()
-        assert "prompt" in schema["properties"]
-        assert schema["required"] == ["prompt"]
+        # ThinkDeep is now a workflow tool with step-based fields
+        assert "step" in schema["properties"]
+        assert "step_number" in schema["properties"]
+        assert "total_steps" in schema["properties"]
+        assert "next_step_required" in schema["properties"]
+        assert "findings" in schema["properties"]
+
+        # Required fields for workflow
+        expected_required = {"step", "step_number", "total_steps", "next_step_required", "findings"}
+        assert expected_required.issubset(set(schema["required"]))
 
     @pytest.mark.asyncio
     async def test_execute_success(self, tool):
@@ -59,7 +67,11 @@ class TestThinkDeepTool:
             try:
                 result = await tool.execute(
                     {
-                        "prompt": "Initial analysis",
+                        "step": "Initial analysis",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": "Initial thinking about building a cache",
                         "problem_context": "Building a cache",
                         "focus_areas": ["performance", "scalability"],
                         "model": "o3-mini",
@@ -152,7 +164,15 @@ class TestCodeReviewTool:
             # Test with real provider resolution - expect it to fail at API level
             try:
                 result = await tool.execute(
-                    {"files": [str(test_file)], "prompt": "Review for security issues", "model": "o3-mini"}
+                    {
+                        "step": "Review for security issues",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": "Initial security review",
+                        "relevant_files": [str(test_file)],
+                        "model": "o3-mini",
+                    }
                 )
                 # If we somehow get here, that's fine too
                 assert result is not None
@@ -252,7 +272,7 @@ class TestAnalyzeTool:
                         "total_steps": 1,
                         "next_step_required": False,
                         "findings": "Initial analysis of code structure",
-                        "files": [str(test_file)],
+                        "relevant_files": [str(test_file)],
                         "analysis_type": "architecture",
                         "output_format": "summary",
                         "model": "o3-mini",
@@ -302,7 +322,16 @@ class TestAbsolutePathValidation:
     async def test_thinkdeep_tool_relative_path_rejected(self):
         """Test that thinkdeep tool rejects relative paths"""
         tool = ThinkDeepTool()
-        result = await tool.execute({"prompt": "My analysis", "files": ["./local/file.py"]})
+        result = await tool.execute(
+            {
+                "step": "My analysis",
+                "step_number": 1,
+                "total_steps": 1,
+                "next_step_required": False,
+                "findings": "Initial analysis",
+                "files_checked": ["./local/file.py"],
+            }
+        )
 
         assert len(result) == 1
         response = json.loads(result[0].text)
@@ -383,7 +412,7 @@ class TestAbsolutePathValidation:
                         "total_steps": 1,
                         "next_step_required": False,
                         "findings": "Initial code analysis",
-                        "files": ["/absolute/path/file.py"],
+                        "relevant_files": ["/absolute/path/file.py"],
                         "model": "o3-mini",
                     }
                 )

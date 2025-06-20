@@ -89,7 +89,6 @@ class TestRefactorTool:
         assert "relevant_files" in schema["properties"]
 
         # Check refactor-specific fields
-        assert "files" in schema["properties"]
         assert "refactor_type" in schema["properties"]
         assert "confidence" in schema["properties"]
 

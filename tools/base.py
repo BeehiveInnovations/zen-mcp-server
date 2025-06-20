@@ -1031,6 +1031,26 @@ When recommending searches, be specific about what information you need and why 
                         f"Please provide the full absolute path starting with '/' (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
                     )
 
+        # Check if request has 'files_checked' attribute (used by workflow tools)
+        if hasattr(request, "files_checked") and request.files_checked:
+            for file_path in request.files_checked:
+                if not os.path.isabs(file_path):
+                    return (
+                        f"Error: All file paths must be FULL absolute paths to real files / folders - DO NOT SHORTEN. "
+                        f"Received relative path: {file_path}\n"
+                        f"Please provide the full absolute path starting with '/' (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
+                    )
+
+        # Check if request has 'relevant_files' attribute (used by workflow tools)
+        if hasattr(request, "relevant_files") and request.relevant_files:
+            for file_path in request.relevant_files:
+                if not os.path.isabs(file_path):
+                    return (
+                        f"Error: All file paths must be FULL absolute paths to real files / folders - DO NOT SHORTEN. "
+                        f"Received relative path: {file_path}\n"
+                        f"Please provide the full absolute path starting with '/' (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
+                    )
+
         # Check if request has 'path' attribute (used by review_changes tool)
         if hasattr(request, "path") and request.path:
             if not os.path.isabs(request.path):
