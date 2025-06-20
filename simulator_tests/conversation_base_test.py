@@ -82,6 +82,7 @@ class ConversationBaseTest(BaseSimulatorTest):
 
             # Import and configure providers first (this is what main() does)
             from server import TOOLS, configure_providers
+
             configure_providers()
 
             self._tools = TOOLS

@@ -2,7 +2,6 @@
 Tests for the debug tool using new WorkflowTool architecture.
 """
 
-
 from tools.debug import DebugInvestigationRequest, DebugIssueTool
 from tools.models import ToolModelCategory
 
@@ -73,7 +72,7 @@ class TestDebugTool:
             total_steps=2,
             next_step_required=True,
             findings="Test findings",
-            relevant_methods=["method1", "method2"]
+            relevant_methods=["method1", "method2"],
         )
 
         # External API should have relevant_methods

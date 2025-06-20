@@ -53,9 +53,7 @@ COMMON_FIELD_DESCRIPTIONS = {
         "to aid with contextual understanding. Useful for UI discussions, diagrams, "
         "visual problems, error screens, architecture mockups, and visual analysis tasks."
     ),
-    "files": (
-        "Optional files for context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
-    ),
+    "files": ("Optional files for context (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"),
 }
 
 # Workflow-specific field descriptions
@@ -134,13 +132,17 @@ class WorkflowRequest(BaseWorkflowRequest):
     findings: str = Field(..., description=WORKFLOW_FIELD_DESCRIPTIONS["findings"])
     files_checked: list[str] = Field(default_factory=list, description=WORKFLOW_FIELD_DESCRIPTIONS["files_checked"])
     relevant_files: list[str] = Field(default_factory=list, description=WORKFLOW_FIELD_DESCRIPTIONS["relevant_files"])
-    relevant_context: list[str] = Field(default_factory=list, description=WORKFLOW_FIELD_DESCRIPTIONS["relevant_context"])
+    relevant_context: list[str] = Field(
+        default_factory=list, description=WORKFLOW_FIELD_DESCRIPTIONS["relevant_context"]
+    )
     issues_found: list[dict] = Field(default_factory=list, description=WORKFLOW_FIELD_DESCRIPTIONS["issues_found"])
     confidence: str = Field("low", description=WORKFLOW_FIELD_DESCRIPTIONS["confidence"])
 
     # Optional workflow fields
     hypothesis: Optional[str] = Field(None, description=WORKFLOW_FIELD_DESCRIPTIONS["hypothesis"])
-    backtrack_from_step: Optional[int] = Field(None, ge=1, description=WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"])
+    backtrack_from_step: Optional[int] = Field(
+        None, ge=1, description=WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"]
+    )
 
     @field_validator("files_checked", "relevant_files", "relevant_context", mode="before")
     @classmethod

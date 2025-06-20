@@ -132,11 +132,7 @@ class SimpleTool(BaseTool):
     # Convenience methods for common tool patterns
 
     def build_standard_prompt(
-        self,
-        system_prompt: str,
-        user_content: str,
-        request,
-        file_context_title: str = "CONTEXT FILES"
+        self, system_prompt: str, user_content: str, request, file_context_title: str = "CONTEXT FILES"
     ) -> str:
         """
         Build a standard prompt with system prompt, user content, and optional files.
@@ -157,7 +153,7 @@ class SimpleTool(BaseTool):
             Complete formatted prompt ready for the AI model
         """
         # Add context files if provided
-        if hasattr(request, 'files') and request.files:
+        if hasattr(request, "files") and request.files:
             file_content, processed_files = self._prepare_file_content_for_prompt(
                 request.files, request.continuation_id, "Context files"
             )
@@ -170,11 +166,8 @@ class SimpleTool(BaseTool):
 
         # Add web search instruction if enabled
         websearch_instruction = ""
-        if hasattr(request, 'use_websearch') and request.use_websearch:
-            websearch_instruction = self.get_websearch_instruction(
-                request.use_websearch,
-                self.get_websearch_guidance()
-            )
+        if hasattr(request, "use_websearch") and request.use_websearch:
+            websearch_instruction = self.get_websearch_instruction(request.use_websearch, self.get_websearch_guidance())
 
         # Combine system prompt with user content
         full_prompt = f"""{system_prompt}{websearch_instruction}
@@ -217,7 +210,7 @@ Please provide a thoughtful, comprehensive response:"""
             ValueError: If prompt is too large for MCP transport
         """
         # Check for prompt.txt in files
-        if hasattr(request, 'files'):
+        if hasattr(request, "files"):
             prompt_content, updated_files = self.handle_prompt_file(request.files)
 
             # Update request files list
@@ -227,12 +220,13 @@ Please provide a thoughtful, comprehensive response:"""
             prompt_content = None
 
         # Use prompt.txt content if available, otherwise use the prompt field
-        user_content = prompt_content if prompt_content else getattr(request, 'prompt', '')
+        user_content = prompt_content if prompt_content else getattr(request, "prompt", "")
 
         # Check user input size at MCP transport boundary
         size_check = self.check_prompt_size(user_content)
         if size_check:
             from tools.models import ToolOutput
+
             raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
 
         return user_content

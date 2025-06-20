@@ -155,8 +155,6 @@ class DebugInvestigationRequest(WorkflowRequest):
         return self
 
 
-
-
 class DebugIssueTool(WorkflowTool):
     """
     Debug tool for systematic root cause analysis and issue investigation.
@@ -195,7 +193,6 @@ class DebugIssueTool(WorkflowTool):
             "race conditions, memory leaks, integration problems."
         )
 
-
     def get_system_prompt(self) -> str:
         return DEBUG_ISSUE_PROMPT
 
@@ -205,6 +202,7 @@ class DebugIssueTool(WorkflowTool):
     def get_model_category(self) -> "ToolModelCategory":
         """Debug requires deep analysis and reasoning"""
         from tools.models import ToolModelCategory
+
         return ToolModelCategory.EXTENDED_REASONING
 
     def get_workflow_request_model(self):
@@ -371,9 +369,7 @@ class DebugIssueTool(WorkflowTool):
         # Add file content if we have relevant files
         if consolidated_findings.relevant_files:
             file_content, _ = self._prepare_file_content_for_prompt(
-                list(consolidated_findings.relevant_files),
-                None,
-                "Essential debugging files"
+                list(consolidated_findings.relevant_files), None, "Essential debugging files"
             )
             if file_content:
                 context_parts.append(
@@ -450,7 +446,9 @@ class DebugIssueTool(WorkflowTool):
         else:
             next_steps = (
                 f"PAUSE INVESTIGATION. Before calling {self.get_name()} step {step_number + 1}, you MUST examine code. "
-                + "Required: " + ", ".join(required_actions[:2]) + ". "
+                + "Required: "
+                + ", ".join(required_actions[:2])
+                + ". "
                 + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
                 f"NEW evidence from actual code examination, not just theories. If no bug evidence "
                 f"is found, suggesting "
@@ -459,8 +457,6 @@ class DebugIssueTool(WorkflowTool):
             )
 
         return {"next_steps": next_steps}
-
-
 
     # Hook method overrides for debug-specific behavior
 
@@ -486,10 +482,7 @@ class DebugIssueTool(WorkflowTool):
         """
         Debug tool skips expert analysis when Claude has "certain" confidence.
         """
-        return (
-            request.confidence == "certain" and
-            not request.next_step_required
-        )
+        return request.confidence == "certain" and not request.next_step_required
 
     # Override inheritance hooks for debug-specific behavior
 
@@ -581,9 +574,9 @@ class DebugIssueTool(WorkflowTool):
             response_data["investigation_status"] = response_data.pop(f"{tool_name}_status")
             # Map relevant_context back to relevant_methods in status
             if "relevant_context" in response_data["investigation_status"]:
-                response_data["investigation_status"]["relevant_methods"] = response_data[
-                    "investigation_status"
-                ].pop("relevant_context")
+                response_data["investigation_status"]["relevant_methods"] = response_data["investigation_status"].pop(
+                    "relevant_context"
+                )
                 # Add debug-specific status fields
                 response_data["investigation_status"]["hypotheses_formed"] = len(self.consolidated_findings.hypotheses)
 

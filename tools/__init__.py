@@ -9,7 +9,6 @@ from .consensus import ConsensusTool
 from .debug import DebugIssueTool
 from .listmodels import ListModelsTool
 from .planner import PlannerTool
-from .plannerworkflow import PlannerWorkflowTool
 from .precommit import Precommit
 from .refactor import RefactorTool
 from .testgen import TestGenerationTool
@@ -25,7 +24,6 @@ __all__ = [
     "ConsensusTool",
     "ListModelsTool",
     "PlannerTool",
-    "PlannerWorkflowTool",
     "Precommit",
     "RefactorTool",
     "TestGenerationTool",

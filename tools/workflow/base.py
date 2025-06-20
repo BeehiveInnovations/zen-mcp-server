@@ -64,7 +64,6 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
                 return len(consolidated_findings.relevant_files) > 0
     """
 
-
     def __init__(self):
         """Initialize WorkflowTool with proper multiple inheritance."""
         BaseTool.__init__(self)
@@ -155,12 +154,7 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
 
     # Default implementations for common workflow patterns
 
-    def get_standard_required_actions(
-        self,
-        step_number: int,
-        confidence: str,
-        base_actions: list[str]
-    ) -> list[str]:
+    def get_standard_required_actions(self, step_number: int, confidence: str, base_actions: list[str]) -> list[str]:
         """
         Helper method to generate standard required actions based on confidence and step.
 
@@ -233,10 +227,7 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
         )
 
     def prepare_standard_expert_context(
-        self,
-        consolidated_findings,
-        initial_description: str,
-        context_sections: dict[str, str] = None
+        self, consolidated_findings, initial_description: str, context_sections: dict[str, str] = None
     ) -> str:
         """
         Helper method to prepare standard expert analysis context.
@@ -252,9 +243,7 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
         Returns:
             Formatted context string for expert analysis
         """
-        context_parts = [
-            f"=== ISSUE DESCRIPTION ===\n{initial_description}\n=== END DESCRIPTION ==="
-        ]
+        context_parts = [f"=== ISSUE DESCRIPTION ===\n{initial_description}\n=== END DESCRIPTION ==="]
 
         # Add work progression
         if consolidated_findings.findings:
@@ -329,7 +318,7 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
             "expert_analysis": {
                 "status": self.get_skip_expert_analysis_status(),
                 "reason": self.get_skip_reason(),
-            }
+            },
         }
 
     # Inheritance hooks for customization
@@ -365,9 +354,9 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
     def get_confidence_level(self, request) -> str:
         """Get confidence level from request. Override for tool-specific logic."""
         try:
-            return request.confidence or 'high'
+            return request.confidence or "high"
         except AttributeError:
-            return 'high'
+            return "high"
 
     def get_completion_message(self) -> str:
         """Get completion message. Override for tool-specific messaging."""
@@ -388,7 +377,6 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
 
     # Abstract methods that must be implemented by specific workflow tools
     # (These are inherited from BaseWorkflowMixin and must be implemented)
-
 
     @abstractmethod
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:

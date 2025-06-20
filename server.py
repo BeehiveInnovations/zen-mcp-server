@@ -64,7 +64,6 @@ from tools import (  # noqa: E402
     DebugIssueTool,
     ListModelsTool,
     PlannerTool,
-    PlannerWorkflowTool,
     Precommit,
     RefactorTool,
     TestGenerationTool,
@@ -169,8 +168,7 @@ TOOLS = {
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
     "listmodels": ListModelsTool(),  # List all available AI models by provider
-    "planner": PlannerTool(),  # A task or problem to plan out as several smaller steps
-    "plannerworkflow": PlannerWorkflowTool(),  # Planning with workflow architecture (same as planner but uses workflow pattern)
+    "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "precommit": Precommit(),  # Pre-commit validation of git changes
     "testgen": TestGenerationTool(),  # Comprehensive test generation with edge case coverage
     "refactor": RefactorTool(),  # Intelligent code refactoring suggestions with precise line references

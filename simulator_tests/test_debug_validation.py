@@ -578,13 +578,13 @@ def validate_input(data):
     \"\"\"Validate input data\"\"\"
     if not isinstance(data, list):
         raise ValueError("Data must be a list")
-    
+
     for item in data:
         if not isinstance(item, dict):
             raise ValueError("Items must be dictionaries")
         if 'value' not in item:
             raise ValueError("Items must have 'value' key")
-    
+
     return True
 """
 
@@ -708,7 +708,9 @@ def validate_input(data):
             # Check file context - should be fully_embedded for final step
             file_context3 = response3_data.get("file_context", {})
             if file_context3.get("type") != "fully_embedded":
-                self.logger.error(f"Expected fully_embedded file context for final step, got: {file_context3.get('type')}")
+                self.logger.error(
+                    f"Expected fully_embedded file context for final step, got: {file_context3.get('type')}"
+                )
                 return False
 
             if "Full file content embedded for expert analysis" not in file_context3.get("context_optimization", ""):
@@ -719,7 +721,9 @@ def validate_input(data):
             files_embedded = file_context3.get("files_embedded", 0)
             if files_embedded == 0:
                 # This is OK - files might already be in conversation history
-                self.logger.info("    ℹ️ Files embedded count is 0 - files already in conversation history (smart deduplication)")
+                self.logger.info(
+                    "    ℹ️ Files embedded count is 0 - files already in conversation history (smart deduplication)"
+                )
             else:
                 self.logger.info(f"    ✅ Files embedded count: {files_embedded}")
 
@@ -766,7 +770,7 @@ class DatabaseServer:
     def __init__(self):
         self.connection_pool = []
         self.cache_size = CACHE_SIZE  # This will fail if CACHE_SIZE is invalid
-        
+
     def connect(self):
         try:
             conn = sqlite3.connect(DATABASE_URL)
@@ -942,7 +946,7 @@ class DatabaseServer:
                 "step_1": "reference_only (new conversation, intermediate)",
                 "step_2": "reference_only (continuation, intermediate)",
                 "step_3": "reference_only (continuation, intermediate)",
-                "step_4": "fully_embedded (continuation, final)"
+                "step_4": "fully_embedded (continuation, final)",
             }
 
             self.logger.info("    📋 File context progression:")

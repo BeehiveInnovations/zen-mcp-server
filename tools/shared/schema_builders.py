@@ -53,7 +53,6 @@ class SchemaBuilder:
         },
     }
 
-
     @staticmethod
     def build_schema(
         tool_specific_fields: dict[str, dict[str, Any]] = None,
@@ -103,7 +102,6 @@ class SchemaBuilder:
             schema["required"] = required
 
         return schema
-
 
     @staticmethod
     def get_common_fields() -> dict[str, dict[str, Any]]:
