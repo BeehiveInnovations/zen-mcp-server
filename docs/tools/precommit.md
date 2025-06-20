@@ -1,12 +1,31 @@
 # PreCommit Tool - Pre-Commit Validation
 
-**Comprehensive review of staged/unstaged git changes across multiple repositories**
+**Comprehensive review of staged/unstaged git changes across multiple repositories through workflow-driven investigation**
 
-The `precommit` tool provides thorough validation of git changes before committing, ensuring code quality, requirement compliance, and preventing regressions across multiple repositories.
+The `precommit` tool provides thorough validation of git changes before committing, ensuring code quality, requirement compliance, and preventing regressions across multiple repositories. This workflow tool guides Claude through systematic investigation of git changes, repository status, and file modifications across multiple steps before providing expert validation.
 
 ## Thinking Mode
 
 **Default is `medium` (8,192 tokens).** Use `high` or `max` for critical releases when thorough validation justifies the token cost.
+
+## How the Workflow Works
+
+The precommit tool implements a **structured workflow** for comprehensive change validation:
+
+**Investigation Phase (Claude-Led):**
+1. **Step 1**: Claude describes the validation plan and begins analyzing git status across repositories
+2. **Step 2+**: Claude examines changes, diffs, dependencies, and potential impacts
+3. **Throughout**: Claude tracks findings, relevant files, issues, and confidence levels
+4. **Completion**: Once investigation is thorough, Claude signals completion
+
+**Expert Validation Phase:**
+After Claude completes the investigation (unless confidence is **certain**):
+- Complete summary of all changes and their context
+- Potential issues and regressions identified
+- Requirement compliance assessment
+- Final recommendations for safe commit
+
+**Special Note**: If you want Claude to perform the entire pre-commit validation without calling another model, you can include "don't use any other model" in your prompt, and Claude will complete the full workflow independently.
 
 ## Model Recommendation
 
@@ -47,21 +66,34 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 
 ## Tool Parameters
 
+**Workflow Investigation Parameters (used during step-by-step process):**
+- `step`: Current investigation step description (required for each step)
+- `step_number`: Current step number in validation sequence (required)
+- `total_steps`: Estimated total investigation steps (adjustable)
+- `next_step_required`: Whether another investigation step is needed
+- `findings`: Discoveries and evidence collected in this step (required)
+- `files_checked`: All files examined during investigation
+- `relevant_files`: Files directly relevant to the changes
+- `relevant_context`: Methods/functions/classes affected by changes
+- `issues_found`: Issues identified with severity levels
+- `confidence`: Confidence level in validation completeness (exploring/low/medium/high/certain)
+- `backtrack_from_step`: Step number to backtrack from (for revisions)
+- `hypothesis`: Current assessment of change safety and completeness
+- `images`: Screenshots of requirements, design mockups for validation
+
+**Initial Configuration (used in step 1):**
 - `path`: Starting directory to search for repos (default: current directory, absolute path required)
 - `prompt`: The original user request description for the changes (required for context)
 - `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `compare_to`: Compare against a branch/tag instead of local changes (optional)
-- `review_type`: full|security|performance|quick (default: full)
 - `severity_filter`: critical|high|medium|low|all (default: all)
-- `max_depth`: How deep to search for nested repos (default: 5)
 - `include_staged`: Include staged changes in the review (default: true)
 - `include_unstaged`: Include uncommitted changes in the review (default: true)
-- `images`: Screenshots of requirements, design mockups, or error states for validation context
-- `files`: Optional files for additional context (not part of changes but provide context)
 - `focus_on`: Specific aspects to focus on
 - `temperature`: Temperature for response (default: 0.2)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 - `use_websearch`: Enable web search for best practices (default: true)
+- `use_assistant_model`: Whether to use expert validation phase (default: true, set to false to use Claude only)
 - `continuation_id`: Continue previous validation discussions
 
 ## Usage Examples

@@ -37,6 +37,8 @@ in which case expert analysis is bypassed):
 
 This structured approach ensures Claude performs methodical groundwork before expert analysis, resulting in significantly better debugging outcomes and more efficient token usage.
 
+**Special Note**: If you want Claude to perform the entire debugging investigation without calling another model, you can include "don't use any other model" in your prompt, and Claude will complete the full workflow independently.
+
 ## Key Features
 
 - **Multi-step investigation process** with evidence collection and hypothesis evolution
@@ -63,7 +65,7 @@ This structured approach ensures Claude performs methodical groundwork before ex
 - `relevant_files`: Files directly tied to the root cause or its effects
 - `relevant_methods`: Specific methods/functions involved in the issue
 - `hypothesis`: Current best guess about the underlying cause
-- `confidence`: Confidence level in current hypothesis (low/medium/high)
+- `confidence`: Confidence level in current hypothesis (exploring/low/medium/high/certain)
 - `backtrack_from_step`: Step number to backtrack from (for revisions)
 - `continuation_id`: Thread ID for continuing investigations across sessions
 - `images`: Visual debugging materials (error screenshots, logs, etc.)
@@ -72,6 +74,7 @@ This structured approach ensures Claude performs methodical groundwork before ex
 - `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high (default: server default)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 - `use_websearch`: Enable web search for documentation and solutions (default: true)
+- `use_assistant_model`: Whether to use expert analysis phase (default: true, set to false to use Claude only)
 
 ## Usage Examples
 

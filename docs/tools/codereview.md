@@ -1,12 +1,31 @@
 # CodeReview Tool - Professional Code Review
 
-**Comprehensive code analysis with prioritized feedback**
+**Comprehensive code analysis with prioritized feedback through workflow-driven investigation**
 
-The `codereview` tool provides professional code review capabilities with actionable feedback, severity-based issue prioritization, and support for various review types from quick style checks to comprehensive security audits.
+The `codereview` tool provides professional code review capabilities with actionable feedback, severity-based issue prioritization, and support for various review types from quick style checks to comprehensive security audits. This workflow tool guides Claude through systematic investigation steps with forced pauses between each step to ensure thorough code examination, issue identification, and quality assessment before providing expert analysis.
 
 ## Thinking Mode
 
 **Default is `medium` (8,192 tokens).** Use `high` for security-critical code (worth the extra tokens) or `low` for quick style checks (saves ~6k tokens).
+
+## How the Workflow Works
+
+The codereview tool implements a **structured workflow** that ensures thorough code examination:
+
+**Investigation Phase (Claude-Led):**
+1. **Step 1**: Claude describes the review plan and begins systematic analysis of code structure
+2. **Step 2+**: Claude examines code quality, security implications, performance concerns, and architectural patterns
+3. **Throughout**: Claude tracks findings, relevant files, issues, and confidence levels
+4. **Completion**: Once review is comprehensive, Claude signals completion
+
+**Expert Analysis Phase:**
+After Claude completes the investigation (unless confidence is **certain**):
+- Complete review summary with all findings and evidence
+- Relevant files and code patterns identified
+- Issues categorized by severity levels
+- Final recommendations based on investigation
+
+**Special Note**: If you want Claude to perform the entire review without calling another model, you can include "don't use any other model" in your prompt, and Claude will complete the full workflow independently.
 
 ## Model Recommendation
 
@@ -45,7 +64,21 @@ The above prompt will simultaneously run two separate `codereview` tools with tw
 
 ## Tool Parameters
 
-- `files`: List of file paths or directories to review (required)
+**Workflow Investigation Parameters (used during step-by-step process):**
+- `step`: Current investigation step description (required for each step)
+- `step_number`: Current step number in review sequence (required)
+- `total_steps`: Estimated total investigation steps (adjustable)
+- `next_step_required`: Whether another investigation step is needed
+- `findings`: Discoveries and evidence collected in this step (required)
+- `files_checked`: All files examined during investigation
+- `relevant_files`: Files directly relevant to the review (required in step 1)
+- `relevant_context`: Methods/functions/classes central to review findings
+- `issues_found`: Issues identified with severity levels
+- `confidence`: Confidence level in review completeness (exploring/low/medium/high/certain)
+- `backtrack_from_step`: Step number to backtrack from (for revisions)
+- `images`: Visual references for review context
+
+**Initial Review Configuration (used in step 1):**
 - `prompt`: User's summary of what the code does, expected behavior, constraints, and review objectives (required)
 - `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `review_type`: full|security|performance|quick (default: full)
@@ -55,6 +88,7 @@ The above prompt will simultaneously run two separate `codereview` tools with tw
 - `temperature`: Temperature for consistency (0-1, default 0.2)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 - `use_websearch`: Enable web search for best practices and documentation (default: true)
+- `use_assistant_model`: Whether to use expert analysis phase (default: true, set to false to use Claude only)
 - `continuation_id`: Continue previous review discussions
 
 ## Review Types

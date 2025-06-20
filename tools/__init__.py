@@ -12,6 +12,7 @@ from .planner import PlannerTool
 from .precommit import PrecommitTool
 from .refactor import RefactorTool
 from .testgen import CodeTestGenerationTool
+from .testgenworkflow import TestGenWorkflowTool
 from .thinkdeep import ThinkDeepTool
 from .tracer import TracerTool
 
@@ -27,5 +28,6 @@ __all__ = [
     "PrecommitTool",
     "RefactorTool",
     "CodeTestGenerationTool",
+    "TestGenWorkflowTool",
     "TracerTool",
 ]

@@ -1,12 +1,31 @@
 # Analyze Tool - Smart File Analysis
 
-**General-purpose code understanding and exploration**
+**General-purpose code understanding and exploration through workflow-driven investigation**
 
-The `analyze` tool provides comprehensive code analysis and understanding capabilities, helping you explore codebases, understand architecture, and identify patterns across files and directories.
+The `analyze` tool provides comprehensive code analysis and understanding capabilities, helping you explore codebases, understand architecture, and identify patterns across files and directories. This workflow tool guides Claude through systematic investigation of code structure, patterns, and architectural decisions across multiple steps, gathering comprehensive insights before providing expert analysis.
 
 ## Thinking Mode
 
 **Default is `medium` (8,192 tokens).** Use `high` for architecture analysis (comprehensive insights worth the cost) or `low` for quick file overviews (save ~6k tokens).
+
+## How the Workflow Works
+
+The analyze tool implements a **structured workflow** for thorough code understanding:
+
+**Investigation Phase (Claude-Led):**
+1. **Step 1**: Claude describes the analysis plan and begins examining code structure
+2. **Step 2+**: Claude investigates architecture, patterns, dependencies, and design decisions
+3. **Throughout**: Claude tracks findings, relevant files, insights, and confidence levels
+4. **Completion**: Once analysis is comprehensive, Claude signals completion
+
+**Expert Analysis Phase:**
+After Claude completes the investigation (unless confidence is **certain**):
+- Complete analysis summary with all findings
+- Architectural insights and pattern identification
+- Strategic improvement recommendations
+- Final expert assessment based on investigation
+
+This workflow ensures methodical analysis before expert insights, resulting in deeper understanding and more valuable recommendations.
 
 ## Example Prompts
 
@@ -30,7 +49,21 @@ The `analyze` tool provides comprehensive code analysis and understanding capabi
 
 ## Tool Parameters
 
-- `files`: Files or directories to analyze (required, absolute paths)
+**Workflow Investigation Parameters (used during step-by-step process):**
+- `step`: Current investigation step description (required for each step)
+- `step_number`: Current step number in analysis sequence (required)
+- `total_steps`: Estimated total investigation steps (adjustable)
+- `next_step_required`: Whether another investigation step is needed
+- `findings`: Discoveries and insights collected in this step (required)
+- `files_checked`: All files examined during investigation
+- `relevant_files`: Files directly relevant to the analysis (required in step 1)
+- `relevant_context`: Methods/functions/classes central to analysis findings
+- `issues_found`: Issues or concerns identified with severity levels
+- `confidence`: Confidence level in analysis completeness (exploring/low/medium/high/certain)
+- `backtrack_from_step`: Step number to backtrack from (for revisions)
+- `images`: Visual references for analysis context
+
+**Initial Configuration (used in step 1):**
 - `prompt`: What to analyze or look for (required)
 - `model`: auto|pro|flash|o3|o3-mini|o4-mini|o4-mini-high|gpt4.1 (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general (default: general)
@@ -38,6 +71,7 @@ The `analyze` tool provides comprehensive code analysis and understanding capabi
 - `temperature`: Temperature for analysis (0-1, default 0.2)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
 - `use_websearch`: Enable web search for documentation and best practices (default: true)
+- `use_assistant_model`: Whether to use expert analysis phase (default: true, set to false to use Claude only)
 - `continuation_id`: Continue previous analysis sessions
 
 ## Analysis Types
