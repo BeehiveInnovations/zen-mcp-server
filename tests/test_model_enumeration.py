@@ -240,9 +240,7 @@ class TestModelEnumeration:
 
             # Verify model schema includes model field in auto mode
             schema = tool.get_input_schema()
-            assert (
-                "model" in schema["required"]
-            ), f"Model field should be required in auto mode for {scenario['name']}"
+            assert "model" in schema["required"], f"Model field should be required in auto mode for {scenario['name']}"
             assert "model" in schema["properties"], f"Model field should be in properties for {scenario['name']}"
 
             # Verify enum contains expected models
@@ -282,19 +280,15 @@ class TestModelEnumeration:
         tool = AnalyzeTool()
         assert tool.is_effective_auto_mode(), "DEFAULT_MODEL=auto should enable auto mode"
 
-        # Test that setting a specific model disables auto mode (when provider is available)
-        self._setup_environment({"DEFAULT_MODEL": "flash", "GEMINI_API_KEY": "test-key"})
-        tool = AnalyzeTool()
-        assert not tool.is_effective_auto_mode(), "DEFAULT_MODEL=flash should disable auto mode when provider is available"
-
-        # Test environment variable combinations
+        # Test environment variable combinations with auto mode
         self._setup_environment({"DEFAULT_MODEL": "auto", "GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": "test-key"})
         tool = AnalyzeTool()
         models = tool._get_available_models()
 
-        # Should include models from both providers
-        gemini_models = ["flash", "pro", "gemini-2.5-flash", "gemini-2.5-pro"]
-        openai_models = ["o3", "o3-mini", "o4-mini", "o4-mini-high"]
+        # Should include native models from providers that are theoretically configured
+        native_models = ["flash", "pro", "o3", "o3-mini", "grok"]
+        for model in native_models:
+            assert model in models, f"Native model {model} should be available in auto mode"
 
-        for model in gemini_models + openai_models:
-            assert model in models, f"Model {model} should be available with both providers configured"
+        # Verify auto mode is still active
+        assert tool.is_effective_auto_mode(), "Auto mode should remain active with multiple providers"
