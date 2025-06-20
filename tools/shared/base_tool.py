@@ -1070,10 +1070,129 @@ When recommending searches, be specific about what information you need and why 
         # for backward compatibility during the migration
         raise NotImplementedError("Subclasses must implement execute method")
 
+    def _should_require_model_selection(self, model_name: str) -> bool:
+        """
+        Check if we should require Claude to select a model at runtime.
+
+        This is called during request execution to determine if we need
+        to return an error asking Claude to provide a model parameter.
+
+        Args:
+            model_name: The model name from the request or DEFAULT_MODEL
+
+        Returns:
+            bool: True if we should require model selection
+        """
+        # Case 1: Model is explicitly "auto"
+        if model_name.lower() == "auto":
+            return True
+
+        # Case 2: Requested model is not available
+        from providers.registry import ModelProviderRegistry
+
+        provider = ModelProviderRegistry.get_provider_for_model(model_name)
+        if not provider:
+            logger.warning(f"Model '{model_name}' is not available with current API keys. Requiring model selection.")
+            return True
+
+        return False
+
+    def _get_available_models(self) -> list[str]:
+        """
+        Get list of all possible models for the schema enum.
+
+        In auto mode, we show ALL models from MODEL_CAPABILITIES_DESC so Claude
+        can see all options, even if some require additional API configuration.
+        Runtime validation will handle whether a model is actually available.
+
+        Returns:
+            List of all model names from config
+        """
+        from config import MODEL_CAPABILITIES_DESC
+
+        # Start with all models from MODEL_CAPABILITIES_DESC
+        all_models = list(MODEL_CAPABILITIES_DESC.keys())
+
+        # Add OpenRouter models if OpenRouter is configured
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
+            try:
+                from config import OPENROUTER_MODELS
+
+                all_models.extend(OPENROUTER_MODELS)
+            except ImportError:
+                pass
+
+        return sorted(set(all_models))
+
     def _resolve_model_context(self, arguments: dict, request) -> tuple[str, Any]:
-        """Resolve model context - will be inherited for now."""
-        # Implementation inherited from current base.py
-        raise NotImplementedError("Subclasses must implement _resolve_model_context method")
+        """
+        Resolve model context and name using centralized logic.
+
+        This method extracts the model resolution logic from execute() so it can be
+        reused by tools that override execute() (like debug tool) without duplicating code.
+
+        Args:
+            arguments: Dictionary of arguments from the MCP client
+            request: The validated request object
+
+        Returns:
+            tuple[str, ModelContext]: (resolved_model_name, model_context)
+
+        Raises:
+            ValueError: If model resolution fails or model selection is required
+        """
+        # MODEL RESOLUTION NOW HAPPENS AT MCP BOUNDARY
+        # Extract pre-resolved model context from server.py
+        model_context = arguments.get("_model_context")
+        resolved_model_name = arguments.get("_resolved_model_name")
+
+        if model_context and resolved_model_name:
+            # Model was already resolved at MCP boundary
+            model_name = resolved_model_name
+            logger.debug(f"Using pre-resolved model '{model_name}' from MCP boundary")
+        else:
+            # Fallback for direct execute calls
+            model_name = getattr(request, "model", None)
+            if not model_name:
+                from config import DEFAULT_MODEL
+
+                model_name = DEFAULT_MODEL
+            logger.debug(f"Using fallback model resolution for '{model_name}' (test mode)")
+
+            # For tests: Check if we should require model selection (auto mode)
+            if self._should_require_model_selection(model_name):
+                # Get suggested model based on tool category
+                from providers.registry import ModelProviderRegistry
+
+                tool_category = self.get_model_category()
+                suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
+
+                # Build error message based on why selection is required
+                if model_name.lower() == "auto":
+                    error_message = (
+                        f"Model parameter is required in auto mode. "
+                        f"Suggested model for {self.get_name()}: '{suggested_model}' "
+                        f"(category: {tool_category.value})"
+                    )
+                else:
+                    # Model was specified but not available
+                    available_models = self._get_available_models()
+
+                    error_message = (
+                        f"Model '{model_name}' is not available with current API keys. "
+                        f"Available models: {', '.join(available_models)}. "
+                        f"Suggested model for {self.get_name()}: '{suggested_model}' "
+                        f"(category: {tool_category.value})"
+                    )
+                raise ValueError(error_message)
+
+            # Create model context for tests
+            from utils.model_context import ModelContext
+
+            model_context = ModelContext(model_name)
+
+        return model_name, model_context
 
     def _parse_response(self, raw_text: str, request, model_info: Optional[dict] = None):
         """Parse response - will be inherited for now."""

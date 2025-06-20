@@ -131,6 +131,7 @@ class TestWorkflowFileEmbedding:
 
         # Set up current arguments with continuation
         self.mock_tool._current_arguments = {"continuation_id": "test-thread-123"}
+        self.mock_tool.get_current_arguments.return_value = {"continuation_id": "test-thread-123"}
 
         # Bind the method we want to test
         self.mock_tool._prepare_files_for_expert_analysis = (

@@ -534,16 +534,43 @@ class DebugIssueTool(WorkflowTool):
         """Debug-specific work summary."""
         return self._build_investigation_summary(self.consolidated_findings)
 
-    def get_completion_next_steps_message(self) -> str:
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
         """
         Debug-specific completion message.
+
+        Args:
+            expert_analysis_used: True if expert analysis was successfully executed
         """
-        return (
+        base_message = (
             "INVESTIGATION IS COMPLETE. YOU MUST now summarize and present ALL key findings, confirmed "
             "hypotheses, and exact recommended fixes. Clearly identify the most likely root cause and "
             "provide concrete, actionable implementation guidance. Highlight affected code paths and display "
             "reasoning that led to this conclusion—make it easy for a developer to understand exactly where "
             "the problem lies. Where necessary, show cause-and-effect / bug-trace call graph."
+        )
+
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Get additional guidance for handling expert analysis results in debug context.
+
+        Returns:
+            Additional guidance text for validating and using expert analysis findings
+        """
+        return (
+            "IMPORTANT: Expert debugging analysis has been provided above. You MUST validate "
+            "the expert's root cause analysis and proposed fixes against your own investigation. "
+            "Ensure the expert's findings align with the evidence you've gathered and that the "
+            "recommended solutions address the actual problem, not just symptoms. If the expert "
+            "suggests a different root cause than you identified, carefully consider both perspectives "
+            "and present a balanced assessment to the user."
         )
 
     def get_step_guidance_message(self, request) -> str:

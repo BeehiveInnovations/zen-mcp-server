@@ -532,16 +532,42 @@ class PrecommitTool(WorkflowTool):
         """Precommit-specific work summary."""
         return self._build_precommit_summary(self.consolidated_findings)
 
-    def get_completion_next_steps_message(self) -> str:
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
         """
         Precommit-specific completion message.
+
+        Args:
+            expert_analysis_used: True if expert analysis was successfully executed
         """
-        return (
+        base_message = (
             "PRE-COMMIT VALIDATION IS COMPLETE. You MUST now summarize and present ALL validation results, "
             "identified issues with their severity levels, and exact commit recommendations. Clearly state whether "
             "the changes are ready for commit or require fixes first. Provide concrete, actionable guidance for "
             "any issues that need resolution—make it easy for a developer to understand exactly what needs to be "
             "done before committing."
+        )
+
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Get additional guidance for handling expert analysis results in pre-commit context.
+
+        Returns:
+            Additional guidance text for validating and using expert analysis findings
+        """
+        return (
+            "IMPORTANT: Expert analysis has been provided above. You MUST carefully review "
+            "the expert's validation findings and security assessments. Cross-reference the "
+            "expert's analysis with your own investigation to ensure all critical issues are "
+            "addressed. Pay special attention to any security vulnerabilities, performance "
+            "concerns, or architectural issues identified by the expert review."
         )
 
     def get_step_guidance_message(self, request) -> str:

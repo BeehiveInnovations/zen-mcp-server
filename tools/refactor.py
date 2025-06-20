@@ -534,17 +534,44 @@ class RefactorTool(WorkflowTool):
         """Refactor-specific work summary."""
         return self._build_refactoring_summary(self.consolidated_findings)
 
-    def get_completion_next_steps_message(self) -> str:
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
         """
         Refactor-specific completion message.
+
+        Args:
+            expert_analysis_used: True if expert analysis was successfully executed
         """
-        return (
+        base_message = (
             "REFACTORING ANALYSIS IS COMPLETE. You MUST now summarize and present ALL refactoring opportunities "
             "organized by type (codesmells → decompose → modernize → organization) and severity (Critical → High → "
             "Medium → Low), specific code locations with line numbers, and exact recommendations for improvement. "
             "Clearly prioritize the top 3 refactoring opportunities that need immediate attention. Provide concrete, "
             "actionable guidance for each opportunity—make it easy for a developer to understand exactly what needs "
             "to be refactored and how to implement the improvements."
+        )
+
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Get additional guidance for handling expert analysis results in refactor context.
+
+        Returns:
+            Additional guidance text for validating and using expert analysis findings
+        """
+        return (
+            "IMPORTANT: Expert refactoring analysis has been provided above. You MUST review "
+            "the expert's architectural insights and refactoring recommendations. Consider whether "
+            "the expert's suggestions align with the codebase's evolution trajectory and current "
+            "team priorities. Pay special attention to any breaking changes, migration complexity, "
+            "or performance implications highlighted by the expert. Present a balanced view that "
+            "considers both immediate benefits and long-term maintainability."
         )
 
     def get_step_guidance_message(self, request) -> str:
