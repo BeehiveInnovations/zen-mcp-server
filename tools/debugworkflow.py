@@ -8,16 +8,16 @@ It maintains identical behavior while leveraging the new base classes for code r
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
 from config import TEMPERATURE_ANALYTICAL
 from systemprompts import DEBUG_ISSUE_PROMPT
-from tools.shared.base_models import ToolRequest
+from tools.shared.base_models import WorkflowRequest
 
-from .base import WorkflowTool
+from .workflow.base import WorkflowTool
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = {
         "those that are directly tied to the root cause or its effects. This could include the cause, trigger, or "
         "place of manifestation."
     ),
-    "relevant_methods": (
+    "relevant_context": (
         "List methods or functions that are central to the issue, in the format "
         "'ClassName.methodName' or 'functionName'. "
         "Prioritize those that influence or process inputs, drive branching, or pass state between modules."
@@ -95,7 +95,7 @@ DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = {
 }
 
 
-class DebugInvestigationRequest(ToolRequest):
+class DebugInvestigationRequest(WorkflowRequest):
     """Request model for debug investigation steps matching original debug tool exactly"""
 
     # Required fields for each investigation step
@@ -112,8 +112,11 @@ class DebugInvestigationRequest(ToolRequest):
     relevant_files: list[str] = Field(
         default_factory=list, description=DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_files"]
     )
+    relevant_context: list[str] = Field(
+        default_factory=list, description=DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_context"]
+    )
     relevant_methods: list[str] = Field(
-        default_factory=list, description=DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_methods"]
+        default_factory=list, description=DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_context"], exclude=True
     )
     hypothesis: Optional[str] = Field(None, description=DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["hypothesis"])
     confidence: Optional[str] = Field("low", description=DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["confidence"])
@@ -131,14 +134,14 @@ class DebugInvestigationRequest(ToolRequest):
     thinking_mode: Optional[str] = Field(default=None, exclude=True)
     use_websearch: Optional[bool] = Field(default=None, exclude=True)
 
-    @field_validator("files_checked", "relevant_files", "relevant_methods", mode="before")
-    @classmethod
-    def convert_string_to_list(cls, v):
-        """Convert string inputs to empty lists to handle malformed inputs gracefully."""
-        if isinstance(v, str):
-            logger.warning(f"Field received string '{v}' instead of list, converting to empty list")
-            return []
-        return v
+    @model_validator(mode="after")
+    def map_relevant_methods_to_context(self):
+        """Map relevant_methods from external input to relevant_context for internal processing."""
+        # If relevant_context is empty but relevant_methods has values, use relevant_methods
+        if not self.relevant_context and self.relevant_methods:
+            self.relevant_context = self.relevant_methods[:]
+        return self
+
 
 
 
@@ -194,11 +197,9 @@ class DebugWorkflowTool(WorkflowTool):
         """Return the debug-specific request model."""
         return DebugInvestigationRequest
 
-
-
     def get_input_schema(self) -> dict[str, Any]:
         """Generate input schema using WorkflowSchemaBuilder with debug-specific overrides."""
-        from ..workflow.schema_builders import WorkflowSchemaBuilder
+        from .workflow.schema_builders import WorkflowSchemaBuilder
 
         # Debug-specific field overrides
         debug_field_overrides = {
@@ -251,7 +252,7 @@ class DebugWorkflowTool(WorkflowTool):
             "relevant_methods": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_methods"],
+                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_context"],
             },
             "images": {
                 "type": "array",
@@ -406,40 +407,40 @@ class DebugWorkflowTool(WorkflowTool):
 
         if step_number == 1:
             next_steps = (
-                f"MANDATORY: DO NOT call the debugworkflow tool again immediately. You MUST first investigate "
+                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first investigate "
                 f"the codebase using appropriate tools. CRITICAL AWARENESS: The reported symptoms might be "
                 f"caused by issues elsewhere in the code, not where symptoms appear. Also, after thorough "
                 f"investigation, it's possible NO BUG EXISTS - the issue might be a misunderstanding or "
                 f"user expectation mismatch. Search broadly, examine implementations, understand the logic flow. "
-                f"Only call debugworkflow again AFTER gathering concrete evidence. When you call "
-                f"debugworkflow next time, "
+                f"Only call {self.get_name()} again AFTER gathering concrete evidence. When you call "
+                f"{self.get_name()} next time, "
                 f"use step_number: {step_number + 1} and report specific files examined and findings discovered."
             )
         elif confidence in ["exploring", "low"]:
             next_steps = (
-                f"STOP! Do NOT call debugworkflow again yet. Based on your findings, you've identified potential areas "
-                f"but need concrete evidence. MANDATORY ACTIONS before calling debugworkflow step {step_number + 1}:\n"
+                f"STOP! Do NOT call {self.get_name()} again yet. Based on your findings, you've identified potential areas "
+                f"but need concrete evidence. MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nOnly call debugworkflow again with step_number: {step_number + 1} AFTER "
+                + f"\n\nOnly call {self.get_name()} again with step_number: {step_number + 1} AFTER "
                 + "completing these investigations."
             )
         elif confidence in ["medium", "high"]:
             next_steps = (
-                "WAIT! Your hypothesis needs verification. DO NOT call debugworkflow immediately. REQUIRED ACTIONS:\n"
+                f"WAIT! Your hypothesis needs verification. DO NOT call {self.get_name()} immediately. REQUIRED ACTIONS:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
                 + f"\n\nREMEMBER: If you cannot find concrete evidence of a bug causing the reported symptoms, "
                 f"'no bug found' is a valid conclusion. Consider suggesting discussion with your thought partner "
                 f"or engineering assistant for clarification. Document findings with specific file:line references, "
-                f"then call debugworkflow with step_number: {step_number + 1}."
+                f"then call {self.get_name()} with step_number: {step_number + 1}."
             )
         else:
             next_steps = (
-                f"PAUSE INVESTIGATION. Before calling debugworkflow step {step_number + 1}, you MUST examine code. "
+                f"PAUSE INVESTIGATION. Before calling {self.get_name()} step {step_number + 1}, you MUST examine code. "
                 + "Required: " + ", ".join(required_actions[:2]) + ". "
-                + f"Your next debugworkflow call (step_number: {step_number + 1}) must include "
+                + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
                 f"NEW evidence from actual code examination, not just theories. If no bug evidence "
                 f"is found, suggesting "
-                f"collaboration with thought partner is valuable. NO recursive debugworkflow calls "
+                f"collaboration with thought partner is valuable. NO recursive {self.get_name()} calls "
                 f"without investigation work!"
             )
 
@@ -459,7 +460,7 @@ class DebugWorkflowTool(WorkflowTool):
             "findings": request.findings,
             "files_checked": request.files_checked,
             "relevant_files": request.relevant_files,
-            "relevant_context": request.relevant_methods,  # Map relevant_methods to relevant_context
+            "relevant_context": request.relevant_context,
             "issues_found": [],  # Debug tool doesn't use issues_found field
             "confidence": request.confidence,
             "hypothesis": request.hypothesis,
@@ -508,9 +509,9 @@ class DebugWorkflowTool(WorkflowTool):
         return "Claude identified exact root cause with minimal fix requirement"
 
     def get_request_relevant_context(self, request) -> list:
-        """Map relevant_methods to relevant_context for debug tool."""
+        """Get relevant_context for debug tool."""
         try:
-            return request.relevant_methods or []
+            return request.relevant_context or []
         except AttributeError:
             return []
 

@@ -1,19 +1,29 @@
 """
 Workflow Mixin for Zen MCP Tools
 
-This module provides the workflow-based pattern that enables tools to
+This module provides a sophisticated workflow-based pattern that enables tools to
 perform multi-step work with structured findings and expert analysis.
 
 Key Components:
-- BaseWorkflowMixin: Mixin class providing workflow functionality
+- BaseWorkflowMixin: Abstract base class providing comprehensive workflow functionality
 
-The workflow pattern enables tools like debug, precommit, and codereview
-to perform systematic multi-step work with pause/resume capabilities.
+The workflow pattern enables tools like debug, precommit, and codereview to perform
+systematic multi-step work with pause/resume capabilities, context-aware file embedding,
+and seamless integration with external AI models for expert analysis.
+
+Features:
+- Multi-step workflow orchestration with pause/resume
+- Context-aware file embedding optimization
+- Expert analysis integration with token budgeting
+- Conversation memory and threading support
+- Proper inheritance-based architecture (no hasattr/getattr)
+- Comprehensive type annotations for IDE support
 """
 
 import json
 import logging
-from abc import abstractmethod
+import os
+from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from mcp.types import TextContent
@@ -25,15 +35,27 @@ from ..shared.base_models import ConsolidatedFindings
 logger = logging.getLogger(__name__)
 
 
-class BaseWorkflowMixin:
+class BaseWorkflowMixin(ABC):
     """
-    Mixin providing guided workflow functionality for tools.
+    Abstract base class providing guided workflow functionality for tools.
 
-    This mixin implements the sophisticated workflow pattern from the debug tool,
-    where Claude performs systematic local work before calling external models
-    for expert analysis. Tools can inherit from this mixin to gain workflow capabilities.
+    This class implements a sophisticated workflow pattern where Claude performs
+    systematic local work before calling external models for expert analysis.
+    Tools can inherit from this class to gain comprehensive workflow capabilities.
 
-    NOTE: This mixin expects to be used with BaseTool and requires the following methods:
+    Architecture:
+    - Uses proper inheritance patterns instead of hasattr/getattr
+    - Provides hook methods with default implementations
+    - Requires abstract methods to be implemented by subclasses
+    - Fully type-annotated for excellent IDE support
+
+    Context-Aware File Embedding:
+    - Intermediate steps: Only reference file names (saves Claude's context)
+    - Final steps: Embed full file content for expert analysis
+    - Integrates with existing token budgeting infrastructure
+
+    Requirements:
+    This class expects to be used with BaseTool and requires implementation of:
     - get_model_provider(model_name)
     - _resolve_model_context(arguments, request)
     - get_system_prompt()
@@ -41,15 +63,15 @@ class BaseWorkflowMixin:
     - _prepare_file_content_for_prompt()
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.work_history = []
-        self.consolidated_findings = ConsolidatedFindings()
-        self.initial_request = None
+        self.work_history: list[dict[str, Any]] = []
+        self.consolidated_findings: ConsolidatedFindings = ConsolidatedFindings()
+        self.initial_request: Optional[str] = None
 
-    # Abstract methods each workflow tool must implement
-
-    # Abstract methods that must be provided by BaseTool or implementing class
+    # ================================================================================
+    # Abstract Methods - Required Implementation by BaseTool or Subclasses
+    # ================================================================================
 
     @abstractmethod
     def get_name(self) -> str:
@@ -57,7 +79,7 @@ class BaseWorkflowMixin:
         pass
 
     @abstractmethod
-    def get_workflow_request_model(self):
+    def get_workflow_request_model(self) -> type:
         """Return the request model class for this workflow tool."""
         pass
 
@@ -72,24 +94,33 @@ class BaseWorkflowMixin:
         pass
 
     @abstractmethod
-    def get_model_provider(self, model_name: str):
+    def get_model_provider(self, model_name: str) -> Any:
         """Get model provider for the given model. Usually provided by BaseTool."""
         pass
 
     @abstractmethod
-    def _resolve_model_context(self, arguments: dict, request):
+    def _resolve_model_context(self, arguments: dict[str, Any], request: Any) -> tuple[str, Any]:
         """Resolve model context from arguments. Usually provided by BaseTool."""
         pass
 
     @abstractmethod
-    def _prepare_file_content_for_prompt(self, files: list, request, description: str):
+    def _prepare_file_content_for_prompt(
+        self,
+        files: list[str],
+        continuation_id: Optional[str],
+        description: str,
+        remaining_budget: Optional[int] = None,
+        arguments: Optional[dict[str, Any]] = None
+    ) -> tuple[str, list[str]]:
         """Prepare file content for prompts. Usually provided by BaseTool."""
         pass
 
-    # Abstract methods each workflow tool must implement
+    # ================================================================================
+    # Abstract Methods - Tool-Specific Implementation Required
+    # ================================================================================
 
     @abstractmethod
-    def get_work_steps(self, request) -> list[str]:
+    def get_work_steps(self, request: Any) -> list[str]:
         """Define tool-specific work steps and criteria"""
         pass
 
@@ -107,6 +138,10 @@ class BaseWorkflowMixin:
             List of specific actions Claude should take before calling tool again
         """
         pass
+
+    # ================================================================================
+    # Hook Methods - Default Implementations with Override Capability
+    # ================================================================================
 
     def should_call_expert_analysis(self, consolidated_findings: ConsolidatedFindings) -> bool:
         """
@@ -210,16 +245,39 @@ class BaseWorkflowMixin:
     def _prepare_files_for_expert_analysis(self) -> str:
         """
         Prepare file content for inclusion in expert analysis.
-        Override this to customize how files are prepared.
+        
+        EXPERT ANALYSIS ALWAYS GETS FULL FILE CONTEXT:
+        This ensures the expert analysis has complete information regardless
+        of whether files were embedded in intermediate steps.
         """
         if not self.consolidated_findings.relevant_files:
             return ""
 
-        # Use BaseTool's file preparation method
-        file_content, _ = self._prepare_file_content_for_prompt(
-            list(self.consolidated_findings.relevant_files), None, "Essential files for analysis"
-        )
-        return file_content
+        # Check if we already embedded files in the final step
+        embedded_content = self.get_embedded_file_content()
+        if embedded_content:
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Using already embedded file content for expert analysis")
+            return embedded_content
+
+        # If no embedded content, prepare it now with proper token budgeting
+        try:
+            # Use BaseTool's file preparation method with token budgeting
+            file_content, processed_files = self._prepare_file_content_for_prompt(
+                list(self.consolidated_findings.relevant_files),
+                None,
+                "Essential files for expert analysis",
+                arguments=self.get_current_arguments()
+            )
+
+            logger.info(
+                f"[WORKFLOW_FILES] {self.get_name()}: Prepared {len(processed_files)} files for expert analysis"
+            )
+
+            return file_content
+
+        except Exception as e:
+            logger.error(f"[WORKFLOW_FILES] {self.get_name()}: Failed to prepare files for expert analysis: {e}")
+            return ""
 
     def _add_files_to_expert_context(self, expert_context: str, file_content: str) -> str:
         """
@@ -228,8 +286,161 @@ class BaseWorkflowMixin:
         """
         return f"{expert_context}\n\n=== ESSENTIAL FILES ===\n{file_content}\n=== END ESSENTIAL FILES ==="
 
+    # ================================================================================
+    # Context-Aware File Embedding - Core Implementation
+    # ================================================================================
 
-    # Shared workflow methods
+    def _handle_workflow_file_context(self, request: Any, arguments: dict[str, Any]) -> None:
+        """
+        Handle file context appropriately based on workflow phase.
+        
+        CONTEXT-AWARE FILE EMBEDDING STRATEGY:
+        1. Intermediate steps + continuation: Only reference file names (save Claude's context)
+        2. Final step: Embed full file content for expert analysis
+        3. Expert analysis: Always embed relevant files with token budgeting
+        
+        This prevents wasting Claude's limited context on intermediate steps while ensuring
+        the final expert analysis has complete file context.
+        """
+        continuation_id = self.get_request_continuation_id(request)
+        is_final_step = not self.get_request_next_step_required(request)
+        step_number = self.get_request_step_number(request)
+
+        # Extract model context for token budgeting
+        model_context = arguments.get("_model_context")
+        self._model_context = model_context
+
+        # Clear any previous file context to ensure clean state
+        self._embedded_file_content = ""
+        self._file_reference_note = ""
+        self._actually_processed_files = []
+
+        # Determine if we should embed files or just reference them
+        should_embed_files = self._should_embed_files_in_workflow_step(
+            step_number, continuation_id, is_final_step
+        )
+
+        if should_embed_files:
+            # Final step or expert analysis - embed full file content
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Embedding files for final step/expert analysis")
+            self._embed_workflow_files(request, arguments)
+        else:
+            # Intermediate step with continuation - only reference file names
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Only referencing file names for intermediate step")
+            self._reference_workflow_files(request)
+
+    def _should_embed_files_in_workflow_step(self, step_number: int, continuation_id: Optional[str], is_final_step: bool) -> bool:
+        """
+        Determine whether to embed file content based on workflow context.
+        
+        CORRECT LOGIC:
+        - NEVER embed files when Claude is getting the next step (next_step_required=True)
+        - ONLY embed files when sending to external model (next_step_required=False)
+        
+        Args:
+            step_number: Current step number
+            continuation_id: Thread continuation ID (None for new conversations)
+            is_final_step: Whether this is the final step (next_step_required == False)
+            
+        Returns:
+            bool: True if files should be embedded, False if only referenced
+        """
+        # RULE 1: Final steps (no more steps needed) - embed files for expert analysis
+        if is_final_step:
+            logger.debug("[WORKFLOW_FILES] Final step - will embed files for expert analysis")
+            return True
+
+        # RULE 2: Any intermediate step (more steps needed) - NEVER embed files
+        # This includes:
+        # - New conversations with next_step_required=True
+        # - Steps with continuation_id and next_step_required=True
+        logger.debug("[WORKFLOW_FILES] Intermediate step (more work needed) - will only reference files")
+        return False
+
+    def _embed_workflow_files(self, request: Any, arguments: dict[str, Any]) -> None:
+        """
+        Embed full file content for final steps and expert analysis.
+        Uses proper token budgeting like existing debug.py.
+        """
+        # Use relevant_files as the standard field for workflow tools
+        request_files = self.get_request_relevant_files(request)
+        if not request_files:
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: No relevant_files to embed")
+            return
+
+        try:
+            # Ensure model context is available - fall back to resolution if needed
+            current_model_context = self.get_current_model_context()
+            if not current_model_context:
+                try:
+                    model_name, model_context = self._resolve_model_context(arguments, request)
+                    self._model_context = model_context
+                except Exception as e:
+                    logger.error(f"[WORKFLOW_FILES] {self.get_name()}: Failed to resolve model context: {e}")
+                    # Create fallback model context
+                    from utils.model_context import ModelContext
+                    model_name = self.get_request_model_name(request)
+                    self._model_context = ModelContext(model_name)
+
+            # Use the same file preparation logic as BaseTool with token budgeting
+            continuation_id = self.get_request_continuation_id(request)
+            remaining_tokens = arguments.get("_remaining_tokens")
+
+            file_content, processed_files = self._prepare_file_content_for_prompt(
+                request_files,
+                continuation_id,
+                "Workflow files for analysis",
+                remaining_budget=remaining_tokens,
+                arguments=arguments
+            )
+
+            # Store for use in expert analysis
+            self._embedded_file_content = file_content
+            self._actually_processed_files = processed_files
+
+            logger.info(
+                f"[WORKFLOW_FILES] {self.get_name()}: Embedded {len(processed_files)} relevant_files for final analysis"
+            )
+
+        except Exception as e:
+            logger.error(f"[WORKFLOW_FILES] {self.get_name()}: Failed to embed files: {e}")
+            # Continue without file embedding rather than failing
+            self._embedded_file_content = ""
+            self._actually_processed_files = []
+
+    def _reference_workflow_files(self, request: Any) -> None:
+        """
+        Reference file names without embedding content for intermediate steps.
+        Saves Claude's context while still providing file awareness.
+        """
+        # Workflow tools use relevant_files, not files
+        request_files = self.get_request_relevant_files(request)
+        logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: _reference_workflow_files called with {len(request_files)} relevant_files")
+
+        if not request_files:
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: No files to reference, skipping")
+            return
+
+        # Store file references for conversation context
+        self._referenced_files = request_files
+
+        # Create a simple reference note
+        file_names = [os.path.basename(f) for f in request_files]
+        reference_note = (
+            f"Files referenced in this step: {', '.join(file_names)}\n"
+            f"(File content available via conversation history or can be discovered by Claude)"
+        )
+
+        self._file_reference_note = reference_note
+        logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Set _file_reference_note: {self._file_reference_note}")
+
+        logger.info(
+            f"[WORKFLOW_FILES] {self.get_name()}: Referenced {len(request_files)} files without embedding content"
+        )
+
+    # ================================================================================
+    # Main Workflow Orchestration
+    # ================================================================================
 
     async def execute_workflow(self, arguments: dict[str, Any]) -> list[TextContent]:
         """
@@ -282,6 +493,9 @@ class BaseWorkflowMixin:
 
             # Update consolidated findings
             self._update_consolidated_findings(step_data)
+
+            # Handle file context appropriately based on workflow phase
+            self._handle_workflow_file_context(request, arguments)
 
             # Build response with tool-specific customization
             response_data = self.build_base_response(request, continuation_id)
@@ -355,6 +569,31 @@ class BaseWorkflowMixin:
         if continuation_id:
             response_data["continuation_id"] = continuation_id
 
+        # Add file context information based on workflow phase
+        embedded_content = self.get_embedded_file_content()
+        reference_note = self.get_file_reference_note()
+        processed_files = self.get_actually_processed_files()
+
+        logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Building response - has embedded_content: {bool(embedded_content)}, has reference_note: {bool(reference_note)}")
+
+        # Prioritize embedded content over references for final steps
+        if embedded_content:
+            # Final step - include embedded file information
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Adding fully_embedded file context")
+            response_data["file_context"] = {
+                "type": "fully_embedded",
+                "files_embedded": len(processed_files),
+                "context_optimization": "Full file content embedded for expert analysis"
+            }
+        elif reference_note:
+            # Intermediate step - include file reference note
+            logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Adding reference_only file context")
+            response_data["file_context"] = {
+                "type": "reference_only",
+                "note": reference_note,
+                "context_optimization": "Files referenced but not embedded to preserve Claude's context window"
+            }
+
         return response_data
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
@@ -395,42 +634,116 @@ class BaseWorkflowMixin:
             }
         }
 
-    # Inheritance hooks for request field access - replace getattr() usage
+    # ================================================================================
+    # Inheritance Hook Methods - Replace hasattr/getattr Anti-patterns
+    # ================================================================================
 
-    def get_request_confidence(self, request) -> str:
+    def get_request_confidence(self, request: Any) -> str:
         """Get confidence from request. Override for custom confidence handling."""
         try:
             return request.confidence or 'low'
         except AttributeError:
             return 'low'
 
-    def get_request_relevant_context(self, request) -> list:
+    def get_request_relevant_context(self, request: Any) -> list[str]:
         """Get relevant context from request. Override for custom field mapping."""
         try:
             return request.relevant_context or []
         except AttributeError:
             return []
 
-    def get_request_issues_found(self, request) -> list:
+    def get_request_issues_found(self, request: Any) -> list[str]:
         """Get issues found from request. Override for custom field mapping."""
         try:
             return request.issues_found or []
         except AttributeError:
             return []
 
-    def get_request_hypothesis(self, request):
+    def get_request_hypothesis(self, request: Any) -> Optional[str]:
         """Get hypothesis from request. Override for custom field mapping."""
         try:
             return request.hypothesis
         except AttributeError:
             return None
 
-    def get_request_images(self, request) -> list:
+    def get_request_images(self, request: Any) -> list[str]:
         """Get images from request. Override for custom field mapping."""
         try:
             return request.images or []
         except AttributeError:
             return []
+
+    # File Context Access Methods
+
+    def get_embedded_file_content(self) -> str:
+        """Get embedded file content. Returns empty string if not available."""
+        try:
+            return self._embedded_file_content or ""
+        except AttributeError:
+            return ""
+
+    def get_file_reference_note(self) -> str:
+        """Get file reference note. Returns empty string if not available."""
+        try:
+            return self._file_reference_note or ""
+        except AttributeError:
+            return ""
+
+    def get_actually_processed_files(self) -> list[str]:
+        """Get list of actually processed files. Returns empty list if not available."""
+        try:
+            return self._actually_processed_files or []
+        except AttributeError:
+            return []
+
+    def get_current_model_context(self):
+        """Get current model context. Returns None if not available."""
+        try:
+            return self._model_context
+        except AttributeError:
+            return None
+
+    def get_request_model_name(self, request: Any) -> str:
+        """Get model name from request. Override for custom model handling."""
+        try:
+            return request.model or 'flash'
+        except AttributeError:
+            return 'flash'
+
+    def get_request_continuation_id(self, request: Any) -> Optional[str]:
+        """Get continuation ID from request. Override for custom continuation handling."""
+        try:
+            return request.continuation_id
+        except AttributeError:
+            return None
+
+    def get_request_next_step_required(self, request: Any) -> bool:
+        """Get next step required from request. Override for custom step handling."""
+        try:
+            return request.next_step_required
+        except AttributeError:
+            return True
+
+    def get_request_step_number(self, request: Any) -> int:
+        """Get step number from request. Override for custom step handling."""
+        try:
+            return request.step_number or 1
+        except AttributeError:
+            return 1
+
+    def get_request_relevant_files(self, request: Any) -> list[str]:
+        """Get relevant files from request. Override for custom file handling."""
+        try:
+            return request.relevant_files or []
+        except AttributeError:
+            return []
+
+    def get_current_arguments(self) -> dict[str, Any]:
+        """Get current arguments. Returns empty dict if not available."""
+        try:
+            return self._current_arguments or {}
+        except AttributeError:
+            return {}
 
     def get_backtrack_step(self, request) -> Optional[int]:
         """Get backtrack step from request. Override for custom backtrack handling."""
@@ -504,6 +817,26 @@ class BaseWorkflowMixin:
         Tools can override this to add tool-specific fields, modify status names,
         customize field mapping, etc. Default implementation returns unchanged.
         """
+        # Ensure file context information is preserved in all response paths
+        if not response_data.get('file_context'):
+            embedded_content = self.get_embedded_file_content()
+            reference_note = self.get_file_reference_note()
+            processed_files = self.get_actually_processed_files()
+
+            # Prioritize embedded content over references for final steps
+            if embedded_content:
+                response_data["file_context"] = {
+                    "type": "fully_embedded",
+                    "files_embedded": len(processed_files),
+                    "context_optimization": "Full file content embedded for expert analysis"
+                }
+            elif reference_note:
+                response_data["file_context"] = {
+                    "type": "reference_only",
+                    "note": reference_note,
+                    "context_optimization": "Files referenced but not embedded to preserve Claude's context window"
+                }
+
         return response_data
 
     def store_conversation_turn(self, continuation_id: str, response_data: dict, request):
@@ -703,8 +1036,16 @@ class BaseWorkflowMixin:
                 model_name = resolved_model_name
             else:
                 # Fallback for direct calls - requires BaseTool methods
-                model_name, model_context = self._resolve_model_context(arguments, request)
-                self._model_context = model_context
+                try:
+                    model_name, model_context = self._resolve_model_context(arguments, request)
+                    self._model_context = model_context
+                except Exception as e:
+                    logger.error(f"Failed to resolve model context: {e}")
+                    # Use request model as fallback
+                    model_name = self.get_request_model_name(request)
+                    from utils.model_context import ModelContext
+                    model_context = ModelContext(model_name)
+                    self._model_context = model_context
 
             self._current_model_name = model_name
             provider = self.get_model_provider(model_name)

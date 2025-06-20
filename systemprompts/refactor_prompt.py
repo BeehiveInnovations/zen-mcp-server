@@ -177,7 +177,9 @@ DECOMPOSITION STRATEGIES:
      * Flag functions that require manual review due to complex inter-dependencies
    - **PERFORMANCE IMPACT**: Consider if extraction affects performance-critical code paths
 
-CRITICAL RULE: If ANY component exceeds AUTOMATIC thresholds (15000+ LOC files, 3000+ LOC classes, 500+ LOC functions), you MUST:
+CRITICAL RULE: 
+If ANY component exceeds AUTOMATIC thresholds (15000+ LOC files, 3000+ LOC classes, 500+ LOC functions excluding 
+comments and documentation), you MUST:
 1. Mark ALL automatic decomposition opportunities as CRITICAL severity
 2. Focus EXCLUSIVELY on decomposition - provide ONLY decomposition suggestions
 3. DO NOT suggest ANY other refactoring type (code smells, modernization, organization)
@@ -185,7 +187,8 @@ CRITICAL RULE: If ANY component exceeds AUTOMATIC thresholds (15000+ LOC files, 
 5. Block all other refactoring until cognitive load is reduced
 
 INTELLIGENT SEVERITY ASSIGNMENT:
-- **CRITICAL**: Automatic thresholds breached (15000+ LOC files, 3000+ LOC classes, 500+ LOC functions)
+- **CRITICAL**: Automatic thresholds breached (15000+ LOC files, 3000+ LOC classes, 500+ LOC functions excluding 
+comments and documentation)
 - **HIGH**: Evaluate thresholds breached (5000+ LOC files, 1000+ LOC classes, 150+ LOC functions) AND context indicates real issues
 - **MEDIUM**: Evaluate thresholds breached but context suggests legitimate size OR minor organizational improvements
 - **LOW**: Optional decomposition that would improve readability but isn't problematic

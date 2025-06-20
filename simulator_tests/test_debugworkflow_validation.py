@@ -53,6 +53,14 @@ class DebugWorkflowValidationTest(ConversationBaseTest):
             if not self._test_certain_confidence():
                 return False
 
+            # Test 5: Context-aware file embedding
+            if not self._test_context_aware_file_embedding():
+                return False
+
+            # Test 6: Multi-step file context optimization
+            if not self._test_multi_step_file_context():
+                return False
+
             self.logger.info("  ✅ All debugworkflow validation tests passed")
             return True
 
@@ -549,4 +557,403 @@ RuntimeError: dictionary changed size during iteration
 
         except Exception as e:
             self.logger.error(f"Error validating step response: {e}")
+            return False
+
+    def _test_context_aware_file_embedding(self) -> bool:
+        """Test context-aware file embedding optimization"""
+        try:
+            self.logger.info("  1.5: Testing context-aware file embedding")
+
+            # Create multiple test files for context testing
+            file1_content = """#!/usr/bin/env python3
+def process_data(data):
+    \"\"\"Process incoming data\"\"\"
+    result = []
+    for item in data:
+        if item.get('valid'):
+            result.append(item['value'])
+    return result
+"""
+
+            file2_content = """#!/usr/bin/env python3
+def validate_input(data):
+    \"\"\"Validate input data\"\"\"
+    if not isinstance(data, list):
+        raise ValueError("Data must be a list")
+    
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("Items must be dictionaries")
+        if 'value' not in item:
+            raise ValueError("Items must have 'value' key")
+    
+    return True
+"""
+
+            # Create test files
+            file1 = self.create_additional_test_file("data_processor.py", file1_content)
+            file2 = self.create_additional_test_file("validator.py", file2_content)
+
+            # Test 1: New conversation, intermediate step - should only reference files
+            self.logger.info("    1.5.1: New conversation intermediate step (should reference only)")
+            response1, continuation_id = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Starting investigation of data processing pipeline",
+                    "step_number": 1,
+                    "total_steps": 3,
+                    "next_step_required": True,  # Intermediate step
+                    "findings": "Initial analysis of data processing components",
+                    "files_checked": [file1, file2],
+                    "relevant_files": [file1],  # This should be referenced, not embedded
+                    "relevant_methods": ["process_data"],
+                    "hypothesis": "Investigating data flow",
+                    "confidence": "low",
+                    "model": "flash",
+                },
+            )
+
+            if not response1 or not continuation_id:
+                self.logger.error("Failed to start context-aware file embedding test")
+                return False
+
+            response1_data = self._parse_debug_response(response1)
+            if not response1_data:
+                return False
+
+            # Check file context - should be reference_only for intermediate step
+            file_context = response1_data.get("file_context", {})
+            if file_context.get("type") != "reference_only":
+                self.logger.error(f"Expected reference_only file context, got: {file_context.get('type')}")
+                return False
+
+            if "Files referenced but not embedded" not in file_context.get("context_optimization", ""):
+                self.logger.error("Expected context optimization message for reference_only")
+                return False
+
+            self.logger.info("    ✅ Intermediate step correctly uses reference_only file context")
+
+            # Test 2: Intermediate step with continuation - should still only reference
+            self.logger.info("    1.5.2: Intermediate step with continuation (should reference only)")
+            response2, _ = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Continuing investigation with more detailed analysis",
+                    "step_number": 2,
+                    "total_steps": 3,
+                    "next_step_required": True,  # Still intermediate
+                    "continuation_id": continuation_id,
+                    "findings": "Found potential issues in validation logic",
+                    "files_checked": [file1, file2],
+                    "relevant_files": [file1, file2],  # Both files referenced
+                    "relevant_methods": ["process_data", "validate_input"],
+                    "hypothesis": "Validation might be too strict",
+                    "confidence": "medium",
+                    "model": "flash",
+                },
+            )
+
+            if not response2:
+                self.logger.error("Failed to continue to step 2")
+                return False
+
+            response2_data = self._parse_debug_response(response2)
+            if not response2_data:
+                return False
+
+            # Check file context - should still be reference_only
+            file_context2 = response2_data.get("file_context", {})
+            if file_context2.get("type") != "reference_only":
+                self.logger.error(f"Expected reference_only file context for step 2, got: {file_context2.get('type')}")
+                return False
+
+            # Should include reference note
+            if not file_context2.get("note"):
+                self.logger.error("Expected file reference note for intermediate step")
+                return False
+
+            reference_note = file_context2.get("note", "")
+            if "data_processor.py" not in reference_note or "validator.py" not in reference_note:
+                self.logger.error("File reference note should mention both files")
+                return False
+
+            self.logger.info("    ✅ Intermediate step with continuation correctly uses reference_only")
+
+            # Test 3: Final step - should embed files for expert analysis
+            self.logger.info("    1.5.3: Final step (should embed files)")
+            response3, _ = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Investigation complete - identified the root cause",
+                    "step_number": 3,
+                    "total_steps": 3,
+                    "next_step_required": False,  # Final step - should embed files
+                    "continuation_id": continuation_id,
+                    "findings": "Root cause: validator is rejecting valid data due to strict type checking",
+                    "files_checked": [file1, file2],
+                    "relevant_files": [file1, file2],  # Should be fully embedded
+                    "relevant_methods": ["process_data", "validate_input"],
+                    "hypothesis": "Validation logic is too restrictive for valid edge cases",
+                    "confidence": "high",
+                    "model": "flash",
+                },
+            )
+
+            if not response3:
+                self.logger.error("Failed to complete to final step")
+                return False
+
+            response3_data = self._parse_debug_response(response3)
+            if not response3_data:
+                return False
+
+            # Check file context - should be fully_embedded for final step
+            file_context3 = response3_data.get("file_context", {})
+            if file_context3.get("type") != "fully_embedded":
+                self.logger.error(f"Expected fully_embedded file context for final step, got: {file_context3.get('type')}")
+                return False
+
+            if "Full file content embedded for expert analysis" not in file_context3.get("context_optimization", ""):
+                self.logger.error("Expected expert analysis optimization message for fully_embedded")
+                return False
+
+            # Should show files embedded count
+            files_embedded = file_context3.get("files_embedded", 0)
+            if files_embedded == 0:
+                # This is OK - files might already be in conversation history
+                self.logger.info("    ℹ️ Files embedded count is 0 - files already in conversation history (smart deduplication)")
+            else:
+                self.logger.info(f"    ✅ Files embedded count: {files_embedded}")
+
+            self.logger.info("    ✅ Final step correctly uses fully_embedded file context")
+
+            # Verify expert analysis was called for final step
+            if response3_data.get("status") != "calling_expert_analysis":
+                self.logger.error("Final step should trigger expert analysis")
+                return False
+
+            if "expert_analysis" not in response3_data:
+                self.logger.error("Expert analysis should be present in final step")
+                return False
+
+            self.logger.info("    ✅ Context-aware file embedding test completed successfully")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Context-aware file embedding test failed: {e}")
+            return False
+
+    def _test_multi_step_file_context(self) -> bool:
+        """Test multi-step workflow with proper file context transitions"""
+        try:
+            self.logger.info("  1.6: Testing multi-step file context optimization")
+
+            # Create a complex scenario with multiple files
+            config_content = """#!/usr/bin/env python3
+import os
+
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///app.db')
+DEBUG_MODE = os.getenv('DEBUG', 'False').lower() == 'true'
+MAX_CONNECTIONS = int(os.getenv('MAX_CONNECTIONS', '10'))
+
+# Bug: This will cause issues when MAX_CONNECTIONS is not a valid integer
+CACHE_SIZE = MAX_CONNECTIONS * 2  # Problematic if MAX_CONNECTIONS is invalid
+"""
+
+            server_content = """#!/usr/bin/env python3
+from config import DATABASE_URL, DEBUG_MODE, CACHE_SIZE
+import sqlite3
+
+class DatabaseServer:
+    def __init__(self):
+        self.connection_pool = []
+        self.cache_size = CACHE_SIZE  # This will fail if CACHE_SIZE is invalid
+        
+    def connect(self):
+        try:
+            conn = sqlite3.connect(DATABASE_URL)
+            self.connection_pool.append(conn)
+            return conn
+        except Exception as e:
+            print(f"Connection failed: {e}")
+            return None
+"""
+
+            # Create test files
+            config_file = self.create_additional_test_file("config.py", config_content)
+            server_file = self.create_additional_test_file("database_server.py", server_content)
+
+            # Step 1: Start investigation (new conversation)
+            self.logger.info("    1.6.1: Step 1 - Start investigation")
+            response1, continuation_id = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Investigating application startup failures in production environment",
+                    "step_number": 1,
+                    "total_steps": 4,
+                    "next_step_required": True,
+                    "findings": "Application fails to start with configuration errors",
+                    "files_checked": [config_file],
+                    "relevant_files": [config_file],
+                    "relevant_methods": [],
+                    "hypothesis": "Configuration issue causing startup failure",
+                    "confidence": "low",
+                    "model": "flash",
+                },
+            )
+
+            if not response1 or not continuation_id:
+                self.logger.error("Failed to start multi-step file context test")
+                return False
+
+            response1_data = self._parse_debug_response(response1)
+
+            # Validate step 1 - should use reference_only
+            file_context1 = response1_data.get("file_context", {})
+            if file_context1.get("type") != "reference_only":
+                self.logger.error("Step 1 should use reference_only file context")
+                return False
+
+            self.logger.info("    ✅ Step 1: reference_only file context")
+
+            # Step 2: Expand investigation
+            self.logger.info("    1.6.2: Step 2 - Expand investigation")
+            response2, _ = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Found configuration issue - investigating database server initialization",
+                    "step_number": 2,
+                    "total_steps": 4,
+                    "next_step_required": True,
+                    "continuation_id": continuation_id,
+                    "findings": "MAX_CONNECTIONS environment variable contains invalid value, causing CACHE_SIZE calculation to fail",
+                    "files_checked": [config_file, server_file],
+                    "relevant_files": [config_file, server_file],
+                    "relevant_methods": ["DatabaseServer.__init__"],
+                    "hypothesis": "Invalid environment variable causing integer conversion error",
+                    "confidence": "medium",
+                    "model": "flash",
+                },
+            )
+
+            if not response2:
+                self.logger.error("Failed to continue to step 2")
+                return False
+
+            response2_data = self._parse_debug_response(response2)
+
+            # Validate step 2 - should still use reference_only
+            file_context2 = response2_data.get("file_context", {})
+            if file_context2.get("type") != "reference_only":
+                self.logger.error("Step 2 should use reference_only file context")
+                return False
+
+            # Should reference both files
+            reference_note = file_context2.get("note", "")
+            if "config.py" not in reference_note or "database_server.py" not in reference_note:
+                self.logger.error("Step 2 should reference both files in note")
+                return False
+
+            self.logger.info("    ✅ Step 2: reference_only file context with multiple files")
+
+            # Step 3: Deep analysis
+            self.logger.info("    1.6.3: Step 3 - Deep analysis")
+            response3, _ = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Analyzing the exact error propagation path and impact",
+                    "step_number": 3,
+                    "total_steps": 4,
+                    "next_step_required": True,
+                    "continuation_id": continuation_id,
+                    "findings": "Error occurs in config.py line 8 when MAX_CONNECTIONS is not numeric, then propagates to DatabaseServer.__init__",
+                    "files_checked": [config_file, server_file],
+                    "relevant_files": [config_file, server_file],
+                    "relevant_methods": ["DatabaseServer.__init__"],
+                    "hypothesis": "Need proper error handling and validation for environment variables",
+                    "confidence": "high",
+                    "model": "flash",
+                },
+            )
+
+            if not response3:
+                self.logger.error("Failed to continue to step 3")
+                return False
+
+            response3_data = self._parse_debug_response(response3)
+
+            # Validate step 3 - should still use reference_only
+            file_context3 = response3_data.get("file_context", {})
+            if file_context3.get("type") != "reference_only":
+                self.logger.error("Step 3 should use reference_only file context")
+                return False
+
+            self.logger.info("    ✅ Step 3: reference_only file context")
+
+            # Step 4: Final analysis with expert consultation
+            self.logger.info("    1.6.4: Step 4 - Final step with expert analysis")
+            response4, _ = self.call_mcp_tool(
+                "debugworkflow",
+                {
+                    "step": "Investigation complete - root cause identified with solution",
+                    "step_number": 4,
+                    "total_steps": 4,
+                    "next_step_required": False,  # Final step - should embed files
+                    "continuation_id": continuation_id,
+                    "findings": "Root cause: config.py assumes MAX_CONNECTIONS env var is always a valid integer. Fix: add try/except with default value and proper validation.",
+                    "files_checked": [config_file, server_file],
+                    "relevant_files": [config_file, server_file],
+                    "relevant_methods": ["DatabaseServer.__init__"],
+                    "hypothesis": "Environment variable validation needed with proper error handling",
+                    "confidence": "high",
+                    "model": "flash",
+                },
+            )
+
+            if not response4:
+                self.logger.error("Failed to complete to final step")
+                return False
+
+            response4_data = self._parse_debug_response(response4)
+
+            # Validate step 4 - should use fully_embedded for expert analysis
+            file_context4 = response4_data.get("file_context", {})
+            if file_context4.get("type") != "fully_embedded":
+                self.logger.error("Step 4 (final) should use fully_embedded file context")
+                return False
+
+            if "expert analysis" not in file_context4.get("context_optimization", "").lower():
+                self.logger.error("Final step should mention expert analysis in context optimization")
+                return False
+
+            # Verify expert analysis was triggered
+            if response4_data.get("status") != "calling_expert_analysis":
+                self.logger.error("Final step should trigger expert analysis")
+                return False
+
+            # Check that expert analysis has file context
+            expert_analysis = response4_data.get("expert_analysis", {})
+            if not expert_analysis:
+                self.logger.error("Expert analysis should be present in final step")
+                return False
+
+            self.logger.info("    ✅ Step 4: fully_embedded file context with expert analysis")
+
+            # Validate the complete workflow progression
+            progression_summary = {
+                "step_1": "reference_only (new conversation, intermediate)",
+                "step_2": "reference_only (continuation, intermediate)",
+                "step_3": "reference_only (continuation, intermediate)",
+                "step_4": "fully_embedded (continuation, final)"
+            }
+
+            self.logger.info("    📋 File context progression:")
+            for step, context_type in progression_summary.items():
+                self.logger.info(f"      {step}: {context_type}")
+
+            self.logger.info("    ✅ Multi-step file context optimization test completed successfully")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Multi-step file context test failed: {e}")
             return False

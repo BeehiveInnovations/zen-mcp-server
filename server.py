@@ -71,7 +71,7 @@ from tools import (  # noqa: E402
     TracerTool,
 )
 from tools.models import ToolOutput  # noqa: E402
-from tools.workflow.debugworkflow import DebugWorkflowTool  # noqa: E402
+from tools.debugworkflow import DebugWorkflowTool  # noqa: E402
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)

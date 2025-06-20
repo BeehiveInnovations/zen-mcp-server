@@ -6,7 +6,7 @@ Debug the certain confidence behavior.
 import asyncio
 import json
 
-from tools.workflow.debugworkflow import DebugWorkflowTool
+from tools.debugworkflow import DebugWorkflowTool
 
 
 async def test_certain_confidence():
