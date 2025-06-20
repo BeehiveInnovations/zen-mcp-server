@@ -60,14 +60,13 @@ from tools import (  # noqa: E402
     AnalyzeTool,
     ChatTool,
     CodeReviewTool,
-    CodeTestGenerationTool,
     ConsensusTool,
     DebugIssueTool,
     ListModelsTool,
     PlannerTool,
     PrecommitTool,
     RefactorTool,
-    TestGenWorkflowTool,
+    TestGenTool,
     ThinkDeepTool,
     TracerTool,
 )
@@ -171,8 +170,7 @@ TOOLS = {
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
-    "testgen": CodeTestGenerationTool(),  # Comprehensive test generation with edge case coverage
-    "testgenworkflow": TestGenWorkflowTool(),  # Step-by-step test generation workflow with expert validation
+    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
     "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
 }
