@@ -72,17 +72,25 @@ class VertexAIProvider(GeminiModelProvider):
         """Lazy initialization of Google credentials."""
         if self._credentials is None:
             try:
-                self._credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+                self._credentials, _ = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                )
             except google.auth.exceptions.DefaultCredentialsError as e:
-                logger.error(f"Failed to initialize Google credentials (DefaultCredentialsError): {e}")
+                logger.error(
+                    f"Failed to initialize Google credentials (DefaultCredentialsError): {e}"
+                )
                 raise ValueError(
                     "Could not initialize Google Cloud credentials. "
                     "Please run 'gcloud auth application-default login' or set "
                     "GOOGLE_APPLICATION_CREDENTIALS environment variable."
                 ) from e
             except Exception as e:
-                logger.error(f"An unexpected error occurred during Google credentials initialization: {e}")
-                raise ValueError(f"An unexpected error occurred while initializing Google Cloud credentials: {e}") from e
+                logger.error(
+                    f"An unexpected error occurred during Google credentials initialization: {e}"
+                )
+                raise ValueError(
+                    f"An unexpected error occurred while initializing Google Cloud credentials: {e}"
+                ) from e
         return self._credentials
 
     @property
@@ -91,7 +99,10 @@ class VertexAIProvider(GeminiModelProvider):
         if self._client is None:
             # Create Vertex AI client using credentials instead of API key
             self._client = genai.Client(
-                vertexai=True, project=self.project_id, location=self.region, credentials=self.credentials
+                vertexai=True,
+                project=self.project_id,
+                location=self.region,
+                credentials=self.credentials,
             )
         return self._client
 
@@ -137,9 +148,13 @@ class VertexAIProvider(GeminiModelProvider):
             metadata={
                 "project_id": self.project_id,
                 "region": self.region,
-                "thinking_mode": thinking_mode if capabilities.supports_extended_thinking else None,
+                "thinking_mode": (
+                    thinking_mode if capabilities.supports_extended_thinking else None
+                ),
                 "finish_reason": (
-                    getattr(response.candidates[0], "finish_reason", "STOP") if response.candidates else "STOP"
+                    getattr(response.candidates[0], "finish_reason", "STOP")
+                    if response.candidates
+                    else "STOP"
                 ),
             },
         )
@@ -156,7 +171,9 @@ class VertexAIProvider(GeminiModelProvider):
 
             if respect_restrictions:
                 restriction_service = get_restriction_service()
-                if not restriction_service.is_allowed(ProviderType.VERTEX_AI, model_name, model_name):
+                if not restriction_service.is_allowed(
+                    ProviderType.VERTEX_AI, model_name, model_name
+                ):
                     continue
 
             models.append(model_name)
