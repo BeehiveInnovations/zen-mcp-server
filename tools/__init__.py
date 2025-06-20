@@ -11,6 +11,7 @@ from .listmodels import ListModelsTool
 from .planner import PlannerTool
 from .precommit import PrecommitTool
 from .refactor import RefactorTool
+from .refactorworkflow import RefactorWorkflowTool
 from .testgen import TestGenerationTool
 from .thinkdeep import ThinkDeepTool
 from .tracer import TracerTool
@@ -26,6 +27,7 @@ __all__ = [
     "PlannerTool",
     "PrecommitTool",
     "RefactorTool",
+    "RefactorWorkflowTool",
     "TestGenerationTool",
     "TracerTool",
 ]
