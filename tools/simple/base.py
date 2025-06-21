@@ -280,6 +280,17 @@ class SimpleTool(BaseTool):
             request = request_model(**arguments)
             logger.debug(f"Request validation successful for {self.get_name()}")
 
+            # Validate file paths for security
+            # This prevents path traversal attacks and ensures proper access control
+            path_error = self._validate_file_paths(request)
+            if path_error:
+                error_output = ToolOutput(
+                    status="error",
+                    content=path_error,
+                    content_type="text",
+                )
+                return [TextContent(type="text", text=error_output.model_dump_json())]
+
             # Handle model resolution like old base.py
             model_name = self.get_request_model_name(request)
             if not model_name:
@@ -442,6 +453,12 @@ class SimpleTool(BaseTool):
             return [TextContent(type="text", text=tool_output.model_dump_json())]
 
         except Exception as e:
+            # Special handling for MCP size check errors
+            if str(e).startswith("MCP_SIZE_CHECK:"):
+                # Extract the JSON content after the prefix
+                json_content = str(e)[len("MCP_SIZE_CHECK:") :]
+                return [TextContent(type="text", text=json_content)]
+
             logger.error(f"Error in {self.get_name()}: {str(e)}")
             error_output = ToolOutput(
                 status="error",
@@ -509,7 +526,30 @@ class SimpleTool(BaseTool):
         if continuation_data:
             return self._create_continuation_offer_response(formatted_response, continuation_data, request, model_info)
         else:
-            return ToolOutput(status="success", content=formatted_response, content_type="text")
+            # Build metadata with model and provider info for success response
+            metadata = {}
+            if model_info:
+                model_name = model_info.get("model_name")
+                if model_name:
+                    metadata["model_used"] = model_name
+                provider = model_info.get("provider")
+                if provider:
+                    # Handle both provider objects and string values
+                    if isinstance(provider, str):
+                        metadata["provider_used"] = provider
+                    else:
+                        try:
+                            metadata["provider_used"] = provider.get_provider_type().value
+                        except AttributeError:
+                            # Fallback if provider doesn't have get_provider_type method
+                            metadata["provider_used"] = str(provider)
+
+            return ToolOutput(
+                status="success",
+                content=formatted_response,
+                content_type="text",
+                metadata=metadata if metadata else None,
+            )
 
     def _create_continuation_offer(self, request, model_info: Optional[dict] = None):
         """Create continuation offer following old base.py pattern"""
@@ -574,12 +614,30 @@ class SimpleTool(BaseTool):
                 remaining_turns=continuation_data["remaining_turns"],
             )
 
+            # Build metadata with model and provider info
+            metadata = {"tool_name": self.get_name(), "conversation_ready": True}
+            if model_info:
+                model_name = model_info.get("model_name")
+                if model_name:
+                    metadata["model_used"] = model_name
+                provider = model_info.get("provider")
+                if provider:
+                    # Handle both provider objects and string values
+                    if isinstance(provider, str):
+                        metadata["provider_used"] = provider
+                    else:
+                        try:
+                            metadata["provider_used"] = provider.get_provider_type().value
+                        except AttributeError:
+                            # Fallback if provider doesn't have get_provider_type method
+                            metadata["provider_used"] = str(provider)
+
             return ToolOutput(
                 status="continuation_available",
                 content=content,
                 content_type="text",
                 continuation_offer=continuation_offer,
-                metadata={"tool_name": self.get_name(), "conversation_ready": True},
+                metadata=metadata,
             )
         except Exception:
             # Fallback to simple success if continuation offer fails
@@ -721,6 +779,34 @@ Please provide a thoughtful, comprehensive response:"""
             True if the tool uses a custom request model
         """
         return self.get_request_model() != ToolRequest
+
+    def _validate_file_paths(self, request) -> Optional[str]:
+        """
+        Validate that all file paths in the request are absolute paths.
+
+        This is a security measure to prevent path traversal attacks and ensure
+        proper access control. All file paths must be absolute (starting with '/').
+
+        Args:
+            request: The validated request object
+
+        Returns:
+            Optional[str]: Error message if validation fails, None if all paths are valid
+        """
+        import os
+
+        # Check if request has 'files' attribute (used by most tools)
+        files = self.get_request_files(request)
+        if files:
+            for file_path in files:
+                if not os.path.isabs(file_path):
+                    return (
+                        f"Error: All file paths must be FULL absolute paths to real files / folders - DO NOT SHORTEN. "
+                        f"Received relative path: {file_path}\n"
+                        f"Please provide the full absolute path starting with '/' (must be FULL absolute paths to real files / folders - DO NOT SHORTEN)"
+                    )
+
+        return None
 
     def prepare_chat_style_prompt(self, request, system_prompt: str = None) -> str:
         """

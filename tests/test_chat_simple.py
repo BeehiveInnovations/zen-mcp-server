@@ -1,8 +1,8 @@
 """
-Tests for ChatSimple tool - validating migration from Chat tool
+Tests for Chat tool - validating SimpleTool architecture
 
-This module contains unit tests to ensure that the ChatSimple tool
-maintains 100% compatibility with the original Chat tool behavior.
+This module contains unit tests to ensure that the Chat tool
+(now using SimpleTool architecture) maintains proper functionality.
 """
 
 from unittest.mock import patch
@@ -10,48 +10,40 @@ from unittest.mock import patch
 import pytest
 
 from tools.chat import ChatRequest, ChatTool
-from tools.simple.chat_simple import ChatSimpleRequest, ChatSimpleTool
 
 
-class TestChatSimpleTool:
+class TestChatTool:
     """Test suite for ChatSimple tool"""
 
     def setup_method(self):
         """Set up test fixtures"""
-        self.tool = ChatSimpleTool()
-        self.original_tool = ChatTool()
+        self.tool = ChatTool()
 
     def test_tool_metadata(self):
         """Test that tool metadata matches requirements"""
-        assert self.tool.get_name() == "chat_simple"
-        assert self.tool.get_description() == self.original_tool.get_description()
-        assert self.tool.get_system_prompt() == self.original_tool.get_system_prompt()
-        assert self.tool.get_default_temperature() == self.original_tool.get_default_temperature()
-        assert self.tool.get_model_category() == self.original_tool.get_model_category()
+        assert self.tool.get_name() == "chat"
+        assert "GENERAL CHAT & COLLABORATIVE THINKING" in self.tool.get_description()
+        assert self.tool.get_system_prompt() is not None
+        assert self.tool.get_default_temperature() > 0
+        assert self.tool.get_model_category() is not None
 
-    def test_schema_compatibility(self):
-        """Test that schemas are identical between Chat and ChatSimple"""
-        simple_schema = self.tool.get_input_schema()
-        original_schema = self.original_tool.get_input_schema()
+    def test_schema_structure(self):
+        """Test that schema has correct structure"""
+        schema = self.tool.get_input_schema()
 
-        # Schemas should be identical except for internal structure differences
-        assert simple_schema["type"] == original_schema["type"]
-        assert simple_schema["required"] == original_schema["required"]
-        assert set(simple_schema["properties"].keys()) == set(original_schema["properties"].keys())
+        # Basic schema structure
+        assert schema["type"] == "object"
+        assert "properties" in schema
+        assert "required" in schema
 
-        # Model field should be compatible (enum presence depends on auto mode)
-        simple_model = simple_schema["properties"]["model"]
-        original_model = original_schema["properties"]["model"]
+        # Required fields
+        assert "prompt" in schema["required"]
 
-        # Both should have same type and description structure
-        assert simple_model["type"] == original_model["type"]
-        assert "description" in simple_model
-        assert "description" in original_model
-
-        # If both have enums, they should match
-        if "enum" in simple_model and "enum" in original_model:
-            assert simple_model["enum"] == original_model["enum"]
-            assert len(simple_model["enum"]) > 0
+        # Properties
+        properties = schema["properties"]
+        assert "prompt" in properties
+        assert "files" in properties
+        assert "images" in properties
 
     def test_request_model_validation(self):
         """Test that the request model validates correctly"""
@@ -64,7 +56,7 @@ class TestChatSimpleTool:
             "temperature": 0.7,
         }
 
-        request = ChatSimpleRequest(**request_data)
+        request = ChatRequest(**request_data)
         assert request.prompt == "Test prompt"
         assert request.files == ["test.txt"]
         assert request.images == ["test.png"]
@@ -77,16 +69,13 @@ class TestChatSimpleTool:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            ChatSimpleRequest(model="anthropic/claude-3-opus")
+            ChatRequest(model="anthropic/claude-3-opus")
 
     def test_model_availability(self):
-        """Test that model availability matches original Chat tool"""
-        simple_models = self.tool._get_available_models()
-        original_models = self.original_tool._get_available_models()
-
-        assert len(simple_models) == len(original_models)
-        assert set(simple_models) == set(original_models)
-        assert len(simple_models) > 0  # Should have some models
+        """Test that model availability works"""
+        models = self.tool._get_available_models()
+        assert len(models) > 0  # Should have some models
+        assert isinstance(models, list)
 
     def test_model_field_schema(self):
         """Test that model field schema generation works correctly"""
@@ -108,7 +97,7 @@ class TestChatSimpleTool:
     @pytest.mark.asyncio
     async def test_prompt_preparation(self):
         """Test that prompt preparation works correctly"""
-        request = ChatSimpleRequest(prompt="Test prompt", files=[], use_websearch=True)
+        request = ChatRequest(prompt="Test prompt", files=[], use_websearch=True)
 
         # Mock the system prompt and file handling
         with patch.object(self.tool, "get_system_prompt", return_value="System prompt"):
@@ -123,9 +112,9 @@ class TestChatSimpleTool:
                             assert "USER REQUEST" in prompt
 
     def test_response_formatting(self):
-        """Test that response formatting matches original Chat tool"""
+        """Test that response formatting works correctly"""
         response = "Test response content"
-        request = ChatSimpleRequest(prompt="Test")
+        request = ChatRequest(prompt="Test")
 
         formatted = self.tool.format_response(response, request)
 
@@ -133,13 +122,9 @@ class TestChatSimpleTool:
         assert "Claude's Turn:" in formatted
         assert "Evaluate this perspective" in formatted
 
-        # Should match original Chat tool format
-        original_formatted = self.original_tool.format_response(response, ChatRequest(prompt="Test"))
-        assert formatted == original_formatted
-
     def test_tool_name(self):
         """Test tool name is correct"""
-        assert self.tool.get_name() == "chat_simple"  # Current name during migration
+        assert self.tool.get_name() == "chat"
 
     def test_websearch_guidance(self):
         """Test web search guidance matches Chat tool style"""
@@ -164,32 +149,32 @@ class TestChatSimpleTool:
         assert "prompt" in required_fields
 
 
-class TestChatSimpleRequestModel:
-    """Test suite for ChatSimpleRequest model"""
+class TestChatRequestModel:
+    """Test suite for ChatRequest model"""
 
     def test_field_descriptions(self):
-        """Test that field descriptions match original Chat tool"""
-        from tools.chat import CHAT_FIELD_DESCRIPTIONS as ORIGINAL_DESCRIPTIONS
-        from tools.simple.chat_simple import CHAT_FIELD_DESCRIPTIONS
+        """Test that field descriptions are proper"""
+        from tools.chat import CHAT_FIELD_DESCRIPTIONS
 
-        # Field descriptions should be identical
-        assert CHAT_FIELD_DESCRIPTIONS["prompt"] == ORIGINAL_DESCRIPTIONS["prompt"]
-        assert CHAT_FIELD_DESCRIPTIONS["files"] == ORIGINAL_DESCRIPTIONS["files"]
-        assert CHAT_FIELD_DESCRIPTIONS["images"] == ORIGINAL_DESCRIPTIONS["images"]
+        # Field descriptions should exist and be descriptive
+        assert len(CHAT_FIELD_DESCRIPTIONS["prompt"]) > 50
+        assert "context" in CHAT_FIELD_DESCRIPTIONS["prompt"]
+        assert "absolute paths" in CHAT_FIELD_DESCRIPTIONS["files"]
+        assert "visual context" in CHAT_FIELD_DESCRIPTIONS["images"]
 
     def test_default_values(self):
         """Test that default values work correctly"""
-        request = ChatSimpleRequest(prompt="Test")
+        request = ChatRequest(prompt="Test")
 
         assert request.prompt == "Test"
         assert request.files == []  # Should default to empty list
         assert request.images == []  # Should default to empty list
 
     def test_inheritance(self):
-        """Test that ChatSimpleRequest properly inherits from ToolRequest"""
+        """Test that ChatRequest properly inherits from ToolRequest"""
         from tools.shared.base_models import ToolRequest
 
-        request = ChatSimpleRequest(prompt="Test")
+        request = ChatRequest(prompt="Test")
         assert isinstance(request, ToolRequest)
 
         # Should have inherited fields

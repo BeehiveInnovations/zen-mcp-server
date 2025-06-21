@@ -71,7 +71,7 @@ class TestPromptIntegration:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "success"
+        assert output["status"] in ["success", "continuation_available"]
         assert "content" in output
         assert len(output["content"]) > 0
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
             assert len(result) == 1
             output = json.loads(result[0].text)
-            assert output["status"] == "success"
+            assert output["status"] in ["success", "continuation_available"]
             assert "content" in output
             # Should mention the hello world function
             assert "hello" in output["content"].lower() or "function" in output["content"].lower()
@@ -221,7 +221,7 @@ def main():
     #
     #         assert len(result) == 1
     #         output = json.loads(result[0].text)
-    #         assert output["status"] == "success"
+    #         assert output["status"] in ["success", "continuation_available"]
     #         assert "Next Steps:" in output["content"]
     #         assert "Root cause" in output["content"]
 
@@ -296,7 +296,7 @@ class UserController:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "success"
+        assert output["status"] in ["success", "continuation_available"]
         assert "content" in output
 
     @pytest.mark.integration
@@ -318,7 +318,7 @@ class UserController:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "success"
+        assert output["status"] in ["success", "continuation_available"]
         assert "content" in output
         # Should contain some quantum-related content
         assert "quantum" in output["content"].lower() or "computing" in output["content"].lower()
@@ -338,7 +338,7 @@ class UserController:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "success"
+        assert output["status"] in ["success", "continuation_available"]
         assert "content" in output
         # Should handle the special characters without crashing - the exact content doesn't matter as much as not failing
         assert len(output["content"]) > 0
@@ -404,7 +404,7 @@ class UserController:
 
         assert len(result) == 1
         output = json.loads(result[0].text)
-        assert output["status"] == "success"
+        assert output["status"] in ["success", "continuation_available"]
         assert "content" in output
         # Should mention hello or world or greeting in some form
         content_lower = output["content"].lower()
