@@ -59,7 +59,7 @@ class ChatSimpleTool(SimpleTool):
     """
 
     def get_name(self) -> str:
-        return "chat_simple"  # TODO: Change to "chat" during final migration
+        return "chat_simple"
 
     def get_description(self) -> str:
         return (
