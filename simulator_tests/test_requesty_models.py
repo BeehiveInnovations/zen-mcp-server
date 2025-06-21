@@ -10,7 +10,6 @@ Tests that verify Requesty provider functionality including:
 - Error handling when models are not available
 """
 
-
 from .base_test import BaseSimulatorTest
 from .log_utils import LogUtils
 
