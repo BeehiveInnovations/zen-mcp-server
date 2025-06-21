@@ -79,14 +79,14 @@ class TestOpenRouterProvider:
         assert provider._resolve_model_name("o4-mini") == "openai/o4-mini"
         assert provider._resolve_model_name("o4-mini-high") == "openai/o4-mini-high"
         assert provider._resolve_model_name("claude") == "anthropic/claude-3-sonnet"
-        assert provider._resolve_model_name("mistral") == "mistral/mistral-large"
+        assert provider._resolve_model_name("mistral") == "mistralai/mistral-large-2411"
         assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-r1-0528"
         assert provider._resolve_model_name("r1") == "deepseek/deepseek-r1-0528"
 
         # Test case-insensitive
         assert provider._resolve_model_name("OPUS") == "anthropic/claude-3-opus"
         assert provider._resolve_model_name("O3") == "openai/o3"
-        assert provider._resolve_model_name("Mistral") == "mistral/mistral-large"
+        assert provider._resolve_model_name("Mistral") == "mistralai/mistral-large-2411"
         assert provider._resolve_model_name("CLAUDE") == "anthropic/claude-3-sonnet"
 
         # Test direct model names (should pass through unchanged)
@@ -170,7 +170,7 @@ class TestOpenRouterAutoMode:
         assert len(available_models) > 0, "Should find OpenRouter models in auto mode"
         assert all(provider_type == ProviderType.OPENROUTER for provider_type in available_models.values())
 
-        expected_models = mock_registry.list_models()
+        expected_models = mock_registry.list_models.return_value
         for model in expected_models:
             assert model in available_models, f"Model {model} should be available"
 
@@ -190,12 +190,18 @@ class TestOpenRouterAutoMode:
         utils.model_restrictions._restriction_service = None
 
         mock_registry = Mock()
-        mock_registry.list_models.return_value = [
+        mock_models = [
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
             "anthropic/claude-3-opus",
             "anthropic/claude-3-sonnet",
         ]
+        mock_registry.list_models.return_value = mock_models
+
+        # Mock the resolve method to return model configs with aliases
+        mock_model_config = Mock()
+        mock_model_config.aliases = []  # Empty aliases for simplicity
+        mock_registry.resolve.return_value = mock_model_config
 
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 

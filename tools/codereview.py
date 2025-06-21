@@ -72,10 +72,12 @@ CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS = {
         "exploration path."
     ),
     "relevant_files": (
-        "Subset of files_checked (as full absolute paths) that contain code directly relevant to the review or "
-        "contain significant issues, patterns, or examples worth highlighting. Only list those that are directly "
-        "tied to important findings, security concerns, performance issues, or architectural decisions. This could "
-        "include core implementation files, configuration files, or files with notable patterns."
+        "For when this is the first step, please pass absolute file paths of relevant code to review (do not clip "
+        "file paths). When used for the final step, this contains a subset of files_checked (as full absolute paths) "
+        "that contain code directly relevant to the review or contain significant issues, patterns, or examples worth "
+        "highlighting. Only list those that are directly tied to important findings, security concerns, performance "
+        "issues, or architectural decisions. This could include core implementation files, configuration files, or "
+        "files with notable patterns."
     ),
     "relevant_context": (
         "List methods, functions, classes, or modules that are central to the code review findings, in the format "

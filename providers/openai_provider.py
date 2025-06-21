@@ -26,6 +26,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
             "supports_temperature": False,  # O3 models don't accept temperature parameter
             "temperature_constraint": "fixed",  # Fixed at 1.0
+            "description": "Strong reasoning (200K context) - Logical problems, code generation, systematic analysis",
         },
         "o3-mini": {
             "context_window": 200_000,  # 200K tokens
@@ -34,6 +35,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
             "supports_temperature": False,  # O3 models don't accept temperature parameter
             "temperature_constraint": "fixed",  # Fixed at 1.0
+            "description": "Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
         },
         "o3-pro-2025-06-10": {
             "context_window": 200_000,  # 200K tokens
@@ -42,6 +44,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
             "supports_temperature": False,  # O3 models don't accept temperature parameter
             "temperature_constraint": "fixed",  # Fixed at 1.0
+            "description": "Professional-grade reasoning (200K context) - EXTREMELY EXPENSIVE: Only for the most complex problems requiring universe-scale complexity analysis OR when the user explicitly asks for this model. Use sparingly for critical architectural decisions or exceptionally complex debugging that other models cannot handle.",
         },
         # Aliases
         "o3-pro": "o3-pro-2025-06-10",
@@ -52,6 +55,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
             "supports_temperature": False,  # O4 models don't accept temperature parameter
             "temperature_constraint": "fixed",  # Fixed at 1.0
+            "description": "Latest reasoning model (200K context) - Optimized for shorter contexts, rapid reasoning",
         },
         "o4-mini-high": {
             "context_window": 200_000,  # 200K tokens
@@ -60,6 +64,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
             "supports_temperature": False,  # O4 models don't accept temperature parameter
             "temperature_constraint": "fixed",  # Fixed at 1.0
+            "description": "Enhanced O4 mini (200K context) - Higher reasoning effort for complex tasks",
         },
         "gpt-4.1-2025-04-14": {
             "context_window": 1_000_000,  # 1M tokens
@@ -68,6 +73,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
             "supports_temperature": True,  # Regular models accept temperature parameter
             "temperature_constraint": "range",  # 0.0-2.0 range
+            "description": "GPT-4.1 (1M context) - Advanced reasoning model with large context window",
         },
         # Shorthands
         "mini": "o4-mini",  # Default 'mini' to latest mini model

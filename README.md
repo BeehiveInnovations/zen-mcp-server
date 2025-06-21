@@ -1,6 +1,6 @@
 # Zen MCP: One Context. Many Minds.
 
-https://github.com/user-attachments/assets/8097e18e-b926-4d8b-ba14-a979e4c58bda
+[zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
 
 <div align="center">  
   <b>🤖 Claude + [Gemini / OpenAI / Grok / OpenRouter / Ollama / Any Model] = Your Ultimate AI Development Team</b>
@@ -72,6 +72,7 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
 ## Why This Server?
 
 Claude is brilliant, but sometimes you need:
+- **Guided workflows** - Developer-centric processes that enforce systematic investigation, preventing rushed analysis by ensuring Claude examines code thoroughly at each phase ([`debug`](#7-debug---expert-debugging-assistant), [`precommit`](#6-precommit---pre-commit-validation), [`refactor`](#9-refactor---intelligent-code-refactoring), [`analyze`](#8-analyze---smart-file-analysis), [`codereview`](#5-codereview---professional-code-review))
 - **Multiple AI perspectives** - Let Claude orchestrate between different models to get the best analysis
 - **Automatic model selection** - Claude picks the right model for each task (or you can specify)
 - **A senior developer partner** to validate and extend ideas ([`chat`](#1-chat---general-development-chat--collaborative-thinking))
@@ -221,6 +222,13 @@ Just ask Claude naturally:
 
 ## Available Tools
 
+These aren't just tools—they're how you get Claude to think like a real developer. Instead of rushing to reply with 
+surface-level takes or shallow-insight, these workflows make Claude pause, dig into your code, and reason through 
+problems step by step. 
+
+It's the difference between a rushed guess and a focused second pair of eyes that actually understands your code. Try them 
+and feel the difference.
+
 **Quick Tool Selection Guide:**
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
 - **Need deeper thinking?** → `thinkdeep` (extends analysis, finds edge cases)
@@ -363,7 +371,7 @@ issue, ran `precommit` with o3 again and got:
 
  **RECOMMENDATION: PROCEED WITH COMMIT**
 
-Nice!
+Nice! This is just one instance - take a look at [another example here](docs/tools/precommit.md).
 
 **[📖 Read More](docs/tools/precommit.md)** - Multi-repository validation and change analysis
 
@@ -513,7 +521,12 @@ Apache 2.0 License - see LICENSE file for details.
 ## Acknowledgments
 
 Built with the power of **Multi-Model AI** collaboration 🤝
+- **A**ctual **I**ntelligence by real Humans
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
 - [Claude Code](https://claude.ai/code) - Your AI coding assistant & orchestrator
 - [Gemini 2.5 Pro & 2.0 Flash](https://ai.google.dev/) - Extended thinking & fast analysis
 - [OpenAI O3](https://openai.com/) - Strong reasoning & general intelligence
+
+### Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=BeehiveInnovations/zen-mcp-server&type=Date)](https://www.star-history.com/#BeehiveInnovations/zen-mcp-server&Date)
