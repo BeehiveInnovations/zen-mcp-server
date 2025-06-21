@@ -14,7 +14,7 @@ from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
 from tools.models import ToolModelCategory
-from tools.precommit import PrecommitTool as Precommit
+from tools.precommit import PrecommitTool
 from tools.thinkdeep import ThinkDeepTool
 
 
@@ -34,7 +34,7 @@ class TestToolModelCategories:
         assert tool.get_model_category() == ToolModelCategory.EXTENDED_REASONING
 
     def test_precommit_category(self):
-        tool = Precommit()
+        tool = PrecommitTool()
         assert tool.get_model_category() == ToolModelCategory.EXTENDED_REASONING
 
     def test_chat_category(self):
