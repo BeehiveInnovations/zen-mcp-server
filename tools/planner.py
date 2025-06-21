@@ -445,9 +445,9 @@ class PlannerTool(WorkflowTool):
             step_data = self.prepare_step_data(request)
             self.branches[request.branch_id].append(step_data)
 
-            # Update metadata to reflect the new branch
-            if "metadata" in response_data:
-                response_data["metadata"]["branches"] = list(self.branches.keys())
+        # Always update metadata to reflect current branch state (moved outside if block)
+        if "metadata" in response_data:
+            response_data["metadata"]["branches"] = list(self.branches.keys())
 
         # Add planner-specific output instructions for final steps
         if not request.next_step_required:
