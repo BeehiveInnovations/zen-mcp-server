@@ -55,6 +55,60 @@ ignore = [
 "tests/*" = ["B011"]
 "tests/conftest.py" = ["E402"]  # Module level imports not at top of file - needed for test setup
 
+[project]
+name = "zen-mcp-server"
+version = "2.6.0"
+description = "Zen MCP Server - AI-powered tools for code analysis and assistance"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "BeehiveInnovations", email = "info@beehive.systems" }
+]
+maintainers = [
+    { name = "BeehiveInnovations", email = "info@beehive.systems" }
+]
+keywords = ["mcp", "ai", "code-analysis", "claude", "gemini", "openai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "google-generativeai>=0.8.0",
+    "openai>=1.52.0", 
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "tiktoken>=0.7.0",
+    "Pillow>=10.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/BeehiveInnovations/zen-mcp-server"
+Repository = "https://github.com/BeehiveInnovations/zen-mcp-server"
+Documentation = "https://github.com/BeehiveInnovations/zen-mcp-server/blob/main/README.md"
+"Bug Tracker" = "https://github.com/BeehiveInnovations/zen-mcp-server/issues"
+
+[project.scripts]
+zen_mcp_server = "zen_mcp_server:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "isort>=5.12.0",
+]
+
 [build-system]
 requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"

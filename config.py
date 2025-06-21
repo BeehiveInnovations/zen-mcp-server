@@ -145,3 +145,65 @@ MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
 # Threading configuration
 # Simple in-memory conversation threading for stateless MCP environment
 # Conversations persist only during the Claude session
+
+
+# UV/UVX Configuration Loading Functions
+def load_config_file(config_path: str) -> dict:
+    """
+    Load configuration from a JSON file.
+    
+    Args:
+        config_path: Path to the JSON configuration file
+        
+    Returns:
+        Dictionary containing configuration key-value pairs
+        
+    Raises:
+        FileNotFoundError: If config file doesn't exist
+        json.JSONDecodeError: If config file contains invalid JSON
+        PermissionError: If config file cannot be read
+    """
+    import json
+    from pathlib import Path
+    
+    config_file = Path(config_path)
+    if not config_file.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        return config
+    except json.JSONDecodeError as e:
+        raise json.JSONDecodeError(f"Invalid JSON in config file {config_path}: {str(e)}", e.doc, e.pos)
+    except PermissionError:
+        raise PermissionError(f"Permission denied reading config file: {config_path}")
+
+
+def apply_config(config: dict) -> None:
+    """
+    Apply configuration dictionary to environment variables.
+    
+    Only applies values that are not already set in the environment,
+    preserving the precedence: Environment Variables > Config File > Defaults
+    
+    Args:
+        config: Dictionary of configuration key-value pairs to apply
+    """
+    if not isinstance(config, dict):
+        raise ValueError("Configuration must be a dictionary")
+    
+    applied_count = 0
+    for key, value in config.items():
+        if not isinstance(key, str):
+            continue  # Skip non-string keys
+            
+        # Only set if not already in environment (preserves precedence)
+        if key not in os.environ:
+            os.environ[key] = str(value)
+            applied_count += 1
+    
+    if applied_count > 0:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Applied {applied_count} configuration values from JSON config")
