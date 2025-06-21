@@ -106,7 +106,17 @@ get_claude_config_path() {
             echo "$HOME/.config/Claude/claude_desktop_config.json"
             ;;
         wsl)
-            echo "/mnt/c/Users/$USER/AppData/Roaming/Claude/claude_desktop_config.json"
+            local win_appdata
+            if command -v wslvar &> /dev/null; then
+                win_appdata=$(wslvar APPDATA 2>/dev/null)
+            fi
+            
+            if [[ -n "$win_appdata" ]]; then
+                echo "$(wslpath "$win_appdata")/Claude/claude_desktop_config.json"
+            else
+                print_warning "Could not determine Windows user path automatically"
+                echo "/mnt/c/Users/$USER/AppData/Roaming/Claude/claude_desktop_config.json"
+            fi
             ;;
         windows)
             echo "$APPDATA/Claude/claude_desktop_config.json"
@@ -469,7 +479,7 @@ try_install_system_packages() {
     # Check if we can use sudo
     if can_use_sudo; then
         print_info "Installing system packages (this may ask for your password)..."
-        if eval "$install_cmd" >/dev/null 2>&1; then
+        if bash -c "$install_cmd" >/dev/null 2>&1; then
             print_success "System packages installed successfully"
             return 0
         else
