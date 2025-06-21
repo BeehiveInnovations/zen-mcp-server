@@ -203,6 +203,14 @@ class TestOpenRouterAutoMode:
         mock_model_config.aliases = []  # Empty aliases for simplicity
         mock_registry.resolve.return_value = mock_model_config
 
+        # Mock the resolve method to return proper model config objects
+        def mock_resolve(model_name):
+            mock_config = Mock()
+            mock_config.aliases = []  # Return empty list instead of Mock object
+            return mock_config
+
+        mock_registry.resolve.side_effect = mock_resolve
+
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
         provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)

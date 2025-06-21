@@ -1998,7 +1998,9 @@ When recommending searches, be specific about what information you need and why 
         """
         return response
 
-    def _validate_token_limit(self, text: str, context_type: str = "Context", context_window: int = 200_000) -> None:
+    def _validate_token_limit(
+        self, text: str, context_type: str = "Context", context_window: Optional[int] = None
+    ) -> None:
         """
         Validate token limit and raise ValueError if exceeded.
 
@@ -2008,11 +2010,29 @@ When recommending searches, be specific about what information you need and why 
         Args:
             text: The text to check
             context_type: Description of what's being checked (for error message)
-            context_window: The model's context window size
+            context_window: The model's context window size (if None, uses dynamic calculation)
 
         Raises:
             ValueError: If text exceeds context_window
         """
+        if context_window is None:
+            # Apply dynamic model-specific approach
+            model_context = getattr(self, "_model_context", None)
+            if model_context:
+                try:
+                    token_allocation = model_context.calculate_token_allocation()
+                    context_window = token_allocation.content_tokens  # Correct field for validation
+                except (ValueError, AttributeError, Exception):
+                    # Model context exists but provider initialization failed - fall back gracefully
+                    FALLBACK_TOTAL_TOKENS = 200_000
+                    RESPONSE_RESERVATION = 50_000
+                    context_window = FALLBACK_TOTAL_TOKENS - RESPONSE_RESERVATION
+            else:
+                # Smart fallback with response reservation
+                FALLBACK_TOTAL_TOKENS = 200_000
+                RESPONSE_RESERVATION = 50_000
+                context_window = FALLBACK_TOTAL_TOKENS - RESPONSE_RESERVATION
+
         within_limit, estimated_tokens = check_token_limit(text, context_window)
         if not within_limit:
             raise ValueError(
