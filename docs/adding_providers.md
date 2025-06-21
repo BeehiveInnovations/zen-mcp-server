@@ -384,22 +384,30 @@ def configure_providers():
         )
 ```
 
-### 6. Add Model Capabilities for Auto Mode
+### 6. Add Model Descriptions for Auto Mode
 
-Update `config.py` to add your models to `MODEL_CAPABILITIES_DESC`:
+Add descriptions to your model configurations in the `SUPPORTED_MODELS` dictionary. These descriptions help Claude choose the best model for each task in auto mode:
 
 ```python
-MODEL_CAPABILITIES_DESC = {
-    # ... existing models ...
-    
-    # Example models - Available when EXAMPLE_API_KEY is configured
-    "large": "Example Large (100K context) - High capacity model for complex tasks",
-    "small": "Example Small (50K context) - Fast model for simple tasks",
-    # Full model names
-    "example-large-v1": "Example Large (100K context) - High capacity model",
-    "example-small-v1": "Example Small (50K context) - Fast lightweight model",
+# In your provider implementation
+SUPPORTED_MODELS = {
+    "example-large-v1": {
+        "context_window": 100_000,
+        "supports_extended_thinking": False,
+        "description": "Example Large (100K context) - High capacity model for complex tasks",
+    },
+    "example-small-v1": {
+        "context_window": 50_000,
+        "supports_extended_thinking": False,
+        "description": "Example Small (50K context) - Fast model for simple tasks",
+    },
+    # Aliases for convenience
+    "large": "example-large-v1",
+    "small": "example-small-v1",
 }
 ```
+
+The descriptions should be detailed and help Claude understand when to use each model. Include context about performance, capabilities, cost, and ideal use cases.
 
 ### 7. Update Documentation
 

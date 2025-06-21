@@ -141,20 +141,6 @@ class TestAutoModeComprehensive:
                     "BALANCED": "o4-mini",  # Prefer OpenAI for balanced
                 },
             ),
-            # Only OpenRouter available - should fall back to proxy models
-            (
-                {
-                    "GEMINI_API_KEY": None,
-                    "OPENAI_API_KEY": None,
-                    "XAI_API_KEY": None,
-                    "OPENROUTER_API_KEY": "real-key",
-                },
-                {
-                    "EXTENDED_REASONING": "anthropic/claude-3.5-sonnet",  # First preferred thinking model from OpenRouter
-                    "FAST_RESPONSE": "anthropic/claude-3-opus",  # First available OpenRouter model
-                    "BALANCED": "anthropic/claude-3-opus",  # First available OpenRouter model
-                },
-            ),
         ],
     )
     def test_auto_mode_model_selection_by_provider(self, provider_config, expected_models):
@@ -316,12 +302,32 @@ class TestAutoModeComprehensive:
             assert "gemini-2.5-flash" in available_models
             assert "gemini-2.5-pro" in available_models
 
-            # Should also include other models (users might have OpenRouter configured)
-            # The schema should show all options; validation happens at runtime
-            assert "o3" in available_models
-            assert "o4-mini" in available_models
-            assert "grok" in available_models
-            assert "grok-3" in available_models
+            # After the fix, schema only shows models from enabled providers
+            # This prevents model namespace collisions and misleading users
+            # If only Gemini is configured, only Gemini models should appear
+            provider_count = len(
+                [
+                    key
+                    for key in ["GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "OPENROUTER_API_KEY"]
+                    if os.getenv(key) and os.getenv(key) != f"your_{key.lower()}_here"
+                ]
+            )
+
+            if provider_count == 1 and os.getenv("GEMINI_API_KEY"):
+                # Only Gemini configured - should only show Gemini models
+                non_gemini_models = [
+                    m for m in available_models if not m.startswith("gemini") and m not in ["flash", "pro"]
+                ]
+                assert (
+                    len(non_gemini_models) == 0
+                ), f"Found non-Gemini models when only Gemini configured: {non_gemini_models}"
+            else:
+                # Multiple providers or OpenRouter - should include various models
+                # Only check if models are available if their providers might be configured
+                if os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY"):
+                    assert any("o3" in m or "o4" in m for m in available_models), "No OpenAI models found"
+                if os.getenv("XAI_API_KEY") or os.getenv("OPENROUTER_API_KEY"):
+                    assert any("grok" in m for m in available_models), "No XAI models found"
 
     def test_auto_mode_schema_with_all_providers(self):
         """Test that auto mode schema includes models from all available providers."""

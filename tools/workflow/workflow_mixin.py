@@ -1083,11 +1083,10 @@ class BaseWorkflowMixin(ABC):
                     "provider_used": provider_name,
                 }
 
-                # Add metadata to response, preserving existing metadata
-                if "metadata" in response_data:
-                    response_data["metadata"].update(metadata)
-                else:
-                    response_data["metadata"] = metadata
+                # Preserve existing metadata and add workflow metadata
+                if "metadata" not in response_data:
+                    response_data["metadata"] = {}
+                response_data["metadata"].update(metadata)
 
                 logger.debug(
                     f"[WORKFLOW_METADATA] {self.get_name()}: Added metadata - "
@@ -1105,11 +1104,10 @@ class BaseWorkflowMixin(ABC):
                     "provider_used": "unknown",
                 }
 
-                # Add metadata to response, preserving existing metadata
-                if "metadata" in response_data:
-                    response_data["metadata"].update(metadata)
-                else:
-                    response_data["metadata"] = metadata
+                # Preserve existing metadata and add workflow metadata
+                if "metadata" not in response_data:
+                    response_data["metadata"] = {}
+                response_data["metadata"].update(metadata)
 
                 logger.debug(
                     f"[WORKFLOW_METADATA] {self.get_name()}: Added fallback metadata - "

@@ -47,10 +47,10 @@ class TestCustomProvider:
         """Test get_capabilities returns registry capabilities when available."""
         provider = CustomProvider(api_key="test-key", base_url="http://localhost:11434/v1")
 
-        # Test with a model that should be in the registry (OpenRouter model)
-        capabilities = provider.get_capabilities("llama")
+        # Test with a model that should be in the registry (OpenRouter model) and is allowed by restrictions
+        capabilities = provider.get_capabilities("o3")  # o3 is in OPENROUTER_ALLOWED_MODELS
 
-        assert capabilities.provider == ProviderType.OPENROUTER  # llama is an OpenRouter model (is_custom=false)
+        assert capabilities.provider == ProviderType.OPENROUTER  # o3 is an OpenRouter model (is_custom=false)
         assert capabilities.context_window > 0
 
         # Test with a custom model (is_custom=true)

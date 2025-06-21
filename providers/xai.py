@@ -24,10 +24,12 @@ class XAIModelProvider(OpenAICompatibleProvider):
         "grok-3": {
             "context_window": 131_072,  # 131K tokens
             "supports_extended_thinking": False,
+            "description": "GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
         },
         "grok-3-fast": {
             "context_window": 131_072,  # 131K tokens
             "supports_extended_thinking": False,
+            "description": "GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
         },
         # Shorthands for convenience
         "grok": "grok-3",  # Default to grok-3

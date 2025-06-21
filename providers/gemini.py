@@ -25,6 +25,7 @@ class GeminiModelProvider(ModelProvider):
             "max_thinking_tokens": 24576,  # Flash 2.5 thinking budget limit
             "supports_images": True,  # Vision capability
             "max_image_size_mb": 20.0,  # Conservative 20MB limit for reliability
+            "description": "Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
         },
         "gemini-2.5-pro": {
             "context_window": 1_048_576,  # 1M tokens
@@ -32,6 +33,7 @@ class GeminiModelProvider(ModelProvider):
             "max_thinking_tokens": 32768,  # Pro 2.5 thinking budget limit
             "supports_images": True,  # Vision capability
             "max_image_size_mb": 32.0,  # Higher limit for Pro model
+            "description": "Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
         },
         # Shorthands
         "flash": "gemini-2.5-flash",
