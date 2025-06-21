@@ -140,7 +140,7 @@ class GeminiModelProvider(ModelProvider):
             logger.warning(f"Model {resolved_name} does not support images, ignoring {len(images)} image(s)")
 
         # Create contents structure
-        contents = [{"parts": parts}]
+        contents = self._build_contents(parts)
 
         # Prepare generation config
         generation_config = types.GenerateContentConfig(
@@ -180,19 +180,7 @@ class GeminiModelProvider(ModelProvider):
                 # Extract usage information if available
                 usage = self._extract_usage(response)
 
-                return ModelResponse(
-                    content=response.text,
-                    usage=usage,
-                    model_name=resolved_name,
-                    friendly_name="Gemini",
-                    provider=ProviderType.GOOGLE,
-                    metadata={
-                        "thinking_mode": thinking_mode if capabilities.supports_extended_thinking else None,
-                        "finish_reason": (
-                            getattr(response.candidates[0], "finish_reason", "STOP") if response.candidates else "STOP"
-                        ),
-                    },
-                )
+                return self._build_response(response, resolved_name, thinking_mode, capabilities, usage)
 
             except Exception as e:
                 last_exception = e
@@ -445,6 +433,32 @@ class GeminiModelProvider(ModelProvider):
         ]
 
         return any(indicator in error_str for indicator in retryable_indicators)
+
+    def _build_contents(self, parts: list[dict]) -> list[dict]:
+        """Build contents structure. Can be overridden by subclasses.
+        Subclasses can modify the structure as needed.
+        """
+        return [{"parts": parts}]
+
+    def _build_response(
+        self, response, model_name: str, thinking_mode: str, capabilities, usage: dict
+    ) -> ModelResponse:
+        """Build response object. Can be overridden by subclasses.
+        Subclasses can customize the response object as needed.
+        """
+        return ModelResponse(
+            content=response.text,
+            usage=usage,
+            model_name=model_name,
+            friendly_name="Gemini",
+            provider=ProviderType.GOOGLE,
+            metadata={
+                "thinking_mode": thinking_mode if capabilities.supports_extended_thinking else None,
+                "finish_reason": (
+                    getattr(response.candidates[0], "finish_reason", "STOP") if response.candidates else "STOP"
+                ),
+            },
+        )
 
     def _process_image(self, image_path: str) -> Optional[dict]:
         """Process an image for Gemini API."""

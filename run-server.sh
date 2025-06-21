@@ -734,6 +734,8 @@ setup_env_file() {
         "GEMINI_API_KEY:your_gemini_api_key_here"
         "OPENAI_API_KEY:your_openai_api_key_here"
         "XAI_API_KEY:your_xai_api_key_here"
+        "VERTEX_PROJECT_ID:your_vertex_project_id_here"
+        "VERTEX_REGION:us-central1"
         "OPENROUTER_API_KEY:your_openrouter_api_key_here"
     )
     
@@ -799,6 +801,25 @@ validate_api_keys() {
         fi
     done
     
+    # Check Vertex AI configuration (both project ID and region must be set together)
+    local vertex_project_id="${VERTEX_PROJECT_ID:-}"
+    local vertex_region="${VERTEX_REGION:-}"
+    local vertex_project_placeholder="your_vertex_project_id_here"
+    local vertex_region_placeholder="us-central1"
+    
+    if [[ -n "$vertex_project_id" ]] && [[ "$vertex_project_id" != "$vertex_project_placeholder" ]]; then
+        if [[ -n "$vertex_region" ]] && [[ "$vertex_region" != "$vertex_region_placeholder" ]]; then
+            print_success "VERTEX_PROJECT_ID and VERTEX_REGION configured"
+            has_key=true
+        else
+            print_warning "VERTEX_PROJECT_ID set but VERTEX_REGION not configured"
+            echo "  For Vertex AI, both VERTEX_PROJECT_ID and VERTEX_REGION must be set" >&2
+        fi
+    elif [[ -n "$vertex_region" ]] && [[ "$vertex_region" != "$vertex_region_placeholder" ]]; then
+        print_warning "VERTEX_REGION set but VERTEX_PROJECT_ID not configured"
+        echo "  For Vertex AI, both VERTEX_PROJECT_ID and VERTEX_REGION must be set" >&2
+    fi
+    
     # Check custom API URL
     if [[ -n "${CUSTOM_API_URL:-}" ]]; then
         print_success "CUSTOM_API_URL configured: $CUSTOM_API_URL"
@@ -812,6 +833,7 @@ validate_api_keys() {
         echo "  GEMINI_API_KEY=your-actual-key" >&2
         echo "  OPENAI_API_KEY=your-actual-key" >&2
         echo "  XAI_API_KEY=your-actual-key" >&2
+        echo "  VERTEX_PROJECT_ID=your-actual-project-id (with VERTEX_REGION)" >&2
         echo "  OPENROUTER_API_KEY=your-actual-key" >&2
         echo "" >&2
         return 1

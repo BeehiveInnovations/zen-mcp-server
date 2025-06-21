@@ -36,6 +36,7 @@ from .test_refactor_validation import RefactorValidationTest
 from .test_testgen_validation import TestGenValidationTest
 from .test_thinkdeep_validation import ThinkDeepWorkflowValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
+from .test_vertex_ai_models import VertexAIModelsTest
 from .test_vision_capability import VisionCapabilityTest
 from .test_xai_models import XAIModelsTest
 
@@ -65,6 +66,7 @@ TEST_REGISTRY = {
     "debug_validation": DebugValidationTest,
     "debug_certain_confidence": DebugCertainConfidenceTest,
     "conversation_chain_validation": ConversationChainValidationTest,
+    "vertex_ai_models": VertexAIModelsTest,
     "vision_capability": VisionCapabilityTest,
     "xai_models": XAIModelsTest,
     "consensus_conversation": TestConsensusConversation,
@@ -100,6 +102,7 @@ __all__ = [
     "DebugValidationTest",
     "DebugCertainConfidenceTest",
     "ConversationChainValidationTest",
+    "VertexAIModelsTest",
     "VisionCapabilityTest",
     "XAIModelsTest",
     "TestConsensusConversation",

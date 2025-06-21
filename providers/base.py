@@ -14,6 +14,7 @@ class ProviderType(Enum):
     XAI = "xai"
     OPENROUTER = "openrouter"
     CUSTOM = "custom"
+    VERTEX_AI = "vertex_ai"
 
 
 class TemperatureConstraint(ABC):

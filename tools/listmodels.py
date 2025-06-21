@@ -87,6 +87,15 @@ class ListModelsTool(BaseTool):
                     "pro": "gemini-2.5-pro",
                 },
             },
+            "vertex": {
+                "name": "Google Vertex AI",
+                "env_key": "VERTEX_PROJECT_ID",
+                "models": {
+                    "vertex-pro": "vertex-2.5-pro",
+                    "vertex-lite": "vertex-2.5-lite",
+                    "vertex-flash": "vertex-2.5-flash",
+                },
+            },
             "openai": {
                 "name": "OpenAI",
                 "env_key": "OPENAI_API_KEY",
@@ -113,8 +122,15 @@ class ListModelsTool(BaseTool):
 
         # Check each native provider
         for provider_key, provider_info in native_providers.items():
-            api_key = os.getenv(provider_info["env_key"])
-            is_configured = api_key and api_key != f"your_{provider_key}_api_key_here"
+            env_value = os.getenv(provider_info["env_key"])
+
+            # Handle different provider configuration patterns
+            if provider_key == "vertex":
+                # Vertex AI uses project ID, not API key
+                is_configured = env_value and env_value != "your_vertex_project_id_here"
+            else:
+                # Standard API key pattern
+                is_configured = env_value and env_value != f"your_{provider_key}_api_key_here"
 
             output_lines.append(f"## {provider_info['name']} {'✅' if is_configured else '❌'}")
 
@@ -144,7 +160,12 @@ class ListModelsTool(BaseTool):
                         elif "EXTREMELY EXPENSIVE" in desc:
                             output_lines.append("  - ⚠️ Professional grade (very expensive)")
             else:
-                output_lines.append(f"**Status**: Not configured (set {provider_info['env_key']})")
+                if provider_key == "vertex":
+                    output_lines.append(
+                        f"**Status**: Not configured (set {provider_info['env_key']} and configure Google Cloud ADC)"
+                    )
+                else:
+                    output_lines.append(f"**Status**: Not configured (set {provider_info['env_key']})")
 
             output_lines.append("")
 
