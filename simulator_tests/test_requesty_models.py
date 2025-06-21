@@ -10,7 +10,6 @@ Tests that verify Requesty provider functionality including:
 - Error handling when models are not available
 """
 
-import subprocess
 
 from .base_test import BaseSimulatorTest
 from .log_utils import LogUtils
@@ -38,11 +37,12 @@ class TestRequestyModels(BaseSimulatorTest):
 
             # Check if Requesty API key is configured
             import os
+
             from dotenv import load_dotenv
-            
+
             # Load .env file to get the API key
             load_dotenv()
-            
+
             requesty_key = os.environ.get("REQUESTY_API_KEY", "").strip()
             if not requesty_key or requesty_key == "your_requesty_api_key_here":
                 self.logger.info("  ⚠️  Requesty API key not configured - skipping test")

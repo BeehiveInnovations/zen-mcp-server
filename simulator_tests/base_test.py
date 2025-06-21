@@ -21,12 +21,12 @@ class BaseSimulatorTest:
         self.verbose = verbose
         self.test_files = {}
         self.test_dir = None
-        
+
         # Configure logging first
         log_level = logging.DEBUG if verbose else logging.INFO
         logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
         # Now we can safely get the python path
         self.python_path = self._get_python_path()
 
