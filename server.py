@@ -71,6 +71,7 @@ from tools import (  # noqa: E402
     TracerTool,
 )
 from tools.models import ToolOutput  # noqa: E402
+from tools.simple.chat_simple import ChatSimpleTool  # noqa: E402
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
@@ -166,6 +167,7 @@ TOOLS = {
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
+    "chat_simple": ChatSimpleTool(),  # Interactive development chat and brainstorming (SimpleTool architecture)
     "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
@@ -211,6 +213,11 @@ PROMPT_TEMPLATES = {
         "name": "chat",
         "description": "Chat and brainstorm ideas",
         "template": "Chat with {model} about this",
+    },
+    "chat_simple": {
+        "name": "chat_simple",
+        "description": "Chat and brainstorm ideas (SimpleTool architecture)",
+        "template": "Chat with {model} about this (new architecture)",
     },
     "precommit": {
         "name": "precommit",

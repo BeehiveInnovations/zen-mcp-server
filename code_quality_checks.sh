@@ -85,7 +85,7 @@ echo ""
 echo "🧪 Step 2: Running Complete Unit Test Suite"
 echo "---------------------------------------------"
 
-echo "🏃 Running all unit tests..."
+echo "🏃 Running all tests (including integration tests with local-llama)..."
 $PYTHON_CMD -m pytest tests/ -v -x
 
 echo "✅ Step 2 Complete: All unit tests passed!"

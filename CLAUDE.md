@@ -160,8 +160,8 @@ Available simulator tests include:
 
 #### Run Unit Tests Only
 ```bash
-# Run all unit tests
-python -m pytest tests/ -v
+# Run all unit tests (excluding integration tests that require API keys)
+python -m pytest tests/ -v -m "not integration"
 
 # Run specific test file
 python -m pytest tests/test_refactor.py -v
@@ -170,8 +170,39 @@ python -m pytest tests/test_refactor.py -v
 python -m pytest tests/test_refactor.py::TestRefactorTool::test_format_response -v
 
 # Run tests with coverage
-python -m pytest tests/ --cov=. --cov-report=html
+python -m pytest tests/ --cov=. --cov-report=html -m "not integration"
 ```
+
+#### Run Integration Tests (Uses Free Local Models)
+
+**Setup Requirements:**
+```bash
+# 1. Install Ollama (if not already installed)
+# Visit https://ollama.ai or use brew install ollama
+
+# 2. Start Ollama service
+ollama serve
+
+# 3. Pull a model (e.g., llama3.2)
+ollama pull llama3.2
+
+# 4. Set environment variable for custom provider
+export CUSTOM_API_URL="http://localhost:11434"
+```
+
+**Run Integration Tests:**
+```bash
+# Run integration tests that make real API calls to local models
+python -m pytest tests/ -v -m "integration"
+
+# Run specific integration test
+python -m pytest tests/test_prompt_regression.py::TestPromptIntegration::test_chat_normal_prompt -v
+
+# Run all tests (unit + integration)
+python -m pytest tests/ -v
+```
+
+**Note**: Integration tests use the local-llama model via Ollama, which is completely FREE to run unlimited times. Requires `CUSTOM_API_URL` environment variable set to your local Ollama endpoint. They can be run safely in CI/CD but are excluded from code quality checks to keep them fast.
 
 ### Development Workflow
 

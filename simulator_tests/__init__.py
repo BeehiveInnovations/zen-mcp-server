@@ -8,6 +8,7 @@ Each test is in its own file for better organization and maintainability.
 from .base_test import BaseSimulatorTest
 from .test_analyze_validation import AnalyzeValidationTest
 from .test_basic_conversation import BasicConversationTest
+from .test_chat_simple_validation import ChatSimpleValidationTest
 from .test_codereview_validation import CodeReviewValidationTest
 from .test_consensus_conversation import TestConsensusConversation
 from .test_consensus_stance import TestConsensusStance
@@ -42,6 +43,7 @@ from .test_xai_models import XAIModelsTest
 # Test registry for dynamic loading
 TEST_REGISTRY = {
     "basic_conversation": BasicConversationTest,
+    "chat_simple_validation": ChatSimpleValidationTest,
     "codereview_validation": CodeReviewValidationTest,
     "content_validation": ContentValidationTest,
     "per_tool_deduplication": PerToolDeduplicationTest,
@@ -77,6 +79,7 @@ TEST_REGISTRY = {
 __all__ = [
     "BaseSimulatorTest",
     "BasicConversationTest",
+    "ChatSimpleValidationTest",
     "CodeReviewValidationTest",
     "ContentValidationTest",
     "PerToolDeduplicationTest",

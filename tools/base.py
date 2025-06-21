@@ -764,7 +764,6 @@ class BaseTool(ABC):
                     for pattern in [
                         "continuation_id",
                         "remaining_turns",
-                        "suggested_tool_params",
                         "if you'd like to continue",
                         "continuation available",
                     ]
@@ -1900,10 +1899,6 @@ When recommending searches, be specific about what information you need and why 
                     f"you can use the continuation_id '{thread_id}' with any tool and any model. "
                     f"You have {remaining_turns} more exchange(s) available in this conversation thread."
                 ),
-                suggested_tool_params={
-                    "continuation_id": thread_id,
-                    "prompt": "[Your follow-up question, additional context, or further details]",
-                },
                 remaining_turns=remaining_turns,
             )
 
