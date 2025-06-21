@@ -735,6 +735,7 @@ setup_env_file() {
         "OPENAI_API_KEY:your_openai_api_key_here"
         "XAI_API_KEY:your_xai_api_key_here"
         "OPENROUTER_API_KEY:your_openrouter_api_key_here"
+        "REQUESTY_API_KEY:your_requesty_api_key_here"
     )
     
     for key_pair in "${api_keys[@]}"; do
@@ -786,6 +787,7 @@ validate_api_keys() {
         "OPENAI_API_KEY:your_openai_api_key_here"
         "XAI_API_KEY:your_xai_api_key_here"
         "OPENROUTER_API_KEY:your_openrouter_api_key_here"
+        "REQUESTY_API_KEY:your_requesty_api_key_here"
     )
     
     for key_pair in "${api_keys[@]}"; do
@@ -813,6 +815,7 @@ validate_api_keys() {
         echo "  OPENAI_API_KEY=your-actual-key" >&2
         echo "  XAI_API_KEY=your-actual-key" >&2
         echo "  OPENROUTER_API_KEY=your-actual-key" >&2
+        echo "  REQUESTY_API_KEY=your-actual-key" >&2
         echo "" >&2
         return 1
     fi
