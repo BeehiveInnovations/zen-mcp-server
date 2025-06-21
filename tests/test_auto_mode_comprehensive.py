@@ -316,7 +316,10 @@ class TestAutoModeComprehensive:
             if provider_count == 1 and os.getenv("GEMINI_API_KEY"):
                 # Only Gemini configured - should only show Gemini models
                 non_gemini_models = [
-                    m for m in available_models if not m.startswith("gemini") and m not in ["flash", "pro"]
+                    m
+                    for m in available_models
+                    if not m.startswith("gemini")
+                    and m not in ["flash", "pro", "flash-2.0", "flash2", "flashlite", "flash-lite"]
                 ]
                 assert (
                     len(non_gemini_models) == 0
