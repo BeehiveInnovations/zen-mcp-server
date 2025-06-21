@@ -734,8 +734,8 @@ setup_venv() {
         exit 1
     fi
     
-    # Check if pip exists in the virtual environment
-    if [[ ! -f "$venv_pip" ]] && ! $venv_python -m pip --version &>/dev/null 2>&1; then
+    # Check if pip exists in the virtual environment (skip check if using uv-created environment)
+    if [[ ! -f "$VENV_PATH/uv_created" ]] && [[ ! -f "$venv_pip" ]] && ! $venv_python -m pip --version &>/dev/null 2>&1; then
         # On Linux, try to install system packages if pip is missing
         local os_type=$(detect_os)
         if [[ "$os_type" == "linux" || "$os_type" == "wsl" ]]; then
@@ -817,8 +817,8 @@ install_dependencies() {
     local python_cmd="$1"
     local deps_needed=false
     
-    # First verify pip is available
-    if ! $python_cmd -m pip --version &>/dev/null 2>&1; then
+    # First verify pip is available (skip check if using uv)
+    if [[ ! -f "$VENV_PATH/uv_created" ]] && ! $python_cmd -m pip --version &>/dev/null 2>&1; then
         print_error "pip is not available in the Python environment"
         echo ""
         echo "This indicates an incomplete Python installation."
