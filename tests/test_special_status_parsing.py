@@ -135,7 +135,14 @@ class TestSpecialStatusParsing:
     def test_metadata_preserved(self):
         """Test that model metadata is preserved in special status responses"""
         response_json = '{"status": "full_codereview_required", "reason": "Too complex"}'
-        model_info = {"model_name": "test-model", "provider": "test-provider"}
+        # Create a proper mock provider object instead of string
+        from unittest.mock import Mock
+
+        from providers.base import ProviderType
+
+        mock_provider = Mock()
+        mock_provider.get_provider_type.return_value = ProviderType.OPENAI
+        model_info = {"model_name": "test-model", "provider": mock_provider}
 
         result = self.tool._parse_response(response_json, self.request, model_info)
 

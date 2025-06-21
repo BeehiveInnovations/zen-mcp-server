@@ -197,6 +197,14 @@ class TestOpenRouterAutoMode:
             "anthropic/claude-3-sonnet",
         ]
 
+        # Mock the resolve method to return proper model config objects
+        def mock_resolve(model_name):
+            mock_config = Mock()
+            mock_config.aliases = []  # Return empty list instead of Mock object
+            return mock_config
+
+        mock_registry.resolve.side_effect = mock_resolve
+
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
         provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)
