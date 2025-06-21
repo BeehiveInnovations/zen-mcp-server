@@ -104,7 +104,7 @@
       "description": "Google's Gemini 2.5 Flash via OpenRouter with vision"
     },
     {
-      "model_name": "mistral/mistral-large",
+      "model_name": "mistralai/mistral-large-2411",
       "aliases": ["mistral-large", "mistral"],
       "context_window": 128000,
       "supports_extended_thinking": false,

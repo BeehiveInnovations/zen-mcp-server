@@ -175,6 +175,9 @@ class ModelResponse:
 class ModelProvider(ABC):
     """Abstract base class for model providers."""
 
+    # All concrete providers must define their supported models
+    SUPPORTED_MODELS: dict[str, Any] = {}
+
     def __init__(self, api_key: str, **kwargs):
         """Initialize the provider with API key and optional configuration."""
         self.api_key = api_key

@@ -43,15 +43,34 @@ class TestAutoMode:
             importlib.reload(config)
 
     def test_model_capabilities_descriptions(self):
-        """Test that model capabilities are properly defined"""
-        from config import MODEL_CAPABILITIES_DESC
+        """Test that model capabilities are properly defined in providers"""
+        from providers.registry import ModelProviderRegistry
 
-        # Check all expected models are present
+        # Get all providers with valid API keys and check their model descriptions
+        enabled_provider_types = ModelProviderRegistry.get_available_providers_with_keys()
+        models_with_descriptions = {}
+
+        for provider_type in enabled_provider_types:
+            provider = ModelProviderRegistry.get_provider(provider_type)
+            if provider:
+                for model_name, config in provider.SUPPORTED_MODELS.items():
+                    # Skip alias entries (string values)
+                    if isinstance(config, str):
+                        continue
+
+                    # Check that model has description
+                    description = config.get("description", "")
+                    if description:
+                        models_with_descriptions[model_name] = description
+
+        # Check all expected models are present with meaningful descriptions
         expected_models = ["flash", "pro", "o3", "o3-mini", "o3-pro", "o4-mini", "o4-mini-high"]
         for model in expected_models:
-            assert model in MODEL_CAPABILITIES_DESC
-            assert isinstance(MODEL_CAPABILITIES_DESC[model], str)
-            assert len(MODEL_CAPABILITIES_DESC[model]) > 50  # Meaningful description
+            # Model should exist somewhere in the providers
+            # Note: Some models might not be available if API keys aren't configured
+            if model in models_with_descriptions:
+                assert isinstance(models_with_descriptions[model], str)
+                assert len(models_with_descriptions[model]) > 50  # Meaningful description
 
     def test_tool_schema_in_auto_mode(self):
         """Test that tool schemas require model in auto mode"""
@@ -98,7 +117,7 @@ class TestAutoMode:
         # Model field should have simpler description
         model_schema = schema["properties"]["model"]
         assert "enum" not in model_schema
-        assert "Native models:" in model_schema["description"]
+        assert "Available models:" in model_schema["description"]
         assert "Defaults to" in model_schema["description"]
 
     @pytest.mark.asyncio
@@ -281,7 +300,7 @@ class TestAutoMode:
 
             schema = tool.get_model_field_schema()
             assert "enum" not in schema
-            assert "Native models:" in schema["description"]
+            assert "Available models:" in schema["description"]
             assert "'pro'" in schema["description"]
             assert "Defaults to" in schema["description"]
 

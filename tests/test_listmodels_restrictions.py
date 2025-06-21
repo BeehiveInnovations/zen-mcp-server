@@ -161,11 +161,16 @@ class TestListModelsRestrictions(unittest.TestCase):
         # Check for restriction note
         self.assertIn("Restricted to models matching:", result)
 
-    @patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key", "GEMINI_API_KEY": "gemini-test-key"})
+    @patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key", "GEMINI_API_KEY": "gemini-test-key"}, clear=True)
     @patch("providers.openrouter_registry.OpenRouterModelRegistry")
     @patch.object(ModelProviderRegistry, "get_provider")
     def test_listmodels_shows_all_models_without_restrictions(self, mock_get_provider, mock_registry_class):
         """Test that listmodels shows all models when no restrictions are set."""
+        # Clear any cached restriction service to ensure it reads from patched environment
+        import utils.model_restrictions
+
+        utils.model_restrictions._restriction_service = None
+
         # Set up mock to return many models when no restrictions
         all_models = [f"provider{i//10}/model-{i}" for i in range(50)]  # Simulate 50 models from different providers
         self.mock_openrouter.list_models.return_value = all_models
@@ -216,17 +221,16 @@ class TestListModelsRestrictions(unittest.TestCase):
             elif openrouter_section_found and line.strip().startswith("- ") and "`" in line:
                 openrouter_model_count += 1
 
-        # The tool shows models grouped by provider, max 5 per provider, total max 20
-        # With 50 models from 5 providers, we expect around 5*5=25, but capped at 20
+        # After removing limits, the tool shows ALL available models (no truncation)
+        # With 50 models from providers, we expect to see ALL of them
         self.assertGreaterEqual(
-            openrouter_model_count, 5, f"Expected at least 5 OpenRouter models shown, found {openrouter_model_count}"
-        )
-        self.assertLessEqual(
-            openrouter_model_count, 20, f"Expected at most 20 OpenRouter models shown, found {openrouter_model_count}"
+            openrouter_model_count,
+            30,
+            f"Expected to see many OpenRouter models (no limits), found {openrouter_model_count}",
         )
 
-        # Should show "and X more models available" message
-        self.assertIn("more models available", result)
+        # Should NOT show "and X more models available" message since we show all models now
+        self.assertNotIn("more models available", result)
 
         # Verify list_models was called with respect_restrictions=True
         # (even without restrictions, we always pass True)

@@ -295,19 +295,19 @@ class BaseTool(ABC):
 
     def _get_available_models(self) -> list[str]:
         """
-        Get list of all possible models for the schema enum.
+        Get list of models available from enabled providers.
 
-        In auto mode, we show ALL models from MODEL_CAPABILITIES_DESC so Claude
-        can see all options, even if some require additional API configuration.
-        Runtime validation will handle whether a model is actually available.
+        Only returns models from providers that have valid API keys configured.
+        This fixes the namespace collision bug where models from disabled providers
+        were shown to Claude, causing routing conflicts.
 
         Returns:
-            List of all model names from config
+            List of model names from enabled providers only
         """
-        from config import MODEL_CAPABILITIES_DESC
+        from providers.registry import ModelProviderRegistry
 
-        # Start with all models from MODEL_CAPABILITIES_DESC
-        all_models = list(MODEL_CAPABILITIES_DESC.keys())
+        # Get models from enabled providers only (those with valid API keys)
+        all_models = ModelProviderRegistry.get_available_model_names()
 
         # Add OpenRouter models if OpenRouter is configured
         openrouter_key = os.getenv("OPENROUTER_API_KEY")
@@ -339,9 +339,6 @@ class BaseTool(ABC):
 
                 logging.debug(f"Failed to add custom models to enum: {e}")
 
-        # Note: MODEL_CAPABILITIES_DESC already includes both short aliases (e.g., "flash", "o3")
-        # and full model names (e.g., "gemini-2.5-flash") as keys
-
         # Remove duplicates while preserving order
         seen = set()
         unique_models = []
@@ -364,7 +361,7 @@ class BaseTool(ABC):
         """
         import os
 
-        from config import DEFAULT_MODEL, MODEL_CAPABILITIES_DESC
+        from config import DEFAULT_MODEL
 
         # Check if OpenRouter is configured
         has_openrouter = bool(
@@ -378,8 +375,39 @@ class BaseTool(ABC):
                 "IMPORTANT: Use the model specified by the user if provided, OR select the most suitable model "
                 "for this specific task based on the requirements and capabilities listed below:"
             ]
-            for model, desc in MODEL_CAPABILITIES_DESC.items():
-                model_desc_parts.append(f"- '{model}': {desc}")
+
+            # Get descriptions from enabled providers
+            from providers.base import ProviderType
+            from providers.registry import ModelProviderRegistry
+
+            # Map provider types to readable names
+            provider_names = {
+                ProviderType.GOOGLE: "Gemini models",
+                ProviderType.OPENAI: "OpenAI models",
+                ProviderType.XAI: "X.AI GROK models",
+                ProviderType.CUSTOM: "Custom models",
+                ProviderType.OPENROUTER: "OpenRouter models",
+            }
+
+            # Check available providers and add their model descriptions
+            for provider_type in [ProviderType.GOOGLE, ProviderType.OPENAI, ProviderType.XAI]:
+                provider = ModelProviderRegistry.get_provider(provider_type)
+                if provider:
+                    provider_section_added = False
+                    for model_name in provider.list_models(respect_restrictions=True):
+                        try:
+                            # Get model config to extract description
+                            model_config = provider.SUPPORTED_MODELS.get(model_name)
+                            if isinstance(model_config, dict) and "description" in model_config:
+                                if not provider_section_added:
+                                    model_desc_parts.append(
+                                        f"\n{provider_names[provider_type]} - Available when {provider_type.value.upper()}_API_KEY is configured:"
+                                    )
+                                    provider_section_added = True
+                                model_desc_parts.append(f"- '{model_name}': {model_config['description']}")
+                        except Exception:
+                            # Skip models without descriptions
+                            continue
 
             # Add custom models if custom API is configured
             custom_url = os.getenv("CUSTOM_API_URL")
@@ -433,7 +461,7 @@ class BaseTool(ABC):
 
                     if model_configs:
                         model_desc_parts.append("\nOpenRouter models (use these aliases):")
-                        for alias, config in model_configs[:10]:  # Limit to top 10
+                        for alias, config in model_configs:  # Show ALL models so Claude can choose
                             # Format context window in human-readable form
                             context_tokens = config.context_window
                             if context_tokens >= 1_000_000:
@@ -450,11 +478,6 @@ class BaseTool(ABC):
                                 # Fallback to showing the model name if no description
                                 desc = f"- '{alias}' ({context_str} context): {config.model_name}"
                             model_desc_parts.append(desc)
-
-                        # Add note about additional models if any were cut off
-                        total_models = len(model_configs)
-                        if total_models > 10:
-                            model_desc_parts.append(f"... and {total_models - 10} more models available")
                 except Exception as e:
                     # Log for debugging but don't fail
                     import logging
@@ -475,10 +498,11 @@ class BaseTool(ABC):
             }
         else:
             # Normal mode - model is optional with default
-            available_models = list(MODEL_CAPABILITIES_DESC.keys())
-            models_str = ", ".join(f"'{m}'" for m in available_models)
+            available_models = self._get_available_models()
+            models_str = ", ".join(f"'{m}'" for m in available_models)  # Show ALL models so Claude can choose
 
-            description = f"Model to use. Native models: {models_str}."
+            description = f"Model to use. Available models: {models_str}."
+
             if has_openrouter:
                 # Add OpenRouter aliases
                 try:
@@ -489,7 +513,7 @@ class BaseTool(ABC):
                     if aliases:
                         # Show all aliases so Claude knows every option available
                         all_aliases = sorted(aliases)
-                        alias_list = ", ".join(f"'{a}'" for a in all_aliases)
+                        alias_list = ", ".join(f"'{a}'" for a in all_aliases)  # Show ALL aliases so Claude can choose
                         description += f" OpenRouter aliases: {alias_list}."
                     else:
                         description += " OpenRouter: Any model available on openrouter.ai."
