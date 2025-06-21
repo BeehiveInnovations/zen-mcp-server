@@ -103,9 +103,11 @@ class ConsensusTool(BaseTool):
 
     def get_description(self) -> str:
         return (
-            "MULTI-MODEL CONSENSUS - Gather diverse perspectives from multiple AI models on technical proposals, "
-            "plans, and ideas. Perfect for validation, feasibility assessment, and getting comprehensive "
-            "viewpoints on complex decisions. Supports advanced stance steering with custom instructions for each model. "
+            "MULTI-MODEL CONSENSUS - Gather diverse perspectives from multiple AI models on project proposals, "
+            "feature designs, architectural decisions, and strategic plans. NOT for code review - use the dedicated "
+            "codereview tool instead. Perfect for: project planning validation, feature feasibility assessment, "
+            "technology choice decisions, product roadmap evaluation, and getting multiple viewpoints on high-level "
+            "design choices. Supports advanced stance steering with custom instructions for each model. "
             "You can specify different stances (for/against/neutral) and provide custom stance prompts to guide each "
             "model's analysis. Example: [{'model': 'o3', 'stance': 'for', 'stance_prompt': 'Focus on implementation "
             "benefits and user value'}, {'model': 'flash', 'stance': 'against', 'stance_prompt': 'Identify potential "
