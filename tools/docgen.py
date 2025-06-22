@@ -62,12 +62,18 @@ DOCGEN_FIELD_DESCRIPTIONS = {
         "documentation, complexity assessments, call flow understanding, and opportunities for improvement. Be specific and "
         "avoid vague language—document what you now know about the code structure and how it affects your documentation plan. "
         "IMPORTANT: Document both well-documented areas (good examples to follow) and areas needing documentation. "
+        "If you discover any glaring, super-critical bugs that could cause serious harm or data corruption, IMMEDIATELY STOP "
+        "the documentation workflow and ask the user directly if this critical bug should be addressed first before continuing. "
+        "For any other non-critical bugs, flaws, or potential improvements, note them here so they can be surfaced later for review. "
         "In later steps, confirm or update past findings with additional evidence."
     ),
     "files_checked": (
         "List all files (as absolute paths, do not clip or shrink file names) examined during "
         "the documentation analysis so far. "
-        "Include even files that are already well-documented, as this tracks your exploration path."
+        "Include even files that are already well-documented, as this tracks your exploration path. "
+        "IMPORTANT: A file's presence here should NOT mean that everything in that file is fully documented - "
+        "in each step, look through the files again and confirm that ALL functions, classes, and methods "
+        "within them have proper documentation."
     ),
     "relevant_files": (
         "Subset of files_checked (as full absolute paths) that contain code requiring documentation or are directly relevant "
@@ -233,6 +239,7 @@ class DocgenTool(WorkflowTool):
 
         # Exclude common fields that documentation generation doesn't need
         excluded_common_fields = [
+            "model",  # Documentation doesn't need external model selection
             "temperature",  # Documentation doesn't need temperature control
             "thinking_mode",  # Documentation doesn't need thinking mode
             "use_websearch",  # Documentation doesn't need web search
@@ -242,8 +249,8 @@ class DocgenTool(WorkflowTool):
         return WorkflowSchemaBuilder.build_schema(
             tool_specific_fields=self.get_tool_fields(),
             required_fields=[],  # No additional required fields beyond workflow defaults
-            model_field_schema=self.get_model_field_schema(),
-            auto_mode=self.is_effective_auto_mode(),
+            model_field_schema=None,  # Exclude model field - docgen doesn't need external model selection
+            auto_mode=False,  # Force non-auto mode to prevent model field addition
             tool_name=self.get_name(),
             excluded_workflow_fields=excluded_workflow_fields,
             excluded_common_fields=excluded_common_fields,
