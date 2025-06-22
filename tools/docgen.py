@@ -66,9 +66,11 @@ DOCGEN_FIELD_DESCRIPTIONS = {
         "IMPORTANT: Document both well-documented areas (good examples to follow) and areas needing documentation. "
         "ALWAYS use MODERN documentation style appropriate for the programming language (/// for Objective-C, /** */ for Java/JavaScript, "
         '""" for Python, // for Swift/C++, etc. - NEVER use legacy /* */ style for languages that have modern alternatives). '
-        "If you discover any glaring, super-critical bugs that could cause serious harm or data corruption, IMMEDIATELY STOP "
-        "the documentation workflow and ask the user directly if this critical bug should be addressed first before continuing. "
-        "For any other non-critical bugs, flaws, or potential improvements, note them here so they can be surfaced later for review. "
+        "If you discover ANY BUGS OR LOGIC ERRORS (critical or non-critical), IMMEDIATELY STOP "
+        "the documentation workflow and ask the user directly if this bug should be addressed before continuing. "
+        "This includes: incorrect logic, wrong calculations, backwards conditions, inverted values, missing error handling, "
+        "security vulnerabilities, performance issues, or any code that doesn't match its intended function name/purpose. "
+        "NEVER document code with known bugs - always stop and report to user first. "
         "In later steps, confirm or update past findings with additional evidence."
     ),
     "relevant_files": (
@@ -317,7 +319,7 @@ class DocgenTool(WorkflowTool):
                 "Document ALL functions/methods in the chosen file - don't skip any - DOCUMENTATION ONLY",
                 "When file is 100% documented, increment num_files_documented from 0 to 1",
                 "Note any dependencies this file has (what it imports/calls) and what calls into it",
-                "Track any logic bugs/issues found but DO NOT FIX THEM - report after documentation complete",
+                "CRITICAL: If you find ANY bugs/logic errors, STOP documenting and report to user immediately",
                 "Report which specific functions you documented in this step for accountability",
                 "Report progress: num_files_documented (1) out of total_files_to_document",
             ]
@@ -331,7 +333,7 @@ class DocgenTool(WorkflowTool):
                 "Document ALL functions/methods in the chosen file - don't skip any - DOCUMENTATION ONLY",
                 "When file is 100% documented, increment num_files_documented by 1",
                 "Verify that EVERY function in the current file has proper documentation (no skipping)",
-                "Track any bugs/issues found but DO NOT FIX THEM - document first, report issues later",
+                "CRITICAL: If you find ANY bugs/logic errors, STOP documenting and report to user immediately",
                 "Report specific function names you documented for verification",
                 "Report progress: current num_files_documented out of total_files_to_document",
             ]
@@ -344,12 +346,12 @@ class DocgenTool(WorkflowTool):
                 "USE MODERN documentation style appropriate for each programming language (NEVER legacy styles)",
                 "Document every function, method, and class in current file with no exceptions",
                 "When file is 100% documented, increment num_files_documented by 1",
-                "Track bugs/issues found but DO NOT FIX THEM - focus on documentation only",
+                "CRITICAL: If you find ANY bugs/logic errors, STOP documenting and report to user immediately",
                 "Report progress: current num_files_documented out of total_files_to_document",
                 "If num_files_documented < total_files_to_document: RESTART docgen with next step",
                 "ONLY set next_step_required=false when num_files_documented equals total_files_to_document",
                 "For nested dependencies: check if functions call into subdirectories and document those too",
-                "Report any accumulated bugs/issues found during documentation for user decision",
+                "CRITICAL: If ANY bugs/logic errors were found, STOP and ask user before proceeding",
             ]
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
@@ -394,7 +396,7 @@ class DocgenTool(WorkflowTool):
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
                 + f"\n\nREPORT your progress: which specific functions did you document? Update num_files_documented from 0 to 1 when first file complete. "
                 f"REPORT counters: current num_files_documented out of total_files_to_document. "
-                f"If you found bugs/issues, LIST THEM but DO NOT FIX THEM - ask user what to do after documentation. "
+                f"CRITICAL: If you found ANY bugs/logic errors, STOP documenting and ask user what to do before continuing. "
                 f"Do NOT move to a new file until the current one is completely documented. "
                 f"When ready for step {step_number + 1}, report completed work with updated counters."
             )
@@ -406,7 +408,7 @@ class DocgenTool(WorkflowTool):
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
                 + f"\n\nREPORT your progress: which specific functions did you document? Update num_files_documented when file complete. "
                 f"REPORT counters: current num_files_documented out of total_files_to_document. "
-                f"If you found bugs/issues, LIST THEM but DO NOT FIX THEM - ask user what to do after documentation. "
+                f"CRITICAL: If you found ANY bugs/logic errors, STOP documenting and ask user what to do before continuing. "
                 f"Do NOT move to a new file until the current one is completely documented. "
                 f"When ready for step {step_number + 1}, report completed work with updated counters."
             )
@@ -420,7 +422,7 @@ class DocgenTool(WorkflowTool):
                 f"CHECK: If num_files_documented < total_files_to_document, RESTART {self.get_name()} with next step! "
                 f"CRITICAL: Only set next_step_required=false when num_files_documented equals total_files_to_document! "
                 f"REPORT counters: current num_files_documented out of total_files_to_document. "
-                f"If you accumulated bugs/issues during documentation, REPORT THEM and ask user for guidance. "
+                f"CRITICAL: If ANY bugs/logic errors were found during documentation, STOP and ask user before proceeding. "
                 f"NO recursive {self.get_name()} calls without actual documentation work!"
             )
 
