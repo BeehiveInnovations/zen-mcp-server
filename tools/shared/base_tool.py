@@ -1317,7 +1317,18 @@ When recommending searches, be specific about what information you need and why 
                 model_context = ModelContext(model_context)
             except Exception as e:
                 logger.warning(f"Failed to create model context from legacy model_name: {e}")
-                return None
+                # Generic error response for any unavailable model
+                return {
+                    "status": "error",
+                    "content": f"Model '{model_context}' is not available. {str(e)}",
+                    "content_type": "text",
+                    "metadata": {
+                        "error_type": "validation_error",
+                        "model_name": model_context,
+                        "supports_images": None,  # Unknown since model doesn't exist
+                        "image_count": len(images) if images else 0,
+                    },
+                }
 
         if not model_context:
             # Get from tool's stored context as fallback
@@ -1332,7 +1343,19 @@ When recommending searches, be specific about what information you need and why 
             model_name = model_context.model_name
         except Exception as e:
             logger.warning(f"Failed to get capabilities from model_context for image validation: {e}")
-            return None
+            # Generic error response when capabilities cannot be accessed
+            model_name = getattr(model_context, 'model_name', 'unknown')
+            return {
+                "status": "error",
+                "content": f"Model '{model_name}' is not available. {str(e)}",
+                "content_type": "text",
+                "metadata": {
+                    "error_type": "validation_error",
+                    "model_name": model_name,
+                    "supports_images": None,  # Unknown since model capabilities unavailable
+                    "image_count": len(images) if images else 0,
+                },
+            }
 
         # Check if model supports images
         if not capabilities.supports_images:
