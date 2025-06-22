@@ -11,6 +11,7 @@ from .docgen_prompt import DOCGEN_PROMPT
 from .planner_prompt import PLANNER_PROMPT
 from .precommit_prompt import PRECOMMIT_PROMPT
 from .refactor_prompt import REFACTOR_PROMPT
+from .secaudit_prompt import SECAUDIT_PROMPT
 from .testgen_prompt import TESTGEN_PROMPT
 from .thinkdeep_prompt import THINKDEEP_PROMPT
 from .tracer_prompt import TRACER_PROMPT
@@ -26,6 +27,7 @@ __all__ = [
     "PLANNER_PROMPT",
     "PRECOMMIT_PROMPT",
     "REFACTOR_PROMPT",
+    "SECAUDIT_PROMPT",
     "TESTGEN_PROMPT",
     "TRACER_PROMPT",
 ]

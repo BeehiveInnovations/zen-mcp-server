@@ -12,6 +12,7 @@ from .listmodels import ListModelsTool
 from .planner import PlannerTool
 from .precommit import PrecommitTool
 from .refactor import RefactorTool
+from .secaudit import SecauditTool
 from .testgen import TestGenTool
 from .thinkdeep import ThinkDeepTool
 from .tracer import TracerTool
@@ -29,6 +30,7 @@ __all__ = [
     "PlannerTool",
     "PrecommitTool",
     "RefactorTool",
+    "SecauditTool",
     "TestGenTool",
     "TracerTool",
     "VersionTool",
