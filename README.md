@@ -65,7 +65,8 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
   - [`refactor`](#9-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
   - [`tracer`](#10-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
   - [`testgen`](#11-testgen---comprehensive-test-generation) - Test generation with edge cases
-  - [`docgen`](#12-docgen---comprehensive-documentation-generation) - Documentation generation with complexity analysis
+  - [`secaudit`](#12-secaudit---comprehensive-security-audit) - Security audit with OWASP analysis
+  - [`docgen`](#13-docgen---comprehensive-documentation-generation) - Documentation generation with complexity analysis
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -247,6 +248,7 @@ and feel the difference.
 - **Code needs refactoring?** → `refactor` (intelligent refactoring with decomposition focus)
 - **Need call-flow analysis?** → `tracer` (generates prompts for execution tracing and dependency mapping)
 - **Need comprehensive tests?** → `testgen` (generates test suites with edge cases)
+- **Security concerns?** → `secaudit` (OWASP analysis, compliance evaluation, vulnerability assessment)
 - **Code needs documentation?** → `docgen` (generates comprehensive documentation with complexity analysis)
 - **Which models are available?** → `listmodels` (shows all configured providers and models)
 - **Server info?** → `version` (version and configuration details)
@@ -274,9 +276,10 @@ and feel the difference.
 9. [`refactor`](docs/tools/refactor.md) - Code refactoring with decomposition focus
 10. [`tracer`](docs/tools/tracer.md) - Static code analysis prompt generator for call-flow mapping
 11. [`testgen`](docs/tools/testgen.md) - Comprehensive test generation with edge case coverage
-12. [`docgen`](docs/tools/docgen.md) - Comprehensive documentation generation with complexity analysis
-13. [`listmodels`](docs/tools/listmodels.md) - Display all available AI models organized by provider
-14. [`version`](docs/tools/version.md) - Get server version and configuration
+12. [`secaudit`](docs/tools/secaudit.md) - Comprehensive security audit with OWASP Top 10 analysis
+13. [`docgen`](docs/tools/docgen.md) - Comprehensive documentation generation with complexity analysis
+14. [`listmodels`](docs/tools/listmodels.md) - Display all available AI models organized by provider
+15. [`version`](docs/tools/version.md) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 Your thinking partner for brainstorming, getting second opinions, and validating approaches. Perfect for technology comparisons, architecture discussions, and collaborative problem-solving.
@@ -430,7 +433,16 @@ Use zen to generate tests for User.login() method
 
 **[📖 Read More](docs/tools/testgen.md)** - Workflow-based test generation with comprehensive coverage
 
-### 12. `docgen` - Comprehensive Documentation Generation
+### 12. `secaudit` - Comprehensive Security Audit
+Systematic OWASP-based security assessment with compliance evaluation. This workflow tool guides Claude through methodical security investigation steps with forced pauses between each step to ensure thorough vulnerability assessment, security pattern analysis, and compliance verification before providing expert analysis.
+
+```
+Perform a secaudit with o3 on this e-commerce web application focusing on payment processing security and PCI DSS compliance
+```
+
+**[📖 Read More](docs/tools/secaudit.md)** - OWASP Top 10 analysis with compliance framework support
+
+### 13. `docgen` - Comprehensive Documentation Generation
 Generates thorough documentation with complexity analysis and gotcha identification. This workflow tool guides Claude through systematic investigation of code structure, function complexity, and documentation needs across multiple steps before generating comprehensive documentation that includes algorithmic complexity, call flow information, and unexpected behaviors that developers should know about.
 
 ```
@@ -443,7 +455,7 @@ Use docgen to add complexity analysis to all the new swift functions I added but
 
 **[📖 Read More](docs/tools/docgen.md)** - Workflow-based documentation generation with gotcha detection
 
-### 13. `listmodels` - List Available Models
+### 14. `listmodels` - List Available Models
 Display all available AI models organized by provider, showing capabilities, context windows, and configuration status.
 
 ```
@@ -452,7 +464,7 @@ Use zen to list available models
 
 **[📖 Read More](docs/tools/listmodels.md)** - Model capabilities and configuration details
 
-### 14. `version` - Server Information
+### 15. `version` - Server Information
 Get server version, configuration details, and system status for debugging and troubleshooting.
 
 ```

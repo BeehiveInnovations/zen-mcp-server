@@ -67,6 +67,7 @@ from tools import (  # noqa: E402
     PlannerTool,
     PrecommitTool,
     RefactorTool,
+    SecauditTool,
     TestGenTool,
     ThinkDeepTool,
     TracerTool,
@@ -170,6 +171,7 @@ TOOLS = {
     "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
+    "secaudit": SecauditTool(),  # Comprehensive security audit with OWASP Top 10 and compliance coverage
     "docgen": DocgenTool(),  # Step-by-step documentation generation with complexity analysis
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
@@ -215,6 +217,11 @@ PROMPT_TEMPLATES = {
         "name": "debug",
         "description": "Debug an issue or error",
         "template": "Help debug this issue with {model}",
+    },
+    "secaudit": {
+        "name": "secaudit",
+        "description": "Comprehensive security audit with OWASP Top 10 coverage",
+        "template": "Perform comprehensive security audit with {model}",
     },
     "docgen": {
         "name": "docgen",
