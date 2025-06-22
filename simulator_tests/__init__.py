@@ -13,6 +13,7 @@ from .test_codereview_validation import CodeReviewValidationTest
 from .test_consensus_conversation import TestConsensusConversation
 from .test_consensus_stance import TestConsensusStance
 from .test_consensus_three_models import TestConsensusThreeModels
+from .test_consensusworkflow_validation import ConsensusWorkflowValidationTest
 from .test_content_validation import ContentValidationTest
 from .test_conversation_chain_validation import ConversationChainValidationTest
 from .test_cross_tool_comprehensive import CrossToolComprehensiveTest
@@ -43,7 +44,7 @@ from .test_xai_models import XAIModelsTest
 # Test registry for dynamic loading
 TEST_REGISTRY = {
     "basic_conversation": BasicConversationTest,
-    "chat_simple_validation": ChatSimpleValidationTest,
+    "chat_validation": ChatSimpleValidationTest,
     "codereview_validation": CodeReviewValidationTest,
     "content_validation": ContentValidationTest,
     "per_tool_deduplication": PerToolDeduplicationTest,
@@ -72,6 +73,7 @@ TEST_REGISTRY = {
     "consensus_conversation": TestConsensusConversation,
     "consensus_stance": TestConsensusStance,
     "consensus_three_models": TestConsensusThreeModels,
+    "consensusworkflow_validation": ConsensusWorkflowValidationTest,
     "analyze_validation": AnalyzeValidationTest,
     # "o3_pro_expensive": O3ProExpensiveTest,  # COMMENTED OUT - too expensive to run by default
 }
@@ -108,6 +110,7 @@ __all__ = [
     "TestConsensusConversation",
     "TestConsensusStance",
     "TestConsensusThreeModels",
+    "ConsensusWorkflowValidationTest",
     "AnalyzeValidationTest",
     "TEST_REGISTRY",
 ]

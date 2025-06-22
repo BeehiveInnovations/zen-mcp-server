@@ -6,6 +6,7 @@ from .analyze import AnalyzeTool
 from .chat import ChatTool
 from .codereview import CodeReviewTool
 from .consensus import ConsensusTool
+from .consensusworkflow import ConsensusWorkflowTool
 from .debug import DebugIssueTool
 from .listmodels import ListModelsTool
 from .planner import PlannerTool
@@ -22,6 +23,7 @@ __all__ = [
     "AnalyzeTool",
     "ChatTool",
     "ConsensusTool",
+    "ConsensusWorkflowTool",
     "ListModelsTool",
     "PlannerTool",
     "PrecommitTool",

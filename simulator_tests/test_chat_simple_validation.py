@@ -22,7 +22,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
     @property
     def test_name(self) -> str:
-        return "chat_simple_validation"
+        return "_validation"
 
     @property
     def test_description(self) -> str:
@@ -73,9 +73,9 @@ class ChatSimpleValidationTest(ConversationBaseTest):
         try:
             self.logger.info("  1. Test new conversation without continuation_id")
 
-            # Call chat_simple without continuation_id
+            # Call chat without continuation_id
             response, continuation_id = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Hello! Please use low thinking mode. Can you explain what MCP tools are?",
                     "model": "flash",
@@ -85,7 +85,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
             )
 
             if not response:
-                self.logger.error("    ❌ Failed to get response from chat_simple")
+                self.logger.error("    ❌ Failed to get response from chat")
                 return False
 
             if not continuation_id:
@@ -116,7 +116,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Continue the conversation
             response, continuation_id = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Can you give me a specific example of how an MCP tool might work?",
                     "continuation_id": self.new_continuation_id,
@@ -156,7 +156,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Start new conversation with a file
             response1, continuation_id = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Analyze this Python code and tell me what the Calculator class does",
                     "files": [self.test_files["python"]],
@@ -171,7 +171,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Continue with same file (should be deduplicated)
             response2, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. What methods does the Calculator class have?",
                     "files": [self.test_files["python"]],  # Same file
@@ -206,7 +206,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Test 1: Temperature exactly at limit (should work)
             response1, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Hello, this is a test with max temperature",
                     "model": "flash",
@@ -221,7 +221,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Test 2: Temperature at minimum (should work)
             response2, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Another test message with min temperature",
                     "model": "flash",
@@ -238,7 +238,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
             # This should result in an error response from the tool, not a crash
             try:
                 response3, _ = self.call_mcp_tool_direct(
-                    "chat_simple",
+                    "chat",
                     {
                         "prompt": "Please use low thinking mode. Test with invalid temperature",
                         "model": "flash",
@@ -273,7 +273,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Test 1: Model that doesn't support images
             response1, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Can you see this image?",
                     "model": "local-llama",  # Text-only model
@@ -290,7 +290,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
             many_images = [small_image] * 25  # Most models support max 20
 
             response2, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Analyze these images",
                     "model": "gemini-2.5-flash",  # Supports max 16 images
@@ -305,7 +305,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Test 3: Valid image count
             response3, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. This is a test with one image",
                     "model": "gemini-2.5-flash",
@@ -332,7 +332,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Start conversation with specific context
             response1, continuation_id = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. My name is TestUser and I'm working on a Python project called TestProject",
                     "model": "flash",
@@ -346,7 +346,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Continue and reference previous context
             response2, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. What's my name and what project am I working on?",
                     "continuation_id": continuation_id,
@@ -382,7 +382,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Start conversation with image
             response1, continuation_id = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. I'm sharing an image with you. Can you acknowledge that you received it?",
                     "images": [small_image],
@@ -401,7 +401,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Continue conversation referencing the image
             response2, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. What did you see in that image I shared earlier?",
                     "continuation_id": continuation_id,
@@ -417,7 +417,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
             # Test with multiple images
             multiple_images = [small_image, small_image]  # Two identical small images
             response3, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Here are two images for comparison",
                     "images": multiple_images,
@@ -447,7 +447,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Start conversation with files
             response1, continuation_id = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Here are some files for you to analyze",
                     "files": [self.test_files["python"], self.test_files["config"]],
@@ -462,7 +462,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Continue conversation without new files (should remember previous files)
             response2, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. From the files I shared earlier, what types of files were there?",
                     "continuation_id": continuation_id,
@@ -481,7 +481,7 @@ class ChatSimpleValidationTest(ConversationBaseTest):
 
             # Continue with a different question about same files (should still remember them)
             response3, _ = self.call_mcp_tool_direct(
-                "chat_simple",
+                "chat",
                 {
                     "prompt": "Please use low thinking mode. Can you tell me what functions were defined in the Python file from our earlier discussion?",
                     "continuation_id": continuation_id,

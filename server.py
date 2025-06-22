@@ -61,6 +61,7 @@ from tools import (  # noqa: E402
     ChatTool,
     CodeReviewTool,
     ConsensusTool,
+    ConsensusWorkflowTool,
     DebugIssueTool,
     ListModelsTool,
     PlannerTool,
@@ -167,6 +168,7 @@ TOOLS = {
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "chat": ChatTool(),  # Interactive development chat and brainstorming
     "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
+    "consensusworkflow": ConsensusWorkflowTool(),  # Step-by-step consensus workflow with multi-model analysis
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
@@ -202,20 +204,15 @@ PROMPT_TEMPLATES = {
         "description": "Analyze files and code structure",
         "template": "Analyze these files with {model}",
     },
-    "analyzeworkflow": {
-        "name": "analyzeworkflow",
-        "description": "Step-by-step analysis workflow with expert validation",
-        "template": "Start comprehensive analysis workflow with {model}",
-    },
     "chat": {
         "name": "chat",
         "description": "Chat and brainstorm ideas",
         "template": "Chat with {model} about this",
     },
-    "chat_simple": {
-        "name": "chat_simple",
-        "description": "Chat and brainstorm ideas (SimpleTool architecture)",
-        "template": "Chat with {model} about this (new architecture)",
+    "consensusworkflow": {
+        "name": "consensusworkflow",
+        "description": "Step-by-step consensus workflow with multi-model analysis",
+        "template": "Start comprehensive consensus workflow with {model}",
     },
     "precommit": {
         "name": "precommit",
@@ -231,11 +228,6 @@ PROMPT_TEMPLATES = {
         "name": "refactor",
         "description": "Refactor and improve code structure",
         "template": "Refactor this code with {model}",
-    },
-    "refactorworkflow": {
-        "name": "refactorworkflow",
-        "description": "Step-by-step refactoring analysis workflow with expert validation",
-        "template": "Start comprehensive refactoring analysis workflow with {model}",
     },
     "tracer": {
         "name": "tracer",
