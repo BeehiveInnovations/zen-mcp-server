@@ -690,7 +690,7 @@ When a user requests a model (e.g., "pro", "o3", "example-large-v1"), the system
 2. OpenAI skips (Gemini already handled it)
 3. OpenRouter never sees it
 
-### Example: Model "claude-3-opus" 
+### Example: Model "claude-4-opus" 
 
 1. **Gemini provider** checks: NO, not my model → skip
 2. **OpenAI provider** checks: NO, not my model → skip  

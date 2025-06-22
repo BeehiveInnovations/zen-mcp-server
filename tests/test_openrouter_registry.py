@@ -74,9 +74,9 @@ class TestOpenRouterModelRegistry:
 
         # Test various aliases
         test_cases = [
-            ("opus", "anthropic/claude-3-opus"),
-            ("OPUS", "anthropic/claude-3-opus"),  # Case insensitive
-            ("claude", "anthropic/claude-3-sonnet"),
+            ("opus", "anthropic/claude-4-opus"),
+            ("OPUS", "anthropic/claude-4-opus"),  # Case insensitive
+            ("claude", "anthropic/claude-4-sonnet"),
             ("o3", "openai/o3"),
             ("deepseek", "deepseek/deepseek-r1-0528"),
             ("mistral", "mistralai/mistral-large-2411"),
@@ -92,9 +92,9 @@ class TestOpenRouterModelRegistry:
         registry = OpenRouterModelRegistry()
 
         # Should be able to look up by full model name
-        config = registry.resolve("anthropic/claude-3-opus")
+        config = registry.resolve("anthropic/claude-4-opus")
         assert config is not None
-        assert config.model_name == "anthropic/claude-3-opus"
+        assert config.model_name == "anthropic/claude-4-opus"
 
         config = registry.resolve("openai/o3")
         assert config is not None
@@ -118,7 +118,7 @@ class TestOpenRouterModelRegistry:
 
         caps = config.to_capabilities()
         assert caps.provider == ProviderType.OPENROUTER
-        assert caps.model_name == "anthropic/claude-3-opus"
+        assert caps.model_name == "anthropic/claude-4-opus"
         assert caps.friendly_name == "OpenRouter"
         assert caps.context_window == 200000
         assert not caps.supports_extended_thinking

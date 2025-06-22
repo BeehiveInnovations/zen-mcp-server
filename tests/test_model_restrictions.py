@@ -24,7 +24,7 @@ class TestModelRestrictionService:
             assert service.is_allowed(ProviderType.OPENAI, "o3-mini")
             assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-pro")
             assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash")
-            assert service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-3-opus")
+            assert service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-4-opus")
             assert service.is_allowed(ProviderType.OPENROUTER, "openai/o3")
 
             # Should have no restrictions
@@ -44,7 +44,7 @@ class TestModelRestrictionService:
 
             # Google and OpenRouter should have no restrictions
             assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-pro")
-            assert service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-3-opus")
+            assert service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-4-opus")
 
     def test_load_multiple_models_restriction(self):
         """Test loading multiple allowed models."""
@@ -159,7 +159,7 @@ class TestModelRestrictionService:
             # Should only allow specified OpenRouter models
             assert service.is_allowed(ProviderType.OPENROUTER, "opus")
             assert service.is_allowed(ProviderType.OPENROUTER, "sonnet")
-            assert service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-3-opus", "opus")  # With original name
+            assert service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-4-opus", "opus")  # With original name
             assert not service.is_allowed(ProviderType.OPENROUTER, "haiku")
             assert not service.is_allowed(ProviderType.OPENROUTER, "anthropic/claude-3-haiku")
             assert not service.is_allowed(ProviderType.OPENROUTER, "mistral-large")

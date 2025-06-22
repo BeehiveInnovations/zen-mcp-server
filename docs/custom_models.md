@@ -41,9 +41,9 @@ The server uses `conf/custom_models.json` to map convenient aliases to both Open
 
 | Alias | Maps to OpenRouter Model |
 |-------|-------------------------|
-| `opus` | `anthropic/claude-3-opus` |
-| `sonnet`, `claude` | `anthropic/claude-3-sonnet` |
-| `haiku` | `anthropic/claude-3-haiku` |
+| `opus` | `anthropic/claude-4-opus` |
+| `sonnet`, `claude` | `anthropic/claude-4-sonnet` |
+| `haiku` | `anthropic/claude-4-haiku` |
 | `gpt4o`, `4o` | `openai/gpt-4o` |
 | `gpt4o-mini`, `4o-mini` | `openai/gpt-4o-mini` |
 | `pro`, `gemini` | `google/gemini-2.5-pro` |
@@ -151,8 +151,8 @@ CUSTOM_MODEL_NAME=your-loaded-model
 **Using model aliases (from conf/custom_models.json):**
 ```
 # OpenRouter models:
-"Use opus for deep analysis"         # → anthropic/claude-3-opus
-"Use sonnet to review this code"     # → anthropic/claude-3-sonnet
+"Use opus for deep analysis"         # → anthropic/claude-4-opus
+"Use sonnet to review this code"     # → anthropic/claude-4-sonnet
 "Use pro via zen to analyze this"    # → google/gemini-2.5-pro
 "Use gpt4o via zen to analyze this"  # → openai/gpt-4o
 "Use mistral via zen to optimize"    # → mistral/mistral-large
@@ -165,7 +165,7 @@ CUSTOM_MODEL_NAME=your-loaded-model
 **Using full model names:**
 ```
 # OpenRouter models:
-"Use anthropic/claude-3-opus via zen for deep analysis"
+"Use anthropic/claude-4-opus via zen for deep analysis"
 "Use openai/gpt-4o via zen to debug this"
 "Use deepseek/deepseek-coder via zen to generate code"
 
@@ -249,7 +249,7 @@ Edit `conf/custom_models.json` to add new models. The configuration supports bot
 
 Popular models available through OpenRouter:
 - **GPT-4** - OpenAI's most capable model
-- **Claude 3** - Anthropic's models (Opus, Sonnet, Haiku)
+- **Claude 4** - Anthropic's models (Opus, Sonnet, Haiku)
 - **Mistral** - Including Mistral Large
 - **Llama 3** - Meta's open models
 - Many more at [openrouter.ai/models](https://openrouter.ai/models)
