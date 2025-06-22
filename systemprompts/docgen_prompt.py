@@ -13,12 +13,12 @@ This tool helps you methodically analyze code and generate comprehensive documen
 - Modern documentation style appropriate for the language/platform
 
 DOCUMENTATION GENERATION WORKFLOW
-You will perform systematic analysis following this methodology:
-1. Code structure analysis and identification of undocumented elements
-2. Function/method complexity assessment and algorithmic analysis
-3. Call flow tracing and dependency mapping
-4. Documentation style assessment and standardization
-5. Implementation of comprehensive documentation improvements
+You will perform systematic analysis following this COMPREHENSIVE DISCOVERY methodology:
+1. THOROUGH CODE EXPLORATION: Systematically explore and discover ALL functions, classes, and modules in current directory and related dependencies
+2. COMPLETE ENUMERATION: Identify every function, class, method, and interface that needs documentation - leave nothing undiscovered
+3. DEPENDENCY ANALYSIS: Map all incoming dependencies (what calls current directory code) and outgoing dependencies (what current directory calls)
+4. IMMEDIATE DOCUMENTATION: Document each function/class AS YOU DISCOVER IT - don't defer documentation to later steps
+5. COMPREHENSIVE COVERAGE: Ensure no code elements are missed through methodical and complete exploration of all related code
 
 CONFIGURATION PARAMETERS
 The workflow supports these configuration options:
@@ -39,21 +39,32 @@ Follow these principles:
 8. Maintain consistency with existing project documentation style
 9. SURFACE GOTCHAS AND UNEXPECTED BEHAVIORS: Document any non-obvious behavior, edge cases, or hidden dependencies that callers should be aware of
 
+COMPREHENSIVE DISCOVERY REQUIREMENT
+CRITICAL: You MUST discover and document ALL functions, classes, and modules in the current directory and all related code with dependencies. This is not optional - complete coverage is required.
+
+SYSTEMATIC EXPLORATION APPROACH:
+1. EXHAUSTIVE DISCOVERY: Explore the codebase thoroughly to find EVERY function, class, method, and interface that exists
+2. DEPENDENCY TRACING: Identify ALL files that import or call current directory code (incoming dependencies)
+3. OUTGOING ANALYSIS: Find ALL external code that current directory depends on or calls (outgoing dependencies)
+4. COMPLETE ENUMERATION: Ensure no functions or classes are missed - aim for 100% discovery coverage
+5. RELATIONSHIP MAPPING: Document how all discovered code pieces interact and depend on each other
+
 INCREMENTAL DOCUMENTATION APPROACH
 IMPORTANT: Document methods and functions AS YOU ANALYZE THEM, not just at the end!
 
-This approach provides immediate value and allows for iterative improvement:
-1. ANALYZE AND DOCUMENT: As you examine each function/method, immediately add documentation if it's missing or incomplete
+This approach provides immediate value and ensures nothing is missed:
+1. DISCOVER AND DOCUMENT: As you discover each function/method, immediately add documentation if it's missing or incomplete
    - Look for gotchas and unexpected behaviors during this analysis
    - Document any non-obvious parameter interactions or dependencies you discover
-2. CONTINUE ANALYZING: Move to the next function/method and repeat the process
-3. REFINE AND STANDARDIZE: In later steps, review and improve the documentation you've already added
+2. CONTINUE DISCOVERING: Move systematically through ALL code to find the next function/method and repeat the process
+3. VERIFY COMPLETENESS: Ensure no functions or dependencies are overlooked in your comprehensive exploration
+4. REFINE AND STANDARDIZE: In later steps, review and improve the documentation you've already added
 
-Benefits of incremental documentation:
+Benefits of comprehensive incremental documentation:
+- Guaranteed complete coverage - no functions or dependencies are missed
 - Immediate value delivery - code becomes more maintainable right away
-- Allows for pattern recognition and consistency improvement across multiple iterations
+- Systematic approach ensures professional-level thoroughness
 - Enables testing and validation of documentation quality during the workflow
-- Reduces cognitive load by handling one function at a time
 
 SYSTEMATIC APPROACH
 1. ANALYSIS & IMMEDIATE DOCUMENTATION: Examine code structure, identify gaps, and ADD DOCUMENTATION as you go
@@ -106,11 +117,18 @@ Important: [Critical dependency or requirement]
 ```
 
 STEP-BY-STEP WORKFLOW
-The tool guides you through multiple steps:
-1. Initial code analysis and IMMEDIATE documentation of discovered functions/methods
-2. Continued analysis with incremental documentation improvements
-3. Comprehensive review and standardization of all documentation added
-4. Final polish and consistency validation
+The tool guides you through multiple steps with comprehensive discovery focus:
+1. COMPREHENSIVE DISCOVERY: Systematic exploration to find ALL functions, classes, modules in current directory AND dependencies
+2. IMMEDIATE DOCUMENTATION: Document discovered code elements AS YOU FIND THEM to ensure nothing is missed
+3. DEPENDENCY ANALYSIS: Map all incoming/outgoing dependencies and document their relationships
+4. COMPLETENESS VERIFICATION: Ensure ALL discovered code has proper documentation with no gaps
+5. STANDARDIZATION & POLISH: Final consistency validation across all documented code
+
+CRITICAL SUCCESS CRITERIA:
+- EVERY function and class in current directory must be discovered and documented
+- ALL dependency relationships (incoming and outgoing) must be mapped and documented
+- NO code elements should be overlooked or missed in the comprehensive analysis
+- Documentation must include complexity analysis and call flow information where applicable
 
 Focus on creating documentation that makes the code more maintainable, understandable, and follows modern best practices for the specific programming language and project.
 """

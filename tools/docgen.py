@@ -250,38 +250,41 @@ class DocgenTool(WorkflowTool):
         )
 
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
-        """Define required actions for each documentation analysis phase."""
+        """Define required actions for comprehensive documentation analysis with thorough discovery."""
         if step_number == 1:
-            # Initial analysis tasks with immediate documentation
+            # Initial comprehensive discovery and documentation
             return [
-                "Examine the codebase structure and identify files that need documentation",
-                "Analyze existing documentation patterns and style in the project",
-                "Start documenting functions/methods AS YOU DISCOVER THEM - don't wait until the end",
-                "Add documentation for 2-3 simple functions you encounter during your analysis",
+                "Systematically discover ALL functions, classes, and modules in the current directory and analyze their relationships",
+                "Map dependencies and identify ALL code that calls into current directory (incoming) and ALL code current directory calls (outgoing)",
+                "Begin documenting functions/classes AS YOU DISCOVER THEM to provide immediate value while building comprehensive understanding",
+                "Analyze existing documentation patterns and standards to ensure consistency across all documentation work",
+                "Build a complete picture of the codebase structure, ensuring no functions or classes are overlooked",
             ]
         elif confidence in ["exploring", "low"]:
-            # Continue analysis with incremental documentation
+            # Continue comprehensive discovery with incremental documentation
             return [
-                "Examine specific functions and methods - ADD DOCUMENTATION as you analyze each one",
-                "Document algorithmic complexity for functions you're currently analyzing",
-                "Add call flow information to functions you've already started documenting",
-                "Continue building documentation incrementally while gathering more insights",
+                "Expand analysis to include dependency files and trace ALL interconnections between current directory and related code",
+                "Continue documenting ALL discovered functions/classes with particular attention to complex algorithms and public interfaces",
+                "Map call relationships and document which functions call each other, creating comprehensive flow information",
+                "Identify and document ALL external dependencies and their usage patterns throughout the current directory",
+                "Ensure comprehensive coverage by double-checking that no code elements have been missed in the analysis",
             ]
         elif confidence in ["medium", "high"]:
-            # Advanced analysis with continued incremental documentation
+            # Finalize comprehensive documentation with full dependency coverage
             return [
-                "Continue documenting remaining undocumented functions/methods",
-                "Refine and improve documentation you've already added in previous steps",
-                "Ensure consistency across all documentation added so far",
-                "Add complexity analysis and flow information to previously documented functions",
+                "Complete documentation of ALL remaining functions and classes, ensuring nothing is missed in current directory or dependencies",
+                "Verify comprehensive coverage by systematically checking that every function/class discovered has proper documentation",
+                "Add detailed dependency relationships and call flow information to ALL documented functions",
+                "Standardize documentation format and ensure consistency across ALL functions, classes, and modules",
+                "Validate completeness of documentation including complexity analysis for all non-trivial algorithms",
             ]
         else:
-            # General continued analysis with documentation
+            # Ensure nothing is missed with final verification
             return [
-                "Continue examining code patterns while adding documentation incrementally",
-                "Document any new functions/methods you discover during analysis",
-                "Improve existing documentation you've added in previous steps",
-                "Maintain momentum by documenting as you analyze rather than deferring to the end",
+                "Perform final verification to ensure ALL functions/classes in current directory have comprehensive documentation",
+                "Validate that dependency relationships and call flows are completely documented across all discovered code",
+                "Cross-reference all documentation to ensure accuracy and completeness of call relationships and dependencies",
+                "Review documentation quality and consistency to ensure professional standards across all documented code",
             ]
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
@@ -303,13 +306,17 @@ class DocgenTool(WorkflowTool):
 
         if step_number == 1:
             next_steps = (
-                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first analyze "
-                f"the codebase AND START DOCUMENTING FUNCTIONS AS YOU DISCOVER THEM. This incremental approach "
-                f"provides immediate value. Examine existing code, identify undocumented functions/classes, "
-                f"ADD DOCUMENTATION to 2-3 simple functions during your analysis, and understand the project's "
-                f"documentation standards. Only call {self.get_name()} again AFTER both analyzing AND adding "
-                f"initial documentation. When you call {self.get_name()} next time, use step_number: {step_number + 1} "
-                f"and report both files examined AND functions you've already documented."
+                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first perform "
+                f"COMPREHENSIVE DOCUMENTATION DISCOVERY AND ANALYSIS. This requires systematically discovering "
+                f"ALL functions, classes, and code elements in the current directory and their dependencies. "
+                f"You should thoroughly explore the codebase to identify EVERY function and class that needs "
+                f"documentation, understand dependency relationships (both incoming and outgoing), and begin "
+                f"documenting code AS YOU DISCOVER IT. This comprehensive approach ensures nothing is missed. "
+                f"Build a complete understanding of the code structure, identify ALL undocumented elements, "
+                f"and provide immediate value by adding documentation during your analysis. Only call "
+                f"{self.get_name()} again AFTER completing thorough discovery and initial documentation work. "
+                f"When calling {self.get_name()} next (step_number: {step_number + 1}), report: comprehensive "
+                f"findings about all discovered code, dependencies mapped, and documentation already added."
             )
         elif confidence in ["exploring", "low"]:
             next_steps = (
