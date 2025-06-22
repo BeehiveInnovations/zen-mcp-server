@@ -39,7 +39,8 @@ DOCGEN_FIELD_DESCRIPTIONS = {
     "step": (
         "Describe what you're currently analyzing for documentation generation by thinking deeply about the code structure, "
         "functions, and documentation needs. In step 1, clearly state your documentation plan and begin forming a systematic "
-        "approach after thinking carefully about what needs to be documented. Consider not only missing documentation but also "
+        "approach after thinking carefully about what needs to be documented. Focus on ONE FILE at a time to ensure complete "
+        "coverage of all functions and methods within that file. Consider not only missing documentation but also "
         "opportunities to improve existing docs with complexity analysis, call flow information, and better parameter descriptions. "
         "Map out the codebase structure, understand the business logic, and identify areas requiring documentation. "
         "In later steps, continue exploring with precision: analyze function complexity, trace dependencies, and adapt your "
@@ -67,18 +68,28 @@ DOCGEN_FIELD_DESCRIPTIONS = {
         "For any other non-critical bugs, flaws, or potential improvements, note them here so they can be surfaced later for review. "
         "In later steps, confirm or update past findings with additional evidence."
     ),
-    "files_checked": (
-        "List all files (as absolute paths, do not clip or shrink file names) examined during "
-        "the documentation analysis so far. "
-        "Include even files that are already well-documented, as this tracks your exploration path. "
-        "IMPORTANT: A file's presence here should NOT mean that everything in that file is fully documented - "
-        "in each step, look through the files again and confirm that ALL functions, classes, and methods "
-        "within them have proper documentation."
+    "doc_files": (
+        "List of files with their documentation dependency status. Each entry should be a dictionary with: "
+        "'file_path' (relative path), 'functions_documented' (list of functions already documented), "
+        "'functions_remaining' (list of functions still needing documentation), "
+        "'incoming_deps' (list of files that call into this file), "
+        "'outgoing_deps' (list of files this file calls). "
+        "This structure allows comprehensive tracking of documentation progress and dependency relationships."
+    ),
+    "doc_methods": (
+        "Granular tracking of individual methods/functions and their documentation status. Each entry should be "
+        "a dictionary with: 'method_name' (full qualified name like 'ClassName.method_name'), "
+        "'file_path' (relative path to file containing method), "
+        "'documented' (boolean indicating if documentation is complete), "
+        "'calls_to' (list of other methods this method calls), "
+        "'called_by' (list of methods that call this method), "
+        "'complexity_analyzed' (boolean indicating if Big O analysis is done). "
+        "This enables precise tracking of every function's documentation status."
     ),
     "relevant_files": (
-        "Subset of files_checked (as full absolute paths) that contain code requiring documentation or are directly relevant "
-        "to the documentation generation task. Only list those that need documentation work, serve as good examples, or "
-        "contain dependencies that affect documentation."
+        "Current focus files (as full absolute paths) for this step. In each step, focus on documenting "
+        "ONE FILE COMPLETELY before moving to the next. This should contain only the file(s) being "
+        "actively documented in the current step, not all files that might need documentation."
     ),
     "relevant_context": (
         "List methods, functions, or classes that need documentation, in the format "
@@ -115,7 +126,8 @@ class DocgenRequest(WorkflowRequest):
 
     # Documentation analysis tracking fields
     findings: str = Field(..., description=DOCGEN_FIELD_DESCRIPTIONS["findings"])
-    files_checked: list[str] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["files_checked"])
+    doc_files: list[dict] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["doc_files"])
+    doc_methods: list[dict] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["doc_methods"])
     relevant_files: list[str] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["relevant_files"])
     relevant_context: list[str] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["relevant_context"])
 
@@ -204,6 +216,18 @@ class DocgenTool(WorkflowTool):
     def get_tool_fields(self) -> dict[str, dict[str, Any]]:
         """Return the tool-specific fields for docgen."""
         return {
+            "doc_files": {
+                "type": "array",
+                "items": {"type": "object"},
+                "default": [],
+                "description": DOCGEN_FIELD_DESCRIPTIONS["doc_files"],
+            },
+            "doc_methods": {
+                "type": "array",
+                "items": {"type": "object"},
+                "default": [],
+                "description": DOCGEN_FIELD_DESCRIPTIONS["doc_methods"],
+            },
             "document_complexity": {
                 "type": "boolean",
                 "default": True,
@@ -235,6 +259,7 @@ class DocgenTool(WorkflowTool):
             "confidence",  # Documentation doesn't use confidence levels
             "hypothesis",  # Documentation doesn't use hypothesis
             "backtrack_from_step",  # Documentation uses simpler error recovery
+            "files_checked",  # Documentation uses doc_files and doc_methods instead for better tracking
         ]
 
         # Exclude common fields that documentation generation doesn't need
@@ -257,41 +282,36 @@ class DocgenTool(WorkflowTool):
         )
 
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
-        """Define required actions for comprehensive documentation analysis with thorough discovery."""
+        """Define required actions for comprehensive documentation analysis with file-by-file thoroughness."""
         if step_number == 1:
-            # Initial comprehensive discovery and documentation
+            # Initial discovery and start with first file
             return [
-                "Systematically discover ALL functions, classes, and modules in the current directory and analyze their relationships",
-                "Map dependencies and identify ALL code that calls into current directory (incoming) and ALL code current directory calls (outgoing)",
-                "Begin documenting functions/classes AS YOU DISCOVER THEM to provide immediate value while building comprehensive understanding",
-                "Analyze existing documentation patterns and standards to ensure consistency across all documentation work",
-                "Build a complete picture of the codebase structure, ensuring no functions or classes are overlooked",
+                "Discover ALL files in the current directory (not nested) that need documentation",
+                "Choose ONE file to start with and focus COMPLETELY on that file in this step",
+                "For the chosen file: identify ALL functions, classes, and methods within it",
+                "Begin documenting ALL functions/methods in the chosen file with complete coverage",
+                "Track incoming/outgoing dependencies for the chosen file and update doc_files structure",
+                "Update doc_methods tracking for every function documented in this step",
             ]
-        elif confidence in ["exploring", "low"]:
-            # Continue comprehensive discovery with incremental documentation
+        elif step_number <= 3:
+            # Continue with focused file-by-file approach
             return [
-                "Expand analysis to include dependency files and trace ALL interconnections between current directory and related code",
-                "Continue documenting ALL discovered functions/classes with particular attention to complex algorithms and public interfaces",
-                "Map call relationships and document which functions call each other, creating comprehensive flow information",
-                "Identify and document ALL external dependencies and their usage patterns throughout the current directory",
-                "Ensure comprehensive coverage by double-checking that no code elements have been missed in the analysis",
-            ]
-        elif confidence in ["medium", "high"]:
-            # Finalize comprehensive documentation with full dependency coverage
-            return [
-                "Complete documentation of ALL remaining functions and classes, ensuring nothing is missed in current directory or dependencies",
-                "Verify comprehensive coverage by systematically checking that every function/class discovered has proper documentation",
-                "Add detailed dependency relationships and call flow information to ALL documented functions",
-                "Standardize documentation format and ensure consistency across ALL functions, classes, and modules",
-                "Validate completeness of documentation including complexity analysis for all non-trivial algorithms",
+                "Complete documentation of ALL remaining functions/methods in the current focus file",
+                "Verify that EVERY function in the current file has proper documentation (no skipping)",
+                "Update doc_files and doc_methods tracking to reflect completed work",
+                "If current file is complete, choose the NEXT file that needs documentation",
+                "For the next file: map ALL its functions and begin documenting them systematically",
+                "Track dependency relationships between files as you work",
             ]
         else:
-            # Ensure nothing is missed with final verification
+            # Continue systematic file-by-file coverage
             return [
-                "Perform final verification to ensure ALL functions/classes in current directory have comprehensive documentation",
-                "Validate that dependency relationships and call flows are completely documented across all discovered code",
-                "Cross-reference all documentation to ensure accuracy and completeness of call relationships and dependencies",
-                "Review documentation quality and consistency to ensure professional standards across all documented code",
+                "Focus on ONE file at a time - complete ALL functions in current file before moving on",
+                "Document every function, method, and class in the current file with no exceptions",
+                "Update doc_methods tracking to show progress on individual function documentation",
+                "When current file is 100% complete, move to next file that needs documentation",
+                "Trace any nested file dependencies if functions call into subdirectories",
+                "Maintain accurate doc_files tracking showing which files are complete vs. in-progress",
             ]
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
@@ -314,43 +334,31 @@ class DocgenTool(WorkflowTool):
         if step_number == 1:
             next_steps = (
                 f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first perform "
-                f"COMPREHENSIVE DOCUMENTATION DISCOVERY AND ANALYSIS. This requires systematically discovering "
-                f"ALL functions, classes, and code elements in the current directory and their dependencies. "
-                f"You should thoroughly explore the codebase to identify EVERY function and class that needs "
-                f"documentation, understand dependency relationships (both incoming and outgoing), and begin "
-                f"documenting code AS YOU DISCOVER IT. This comprehensive approach ensures nothing is missed. "
-                f"Build a complete understanding of the code structure, identify ALL undocumented elements, "
-                f"and provide immediate value by adding documentation during your analysis. Only call "
-                f"{self.get_name()} again AFTER completing thorough discovery and initial documentation work. "
-                f"When calling {self.get_name()} next (step_number: {step_number + 1}), report: comprehensive "
-                f"findings about all discovered code, dependencies mapped, and documentation already added."
-            )
-        elif confidence in ["exploring", "low"]:
-            next_steps = (
-                f"CONTINUE INCREMENTAL APPROACH! Do NOT call {self.get_name()} again yet. You should be "
-                f"DOCUMENTING FUNCTIONS AS YOU ANALYZE THEM for immediate value. MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
+                f"FILE-BY-FILE DOCUMENTATION with systematic tracking. FOCUS ON ONE FILE AT A TIME. "
+                f"MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + "\n\nRemember: Add documentation incrementally as you work, don't defer it all to the end. "
-                + f"Only call {self.get_name()} again with step_number: {step_number + 1} AFTER completing these tasks "
-                + "AND adding documentation to more functions."
+                + f"\n\nCRITICAL: Use the new tracking structures - update doc_files with file progress and "
+                f"doc_methods with individual function status. Document EVERY function in your chosen file "
+                f"before moving to the next. Only call {self.get_name()} again AFTER completing documentation "
+                f"of your first chosen file and updating the tracking structures."
             )
-        elif confidence in ["medium", "high"]:
+        elif step_number <= 3:
             next_steps = (
-                "KEEP DOCUMENTING! You're making good progress with incremental documentation. Continue this approach. REQUIRED ACTIONS:\n"
+                f"CONTINUE FILE-BY-FILE APPROACH! Focus on ONE file until 100% complete. "
+                f"MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nYou should have already documented several functions - now refine and expand that work. "
-                f"Continue adding documentation to remaining functions while improving what you've already done. "
-                f"Document findings with specific file:line references, then call {self.get_name()} with step_number: {step_number + 1}."
+                + f"\n\nUpdate doc_files and doc_methods tracking structures to show your progress. "
+                f"Do NOT move to a new file until the current one is completely documented. "
+                f"When ready for step {step_number + 1}, provide updated tracking data showing completed work."
             )
         else:
             next_steps = (
-                f"PAUSE ANALYSIS. Before calling {self.get_name()} step {step_number + 1}, you MUST examine more code. "
-                + "Required: "
-                + ", ".join(required_actions[:2])
-                + ". "
-                + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
-                f"NEW evidence from actual code examination, not just theories. NO recursive {self.get_name()} calls "
-                f"without investigation work!"
+                f"MAINTAIN FILE-BY-FILE DISCIPLINE! Complete current file before starting new ones. "
+                f"REQUIRED ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
+                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                + f"\n\nYour doc_methods tracking should show which functions are documented vs. remaining. "
+                f"Only call {self.get_name()} again after documenting more functions and updating tracking data. "
+                f"NO recursive {self.get_name()} calls without actual documentation work!"
             )
 
         return {"next_steps": next_steps}
@@ -365,12 +373,13 @@ class DocgenTool(WorkflowTool):
             "step": request.step,
             "step_number": request.step_number,
             "findings": request.findings,
-            "files_checked": request.files_checked,
+            "doc_files": request.doc_files,
+            "doc_methods": request.doc_methods,
             "relevant_files": request.relevant_files,
             "relevant_context": request.relevant_context,
             "issues_found": [],  # Docgen uses this for documentation gaps
-            "confidence": request.confidence,
-            "hypothesis": request.hypothesis,
+            "confidence": "medium",  # Default confidence for docgen
+            "hypothesis": "systematic_documentation_needed",  # Default hypothesis
             "images": [],  # Docgen doesn't typically use images
         }
         return step_data
@@ -435,11 +444,13 @@ class DocgenTool(WorkflowTool):
         Docgen-specific completion message.
         """
         return (
-            "DOCUMENTATION ANALYSIS IS COMPLETE. YOU MUST now summarize and present ALL key findings, "
-            "identified documentation needs, and recommended documentation improvements. Clearly identify "
-            "functions/methods that need documentation, specify the documentation style to use, and provide "
-            "concrete examples of improved documentation including complexity analysis and call flow information. "
-            "Make it easy for a developer to understand exactly what documentation is needed and how to implement it."
+            "DOCUMENTATION ANALYSIS IS COMPLETE. YOU MUST now summarize ALL key findings using the doc_files "
+            "and doc_methods tracking data. Present a clear summary showing: 1) Which files are completely "
+            "documented vs. partially documented vs. not started, 2) Specific functions/methods documented "
+            "vs. remaining (from doc_methods tracking), 3) Dependency relationships discovered between files, "
+            "4) Recommended documentation improvements with concrete examples including complexity analysis and "
+            "call flow information. Make it easy for a developer to see exactly which functions still need "
+            "documentation and what the implementation plan should be."
         )
 
     def get_step_guidance_message(self, request) -> str:
