@@ -37,22 +37,23 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for documentation generation
 DOCGEN_FIELD_DESCRIPTIONS = {
     "step": (
-        "Describe what you're currently analyzing for documentation generation by thinking deeply about the code structure, "
-        "functions, and documentation needs. In step 1, clearly state your documentation plan and begin forming a systematic "
-        "approach after thinking carefully about what needs to be documented. Focus on ONE FILE at a time to ensure complete "
-        "coverage of all functions and methods within that file. Consider not only missing documentation but also "
-        "opportunities to improve existing docs with complexity analysis, call flow information, and better parameter descriptions. "
-        "Map out the codebase structure, understand the business logic, and identify areas requiring documentation. "
-        "In later steps, continue exploring with precision: analyze function complexity, trace dependencies, and adapt your "
-        "understanding as you uncover more documentation opportunities."
+        "For step 1: DISCOVERY PHASE ONLY - describe your plan to discover ALL files that need documentation in the current directory. "
+        "DO NOT document anything yet. Count all files, list them clearly, report the total count, then IMMEDIATELY proceed to step 2. "
+        "For step 2 and beyond: DOCUMENTATION PHASE - describe what you're currently documenting, focusing on ONE FILE at a time "
+        "to ensure complete coverage of all functions and methods within that file. CRITICAL: DO NOT ALTER ANY CODE LOGIC - "
+        "only add documentation (docstrings, comments). ALWAYS use MODERN documentation style for the programming language "
+        '(e.g., /// for Objective-C, /** */ for Java/JavaScript, """ for Python, // for Swift/C++, etc. - NEVER use legacy styles). '
+        "Consider complexity analysis, call flow information, and parameter descriptions. "
+        "If you find bugs or logic issues, TRACK THEM but DO NOT FIX THEM - report after documentation is complete. "
+        "Report progress using num_files_documented out of total_files_to_document counters."
     ),
     "step_number": (
         "The index of the current step in the documentation generation sequence, beginning at 1. Each step should build upon or "
         "revise the previous one."
     ),
     "total_steps": (
-        "Your current estimate for how many steps will be needed to complete the documentation analysis. "
-        "Adjust as new documentation needs emerge."
+        "Total steps needed to complete documentation: 1 (discovery) + number of files to document. "
+        "This is calculated dynamically based on total_files_to_document counter."
     ),
     "next_step_required": (
         "Set to true if you plan to continue the documentation analysis with another step. False means you believe the "
@@ -63,28 +64,12 @@ DOCGEN_FIELD_DESCRIPTIONS = {
         "documentation, complexity assessments, call flow understanding, and opportunities for improvement. Be specific and "
         "avoid vague language—document what you now know about the code structure and how it affects your documentation plan. "
         "IMPORTANT: Document both well-documented areas (good examples to follow) and areas needing documentation. "
+        "ALWAYS use MODERN documentation style appropriate for the programming language (/// for Objective-C, /** */ for Java/JavaScript, "
+        '""" for Python, // for Swift/C++, etc. - NEVER use legacy /* */ style for languages that have modern alternatives). '
         "If you discover any glaring, super-critical bugs that could cause serious harm or data corruption, IMMEDIATELY STOP "
         "the documentation workflow and ask the user directly if this critical bug should be addressed first before continuing. "
         "For any other non-critical bugs, flaws, or potential improvements, note them here so they can be surfaced later for review. "
         "In later steps, confirm or update past findings with additional evidence."
-    ),
-    "doc_files": (
-        "List of files with their documentation dependency status. Each entry should be a dictionary with: "
-        "'file_path' (relative path), 'functions_documented' (list of functions already documented), "
-        "'functions_remaining' (list of functions still needing documentation), "
-        "'incoming_deps' (list of files that call into this file), "
-        "'outgoing_deps' (list of files this file calls). "
-        "This structure allows comprehensive tracking of documentation progress and dependency relationships."
-    ),
-    "doc_methods": (
-        "Granular tracking of individual methods/functions and their documentation status. Each entry should be "
-        "a dictionary with: 'method_name' (full qualified name like 'ClassName.method_name'), "
-        "'file_path' (relative path to file containing method), "
-        "'documented' (boolean indicating if documentation is complete), "
-        "'calls_to' (list of other methods this method calls), "
-        "'called_by' (list of methods that call this method), "
-        "'complexity_analyzed' (boolean indicating if Big O analysis is done). "
-        "This enables precise tracking of every function's documentation status."
     ),
     "relevant_files": (
         "Current focus files (as full absolute paths) for this step. In each step, focus on documenting "
@@ -95,6 +80,18 @@ DOCGEN_FIELD_DESCRIPTIONS = {
         "List methods, functions, or classes that need documentation, in the format "
         "'ClassName.methodName' or 'functionName'. "
         "Prioritize those with complex logic, important interfaces, or missing/inadequate documentation."
+    ),
+    "num_files_documented": (
+        "CRITICAL COUNTER: Number of files you have COMPLETELY documented so far. Start at 0. "
+        "Increment by 1 only when a file is 100% documented (all functions/methods have documentation). "
+        "This counter prevents premature completion - you CANNOT set next_step_required=false "
+        "unless num_files_documented equals total_files_to_document."
+    ),
+    "total_files_to_document": (
+        "CRITICAL COUNTER: Total number of files discovered that need documentation in current directory. "
+        "Set this in step 1 after discovering all files. This is the target number - when "
+        "num_files_documented reaches this number, then and ONLY then can you set next_step_required=false. "
+        "This prevents stopping after documenting just one file."
     ),
     "document_complexity": (
         "Whether to include algorithmic complexity (Big O) analysis in function/method documentation. "
@@ -126,10 +123,12 @@ class DocgenRequest(WorkflowRequest):
 
     # Documentation analysis tracking fields
     findings: str = Field(..., description=DOCGEN_FIELD_DESCRIPTIONS["findings"])
-    doc_files: list[dict] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["doc_files"])
-    doc_methods: list[dict] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["doc_methods"])
     relevant_files: list[str] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["relevant_files"])
     relevant_context: list[str] = Field(default_factory=list, description=DOCGEN_FIELD_DESCRIPTIONS["relevant_context"])
+
+    # Critical completion tracking counters
+    num_files_documented: int = Field(0, description=DOCGEN_FIELD_DESCRIPTIONS["num_files_documented"])
+    total_files_to_document: int = Field(0, description=DOCGEN_FIELD_DESCRIPTIONS["total_files_to_document"])
 
     # Documentation generation configuration parameters
     document_complexity: Optional[bool] = Field(True, description=DOCGEN_FIELD_DESCRIPTIONS["document_complexity"])
@@ -216,18 +215,6 @@ class DocgenTool(WorkflowTool):
     def get_tool_fields(self) -> dict[str, dict[str, Any]]:
         """Return the tool-specific fields for docgen."""
         return {
-            "doc_files": {
-                "type": "array",
-                "items": {"type": "object"},
-                "default": [],
-                "description": DOCGEN_FIELD_DESCRIPTIONS["doc_files"],
-            },
-            "doc_methods": {
-                "type": "array",
-                "items": {"type": "object"},
-                "default": [],
-                "description": DOCGEN_FIELD_DESCRIPTIONS["doc_methods"],
-            },
             "document_complexity": {
                 "type": "boolean",
                 "default": True,
@@ -248,7 +235,30 @@ class DocgenTool(WorkflowTool):
                 "default": True,
                 "description": DOCGEN_FIELD_DESCRIPTIONS["comments_on_complex_logic"],
             },
+            "num_files_documented": {
+                "type": "integer",
+                "default": 0,
+                "minimum": 0,
+                "description": DOCGEN_FIELD_DESCRIPTIONS["num_files_documented"],
+            },
+            "total_files_to_document": {
+                "type": "integer",
+                "default": 0,
+                "minimum": 0,
+                "description": DOCGEN_FIELD_DESCRIPTIONS["total_files_to_document"],
+            },
         }
+
+    def get_required_fields(self) -> list[str]:
+        """Return additional required fields beyond the standard workflow requirements."""
+        return [
+            "document_complexity",
+            "document_flow",
+            "update_existing",
+            "comments_on_complex_logic",
+            "num_files_documented",
+            "total_files_to_document",
+        ]
 
     def get_input_schema(self) -> dict[str, Any]:
         """Generate input schema using WorkflowSchemaBuilder with field exclusions."""
@@ -273,7 +283,7 @@ class DocgenTool(WorkflowTool):
 
         return WorkflowSchemaBuilder.build_schema(
             tool_specific_fields=self.get_tool_fields(),
-            required_fields=[],  # No additional required fields beyond workflow defaults
+            required_fields=self.get_required_fields(),  # Include docgen-specific required fields
             model_field_schema=None,  # Exclude model field - docgen doesn't need external model selection
             auto_mode=False,  # Force non-auto mode to prevent model field addition
             tool_name=self.get_name(),
@@ -282,36 +292,64 @@ class DocgenTool(WorkflowTool):
         )
 
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
-        """Define required actions for comprehensive documentation analysis with file-by-file thoroughness."""
+        """Define required actions for comprehensive documentation analysis with step-by-step file focus."""
         if step_number == 1:
-            # Initial discovery and start with first file
+            # Initial discovery ONLY - no documentation yet
             return [
+                "CRITICAL: DO NOT ALTER ANY CODE LOGIC! Only add documentation (docstrings, comments)",
                 "Discover ALL files in the current directory (not nested) that need documentation",
-                "Choose ONE file to start with and focus COMPLETELY on that file in this step",
-                "For the chosen file: identify ALL functions, classes, and methods within it",
-                "Begin documenting ALL functions/methods in the chosen file with complete coverage",
-                "Track incoming/outgoing dependencies for the chosen file and update doc_files structure",
-                "Update doc_methods tracking for every function documented in this step",
+                "COUNT the exact number of files that need documentation",
+                "LIST all the files you found that need documentation by name",
+                "IDENTIFY the programming language(s) to use MODERN documentation style (/// for Objective-C, /** */ for Java/JavaScript, etc.)",
+                "DO NOT start documenting any files yet - this is discovery phase only",
+                "Report the total count and file list clearly to the user",
+                "IMMEDIATELY call docgen step 2 after discovery to begin documentation phase",
+                "WHEN CALLING DOCGEN step 2: Set total_files_to_document to the exact count you found",
+                "WHEN CALLING DOCGEN step 2: Set num_files_documented to 0 (haven't started yet)",
             ]
-        elif step_number <= 3:
+        elif step_number == 2:
+            # Start documentation phase with first file
+            return [
+                "CRITICAL: DO NOT ALTER ANY CODE LOGIC! Only add documentation (docstrings, comments)",
+                "Choose the FIRST file from your discovered list to start documentation",
+                "For the chosen file: identify ALL functions, classes, and methods within it",
+                'USE MODERN documentation style for the programming language (/// for Objective-C, /** */ for Java/JavaScript, """ for Python, etc.)',
+                "Document ALL functions/methods in the chosen file - don't skip any - DOCUMENTATION ONLY",
+                "When file is 100% documented, increment num_files_documented from 0 to 1",
+                "Note any dependencies this file has (what it imports/calls) and what calls into it",
+                "Track any logic bugs/issues found but DO NOT FIX THEM - report after documentation complete",
+                "Report which specific functions you documented in this step for accountability",
+                "Report progress: num_files_documented (1) out of total_files_to_document",
+            ]
+        elif step_number <= 4:
             # Continue with focused file-by-file approach
             return [
-                "Complete documentation of ALL remaining functions/methods in the current focus file",
+                "CRITICAL: DO NOT ALTER ANY CODE LOGIC! Only add documentation (docstrings, comments)",
+                "Choose the NEXT undocumented file from your discovered list",
+                "For the chosen file: identify ALL functions, classes, and methods within it",
+                "USE MODERN documentation style for the programming language (NEVER use legacy /* */ style for languages with modern alternatives)",
+                "Document ALL functions/methods in the chosen file - don't skip any - DOCUMENTATION ONLY",
+                "When file is 100% documented, increment num_files_documented by 1",
                 "Verify that EVERY function in the current file has proper documentation (no skipping)",
-                "Update doc_files and doc_methods tracking to reflect completed work",
-                "If current file is complete, choose the NEXT file that needs documentation",
-                "For the next file: map ALL its functions and begin documenting them systematically",
-                "Track dependency relationships between files as you work",
+                "Track any bugs/issues found but DO NOT FIX THEM - document first, report issues later",
+                "Report specific function names you documented for verification",
+                "Report progress: current num_files_documented out of total_files_to_document",
             ]
         else:
             # Continue systematic file-by-file coverage
             return [
-                "Focus on ONE file at a time - complete ALL functions in current file before moving on",
-                "Document every function, method, and class in the current file with no exceptions",
-                "Update doc_methods tracking to show progress on individual function documentation",
-                "When current file is 100% complete, move to next file that needs documentation",
-                "Trace any nested file dependencies if functions call into subdirectories",
-                "Maintain accurate doc_files tracking showing which files are complete vs. in-progress",
+                "CRITICAL: DO NOT ALTER ANY CODE LOGIC! Only add documentation (docstrings, comments)",
+                "Check counters: num_files_documented vs total_files_to_document",
+                "If num_files_documented < total_files_to_document: choose NEXT undocumented file",
+                "USE MODERN documentation style appropriate for each programming language (NEVER legacy styles)",
+                "Document every function, method, and class in current file with no exceptions",
+                "When file is 100% documented, increment num_files_documented by 1",
+                "Track bugs/issues found but DO NOT FIX THEM - focus on documentation only",
+                "Report progress: current num_files_documented out of total_files_to_document",
+                "If num_files_documented < total_files_to_document: RESTART docgen with next step",
+                "ONLY set next_step_required=false when num_files_documented equals total_files_to_document",
+                "For nested dependencies: check if functions call into subdirectories and document those too",
+                "Report any accumulated bugs/issues found during documentation for user decision",
             ]
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
@@ -329,35 +367,60 @@ class DocgenTool(WorkflowTool):
         This method generates docgen-specific guidance used by get_step_guidance_message().
         """
         # Generate the next steps instruction based on required actions
-        required_actions = self.get_required_actions(step_number, confidence, request.findings, request.total_steps)
+        # Calculate dynamic total_steps based on files to document
+        total_files_to_document = self.get_request_total_files_to_document(request)
+        calculated_total_steps = 1 + total_files_to_document if total_files_to_document > 0 else request.total_steps
+
+        required_actions = self.get_required_actions(step_number, confidence, request.findings, calculated_total_steps)
 
         if step_number == 1:
             next_steps = (
+                f"DISCOVERY PHASE ONLY - DO NOT START DOCUMENTING YET!\n"
                 f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first perform "
-                f"FILE-BY-FILE DOCUMENTATION with systematic tracking. FOCUS ON ONE FILE AT A TIME. "
+                f"FILE DISCOVERY step by step. DO NOT DOCUMENT ANYTHING YET. "
                 f"MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nCRITICAL: Use the new tracking structures - update doc_files with file progress and "
-                f"doc_methods with individual function status. Document EVERY function in your chosen file "
-                f"before moving to the next. Only call {self.get_name()} again AFTER completing documentation "
-                f"of your first chosen file and updating the tracking structures."
+                + f"\n\nCRITICAL: When you call {self.get_name()} step 2, set total_files_to_document to the exact count "
+                f"of files needing documentation and set num_files_documented to 0 (haven't started documenting yet). "
+                f"Your total_steps will be automatically calculated as 1 (discovery) + number of files to document. "
+                f"Step 2 will BEGIN the documentation phase. Report the count clearly and then IMMEDIATELY "
+                f"proceed to call {self.get_name()} step 2 to start documenting the first file."
             )
-        elif step_number <= 3:
+        elif step_number == 2:
             next_steps = (
+                f"DOCUMENTATION PHASE BEGINS! ABSOLUTE RULE: DO NOT ALTER ANY CODE LOGIC! DOCUMENTATION ONLY!\n"
+                f"START FILE-BY-FILE APPROACH! Focus on ONE file until 100% complete. "
+                f"MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
+                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                + f"\n\nREPORT your progress: which specific functions did you document? Update num_files_documented from 0 to 1 when first file complete. "
+                f"REPORT counters: current num_files_documented out of total_files_to_document. "
+                f"If you found bugs/issues, LIST THEM but DO NOT FIX THEM - ask user what to do after documentation. "
+                f"Do NOT move to a new file until the current one is completely documented. "
+                f"When ready for step {step_number + 1}, report completed work with updated counters."
+            )
+        elif step_number <= 4:
+            next_steps = (
+                f"ABSOLUTE RULE: DO NOT ALTER ANY CODE LOGIC! DOCUMENTATION ONLY!\n"
                 f"CONTINUE FILE-BY-FILE APPROACH! Focus on ONE file until 100% complete. "
                 f"MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nUpdate doc_files and doc_methods tracking structures to show your progress. "
+                + f"\n\nREPORT your progress: which specific functions did you document? Update num_files_documented when file complete. "
+                f"REPORT counters: current num_files_documented out of total_files_to_document. "
+                f"If you found bugs/issues, LIST THEM but DO NOT FIX THEM - ask user what to do after documentation. "
                 f"Do NOT move to a new file until the current one is completely documented. "
-                f"When ready for step {step_number + 1}, provide updated tracking data showing completed work."
+                f"When ready for step {step_number + 1}, report completed work with updated counters."
             )
         else:
             next_steps = (
-                f"MAINTAIN FILE-BY-FILE DISCIPLINE! Complete current file before starting new ones. "
+                f"ABSOLUTE RULE: DO NOT ALTER ANY CODE LOGIC! DOCUMENTATION ONLY!\n"
+                f"CRITICAL: Check if MORE FILES need documentation before finishing! "
                 f"REQUIRED ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
                 + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nYour doc_methods tracking should show which functions are documented vs. remaining. "
-                f"Only call {self.get_name()} again after documenting more functions and updating tracking data. "
+                + f"\n\nREPORT which functions you documented and update num_files_documented when file complete. "
+                f"CHECK: If num_files_documented < total_files_to_document, RESTART {self.get_name()} with next step! "
+                f"CRITICAL: Only set next_step_required=false when num_files_documented equals total_files_to_document! "
+                f"REPORT counters: current num_files_documented out of total_files_to_document. "
+                f"If you accumulated bugs/issues during documentation, REPORT THEM and ask user for guidance. "
                 f"NO recursive {self.get_name()} calls without actual documentation work!"
             )
 
@@ -365,22 +428,74 @@ class DocgenTool(WorkflowTool):
 
     # Hook method overrides for docgen-specific behavior
 
+    async def handle_work_completion(self, response_data: dict, request, arguments: dict) -> dict:
+        """
+        Override work completion to enforce counter validation.
+
+        The docgen tool MUST complete ALL files before finishing. If counters don't match,
+        force continuation regardless of next_step_required setting.
+        """
+        # CRITICAL VALIDATION: Check if all files have been documented using proper inheritance hooks
+        num_files_documented = self.get_request_num_files_documented(request)
+        total_files_to_document = self.get_request_total_files_to_document(request)
+
+        if num_files_documented < total_files_to_document:
+            # Counters don't match - force continuation!
+            logger.warning(
+                f"Docgen stopping early: {num_files_documented} < {total_files_to_document}. "
+                f"Forcing continuation to document remaining files."
+            )
+
+            # Override to continuation mode
+            response_data["status"] = "documentation_analysis_required"
+            response_data[f"pause_for_{self.get_name()}"] = True
+            response_data["next_steps"] = (
+                f"CRITICAL ERROR: You attempted to finish documentation with only {num_files_documented} "
+                f"out of {total_files_to_document} files documented! You MUST continue documenting "
+                f"the remaining {total_files_to_document - num_files_documented} files. "
+                f"Call {self.get_name()} again with step {request.step_number + 1} and continue documentation "
+                f"of the next undocumented file. DO NOT set next_step_required=false until ALL files are documented!"
+            )
+            return response_data
+
+        # If counters match, proceed with normal completion
+        return await super().handle_work_completion(response_data, request, arguments)
+
     def prepare_step_data(self, request) -> dict:
         """
         Prepare docgen-specific step data for processing.
+
+        Calculates total_steps dynamically based on number of files to document:
+        - Step 1: Discovery phase
+        - Steps 2+: One step per file to document
         """
+        # Calculate dynamic total_steps based on files to document
+        total_files_to_document = self.get_request_total_files_to_document(request)
+        if total_files_to_document > 0:
+            # Discovery step (1) + one step per file
+            calculated_total_steps = 1 + total_files_to_document
+        else:
+            # Fallback to request total_steps if no file count available
+            calculated_total_steps = request.total_steps
+
         step_data = {
             "step": request.step,
             "step_number": request.step_number,
+            "total_steps": calculated_total_steps,  # Use calculated value
             "findings": request.findings,
-            "doc_files": request.doc_files,
-            "doc_methods": request.doc_methods,
             "relevant_files": request.relevant_files,
             "relevant_context": request.relevant_context,
+            "num_files_documented": request.num_files_documented,
+            "total_files_to_document": request.total_files_to_document,
             "issues_found": [],  # Docgen uses this for documentation gaps
             "confidence": "medium",  # Default confidence for docgen
             "hypothesis": "systematic_documentation_needed",  # Default hypothesis
             "images": [],  # Docgen doesn't typically use images
+            # CRITICAL: Include documentation configuration parameters so the model can see them
+            "document_complexity": request.document_complexity,
+            "document_flow": request.document_flow,
+            "update_existing": request.update_existing,
+            "comments_on_complex_logic": request.comments_on_complex_logic,
         }
         return step_data
 
@@ -428,6 +543,20 @@ class DocgenTool(WorkflowTool):
         except AttributeError:
             return []
 
+    def get_request_num_files_documented(self, request) -> int:
+        """Get num_files_documented from request. Override for custom handling."""
+        try:
+            return request.num_files_documented or 0
+        except AttributeError:
+            return 0
+
+    def get_request_total_files_to_document(self, request) -> int:
+        """Get total_files_to_document from request. Override for custom handling."""
+        try:
+            return request.total_files_to_document or 0
+        except AttributeError:
+            return 0
+
     def get_skip_expert_analysis_status(self) -> str:
         """Docgen-specific expert analysis skip status."""
         return "skipped_due_to_complete_analysis"
@@ -444,13 +573,18 @@ class DocgenTool(WorkflowTool):
         Docgen-specific completion message.
         """
         return (
-            "DOCUMENTATION ANALYSIS IS COMPLETE. YOU MUST now summarize ALL key findings using the doc_files "
-            "and doc_methods tracking data. Present a clear summary showing: 1) Which files are completely "
-            "documented vs. partially documented vs. not started, 2) Specific functions/methods documented "
-            "vs. remaining (from doc_methods tracking), 3) Dependency relationships discovered between files, "
-            "4) Recommended documentation improvements with concrete examples including complexity analysis and "
-            "call flow information. Make it easy for a developer to see exactly which functions still need "
-            "documentation and what the implementation plan should be."
+            "DOCUMENTATION ANALYSIS IS COMPLETE FOR ALL FILES (num_files_documented equals total_files_to_document). "
+            "MANDATORY FINAL VERIFICATION: Before presenting your summary, you MUST perform a final verification scan. "
+            "Read through EVERY file you documented and check EVERY function, method, class, and property to confirm "
+            "it has proper documentation including complexity analysis and call flow information. If ANY items lack "
+            "documentation, document them immediately before finishing. "
+            "THEN present a clear summary showing: 1) Final counters: num_files_documented out of total_files_to_document, "
+            "2) Complete accountability list of ALL files you documented with verification status, "
+            "3) Detailed list of EVERY function/method you documented in each file (proving complete coverage), "
+            "4) Any dependency relationships you discovered between files, 5) Recommended documentation improvements with concrete examples including "
+            "complexity analysis and call flow information. 6) **CRITICAL**: List any bugs or logic issues you found "
+            "during documentation but did NOT fix - present these to the user and ask what they'd like to do about them. "
+            "Make it easy for a developer to see the complete documentation status across the entire codebase with full accountability."
         )
 
     def get_step_guidance_message(self, request) -> str:
