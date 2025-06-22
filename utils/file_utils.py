@@ -535,7 +535,14 @@ def read_files(
         str: All file contents formatted for AI consumption
     """
     if max_tokens is None:
+        # Prefer dynamic allocation over hardcoded fallback
+        # This fallback should only be used when model context is unavailable
         max_tokens = DEFAULT_CONTEXT_WINDOW
+        logger.warning(
+            f"[FILES] read_files called without max_tokens parameter. "
+            f"Using fallback limit of {DEFAULT_CONTEXT_WINDOW:,} tokens. "
+            f"For optimal performance with high-capacity models, ensure proper token allocation is passed."
+        )
 
     logger.debug(f"[FILES] read_files called with {len(file_paths)} paths")
     logger.debug(
