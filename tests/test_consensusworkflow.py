@@ -130,7 +130,11 @@ class TestConsensusWorkflowTool:
         assert "temperature" not in schema["properties"]
         assert "thinking_mode" not in schema["properties"]
         assert "use_websearch" not in schema["properties"]
-        assert "images" not in schema["properties"]
+
+        # Images should be present now
+        assert "images" in schema["properties"]
+        assert schema["properties"]["images"]["type"] == "array"
+        assert schema["properties"]["images"]["items"]["type"] == "string"
 
         # Verify field types
         assert schema["properties"]["step"]["type"] == "string"
@@ -297,11 +301,39 @@ class TestConsensusWorkflowTool:
 
         with patch.object(tool, "get_model_provider", return_value=mock_provider):
             result = await tool._consult_model(
-                {"model": "test-model", "stance": "neutral"}, Mock(relevant_files=[], continuation_id=None)
+                {"model": "test-model", "stance": "neutral"}, Mock(relevant_files=[], continuation_id=None, images=None)
             )
 
         assert result["status"] == "error"
         assert result["error"] == "Model error"
+        assert result["model"] == "test-model"
+
+    @pytest.mark.asyncio
+    async def test_consult_model_with_images(self):
+        """Test model consultation with images."""
+        tool = ConsensusWorkflowTool()
+        tool.initial_prompt = "Test prompt"
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_response = Mock(content="Model response with image analysis")
+        mock_provider.generate_content.return_value = mock_response
+        mock_provider.get_provider_type.return_value = Mock(value="gemini")
+
+        test_images = ["/path/to/image1.png", "/path/to/image2.jpg"]
+
+        with patch.object(tool, "get_model_provider", return_value=mock_provider):
+            result = await tool._consult_model(
+                {"model": "test-model", "stance": "neutral"},
+                Mock(relevant_files=[], continuation_id=None, images=test_images),
+            )
+
+        # Verify that images were passed to generate_content
+        mock_provider.generate_content.assert_called_once()
+        call_args = mock_provider.generate_content.call_args
+        assert call_args.kwargs.get("images") == test_images
+
+        assert result["status"] == "success"
         assert result["model"] == "test-model"
 
     @pytest.mark.asyncio
