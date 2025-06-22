@@ -72,13 +72,13 @@ class TestOpenRouterProvider:
 
         # Test alias resolution
         assert provider._resolve_model_name("opus") == "anthropic/claude-opus-4"
-        assert provider._resolve_model_name("sonnet") == "anthropic/claude-4-sonnet"
+        assert provider._resolve_model_name("sonnet") == "anthropic/claude-sonnet-4"
         assert provider._resolve_model_name("o3") == "openai/o3"
         assert provider._resolve_model_name("o3-mini") == "openai/o3-mini"
         assert provider._resolve_model_name("o3mini") == "openai/o3-mini"
         assert provider._resolve_model_name("o4-mini") == "openai/o4-mini"
         assert provider._resolve_model_name("o4-mini-high") == "openai/o4-mini-high"
-        assert provider._resolve_model_name("claude") == "anthropic/claude-4-sonnet"
+        assert provider._resolve_model_name("claude") == "anthropic/claude-sonnet-4"
         assert provider._resolve_model_name("mistral") == "mistralai/mistral-large-2411"
         assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-r1-0528"
         assert provider._resolve_model_name("r1") == "deepseek/deepseek-r1-0528"
@@ -87,7 +87,7 @@ class TestOpenRouterProvider:
         assert provider._resolve_model_name("OPUS") == "anthropic/claude-opus-4"
         assert provider._resolve_model_name("O3") == "openai/o3"
         assert provider._resolve_model_name("Mistral") == "mistralai/mistral-large-2411"
-        assert provider._resolve_model_name("CLAUDE") == "anthropic/claude-4-sonnet"
+        assert provider._resolve_model_name("CLAUDE") == "anthropic/claude-sonnet-4"
 
         # Test direct model names (should pass through unchanged)
         assert provider._resolve_model_name("anthropic/claude-opus-4") == "anthropic/claude-opus-4"
@@ -156,7 +156,7 @@ class TestOpenRouterAutoMode:
             "openai/o3",
             "openai/o3-mini",
             "anthropic/claude-opus-4",
-            "anthropic/claude-4-sonnet",
+            "anthropic/claude-sonnet-4",
         ]
 
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
@@ -194,7 +194,7 @@ class TestOpenRouterAutoMode:
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
             "anthropic/claude-opus-4",
-            "anthropic/claude-4-sonnet",
+            "anthropic/claude-sonnet-4",
         ]
         mock_registry.list_models.return_value = mock_models
 
@@ -305,7 +305,7 @@ class TestOpenRouterRegistry:
         for alias in sonnet_aliases:
             config = registry.resolve(alias)
             assert config is not None
-            assert config.model_name == "anthropic/claude-4-sonnet"
+            assert config.model_name == "anthropic/claude-sonnet-4"
 
 
 class TestOpenRouterFunctionality:

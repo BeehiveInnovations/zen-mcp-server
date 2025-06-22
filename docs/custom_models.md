@@ -42,7 +42,7 @@ The server uses `conf/custom_models.json` to map convenient aliases to both Open
 | Alias | Maps to OpenRouter Model |
 |-------|-------------------------|
 | `opus` | `anthropic/claude-opus-4` |
-| `sonnet`, `claude` | `anthropic/claude-4-sonnet` |
+| `sonnet`, `claude` | `anthropic/claude-sonnet-4` |
 | `haiku` | `anthropic/claude-3.5-haiku` |
 | `gpt4o`, `4o` | `openai/gpt-4o` |
 | `gpt4o-mini`, `4o-mini` | `openai/gpt-4o-mini` |
@@ -152,7 +152,7 @@ CUSTOM_MODEL_NAME=your-loaded-model
 ```
 # OpenRouter models:
 "Use opus for deep analysis"         # → anthropic/claude-opus-4
-"Use sonnet to review this code"     # → anthropic/claude-4-sonnet
+"Use sonnet to review this code"     # → anthropic/claude-sonnet-4
 "Use pro via zen to analyze this"    # → google/gemini-2.5-pro
 "Use gpt4o via zen to analyze this"  # → openai/gpt-4o
 "Use mistral via zen to optimize"    # → mistral/mistral-large

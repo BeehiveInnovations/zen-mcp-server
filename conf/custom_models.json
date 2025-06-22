@@ -60,7 +60,7 @@
       "description": "Claude 4 Opus - Most capable Claude model with vision"
     },
     {
-      "model_name": "anthropic/claude-4-sonnet",
+      "model_name": "anthropic/claude-sonnet-4",
       "aliases": ["sonnet", "claude-sonnet", "claude4-sonnet", "claude-4-sonnet", "claude"],
       "context_window": 200000,
       "supports_extended_thinking": false,

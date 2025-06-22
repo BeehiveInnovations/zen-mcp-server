@@ -288,11 +288,11 @@ class TestProviderHelperMethods:
         with patch.object(ModelProviderRegistry, "get_provider") as mock_get_provider:
             # Mock openrouter provider
             mock_openrouter = MagicMock()
-            mock_openrouter.validate_model_name.side_effect = lambda m: m == "anthropic/claude-4-sonnet"
+            mock_openrouter.validate_model_name.side_effect = lambda m: m == "anthropic/claude-sonnet-4"
             mock_get_provider.side_effect = lambda ptype: mock_openrouter if ptype == ProviderType.OPENROUTER else None
 
             model = ModelProviderRegistry._find_extended_thinking_model()
-            assert model == "anthropic/claude-4-sonnet"
+            assert model == "anthropic/claude-sonnet-4"
 
     def test_find_extended_thinking_model_none_found(self):
         """Test when no thinking model is found."""

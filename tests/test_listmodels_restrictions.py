@@ -54,7 +54,7 @@ class TestListModelsRestrictions(unittest.TestCase):
         # Include both aliased models and full model names without aliases
         self.mock_openrouter.list_models.return_value = [
             "anthropic/claude-opus-4-20240229",  # Has alias "opus"
-            "anthropic/claude-4-sonnet-20240229",  # Has alias "sonnet"
+            "anthropic/claude-sonnet-4-20240229",  # Has alias "sonnet"
             "deepseek/deepseek-r1-0528:free",  # No alias, full name
             "qwen/qwen3-235b-a22b-04-28:free",  # No alias, full name
         ]
@@ -72,7 +72,7 @@ class TestListModelsRestrictions(unittest.TestCase):
                 return config
             elif "sonnet" in model_name.lower():
                 config = MagicMock()
-                config.model_name = "anthropic/claude-4-sonnet-20240229"
+                config.model_name = "anthropic/claude-sonnet-4-20240229"
                 config.context_window = 200000
                 return config
             return None  # No config for models without aliases
@@ -94,7 +94,7 @@ class TestListModelsRestrictions(unittest.TestCase):
             "gemini-2.5-flash": ProviderType.GOOGLE,
             "gemini-2.5-pro": ProviderType.GOOGLE,
             "anthropic/claude-opus-4-20240229": ProviderType.OPENROUTER,
-            "anthropic/claude-4-sonnet-20240229": ProviderType.OPENROUTER,
+            "anthropic/claude-sonnet-4-20240229": ProviderType.OPENROUTER,
             "deepseek/deepseek-r1-0528:free": ProviderType.OPENROUTER,
             "qwen/qwen3-235b-a22b-04-28:free": ProviderType.OPENROUTER,
         }
