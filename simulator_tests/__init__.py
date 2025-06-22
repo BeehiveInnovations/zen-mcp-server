@@ -11,8 +11,8 @@ from .test_basic_conversation import BasicConversationTest
 from .test_chat_simple_validation import ChatSimpleValidationTest
 from .test_codereview_validation import CodeReviewValidationTest
 from .test_consensus_conversation import TestConsensusConversation
-from .test_consensus_stance import TestConsensusStance
 from .test_consensus_three_models import TestConsensusThreeModels
+from .test_consensus_workflow_accurate import TestConsensusWorkflowAccurate
 from .test_content_validation import ContentValidationTest
 from .test_conversation_chain_validation import ConversationChainValidationTest
 from .test_cross_tool_comprehensive import CrossToolComprehensiveTest
@@ -71,7 +71,7 @@ TEST_REGISTRY = {
     "vision_capability": VisionCapabilityTest,
     "xai_models": XAIModelsTest,
     "consensus_conversation": TestConsensusConversation,
-    "consensus_stance": TestConsensusStance,
+    "consensus_workflow_accurate": TestConsensusWorkflowAccurate,
     "consensus_three_models": TestConsensusThreeModels,
     "analyze_validation": AnalyzeValidationTest,
     "prompt_size_limit_bug": PromptSizeLimitBugTest,
@@ -108,7 +108,7 @@ __all__ = [
     "VisionCapabilityTest",
     "XAIModelsTest",
     "TestConsensusConversation",
-    "TestConsensusStance",
+    "TestConsensusWorkflowAccurate",
     "TestConsensusThreeModels",
     "AnalyzeValidationTest",
     "PromptSizeLimitBugTest",

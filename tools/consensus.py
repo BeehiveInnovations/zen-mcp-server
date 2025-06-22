@@ -48,8 +48,9 @@ CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS = {
         "steps 2+ are for processing individual model responses."
     ),
     "total_steps": (
-        "Total number of steps needed. This equals 1 (your analysis) + number of models to consult + "
-        "1 (final synthesis)."
+        "Total number of steps needed. This equals the number of models to consult. "
+        "Step 1 includes your analysis + first model consultation on return of the call. Final step includes "
+        "last model consultation + synthesis."
     ),
     "next_step_required": ("Set to true if more models need to be consulted. False when ready for final synthesis."),
     "findings": (
@@ -182,7 +183,7 @@ class ConsensusTool(WorkflowTool):
             "IMPORTANT: This workflow enforces sequential model consultation:\\n"
             "- Step 1 is always your independent analysis\\n"
             "- Each subsequent step processes one model response\\n"
-            "- Total steps = 1 (your analysis) + number of models + 1 (synthesis)\\n"
+            "- Total steps = number of models (each step includes consultation + response)\\n"
             "- Models can have stances (for/against/neutral) for structured debate\\n"
             "- Same model can be used multiple times with different stances\\n"
             "- Each model + stance combination must be unique\\n\\n"
@@ -435,15 +436,16 @@ of the evidence, even when it strongly points in one direction.""",
             self.initial_prompt = request.step
             self.models_to_consult = request.models or []
             self.accumulated_responses = []
-            # Set total steps: 1 (Claude) + len(models) + 1 (synthesis)
-            request.total_steps = 1 + len(self.models_to_consult) + 1
+            # Set total steps: len(models) (each step includes consultation + response)
+            request.total_steps = len(self.models_to_consult)
 
-        # If this is a model consultation step (2 through total_steps-1)
-        elif request.step_number > 1 and request.step_number < request.total_steps:
-            # Get the current model to consult
-            model_idx = request.current_model_index or 0
+        # For all steps (1 through total_steps), consult the corresponding model
+        if request.step_number <= request.total_steps:
+            # Calculate which model to consult for this step
+            model_idx = request.step_number - 1  # 0-based index
+
             if model_idx < len(self.models_to_consult):
-                # Consult the model
+                # Consult the model for this step
                 model_response = await self._consult_model(self.models_to_consult[model_idx], request)
 
                 # Add to accumulated responses
@@ -458,22 +460,47 @@ of the evidence, even when it strongly points in one direction.""",
                     "model_stance": model_response.get("stance", "neutral"),
                     "model_response": model_response,
                     "current_model_index": model_idx + 1,
-                    "next_step_required": request.step_number < request.total_steps - 1,
+                    "next_step_required": request.step_number < request.total_steps,
                 }
 
-                if request.step_number < request.total_steps - 1:
+                # Add Claude's analysis to step 1
+                if request.step_number == 1:
+                    response_data["claude_analysis"] = {
+                        "initial_analysis": request.step,
+                        "findings": request.findings,
+                    }
+                    response_data["status"] = "analysis_and_first_model_consulted"
+
+                # Check if this is the final step
+                if request.step_number == request.total_steps:
+                    response_data["status"] = "consensus_workflow_complete"
+                    response_data["consensus_complete"] = True
+                    response_data["complete_consensus"] = {
+                        "initial_prompt": self.initial_prompt,
+                        "models_consulted": [
+                            f"{m['model']}:{m.get('stance', 'neutral')}" for m in self.accumulated_responses
+                        ],
+                        "total_responses": len(self.accumulated_responses),
+                        "consensus_confidence": "high",
+                    }
+                    response_data["next_steps"] = (
+                        "CONSENSUS GATHERING IS COMPLETE. Synthesize all perspectives and present:\n"
+                        "1. Key points of AGREEMENT across models\n"
+                        "2. Key points of DISAGREEMENT and why they differ\n"
+                        "3. Your final consolidated recommendation\n"
+                        "4. Specific, actionable next steps for implementation\n"
+                        "5. Critical risks or concerns that must be addressed"
+                    )
+                else:
                     response_data["next_steps"] = (
                         f"Model {model_response['model']} has provided its {model_response.get('stance', 'neutral')} "
                         f"perspective. Please analyze this response and call {self.get_name()} again with:\n"
                         f"- step_number: {request.step_number + 1}\n"
-                        f"- findings: Summarize key points from this model's response\n"
-                        f"- current_model_index: {model_idx + 1}\n"
-                        f"- model_responses: (append this response to the list)"
+                        f"- findings: Summarize key points from this model's response"
                     )
-                else:
-                    response_data["next_steps"] = (
-                        "All models have been consulted. For the final step, synthesize all perspectives."
-                    )
+
+                # Add accumulated responses for tracking
+                response_data["accumulated_responses"] = self.accumulated_responses
 
                 return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
 
@@ -520,6 +547,7 @@ of the evidence, even when it strongly points in one direction.""",
                 "verdict": response.content,
                 "metadata": {
                     "provider": provider.get_provider_type().value,
+                    "model_name": model_name,
                 },
             }
 
@@ -627,7 +655,89 @@ of the evidence, even when it strongly points in one direction.""",
         else:
             response_data["consensus_workflow_status"] = "ready_for_synthesis"
 
+        # Customize metadata for consensus workflow
+        self._customize_consensus_metadata(response_data, request)
+
         return response_data
+
+    def _customize_consensus_metadata(self, response_data: dict, request) -> None:
+        """
+        Customize metadata for consensus workflow to accurately reflect multi-model nature.
+
+        The default workflow metadata shows the model running Claude's analysis steps,
+        but consensus is a multi-model tool that consults different models. We need
+        to provide accurate metadata that reflects this.
+        """
+        if "metadata" not in response_data:
+            response_data["metadata"] = {}
+
+        metadata = response_data["metadata"]
+
+        # Always preserve tool_name
+        metadata["tool_name"] = self.get_name()
+
+        if request.step_number == request.total_steps:
+            # Final step - show comprehensive consensus metadata
+            models_consulted = []
+            if self.models_to_consult:
+                models_consulted = [f"{m['model']}:{m.get('stance', 'neutral')}" for m in self.models_to_consult]
+
+            metadata.update(
+                {
+                    "workflow_type": "multi_model_consensus",
+                    "models_consulted": models_consulted,
+                    "consensus_complete": True,
+                    "total_models": len(self.models_to_consult) if self.models_to_consult else 0,
+                }
+            )
+
+            # Remove the misleading single model metadata
+            metadata.pop("model_used", None)
+            metadata.pop("provider_used", None)
+
+        else:
+            # Intermediate steps - show consensus workflow in progress
+            models_to_consult = []
+            if self.models_to_consult:
+                models_to_consult = [f"{m['model']}:{m.get('stance', 'neutral')}" for m in self.models_to_consult]
+
+            metadata.update(
+                {
+                    "workflow_type": "multi_model_consensus",
+                    "models_to_consult": models_to_consult,
+                    "consultation_step": request.step_number,
+                    "total_consultation_steps": request.total_steps,
+                }
+            )
+
+            # Remove the misleading single model metadata that shows Claude's execution model
+            # instead of the models being consulted
+            metadata.pop("model_used", None)
+            metadata.pop("provider_used", None)
+
+    def _add_workflow_metadata(self, response_data: dict, arguments: dict[str, Any]) -> None:
+        """
+        Override workflow metadata addition for consensus tool.
+
+        The consensus tool doesn't use single model metadata because it's a multi-model
+        workflow. Instead, we provide consensus-specific metadata that accurately
+        reflects the models being consulted.
+        """
+        # Initialize metadata if not present
+        if "metadata" not in response_data:
+            response_data["metadata"] = {}
+
+        # Add basic tool metadata
+        response_data["metadata"]["tool_name"] = self.get_name()
+
+        # The consensus-specific metadata is already added by _customize_consensus_metadata
+        # which is called from customize_workflow_response. We don't add the standard
+        # single-model metadata (model_used, provider_used) because it's misleading
+        # for a multi-model consensus workflow.
+
+        logger.debug(
+            f"[CONSENSUS_METADATA] {self.get_name()}: Using consensus-specific metadata instead of single-model metadata"
+        )
 
     def store_initial_issue(self, step_description: str):
         """Store initial prompt for model consultations."""
