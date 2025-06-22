@@ -1067,6 +1067,22 @@ Consider requesting searches for:
 
 When recommending searches, be specific about what information you need and why it would improve your analysis. Always remember to instruct Claude to use the continuation_id from this response when providing search results."""
 
+    def get_language_instruction(self) -> str:
+        """
+        Generate language instruction based on LOCALE configuration.
+
+        Returns:
+            str: Language instruction to prepend to prompt, or empty string if
+                 no locale set
+        """
+        from config import LOCALE
+
+        if not LOCALE or not LOCALE.strip():
+            return ""
+
+        # Simple language instruction
+        return f"Always respond in {LOCALE.strip()}.\n\n"
+
     # === ABSTRACT METHODS FOR SIMPLE TOOLS ===
 
     @abstractmethod
