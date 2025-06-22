@@ -61,7 +61,6 @@ from tools import (  # noqa: E402
     ChatTool,
     CodeReviewTool,
     ConsensusTool,
-    ConsensusWorkflowTool,
     DebugIssueTool,
     ListModelsTool,
     PlannerTool,
@@ -162,37 +161,51 @@ server: Server = Server("zen-server")
 # Each tool provides specialized functionality for different development tasks
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
+    "chat": ChatTool(),  # Interactive development chat and brainstorming
     "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
+    "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
+    "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
     "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
+    "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
-    "chat": ChatTool(),  # Interactive development chat and brainstorming
-    "consensus": ConsensusTool(),  # Multi-model consensus for diverse perspectives on technical proposals
-    "consensusworkflow": ConsensusWorkflowTool(),  # Step-by-step consensus workflow with multi-model analysis
-    "listmodels": ListModelsTool(),  # List all available AI models by provider
-    "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
-    "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
-    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
     "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
+    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
+    "listmodels": ListModelsTool(),  # List all available AI models by provider
 }
 
 # Rich prompt templates for all tools
 PROMPT_TEMPLATES = {
+    "chat": {
+        "name": "chat",
+        "description": "Chat and brainstorm ideas",
+        "template": "Chat with {model} about this",
+    },
     "thinkdeep": {
         "name": "thinkdeeper",
         "description": "Step-by-step deep thinking workflow with expert analysis",
         "template": "Start comprehensive deep thinking workflow with {model} using {thinking_mode} thinking mode",
+    },
+    "planner": {
+        "name": "planner",
+        "description": "Break down complex ideas, problems, or projects into multiple manageable steps",
+        "template": "Create a detailed plan with {model}",
+    },
+    "consensus": {
+        "name": "consensus",
+        "description": "Step-by-step consensus workflow with multi-model analysis",
+        "template": "Start comprehensive consensus workflow with {model}",
     },
     "codereview": {
         "name": "review",
         "description": "Perform a comprehensive code review",
         "template": "Perform a comprehensive code review with {model}",
     },
-    "codereviewworkflow": {
-        "name": "reviewworkflow",
-        "description": "Step-by-step code review workflow with expert analysis",
-        "template": "Start comprehensive code review workflow with {model}",
+    "precommit": {
+        "name": "precommit",
+        "description": "Step-by-step pre-commit validation workflow",
+        "template": "Start comprehensive pre-commit validation workflow with {model}",
     },
     "debug": {
         "name": "debug",
@@ -204,26 +217,6 @@ PROMPT_TEMPLATES = {
         "description": "Analyze files and code structure",
         "template": "Analyze these files with {model}",
     },
-    "chat": {
-        "name": "chat",
-        "description": "Chat and brainstorm ideas",
-        "template": "Chat with {model} about this",
-    },
-    "consensusworkflow": {
-        "name": "consensusworkflow",
-        "description": "Step-by-step consensus workflow with multi-model analysis",
-        "template": "Start comprehensive consensus workflow with {model}",
-    },
-    "precommit": {
-        "name": "precommit",
-        "description": "Step-by-step pre-commit validation workflow",
-        "template": "Start comprehensive pre-commit validation workflow with {model}",
-    },
-    "testgen": {
-        "name": "testgen",
-        "description": "Generate comprehensive tests",
-        "template": "Generate comprehensive tests with {model}",
-    },
     "refactor": {
         "name": "refactor",
         "description": "Refactor and improve code structure",
@@ -234,10 +227,10 @@ PROMPT_TEMPLATES = {
         "description": "Trace code execution paths",
         "template": "Generate tracer analysis with {model}",
     },
-    "planner": {
-        "name": "planner",
-        "description": "Break down complex ideas, problems, or projects into multiple manageable steps",
-        "template": "Create a detailed plan with {model}",
+    "testgen": {
+        "name": "testgen",
+        "description": "Generate comprehensive tests",
+        "template": "Generate comprehensive tests with {model}",
     },
     "listmodels": {
         "name": "listmodels",
