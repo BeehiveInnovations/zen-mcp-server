@@ -446,21 +446,6 @@ async def handle_list_tools() -> list[Tool]:
             )
         )
 
-    # Add utility tools that provide server metadata and configuration info
-    # These tools don't require AI processing but are useful for clients
-    tools.extend(
-        [
-            Tool(
-                name="version",
-                description=(
-                    "VERSION & CONFIGURATION - Get server version, configuration details, "
-                    "and list of available tools. Useful for debugging and understanding capabilities."
-                ),
-                inputSchema={"type": "object", "properties": {}},
-            ),
-        ]
-    )
-
     # Log cache efficiency info
     if os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here":
         logger.debug("OpenRouter registry cache used efficiently across all tool schemas")
