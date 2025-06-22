@@ -75,7 +75,9 @@ class TestConsensusThreeModels(BaseSimulatorTest):
             # Check for step 1 status (Claude analysis + first model consultation)
             expected_status = "analysis_and_first_model_consulted"
             if consensus_data["status"] != expected_status:
-                self.logger.error(f"Three-model consensus step 1 failed with status: {consensus_data['status']}, expected: {expected_status}")
+                self.logger.error(
+                    f"Three-model consensus step 1 failed with status: {consensus_data['status']}, expected: {expected_status}"
+                )
 
                 # Log additional error details for debugging
                 if "error" in consensus_data:
@@ -89,7 +91,7 @@ class TestConsensusThreeModels(BaseSimulatorTest):
 
                 return False
 
-            # Check that we have model response from step 1 
+            # Check that we have model response from step 1
             model_response = consensus_data.get("model_response")
             if not model_response:
                 self.logger.error("Three-model consensus step 1 response missing model_response")

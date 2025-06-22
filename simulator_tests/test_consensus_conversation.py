@@ -122,7 +122,9 @@ class TestConsensusConversation(ConversationBaseTest):
             # Check for step 1 status (Claude analysis + first model consultation)
             expected_status = "analysis_and_first_model_consulted"
             if consensus_data.get("status") != expected_status:
-                self.logger.error(f"Consensus step 1 failed with status: {consensus_data.get('status')}, expected: {expected_status}")
+                self.logger.error(
+                    f"Consensus step 1 failed with status: {consensus_data.get('status')}, expected: {expected_status}"
+                )
                 if "error" in consensus_data:
                     self.logger.error(f"Error: {consensus_data['error']}")
                 return False
@@ -178,7 +180,7 @@ class TestConsensusConversation(ConversationBaseTest):
             # Phase 4: Verify response structure
             self.logger.info("Phase 4: Verifying consensus response structure")
 
-            # Check that we have model response from step 1 
+            # Check that we have model response from step 1
             model_response = consensus_data.get("model_response")
             if not model_response:
                 self.logger.error("Consensus step 1 response missing model_response")
