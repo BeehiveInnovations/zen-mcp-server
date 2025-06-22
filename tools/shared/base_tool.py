@@ -1344,7 +1344,7 @@ When recommending searches, be specific about what information you need and why 
         except Exception as e:
             logger.warning(f"Failed to get capabilities from model_context for image validation: {e}")
             # Generic error response when capabilities cannot be accessed
-            model_name = getattr(model_context, 'model_name', 'unknown')
+            model_name = getattr(model_context, "model_name", "unknown")
             return {
                 "status": "error",
                 "content": f"Model '{model_name}' is not available. {str(e)}",

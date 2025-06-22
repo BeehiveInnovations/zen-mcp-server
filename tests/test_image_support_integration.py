@@ -184,7 +184,7 @@ class TestImageSupportIntegration:
             # Should return error because model not available or doesn't support images
             assert result is not None
             assert result["status"] == "error"
-            assert ("is not available" in result["content"] or "does not support image processing" in result["content"])
+            assert "is not available" in result["content"] or "does not support image processing" in result["content"]
 
             # Test that empty/None images always pass regardless of model
             result = tool._validate_image_limits([], "any-model")
@@ -433,7 +433,7 @@ class TestImageSupportIntegration:
         # Should return error because model not available or doesn't support images
         assert result is not None
         assert result["status"] == "error"
-        assert ("is not available" in result["content"] or "does not support image processing" in result["content"])
+        assert "is not available" in result["content"] or "does not support image processing" in result["content"]
 
         # Test with another non-existent model to check error handling
         result = tool._validate_image_limits(images, "another-dummy-model")
