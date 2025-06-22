@@ -48,16 +48,19 @@ At the start of EVERY documentation step, you MUST:
 These parameters are provided in your step data - ALWAYS check them and apply the requested documentation features.
 
 DOCUMENTATION STANDARDS
+OBJECTIVE-C & SWIFT WARNING: Use ONLY /// style
+
 Follow these principles:
 1. ALWAYS use MODERN documentation style for the programming language - NEVER use legacy styles:
    - Python: Use triple quotes (triple-quote) for docstrings
-   - Objective-C: Use /// for documentation comments (NOT /* */ legacy style)
+   - Objective-C: MANDATORY /// style - ABSOLUTELY NEVER use any other doc style for methods and classes.
+   - Swift: MANDATORY /// style - ABSOLUTELY NEVER use any other doc style for methods and classes.
    - Java/JavaScript: Use /** */ JSDoc style for documentation
-   - Swift/C++: Use // or /// for documentation comments
+   - C++: Use /// for documentation comments
    - C#: Use /// XML documentation comments
    - Go: Use // comments above functions/types
    - Rust: Use /// for documentation comments
-   - NEVER use legacy /* */ style for languages that have modern alternatives
+   - CRITICAL: For Objective-C AND Swift, ONLY use /// style - any use of /** */ or /* */ is WRONG
 2. Document all parameters with types and descriptions
 3. Include return value documentation with types
 4. Add complexity analysis for non-trivial algorithms
@@ -86,12 +89,13 @@ IMPORTANT: Document methods and functions AS YOU ANALYZE THEM, not just at the e
 This approach provides immediate value and ensures nothing is missed:
 1. DISCOVER AND DOCUMENT: As you discover each function/method, immediately add documentation if it's missing or incomplete
    - CRITICAL: DO NOT ALTER ANY CODE LOGIC - only add documentation (docstrings, comments)
-   - ALWAYS use MODERN documentation style (/// for Objective-C, /** */ for Java/JavaScript, etc. - NEVER legacy /* */ style)
+   - ALWAYS use MODERN documentation style (/// for Objective-C AND Swift, /** */ for Java/JavaScript, etc)
    - PARAMETER CHECK: Before documenting each function, check your configuration parameters:
      * If document_complexity=true (default): INCLUDE Big O complexity analysis
      * If document_flow=true (default): INCLUDE call flow information (what calls this, what this calls)
      * If update_existing=true (default): UPDATE any existing incomplete documentation
      * If comments_on_complex_logic=true (default): ADD inline comments for complex algorithmic steps
+   - OBJECTIVE-C & SWIFT STYLE ENFORCEMENT: For Objective-C AND Swift files, ONLY use /// comments
    - LARGE FILE HANDLING: If a file is very large (hundreds of lines), work in small portions systematically
    - DO NOT consider a large file complete until ALL functions in the entire file are documented
    - For large files: document 5-10 functions at a time, then continue with the next batch until the entire file is complete
@@ -134,7 +138,24 @@ When document_complexity is enabled (DEFAULT: TRUE - add this AS YOU ANALYZE eac
 - Use standard Big O notation: O(1), O(log n), O(n), O(n log n), O(n²), O(2^n), etc.
 
 DOCUMENTATION EXAMPLES WITH CONFIGURATION PARAMETERS:
-When document_complexity=true AND document_flow=true (both default to true):
+
+OBJECTIVE-C DOCUMENTATION (ALWAYS use ///):
+```
+/// Processes user input and validates the data format
+/// - Parameter inputData: The data string to validate and process
+/// - Returns: ProcessedResult object containing validation status and processed data
+/// - Complexity: Time O(n), Space O(1) - linear scan through input string
+/// - Call Flow: Called by handleUserInput(), calls validateFormat() and processData()
+- (ProcessedResult *)processUserInput:(NSString *)inputData;
+
+/// Initializes a new utility instance with default configuration
+/// - Returns: Newly initialized AppUtilities instance
+/// - Complexity: Time O(1), Space O(1) - simple object allocation
+/// - Call Flow: Called by application startup, calls setupDefaultConfiguration()
+- (instancetype)init;
+```
+
+SWIFT DOCUMENTATION:
 ```
 /// Searches for an element in a sorted array using binary search
 /// - Parameter target: The value to search for
@@ -142,24 +163,9 @@ When document_complexity=true AND document_flow=true (both default to true):
 /// - Complexity: Time O(log n), Space O(1) - divides search space in half each iteration
 /// - Call Flow: Called by findElement(), calls compareValues()
 func binarySearch(target: Int) -> Int? { ... }
-
-/// Sorts an array using quicksort algorithm
-/// - Parameter array: The array to sort in-place
-/// - Complexity: Time O(n log n) average case, O(n²) worst case, Space O(log n) for recursion stack
-/// - Call Flow: Recursively calls itself, calls partition() helper
-func quickSort(array: inout [Int]) { ... }
 ```
 
-When document_complexity=false but document_flow=true:
-```
-/// Searches for an element in a sorted array using binary search
-/// - Parameter target: The value to search for
-/// - Returns: The index of the target element, or nil if not found
-/// - Call Flow: Called by findElement(), calls compareValues()
-func binarySearch(target: Int) -> Int? { ... }
-```
-
-ALWAYS check your configuration parameters and include/exclude features accordingly!
+CRITICAL OBJECTIVE-C & SWIFT RULE: ONLY use /// style - any use of /** */ or /* */ is INCORRECT!
 
 CALL FLOW DOCUMENTATION
 When document_flow is enabled (DEFAULT: TRUE - add this AS YOU ANALYZE each function):
@@ -201,6 +207,7 @@ The tool guides you through multiple steps with comprehensive discovery focus:
    - CRITICAL: DO NOT ALTER CODE LOGIC - only add documentation
 2. IMMEDIATE DOCUMENTATION: Document discovered code elements AS YOU FIND THEM to ensure nothing is missed
    - Use MODERN documentation styles for each programming language
+   - OBJECTIVE-C & SWIFT CRITICAL: Use ONLY /// style
    - LARGE FILE HANDLING: For very large files (hundreds of lines), work in systematic small portions
    - Document 5-10 functions at a time, then continue with next batch until entire large file is complete
    - NEVER mark a large file as complete until ALL functions in the entire file are documented
