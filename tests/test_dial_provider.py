@@ -12,12 +12,12 @@ from providers.dial import DIALModelProvider
 class TestDIALProvider:
     """Test DIAL provider functionality."""
 
-    @patch.dict(os.environ, {"DIAL_API_KEY": "test-key", "DIAL_API_HOST": "https://api.test.dial.ai"})
+    @patch.dict(os.environ, {"DIAL_API_KEY": "test-key", "DIAL_API_HOST": "https://test.dialx.ai"})
     def test_initialization_with_host(self):
         """Test provider initialization with custom host."""
         provider = DIALModelProvider("test-key")
         assert provider.api_key == "test-key"
-        assert provider.base_url == "https://api.test.dial.ai/openai"
+        assert provider.base_url == "https://test.dialx.ai/openai"
         assert provider.get_provider_type() == ProviderType.DIAL
 
     @patch.dict(os.environ, {"DIAL_API_KEY": "test-key", "DIAL_API_HOST": ""}, clear=True)
@@ -25,17 +25,17 @@ class TestDIALProvider:
         """Test provider initialization with default host."""
         provider = DIALModelProvider("test-key")
         assert provider.api_key == "test-key"
-        assert provider.base_url == "https://api.dial.ai/openai"
+        assert provider.base_url == "https://core.dialx.ai/openai"
 
     def test_initialization_host_normalization(self):
         """Test that host URL is normalized to include /openai suffix."""
         # Test with host missing /openai
-        provider = DIALModelProvider("test-key", base_url="https://api.custom.dial.ai")
-        assert provider.base_url == "https://api.custom.dial.ai/openai"
+        provider = DIALModelProvider("test-key", base_url="https://custom.dialx.ai")
+        assert provider.base_url == "https://custom.dialx.ai/openai"
 
         # Test with host already having /openai
-        provider = DIALModelProvider("test-key", base_url="https://api.custom.dial.ai/openai")
-        assert provider.base_url == "https://api.custom.dial.ai/openai"
+        provider = DIALModelProvider("test-key", base_url="https://custom.dialx.ai/openai")
+        assert provider.base_url == "https://custom.dialx.ai/openai"
 
     def test_model_validation(self):
         """Test model name validation."""

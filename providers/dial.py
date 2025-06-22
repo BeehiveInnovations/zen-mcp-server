@@ -93,7 +93,7 @@ class DIALModelProvider(OpenAICompatibleProvider):
             **kwargs: Additional configuration options
         """
         # Get DIAL API host from environment or kwargs
-        dial_host = kwargs.get("base_url") or os.getenv("DIAL_API_HOST") or "https://api.dial.ai"
+        dial_host = kwargs.get("base_url") or os.getenv("DIAL_API_HOST") or "https://core.dialx.ai"
 
         # DIAL uses /openai endpoint for OpenAI-compatible API
         if not dial_host.endswith("/openai"):
