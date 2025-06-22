@@ -403,7 +403,7 @@ class ModelProviderRegistry:
             # Prefer models known for deep reasoning
             preferred_models = [
                 "anthropic/claude-4-sonnet",
-                "anthropic/claude-4-opus",
+                "anthropic/claude-opus-4",
                 "google/gemini-2.5-pro",
                 "google/gemini-pro-1.5",
                 "meta-llama/llama-3.1-70b-instruct",

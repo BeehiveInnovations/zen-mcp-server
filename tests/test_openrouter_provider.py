@@ -71,7 +71,7 @@ class TestOpenRouterProvider:
         provider = OpenRouterProvider(api_key="test-key")
 
         # Test alias resolution
-        assert provider._resolve_model_name("opus") == "anthropic/claude-4-opus"
+        assert provider._resolve_model_name("opus") == "anthropic/claude-opus-4"
         assert provider._resolve_model_name("sonnet") == "anthropic/claude-4-sonnet"
         assert provider._resolve_model_name("o3") == "openai/o3"
         assert provider._resolve_model_name("o3-mini") == "openai/o3-mini"
@@ -84,13 +84,13 @@ class TestOpenRouterProvider:
         assert provider._resolve_model_name("r1") == "deepseek/deepseek-r1-0528"
 
         # Test case-insensitive
-        assert provider._resolve_model_name("OPUS") == "anthropic/claude-4-opus"
+        assert provider._resolve_model_name("OPUS") == "anthropic/claude-opus-4"
         assert provider._resolve_model_name("O3") == "openai/o3"
         assert provider._resolve_model_name("Mistral") == "mistralai/mistral-large-2411"
         assert provider._resolve_model_name("CLAUDE") == "anthropic/claude-4-sonnet"
 
         # Test direct model names (should pass through unchanged)
-        assert provider._resolve_model_name("anthropic/claude-4-opus") == "anthropic/claude-4-opus"
+        assert provider._resolve_model_name("anthropic/claude-opus-4") == "anthropic/claude-opus-4"
         assert provider._resolve_model_name("openai/o3") == "openai/o3"
 
         # Test unknown models pass through
@@ -155,7 +155,7 @@ class TestOpenRouterAutoMode:
             "google/gemini-2.5-pro",
             "openai/o3",
             "openai/o3-mini",
-            "anthropic/claude-4-opus",
+            "anthropic/claude-opus-4",
             "anthropic/claude-4-sonnet",
         ]
 
@@ -181,7 +181,7 @@ class TestOpenRouterAutoMode:
         os.environ.pop("OPENAI_API_KEY", None)
         os.environ["OPENROUTER_API_KEY"] = "test-openrouter-key"
         os.environ.pop("OPENROUTER_ALLOWED_MODELS", None)
-        os.environ["OPENROUTER_ALLOWED_MODELS"] = "anthropic/claude-4-opus,google/gemini-2.5-flash"
+        os.environ["OPENROUTER_ALLOWED_MODELS"] = "anthropic/claude-opus-4,google/gemini-2.5-flash"
         os.environ["DEFAULT_MODEL"] = "auto"
 
         # Force reload to pick up new environment variable
@@ -193,7 +193,7 @@ class TestOpenRouterAutoMode:
         mock_models = [
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
-            "anthropic/claude-4-opus",
+            "anthropic/claude-opus-4",
             "anthropic/claude-4-sonnet",
         ]
         mock_registry.list_models.return_value = mock_models
@@ -212,7 +212,7 @@ class TestOpenRouterAutoMode:
 
         assert len(available_models) > 0, "Should have some allowed models"
 
-        expected_allowed = {"google/gemini-2.5-flash", "anthropic/claude-4-opus"}
+        expected_allowed = {"google/gemini-2.5-flash", "anthropic/claude-opus-4"}
 
         assert (
             set(available_models.keys()) == expected_allowed
@@ -263,7 +263,7 @@ class TestOpenRouterRegistry:
         # Should have loaded models
         models = registry.list_models()
         assert len(models) > 0
-        assert "anthropic/claude-4-opus" in models
+        assert "anthropic/claude-opus-4" in models
         assert "openai/o3" in models
 
         # Should have loaded aliases
@@ -282,13 +282,13 @@ class TestOpenRouterRegistry:
         # Test known model
         caps = registry.get_capabilities("opus")
         assert caps is not None
-        assert caps.model_name == "anthropic/claude-4-opus"
+        assert caps.model_name == "anthropic/claude-opus-4"
         assert caps.context_window == 200000  # Claude's context window
 
         # Test using full model name
-        caps = registry.get_capabilities("anthropic/claude-4-opus")
+        caps = registry.get_capabilities("anthropic/claude-opus-4")
         assert caps is not None
-        assert caps.model_name == "anthropic/claude-4-opus"
+        assert caps.model_name == "anthropic/claude-opus-4"
 
         # Test unknown model
         caps = registry.get_capabilities("non-existent-model")

@@ -527,7 +527,7 @@ class TestAutoModeComprehensive:
                 "google/gemini-2.5-pro",
                 "openai/o3",
                 "openai/o4-mini",
-                "anthropic/claude-4-opus",
+                "anthropic/claude-opus-4",
             ]
 
             with patch.object(OpenRouterProvider, "_registry", mock_registry):
