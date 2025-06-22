@@ -72,6 +72,10 @@ CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS = {
         "to call next."
     ),
     "model_responses": ("Accumulated responses from models consulted so far. Internal field for tracking progress."),
+    "images": (
+        "Optional list of image paths or base64 data URLs for visual context. Useful for UI/UX discussions, "
+        "architecture diagrams, mockups, or any visual references that help inform the consensus analysis."
+    ),
 }
 
 
@@ -120,7 +124,7 @@ class ConsensusWorkflowRequest(WorkflowRequest):
     issues_found: list[dict] | None = Field(default_factory=list, exclude=True)
     hypothesis: str | None = Field(None, exclude=True)
     backtrack_from_step: int | None = Field(None, exclude=True)
-    images: list[str] | None = Field(default_factory=list, exclude=True)
+    images: list[str] | None = Field(default_factory=list)  # Enable images for consensus workflow
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
@@ -276,6 +280,11 @@ of the evidence, even when it strongly points in one direction.""",
                 "items": {"type": "object"},
                 "description": CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["model_responses"],
             },
+            "images": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["images"],
+            },
         }
 
         # Build schema without standard workflow fields we don't use
@@ -294,7 +303,6 @@ of the evidence, even when it strongly points in one direction.""",
                 "issues_found",
                 "hypothesis",
                 "backtrack_from_step",
-                "images",
                 "confidence",  # Not used in consensus workflow
                 "temperature",  # Not used in consensus workflow
                 "thinking_mode",  # Not used in consensus workflow
@@ -360,7 +368,7 @@ of the evidence, even when it strongly points in one direction.""",
             "issues_found": [],  # Not used
             "confidence": "exploring",  # Not used, kept for compatibility
             "hypothesis": None,  # Not used
-            "images": [],  # Not used
+            "images": request.images or [],  # Now used for visual context
         }
         return step_data
 
@@ -500,6 +508,7 @@ of the evidence, even when it strongly points in one direction.""",
                 system_prompt=system_prompt,
                 temperature=0.2,  # Low temperature for consistency
                 thinking_mode="medium",
+                images=request.images if request.images else None,
             )
 
             return {
