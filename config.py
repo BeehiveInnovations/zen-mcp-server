@@ -104,7 +104,7 @@ DEFAULT_CONSENSUS_MAX_INSTANCES_PER_COMBINATION = 2
 #
 # This ensures MCP transport stays within protocol limits while allowing internal
 # processing to use full model context windows (200K-1M+ tokens).
-MCP_PROMPT_SIZE_LIMIT = 50_000  # 50K characters (user input only)
+MCP_PROMPT_SIZE_LIMIT = 60_000  # 50K characters (user input only)
 
 # Threading configuration
 # Simple in-memory conversation threading for stateless MCP environment

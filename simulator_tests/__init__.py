@@ -31,6 +31,7 @@ from .test_per_tool_deduplication import PerToolDeduplicationTest
 from .test_planner_continuation_history import PlannerContinuationHistoryTest
 from .test_planner_validation import PlannerValidationTest
 from .test_precommitworkflow_validation import PrecommitWorkflowValidationTest
+from .test_prompt_size_limit_bug import PromptSizeLimitBugTest
 
 # Redis validation test removed - no longer needed for standalone server
 from .test_refactor_validation import RefactorValidationTest
@@ -73,6 +74,7 @@ TEST_REGISTRY = {
     "consensus_stance": TestConsensusStance,
     "consensus_three_models": TestConsensusThreeModels,
     "analyze_validation": AnalyzeValidationTest,
+    "prompt_size_limit_bug": PromptSizeLimitBugTest,
     # "o3_pro_expensive": O3ProExpensiveTest,  # COMMENTED OUT - too expensive to run by default
 }
 
@@ -109,5 +111,6 @@ __all__ = [
     "TestConsensusStance",
     "TestConsensusThreeModels",
     "AnalyzeValidationTest",
+    "PromptSizeLimitBugTest",
     "TEST_REGISTRY",
 ]

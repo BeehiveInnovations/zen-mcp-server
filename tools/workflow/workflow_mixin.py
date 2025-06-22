@@ -28,6 +28,7 @@ from typing import Any, Optional
 
 from mcp.types import TextContent
 
+from config import MCP_PROMPT_SIZE_LIMIT
 from utils.conversation_memory import add_turn, create_thread
 
 from ..shared.base_models import ConsolidatedFindings
@@ -616,6 +617,20 @@ class BaseWorkflowMixin(ABC):
 
             # Validate request using tool-specific model
             request = self.get_workflow_request_model()(**arguments)
+
+            # Validate step field size (basic validation for workflow instructions)
+            # If step is too large, user should use shorter instructions and put details in files
+            step_content = request.step
+            if step_content and len(step_content) > MCP_PROMPT_SIZE_LIMIT:
+                from tools.models import ToolOutput
+
+                error_output = ToolOutput(
+                    status="resend_prompt",
+                    content="Step instructions are too long. Please use shorter instructions and provide detailed context via file paths instead.",
+                    content_type="text",
+                    metadata={"prompt_size": len(step_content), "limit": MCP_PROMPT_SIZE_LIMIT},
+                )
+                raise ValueError(f"MCP_SIZE_CHECK:{error_output.model_dump_json()}")
 
             # Validate file paths for security (same as base tool)
             # Use try/except instead of hasattr as per coding standards

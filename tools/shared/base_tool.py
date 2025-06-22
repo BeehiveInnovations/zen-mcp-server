@@ -800,6 +800,23 @@ class BaseTool(ABC):
 
         return prompt_content, updated_files if updated_files else None
 
+    def get_prompt_content_for_size_validation(self, user_content: str) -> str:
+        """
+        Get the content that should be validated for MCP prompt size limits.
+
+        This hook method allows tools to specify what content should be checked
+        against the MCP transport size limit. By default, it returns the user content,
+        but can be overridden to exclude conversation history when needed.
+
+        Args:
+            user_content: The user content that would normally be validated
+
+        Returns:
+            The content that should actually be validated for size limits
+        """
+        # Default implementation: validate the full user content
+        return user_content
+
     def check_prompt_size(self, text: str) -> Optional[dict[str, Any]]:
         """
         Check if USER INPUT text is too large for MCP transport boundary.

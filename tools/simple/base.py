@@ -699,6 +699,32 @@ Please provide a thoughtful, comprehensive response:"""
 
         return full_prompt
 
+    def get_prompt_content_for_size_validation(self, user_content: str) -> str:
+        """
+        Override to use original user prompt for size validation when conversation history is embedded.
+
+        When server.py embeds conversation history into the prompt field, it also stores
+        the original user prompt in _original_user_prompt. We use that for size validation
+        to avoid incorrectly triggering size limits due to conversation history.
+
+        Args:
+            user_content: The user content (may include conversation history)
+
+        Returns:
+            The original user prompt if available, otherwise the full user content
+        """
+        # Check if we have the current arguments from execute() method
+        current_args = getattr(self, "_current_arguments", None)
+        if current_args:
+            # If server.py embedded conversation history, it stores original prompt separately
+            original_user_prompt = current_args.get("_original_user_prompt")
+            if original_user_prompt is not None:
+                # Use original user prompt for size validation (excludes conversation history)
+                return original_user_prompt
+
+        # Fallback to default behavior (validate full user content)
+        return user_content
+
     def get_websearch_guidance(self) -> Optional[str]:
         """
         Return tool-specific web search guidance.
@@ -742,8 +768,9 @@ Please provide a thoughtful, comprehensive response:"""
         # Use prompt.txt content if available, otherwise use the prompt field
         user_content = prompt_content if prompt_content else self.get_request_prompt(request)
 
-        # Check user input size at MCP transport boundary
-        size_check = self.check_prompt_size(user_content)
+        # Check user input size at MCP transport boundary (excluding conversation history)
+        validation_content = self.get_prompt_content_for_size_validation(user_content)
+        size_check = self.check_prompt_size(validation_content)
         if size_check:
             from tools.models import ToolOutput
 

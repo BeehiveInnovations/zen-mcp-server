@@ -879,7 +879,10 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
     # Store the enhanced prompt in the prompt field
     enhanced_arguments["prompt"] = enhanced_prompt
+    # Store the original user prompt separately for size validation
+    enhanced_arguments["_original_user_prompt"] = original_prompt
     logger.debug("[CONVERSATION_DEBUG] Storing enhanced prompt in 'prompt' field")
+    logger.debug("[CONVERSATION_DEBUG] Storing original user prompt in '_original_user_prompt' field")
 
     # Calculate remaining token budget based on current model
     # (model_context was already created above for history building)
