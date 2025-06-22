@@ -594,6 +594,145 @@ class SecauditTool(WorkflowTool):
             "format specified in the system prompt."
         )
 
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
+        """
+        Security audit-specific completion message.
+        """
+        base_message = (
+            "SECURITY AUDIT IS COMPLETE. You MUST now summarize and present ALL security findings organized by "
+            "severity (Critical → High → Medium → Low), specific code locations with line numbers, and exact "
+            "remediation steps for each vulnerability. Clearly prioritize the top 3 security issues that need "
+            "immediate attention. Provide concrete, actionable guidance for each vulnerability—make it easy for "
+            "developers to understand exactly what needs to be fixed and how to implement the security improvements."
+        )
+
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Provide specific guidance for handling expert analysis in security audits.
+        """
+        return (
+            "IMPORTANT: Analysis from an assistant model has been provided above. You MUST critically evaluate and validate "
+            "the expert security findings rather than accepting them blindly. Cross-reference the expert analysis with "
+            "your own investigation findings, verify that suggested security improvements are appropriate for this "
+            "application's context and threat model, and ensure recommendations align with the project's security requirements. "
+            "Present a synthesis that combines your systematic security review with validated expert insights, clearly "
+            "distinguishing between vulnerabilities you've independently confirmed and additional insights from expert analysis."
+        )
+
+    def get_step_guidance_message(self, request) -> str:
+        """
+        Security audit-specific step guidance with detailed investigation instructions.
+        """
+        step_guidance = self.get_security_audit_step_guidance(request.step_number, request.confidence, request)
+        return step_guidance["next_steps"]
+
+    def get_security_audit_step_guidance(self, step_number: int, confidence: str, request) -> dict[str, Any]:
+        """
+        Provide step-specific guidance for security audit workflow.
+        """
+        # Generate the next steps instruction based on required actions
+        required_actions = self.get_required_actions(step_number, confidence, request.findings, request.total_steps)
+
+        if step_number == 1:
+            next_steps = (
+                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first examine "
+                f"the code files thoroughly using appropriate tools. CRITICAL AWARENESS: You need to understand "
+                f"the security landscape, identify potential vulnerabilities across OWASP Top 10 categories, "
+                f"and look for authentication flaws, injection points, cryptographic issues, and authorization bypasses. "
+                f"Use file reading tools, security analysis, and systematic examination to gather comprehensive information. "
+                f"Only call {self.get_name()} again AFTER completing your security investigation. When you call "
+                f"{self.get_name()} next time, use step_number: {step_number + 1} and report specific "
+                f"files examined, vulnerabilities found, and security assessments discovered."
+            )
+        elif confidence in ["exploring", "low"]:
+            next_steps = (
+                f"STOP! Do NOT call {self.get_name()} again yet. Based on your findings, you've identified areas that need "
+                f"deeper security analysis. MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
+                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                + f"\n\nOnly call {self.get_name()} again with step_number: {step_number + 1} AFTER "
+                + "completing these security audit tasks."
+            )
+        elif confidence in ["medium", "high"]:
+            next_steps = (
+                f"WAIT! Your security audit needs final verification. DO NOT call {self.get_name()} immediately. REQUIRED ACTIONS:\n"
+                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                + f"\n\nREMEMBER: Ensure you have identified all significant vulnerabilities across all severity levels and "
+                f"verified the completeness of your security review. Document findings with specific file references and "
+                f"line numbers where applicable, then call {self.get_name()} with step_number: {step_number + 1}."
+            )
+        else:
+            next_steps = (
+                f"PAUSE SECURITY AUDIT. Before calling {self.get_name()} step {step_number + 1}, you MUST examine more code thoroughly. "
+                + "Required: "
+                + ", ".join(required_actions[:2])
+                + ". "
+                + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
+                f"NEW evidence from actual security analysis, not just theories. NO recursive {self.get_name()} calls "
+                f"without investigation work!"
+            )
+
+        return {"next_steps": next_steps}
+
+    def customize_workflow_response(self, response_data: dict, request) -> dict:
+        """
+        Customize response to match security audit workflow format.
+        """
+        # Store initial request on first step
+        if request.step_number == 1:
+            self.initial_request = request.step
+            # Store security configuration for expert analysis
+            if request.relevant_files:
+                self.security_config = {
+                    "relevant_files": request.relevant_files,
+                    "security_scope": request.security_scope,
+                    "threat_level": request.threat_level,
+                    "compliance_requirements": request.compliance_requirements,
+                    "audit_focus": request.audit_focus,
+                    "severity_filter": request.severity_filter,
+                }
+
+        # Convert generic status names to security audit-specific ones
+        tool_name = self.get_name()
+        status_mapping = {
+            f"{tool_name}_in_progress": "security_audit_in_progress",
+            f"pause_for_{tool_name}": "pause_for_security_audit",
+            f"{tool_name}_required": "security_audit_required",
+            f"{tool_name}_complete": "security_audit_complete",
+        }
+
+        if response_data["status"] in status_mapping:
+            response_data["status"] = status_mapping[response_data["status"]]
+
+        # Rename status field to match security audit workflow
+        if f"{tool_name}_status" in response_data:
+            response_data["security_audit_status"] = response_data.pop(f"{tool_name}_status")
+            # Add security audit-specific status fields
+            response_data["security_audit_status"]["vulnerabilities_by_severity"] = {}
+            for issue in self.consolidated_findings.issues_found:
+                severity = issue.get("severity", "unknown")
+                if severity not in response_data["security_audit_status"]["vulnerabilities_by_severity"]:
+                    response_data["security_audit_status"]["vulnerabilities_by_severity"][severity] = 0
+                response_data["security_audit_status"]["vulnerabilities_by_severity"][severity] += 1
+            response_data["security_audit_status"]["audit_confidence"] = self.get_request_confidence(request)
+
+        # Map complete_secaudit to complete_security_audit
+        if f"complete_{tool_name}" in response_data:
+            response_data["complete_security_audit"] = response_data.pop(f"complete_{tool_name}")
+
+        # Map the completion flag to match security audit workflow
+        if f"{tool_name}_complete" in response_data:
+            response_data["security_audit_complete"] = response_data.pop(f"{tool_name}_complete")
+
+        return response_data
+
     # Override inheritance hooks for security audit-specific behavior
 
     def get_completion_status(self) -> str:
@@ -603,6 +742,35 @@ class SecauditTool(WorkflowTool):
     def get_completion_data_key(self) -> str:
         """Security audit uses 'complete_security_audit' key."""
         return "complete_security_audit"
+
+    def get_final_analysis_from_request(self, request):
+        """Security audit tools use 'findings' field."""
+        return request.findings
+
+    def get_confidence_level(self, request) -> str:
+        """Security audit tools use 'certain' for high confidence."""
+        return "certain"
+
+    def get_completion_message(self) -> str:
+        """Security audit-specific completion message."""
+        return (
+            "Security audit complete with CERTAIN confidence. You have identified all significant vulnerabilities "
+            "and provided comprehensive security analysis. MANDATORY: Present the user with the complete security audit results "
+            "categorized by severity, and IMMEDIATELY proceed with implementing the highest priority security fixes "
+            "or provide specific guidance for vulnerability remediation. Focus on actionable security recommendations."
+        )
+
+    def get_skip_reason(self) -> str:
+        """Security audit-specific skip reason."""
+        return "Claude completed comprehensive security audit with full confidence"
+
+    def get_skip_expert_analysis_status(self) -> str:
+        """Security audit-specific expert analysis skip status."""
+        return "skipped_due_to_certain_audit_confidence"
+
+    def prepare_work_summary(self) -> str:
+        """Security audit-specific work summary."""
+        return self._build_security_audit_summary(self.consolidated_findings)
 
     def get_request_model(self):
         """Return the request model for this tool"""
