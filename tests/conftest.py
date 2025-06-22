@@ -163,7 +163,7 @@ def mock_provider_availability(request, monkeypatch):
 
     # Also mock is_effective_auto_mode for all BaseTool instances to return False
     # unless we're specifically testing auto mode behavior
-    from tools.base import BaseTool
+    from tools.shared.base_tool import BaseTool
 
     def mock_is_effective_auto_mode(self):
         # If this is an auto mode test file or specific auto mode test, use the real logic

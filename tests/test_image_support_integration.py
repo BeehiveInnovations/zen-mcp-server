@@ -410,7 +410,7 @@ class TestImageSupportIntegration:
 
     def test_tool_request_base_class_has_images(self):
         """Test that base ToolRequest class includes images field."""
-        from tools.base import ToolRequest
+        from tools.shared.base_models import ToolRequest
 
         # Create request with images
         request = ToolRequest(images=["test.png", "test2.jpg"])

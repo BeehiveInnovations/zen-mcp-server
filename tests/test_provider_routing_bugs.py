@@ -15,8 +15,8 @@ import pytest
 
 from providers.base import ProviderType
 from providers.registry import ModelProviderRegistry
-from tools.base import ToolRequest
 from tools.chat import ChatTool
+from tools.shared.base_models import ToolRequest
 
 
 class MockRequest(ToolRequest):

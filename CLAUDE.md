@@ -20,8 +20,17 @@ This script automatically runs:
 - Ruff linting with auto-fix
 - Black code formatting 
 - Import sorting with isort
-- Complete unit test suite
+- Complete unit test suite (excluding integration tests)
 - Verification that all checks pass 100%
+
+**Run Integration Tests (requires API keys):**
+```bash
+# Run integration tests that make real API calls
+./run_integration_tests.sh
+
+# Run integration tests + simulator tests
+./run_integration_tests.sh --with-simulator
+```
 
 ### Server Management
 
@@ -207,20 +216,22 @@ python -m pytest tests/ -v
 ### Development Workflow
 
 #### Before Making Changes
-1. Ensure virtual environment is activated: `source venv/bin/activate`
+1. Ensure virtual environment is activated: `source .zen_venv/bin/activate`
 2. Run quality checks: `./code_quality_checks.sh`
 3. Check logs to ensure server is healthy: `tail -n 50 logs/mcp_server.log`
 
 #### After Making Changes
 1. Run quality checks again: `./code_quality_checks.sh`
-2. Run relevant simulator tests: `python communication_simulator_test.py --individual <test_name>`
-3. Check logs for any issues: `tail -n 100 logs/mcp_server.log`
-4. Restart Claude session to use updated code
+2. Run integration tests locally: `./run_integration_tests.sh`
+3. Run relevant simulator tests: `python communication_simulator_test.py --individual <test_name>`
+4. Check logs for any issues: `tail -n 100 logs/mcp_server.log`
+5. Restart Claude session to use updated code
 
 #### Before Committing/PR
 1. Final quality check: `./code_quality_checks.sh`
-2. Run full simulator test suite: `python communication_simulator_test.py`
-3. Verify all tests pass 100%
+2. Run integration tests: `./run_integration_tests.sh`
+3. Run full simulator test suite: `./run_integration_tests.sh --with-simulator`
+4. Verify all tests pass 100%
 
 ### Common Troubleshooting
 

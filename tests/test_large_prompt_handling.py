@@ -123,12 +123,6 @@ class TestLargePromptHandling:
             # Cleanup
             shutil.rmtree(temp_dir)
 
-    @pytest.mark.skip(reason="Integration test - may make API calls in batch mode, rely on simulator tests")
-    @pytest.mark.asyncio
-    async def test_thinkdeep_large_analysis(self, large_prompt):
-        """Test that thinkdeep tool detects large step content."""
-        pass
-
     @pytest.mark.asyncio
     async def test_codereview_large_focus(self, large_prompt):
         """Test that codereview tool detects large focus_on field using real integration testing."""

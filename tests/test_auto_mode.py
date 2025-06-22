@@ -252,7 +252,7 @@ class TestAutoMode:
 
     def test_model_field_schema_generation(self):
         """Test the get_model_field_schema method"""
-        from tools.base import BaseTool
+        from tools.shared.base_tool import BaseTool
 
         # Create a minimal concrete tool for testing
         class TestTool(BaseTool):
@@ -307,7 +307,8 @@ class TestAutoMode:
 
             schema = tool.get_model_field_schema()
             assert "enum" not in schema
-            assert "Available models:" in schema["description"]
+            # Check for the new schema format
+            assert "Model to use." in schema["description"]
             assert "'pro'" in schema["description"]
             assert "Defaults to" in schema["description"]
 

@@ -9,12 +9,12 @@ import pytest
 
 from providers.registry import ModelProviderRegistry, ProviderType
 from tools.analyze import AnalyzeTool
-from tools.base import BaseTool
 from tools.chat import ChatTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
 from tools.models import ToolModelCategory
 from tools.precommit import PrecommitTool
+from tools.shared.base_tool import BaseTool
 from tools.thinkdeep import ThinkDeepTool
 
 
@@ -230,12 +230,6 @@ class TestAutoModeErrorMessages:
         """Clean up after each test to prevent state pollution."""
         # Clear provider registry singleton
         ModelProviderRegistry._instance = None
-
-    @pytest.mark.skip(reason="Integration test - may make API calls in batch mode, rely on simulator tests")
-    @pytest.mark.asyncio
-    async def test_thinkdeep_auto_error_message(self):
-        """Test ThinkDeep tool suggests appropriate model in auto mode."""
-        pass
 
     @pytest.mark.asyncio
     async def test_chat_auto_error_message(self):
