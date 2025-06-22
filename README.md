@@ -390,9 +390,19 @@ Nice! This is just one instance - take a look at [another example here](docs/too
 Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
 
 ```
-See logs under /Users/me/project/diagnostics.log and related code under the sync folder. Logs show that sync
-works but sometimes it gets stuck and there are no errors displayed to the user. Using zen's debug tool with gemini pro, find out
-why this is happening and what the root cause is and its fix 
+See logs under /Users/me/project/diagnostics.log and related code under the sync folder. 
+Logs show that sync works but sometimes it gets stuck and there are no errors displayed to 
+the user. Using zen's debug tool with gemini pro, find out why this is happening and what the root 
+cause is and its fix 
+```
+
+You can also add `do not use another model` to make Claude perform the entire workflow on its own. This is recommended
+for most debugging workflows, as Claude is able to confidently find the bug by the time the workflow ends.
+
+When in doubt, you can always follow up with a new prompt and ask Claude to share its findings with another model:
+
+```text
+Use continuation with thinkdeep, share details with o4-mini-high to find out what the best fix is for this
 ```
 
 **[📖 Read More](docs/tools/debug.md)** - Step-by-step investigation methodology with workflow enforcement
