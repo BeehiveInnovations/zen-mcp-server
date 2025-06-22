@@ -8,6 +8,16 @@ set -euo pipefail
 # Handles environment setup, dependency installation, and configuration.
 # ============================================================================
 
+# Initialize pyenv if available (do this early)
+if [[ -d "$HOME/.pyenv" ]]; then
+    export PYENV_ROOT="$HOME/.pyenv"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    if command -v pyenv &> /dev/null; then
+        eval "$(pyenv init --path)" 2>/dev/null || true
+        eval "$(pyenv init -)" 2>/dev/null || true
+    fi
+fi
+
 # ----------------------------------------------------------------------------
 # Constants and Configuration
 # ----------------------------------------------------------------------------
@@ -183,6 +193,12 @@ cleanup_docker() {
 
 # Find suitable Python command
 find_python() {
+    # Pyenv should already be initialized at script start, but check if .python-version exists
+    if [[ -f ".python-version" ]] && command -v pyenv &> /dev/null; then
+        # Ensure pyenv respects the local .python-version
+        pyenv local &>/dev/null || true
+    fi
+    
     # Prefer Python 3.12 for best compatibility
     local python_cmds=("python3.12" "python3.13" "python3.11" "python3.10" "python3" "python" "py")
     
@@ -195,22 +211,155 @@ find_python() {
                 
                 # Check minimum version (3.10) for better library compatibility
                 if [[ $major_version -ge 10 ]]; then
-                    echo "$cmd"
-                    print_success "Found Python: $version"
-                    
-                    # Recommend Python 3.12
-                    if [[ $major_version -ne 12 ]]; then
-                        print_info "Note: Python 3.12 is recommended for best compatibility."
+                    # Verify the command actually exists (important for pyenv)
+                    if command -v "$cmd" &> /dev/null; then
+                        echo "$cmd"
+                        print_success "Found Python: $version"
+                        
+                        # Recommend Python 3.12
+                        if [[ $major_version -ne 12 ]]; then
+                            print_info "Note: Python 3.12 is recommended for best compatibility."
+                        fi
+                        
+                        return 0
                     fi
-                    
-                    return 0
                 fi
             fi
         fi
     done
     
-    print_error "Python 3.10+ not found. Please install Python 3.10 or newer (3.12 recommended)."
+    # No suitable Python found - check if we can use pyenv
+    local os_type=$(detect_os)
+    
+    # Check for pyenv on Unix-like systems (macOS/Linux)
+    if [[ "$os_type" == "macos" || "$os_type" == "linux" || "$os_type" == "wsl" ]]; then
+        if command -v pyenv &> /dev/null; then
+            # pyenv exists, check if Python 3.12 is installed
+            if ! pyenv versions 2>/dev/null | grep -E "3\.(1[2-9]|[2-9][0-9])" >/dev/null; then
+                echo ""
+                echo "Python 3.10+ is required. Pyenv can install Python 3.12 locally for this project."
+                read -p "Install Python 3.12 using pyenv? (Y/n): " -n 1 -r
+                echo ""
+                if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                    if install_python_with_pyenv; then
+                        # Try finding Python again
+                        if python_cmd=$(find_python); then
+                            echo "$python_cmd"
+                            return 0
+                        fi
+                    fi
+                fi
+            else
+                # Python 3.12+ is installed in pyenv but may not be active
+                # Check if .python-version exists
+                if [[ ! -f ".python-version" ]] || ! grep -qE "3\.(1[2-9]|[2-9][0-9])" .python-version 2>/dev/null; then
+                    echo ""
+                    print_info "Python 3.12 is installed via pyenv but not set for this project."
+                    read -p "Set Python 3.12.0 for this project? (Y/n): " -n 1 -r
+                    echo ""
+                    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                        # Find the first suitable Python version
+                        local py_version=$(pyenv versions --bare | grep -E "^3\.(1[2-9]|[2-9][0-9])" | head -1)
+                        if [[ -n "$py_version" ]]; then
+                            pyenv local "$py_version"
+                            print_success "Set Python $py_version for this project"
+                            # Re-initialize pyenv to pick up the change
+                            eval "$(pyenv init --path)" 2>/dev/null || true
+                            eval "$(pyenv init -)" 2>/dev/null || true
+                            # Try finding Python again
+                            if python_cmd=$(find_python); then
+                                echo "$python_cmd"
+                                return 0
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        else
+            # No pyenv installed - show instructions
+            echo "" >&2
+            print_error "Python 3.10+ not found. The 'mcp' package requires Python 3.10+."
+            echo "" >&2
+            
+            if [[ "$os_type" == "macos" ]]; then
+                echo "To install Python locally for this project:" >&2
+                echo "" >&2
+                echo "1. Install pyenv (manages Python versions per project):" >&2
+                echo "   brew install pyenv" >&2
+                echo "" >&2
+                echo "2. Add to ~/.zshrc:" >&2
+                echo '   export PYENV_ROOT="$HOME/.pyenv"' >&2
+                echo '   export PATH="$PYENV_ROOT/bin:$PATH"' >&2
+                echo '   eval "$(pyenv init -)"' >&2
+                echo "" >&2
+                echo "3. Restart terminal, then run:" >&2
+                echo "   pyenv install 3.12.0" >&2
+                echo "   cd $(pwd)" >&2
+                echo "   pyenv local 3.12.0" >&2
+                echo "   ./run-server.sh" >&2
+            else
+                # Linux/WSL
+                echo "To install Python locally for this project:" >&2
+                echo "" >&2
+                echo "1. Install pyenv:" >&2
+                echo "   curl https://pyenv.run | bash" >&2
+                echo "" >&2
+                echo "2. Add to ~/.bashrc:" >&2
+                echo '   export PYENV_ROOT="$HOME/.pyenv"' >&2
+                echo '   export PATH="$PYENV_ROOT/bin:$PATH"' >&2
+                echo '   eval "$(pyenv init -)"' >&2
+                echo "" >&2
+                echo "3. Restart terminal, then run:" >&2
+                echo "   pyenv install 3.12.0" >&2
+                echo "   cd $(pwd)" >&2
+                echo "   pyenv local 3.12.0" >&2
+                echo "   ./run-server.sh" >&2
+            fi
+        fi
+    else
+        # Other systems (shouldn't happen with bash script)
+        print_error "Python 3.10+ not found. Please install Python 3.10 or newer."
+    fi
+    
     return 1
+}
+
+# Install Python with pyenv (when pyenv is already installed)
+install_python_with_pyenv() {
+    # Ensure pyenv is initialized
+    export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)" 2>/dev/null || true
+    
+    print_info "Installing Python 3.12 (this may take a few minutes)..."
+    if pyenv install -s 3.12.0; then
+        print_success "Python 3.12 installed"
+        
+        # Set local Python version for this project
+        pyenv local 3.12.0
+        print_success "Python 3.12 set for this project"
+        
+        # Show shell configuration instructions
+        echo ""
+        print_info "To make pyenv work in new terminals, add to your shell config:"
+        local shell_config="~/.zshrc"
+        if [[ "$SHELL" == *"bash"* ]]; then
+            shell_config="~/.bashrc"
+        fi
+        echo '  export PYENV_ROOT="$HOME/.pyenv"'
+        echo '  command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"'
+        echo '  eval "$(pyenv init -)"'
+        echo ""
+        
+        # Re-initialize pyenv to use the newly installed Python
+        eval "$(pyenv init --path)" 2>/dev/null || true
+        eval "$(pyenv init -)" 2>/dev/null || true
+        
+        return 0
+    else
+        print_error "Failed to install Python 3.12"
+        return 1
+    fi
 }
 
 # Detect Linux distribution
@@ -814,6 +963,8 @@ validate_api_keys() {
         echo "  XAI_API_KEY=your-actual-key" >&2
         echo "  OPENROUTER_API_KEY=your-actual-key" >&2
         echo "" >&2
+        print_info "After adding your API keys, run ./run-server.sh again" >&2
+        echo "" >&2
         return 1
     fi
     
@@ -1220,7 +1371,10 @@ main() {
     
     # Step 2: Find Python
     local python_cmd
-    python_cmd=$(find_python) || exit 1
+    if ! python_cmd=$(find_python); then
+        # find_python already printed error messages, just exit
+        exit 1
+    fi
     
     # Step 3: Setup environment file
     setup_env_file || exit 1
