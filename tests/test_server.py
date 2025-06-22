@@ -93,6 +93,16 @@ class TestServerTools:
         assert len(result) == 1
 
         response = result[0].text
-        assert "Zen MCP Server v" in response  # Version agnostic check
-        assert "Available Tools:" in response
-        assert "thinkdeep" in response
+        # Parse the JSON response
+        import json
+
+        data = json.loads(response)
+        assert data["status"] == "success"
+        content = data["content"]
+
+        # Check for expected content in the markdown output
+        assert "# Zen MCP Server Version" in content
+        assert "## Available Tools" in content
+        assert "thinkdeep" in content
+        assert "docgen" in content
+        assert "version" in content

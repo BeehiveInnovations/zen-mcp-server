@@ -490,9 +490,15 @@ class TestLargePromptHandling:
         small_continuation_prompt = "Continue the discussion"
 
         # Mock huge conversation history (simulates many turns of conversation)
-        huge_conversation_history = "=== CONVERSATION HISTORY ===\n" + (
-            "Previous message content\n" * 2000
-        )  # Very large history
+        # Calculate repetitions needed to exceed MCP_PROMPT_SIZE_LIMIT
+        base_text = "=== CONVERSATION HISTORY ===\n"
+        repeat_text = "Previous message content\n"
+        # Add buffer to ensure we exceed the limit
+        target_size = MCP_PROMPT_SIZE_LIMIT + 1000
+        available_space = target_size - len(base_text)
+        repetitions_needed = (available_space // len(repeat_text)) + 1
+
+        huge_conversation_history = base_text + (repeat_text * repetitions_needed)
 
         # Ensure the history exceeds MCP limits
         assert len(huge_conversation_history) > MCP_PROMPT_SIZE_LIMIT

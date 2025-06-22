@@ -62,6 +62,7 @@ from tools import (  # noqa: E402
     CodeReviewTool,
     ConsensusTool,
     DebugIssueTool,
+    DocgenTool,
     ListModelsTool,
     PlannerTool,
     PrecommitTool,
@@ -69,6 +70,7 @@ from tools import (  # noqa: E402
     TestGenTool,
     ThinkDeepTool,
     TracerTool,
+    VersionTool,
 )
 from tools.models import ToolOutput  # noqa: E402
 
@@ -168,11 +170,13 @@ TOOLS = {
     "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
+    "docgen": DocgenTool(),  # Step-by-step documentation generation with complexity analysis
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
     "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
     "listmodels": ListModelsTool(),  # List all available AI models by provider
+    "version": VersionTool(),  # Display server version and system information
 }
 
 # Rich prompt templates for all tools
@@ -212,6 +216,11 @@ PROMPT_TEMPLATES = {
         "description": "Debug an issue or error",
         "template": "Help debug this issue with {model}",
     },
+    "docgen": {
+        "name": "docgen",
+        "description": "Generate comprehensive code documentation with complexity analysis",
+        "template": "Generate comprehensive documentation with {model}",
+    },
     "analyze": {
         "name": "analyze",
         "description": "Analyze files and code structure",
@@ -236,6 +245,11 @@ PROMPT_TEMPLATES = {
         "name": "listmodels",
         "description": "List available AI models",
         "template": "List all available models",
+    },
+    "version": {
+        "name": "version",
+        "description": "Show server version and system information",
+        "template": "Show Zen MCP Server version",
     },
 }
 
