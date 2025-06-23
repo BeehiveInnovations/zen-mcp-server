@@ -53,8 +53,8 @@ class TestListModelsRestrictions(unittest.TestCase):
         # Set up mock to return only allowed models when restrictions are respected
         # Include both aliased models and full model names without aliases
         self.mock_openrouter.list_models.return_value = [
-            "anthropic/claude-opus-4-20240229",  # Has alias "opus"
-            "anthropic/claude-sonnet-4-20240229",  # Has alias "sonnet"
+            "anthropic/claude-opus-4",  # Has alias "opus"
+            "anthropic/claude-sonnet-4",  # Has alias "sonnet"
             "deepseek/deepseek-r1-0528:free",  # No alias, full name
             "qwen/qwen3-235b-a22b-04-28:free",  # No alias, full name
         ]
@@ -172,7 +172,7 @@ class TestListModelsRestrictions(unittest.TestCase):
         utils.model_restrictions._restriction_service = None
 
         # Set up mock to return many models when no restrictions
-        all_models = [f"provider{i//10}/model-{i}" for i in range(50)]  # Simulate 50 models from different providers
+        all_models = [f"provider{i // 10}/model-{i}" for i in range(50)]  # Simulate 50 models from different providers
         self.mock_openrouter.list_models.return_value = all_models
 
         # Mock registry instance
