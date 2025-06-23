@@ -77,7 +77,7 @@ class TestOpenRouterProvider:
         assert provider._resolve_model_name("o3-mini") == "openai/o3-mini"
         assert provider._resolve_model_name("o3mini") == "openai/o3-mini"
         assert provider._resolve_model_name("o4-mini") == "openai/o4-mini"
-        assert provider._resolve_model_name("o4-mini-high") == "openai/o4-mini-high"
+        assert provider._resolve_model_name("o4-mini") == "openai/o4-mini"
         assert provider._resolve_model_name("claude") == "anthropic/claude-sonnet-4"
         assert provider._resolve_model_name("mistral") == "mistralai/mistral-large-2411"
         assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-r1-0528"

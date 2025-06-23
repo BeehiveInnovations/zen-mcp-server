@@ -101,6 +101,7 @@ class OpenRouterProvider(OpenAICompatibleProvider):
                 model_name=resolved_name,
                 friendly_name=self.FRIENDLY_NAME,
                 context_window=32_768,  # Conservative default context window
+                max_output_tokens=32_768,
                 supports_extended_thinking=False,
                 supports_system_prompts=True,
                 supports_streaming=True,

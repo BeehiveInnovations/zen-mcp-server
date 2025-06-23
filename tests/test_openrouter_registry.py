@@ -24,7 +24,16 @@ class TestOpenRouterModelRegistry:
     def test_custom_config_path(self):
         """Test registry with custom config path."""
         # Create temporary config
-        config_data = {"models": [{"model_name": "test/model-1", "aliases": ["test1", "t1"], "context_window": 4096}]}
+        config_data = {
+            "models": [
+                {
+                    "model_name": "test/model-1",
+                    "aliases": ["test1", "t1"],
+                    "context_window": 4096,
+                    "max_output_tokens": 2048,
+                }
+            ]
+        }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(config_data, f)
@@ -42,7 +51,11 @@ class TestOpenRouterModelRegistry:
     def test_environment_variable_override(self):
         """Test OPENROUTER_MODELS_PATH environment variable."""
         # Create custom config
-        config_data = {"models": [{"model_name": "env/model", "aliases": ["envtest"], "context_window": 8192}]}
+        config_data = {
+            "models": [
+                {"model_name": "env/model", "aliases": ["envtest"], "context_window": 8192, "max_output_tokens": 4096}
+            ]
+        }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(config_data, f)
@@ -127,11 +140,12 @@ class TestOpenRouterModelRegistry:
         """Test that duplicate aliases are detected."""
         config_data = {
             "models": [
-                {"model_name": "test/model-1", "aliases": ["dupe"], "context_window": 4096},
+                {"model_name": "test/model-1", "aliases": ["dupe"], "context_window": 4096, "max_output_tokens": 2048},
                 {
                     "model_name": "test/model-2",
                     "aliases": ["DUPE"],  # Same alias, different case
                     "context_window": 8192,
+                    "max_output_tokens": 2048,
                 },
             ]
         }
@@ -207,6 +221,7 @@ class TestOpenRouterModelRegistry:
             friendly_name="OpenRouter (test/full-featured)",
             aliases=["full"],
             context_window=128000,
+            max_output_tokens=8192,
             supports_extended_thinking=True,
             supports_system_prompts=True,
             supports_streaming=True,

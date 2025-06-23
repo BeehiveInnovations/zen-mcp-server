@@ -24,8 +24,6 @@ class ModelProviderRegistry:
             cls._instance._providers = {}
             cls._instance._initialized_providers = {}
             logging.debug(f"REGISTRY: Created instance {cls._instance}")
-        else:
-            logging.debug(f"REGISTRY: Returning existing instance {cls._instance}")
         return cls._instance
 
     @classmethod

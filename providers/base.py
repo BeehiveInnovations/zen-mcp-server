@@ -132,6 +132,7 @@ class ModelCapabilities:
     model_name: str
     friendly_name: str  # Human-friendly name like "Gemini" or "OpenAI"
     context_window: int  # Total context window size in tokens
+    max_output_tokens: int  # Maximum output tokens per request
     supports_extended_thinking: bool = False
     supports_system_prompts: bool = True
     supports_streaming: bool = True

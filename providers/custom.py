@@ -158,6 +158,7 @@ class CustomProvider(OpenAICompatibleProvider):
                 model_name=resolved_name,
                 friendly_name=f"{self.FRIENDLY_NAME} ({resolved_name})",
                 context_window=32_768,  # Conservative default
+                max_output_tokens=32_768,  # Conservative default max output
                 supports_extended_thinking=False,  # Most custom models don't support this
                 supports_system_prompts=True,
                 supports_streaming=True,
@@ -187,7 +188,7 @@ class CustomProvider(OpenAICompatibleProvider):
         Returns:
             True if model is intended for custom/local endpoint
         """
-        logging.debug(f"Custom provider validating model: '{model_name}'")
+        # logging.debug(f"Custom provider validating model: '{model_name}'")
 
         # Try to resolve through registry first
         config = self._registry.resolve(model_name)
@@ -195,12 +196,12 @@ class CustomProvider(OpenAICompatibleProvider):
             model_id = config.model_name
             # Use explicit is_custom flag for clean validation
             if config.is_custom:
-                logging.debug(f"Model '{model_name}' -> '{model_id}' validated via registry (custom model)")
+                logging.debug(f"... [Custom] Model '{model_name}' -> '{model_id}' validated via registry")
                 return True
             else:
                 # This is a cloud/OpenRouter model - CustomProvider should NOT handle these
                 # Let OpenRouter provider handle them instead
-                logging.debug(f"Model '{model_name}' -> '{model_id}' rejected (cloud model, defer to OpenRouter)")
+                # logging.debug(f"... [Custom] Model '{model_name}' -> '{model_id}' not custom (defer to OpenRouter)")
                 return False
 
         # Handle version tags for unknown models (e.g., "my-model:latest")

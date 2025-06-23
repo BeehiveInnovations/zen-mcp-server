@@ -24,6 +24,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             model_name="o3",
             friendly_name="OpenAI (O3)",
             context_window=200_000,  # 200K tokens
+            max_output_tokens=65536,  # 64K max output tokens
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,
@@ -41,6 +42,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             model_name="o3-mini",
             friendly_name="OpenAI (O3-mini)",
             context_window=200_000,  # 200K tokens
+            max_output_tokens=65536,  # 64K max output tokens
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,
@@ -58,6 +60,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             model_name="o3-pro-2025-06-10",
             friendly_name="OpenAI (O3-Pro)",
             context_window=200_000,  # 200K tokens
+            max_output_tokens=65536,  # 64K max output tokens
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,
@@ -75,6 +78,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             model_name="o4-mini",
             friendly_name="OpenAI (O4-mini)",
             context_window=200_000,  # 200K tokens
+            max_output_tokens=65536,  # 64K max output tokens
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,
@@ -85,30 +89,14 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_temperature=False,  # O4 models don't accept temperature parameter
             temperature_constraint=create_temperature_constraint("fixed"),
             description="Latest reasoning model (200K context) - Optimized for shorter contexts, rapid reasoning",
-            aliases=["mini", "o4mini"],
-        ),
-        "o4-mini-high": ModelCapabilities(
-            provider=ProviderType.OPENAI,
-            model_name="o4-mini-high",
-            friendly_name="OpenAI (O4-mini-high)",
-            context_window=200_000,  # 200K tokens
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=True,
-            supports_json_mode=True,
-            supports_images=True,  # O4 models support vision
-            max_image_size_mb=20.0,  # 20MB per OpenAI docs
-            supports_temperature=False,  # O4 models don't accept temperature parameter
-            temperature_constraint=create_temperature_constraint("fixed"),
-            description="Enhanced O4 mini (200K context) - Higher reasoning effort for complex tasks",
-            aliases=["o4minihigh", "o4minihi", "mini-high"],
+            aliases=["mini", "o4mini", "o4-mini"],
         ),
         "gpt-4.1-2025-04-14": ModelCapabilities(
             provider=ProviderType.OPENAI,
             model_name="gpt-4.1-2025-04-14",
             friendly_name="OpenAI (GPT 4.1)",
             context_window=1_000_000,  # 1M tokens
+            max_output_tokens=32_768,
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,

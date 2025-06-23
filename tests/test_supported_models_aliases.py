@@ -51,15 +51,14 @@ class TestSupportedModelsAliases:
         assert "o4mini" in provider.SUPPORTED_MODELS["o4-mini"].aliases
         assert "o3mini" in provider.SUPPORTED_MODELS["o3-mini"].aliases
         assert "o3-pro" in provider.SUPPORTED_MODELS["o3-pro-2025-06-10"].aliases
-        assert "o4minihigh" in provider.SUPPORTED_MODELS["o4-mini-high"].aliases
-        assert "o4minihi" in provider.SUPPORTED_MODELS["o4-mini-high"].aliases
+        assert "o4mini" in provider.SUPPORTED_MODELS["o4-mini"].aliases
         assert "gpt4.1" in provider.SUPPORTED_MODELS["gpt-4.1-2025-04-14"].aliases
 
         # Test alias resolution
         assert provider._resolve_model_name("mini") == "o4-mini"
         assert provider._resolve_model_name("o3mini") == "o3-mini"
         assert provider._resolve_model_name("o3-pro") == "o3-pro-2025-06-10"
-        assert provider._resolve_model_name("o4minihigh") == "o4-mini-high"
+        assert provider._resolve_model_name("o4mini") == "o4-mini"
         assert provider._resolve_model_name("gpt4.1") == "gpt-4.1-2025-04-14"
 
         # Test case insensitive resolution

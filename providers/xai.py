@@ -26,6 +26,7 @@ class XAIModelProvider(OpenAICompatibleProvider):
             model_name="grok-3",
             friendly_name="X.AI (Grok 3)",
             context_window=131_072,  # 131K tokens
+            max_output_tokens=131072,
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,
@@ -43,6 +44,7 @@ class XAIModelProvider(OpenAICompatibleProvider):
             model_name="grok-3-fast",
             friendly_name="X.AI (Grok 3 Fast)",
             context_window=131_072,  # 131K tokens
+            max_output_tokens=131072,
             supports_extended_thinking=False,
             supports_system_prompts=True,
             supports_streaming=True,

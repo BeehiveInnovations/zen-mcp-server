@@ -24,6 +24,7 @@ class GeminiModelProvider(ModelProvider):
             model_name="gemini-2.0-flash",
             friendly_name="Gemini (Flash 2.0)",
             context_window=1_048_576,  # 1M tokens
+            max_output_tokens=65_536,
             supports_extended_thinking=True,  # Experimental thinking mode
             supports_system_prompts=True,
             supports_streaming=True,
@@ -42,6 +43,7 @@ class GeminiModelProvider(ModelProvider):
             model_name="gemini-2.0-flash-lite",
             friendly_name="Gemin (Flash Lite 2.0)",
             context_window=1_048_576,  # 1M tokens
+            max_output_tokens=65_536,
             supports_extended_thinking=False,  # Not supported per user request
             supports_system_prompts=True,
             supports_streaming=True,
@@ -59,6 +61,7 @@ class GeminiModelProvider(ModelProvider):
             model_name="gemini-2.5-flash",
             friendly_name="Gemini (Flash 2.5)",
             context_window=1_048_576,  # 1M tokens
+            max_output_tokens=65_536,
             supports_extended_thinking=True,
             supports_system_prompts=True,
             supports_streaming=True,
@@ -77,6 +80,7 @@ class GeminiModelProvider(ModelProvider):
             model_name="gemini-2.5-pro",
             friendly_name="Gemini (Pro 2.5)",
             context_window=1_048_576,  # 1M tokens
+            max_output_tokens=65_536,
             supports_extended_thinking=True,
             supports_system_prompts=True,
             supports_streaming=True,

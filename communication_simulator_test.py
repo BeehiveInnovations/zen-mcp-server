@@ -80,7 +80,12 @@ class CommunicationSimulator:
     """Simulates real-world Claude CLI communication with MCP Gemini server"""
 
     def __init__(
-        self, verbose: bool = False, keep_logs: bool = False, selected_tests: list[str] = None, setup: bool = False, quick_mode: bool = False
+        self,
+        verbose: bool = False,
+        keep_logs: bool = False,
+        selected_tests: list[str] = None,
+        setup: bool = False,
+        quick_mode: bool = False,
     ):
         self.verbose = verbose
         self.keep_logs = keep_logs
@@ -104,12 +109,12 @@ class CommunicationSimulator:
         # Define quick mode tests (essential tests for time-limited testing)
         # Focus on tests that work with current tool configurations
         self.quick_mode_tests = [
-            "cross_tool_continuation",        # Cross-tool conversation memory
-            "basic_conversation",             # Basic chat functionality
-            "content_validation",             # Content validation and deduplication
-            "model_thinking_config",          # Flash/flashlite model testing
-            "o3_model_selection",             # O3 model selection testing
-            "per_tool_deduplication"          # File deduplication for individual tools
+            "cross_tool_continuation",  # Cross-tool conversation memory
+            "basic_conversation",  # Basic chat functionality
+            "content_validation",  # Content validation and deduplication
+            "model_thinking_config",  # Flash/flashlite model testing
+            "o3_model_selection",  # O3 model selection testing
+            "per_tool_deduplication",  # File deduplication for individual tools
         ]
 
         # If quick mode is enabled, override selected_tests
@@ -444,7 +449,9 @@ def parse_arguments():
     parser.add_argument("--tests", "-t", nargs="+", help="Specific tests to run (space-separated)")
     parser.add_argument("--list-tests", action="store_true", help="List available tests and exit")
     parser.add_argument("--individual", "-i", help="Run a single test individually")
-    parser.add_argument("--quick", "-q", action="store_true", help="Run quick test mode (6 essential tests for time-limited testing)")
+    parser.add_argument(
+        "--quick", "-q", action="store_true", help="Run quick test mode (6 essential tests for time-limited testing)"
+    )
     parser.add_argument(
         "--setup", action="store_true", help="Force setup standalone server environment using run-server.sh"
     )
@@ -522,7 +529,11 @@ def main():
 
     # Initialize simulator consistently for all use cases
     simulator = CommunicationSimulator(
-        verbose=args.verbose, keep_logs=args.keep_logs, selected_tests=args.tests, setup=args.setup, quick_mode=args.quick
+        verbose=args.verbose,
+        keep_logs=args.keep_logs,
+        selected_tests=args.tests,
+        setup=args.setup,
+        quick_mode=args.quick,
     )
 
     # Determine execution mode and run
