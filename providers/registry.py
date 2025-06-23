@@ -402,8 +402,8 @@ class ModelProviderRegistry:
         if openrouter_provider:
             # Prefer models known for deep reasoning
             preferred_models = [
-                "anthropic/claude-3.5-sonnet",
-                "anthropic/claude-3-opus-20240229",
+                "anthropic/claude-sonnet-4",
+                "anthropic/claude-opus-4",
                 "google/gemini-2.5-pro",
                 "google/gemini-pro-1.5",
                 "meta-llama/llama-3.1-70b-instruct",

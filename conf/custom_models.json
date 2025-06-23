@@ -7,7 +7,7 @@
       "Self-hosted APIs - Any OpenAI-compatible endpoint"
     ],
     "documentation": "https://github.com/BeehiveInnovations/zen-mcp-server/blob/main/docs/custom_models.md",
-    "usage": "Models can be accessed via aliases (e.g., 'opus', 'local-llama') or full names (e.g., 'anthropic/claude-3-opus', 'llama3.2')",
+    "usage": "Models can be accessed via aliases (e.g., 'opus', 'local-llama') or full names (e.g., 'anthropic/claude-opus-4', 'llama3.2')",
     "instructions": [
       "Add new models by copying an existing entry and modifying it",
       "Aliases are case-insensitive and should be unique across all models",
@@ -15,11 +15,11 @@
       "Set supports_* flags based on the model's actual capabilities",
       "Set is_custom=true for models that should ONLY work with custom endpoints (Ollama, vLLM, etc.)",
       "Models not listed here will use generic defaults (32K context window, basic features)",
-      "For OpenRouter models: Use official OpenRouter model names (e.g., 'anthropic/claude-3-opus')",
+      "For OpenRouter models: Use official OpenRouter model names (e.g., 'anthropic/claude-opus-4')",
       "For local/custom models: Use model names as they appear in your API (e.g., 'llama3.2', 'gpt-3.5-turbo')"
     ],
     "field_descriptions": {
-      "model_name": "The model identifier - OpenRouter format (e.g., 'anthropic/claude-3-opus') or custom model name (e.g., 'llama3.2')",
+      "model_name": "The model identifier - OpenRouter format (e.g., 'anthropic/claude-opus-4') or custom model name (e.g., 'llama3.2')",
       "aliases": "Array of short names users can type instead of the full model name",
       "context_window": "Total number of tokens the model can process (input + output combined)",
       "supports_extended_thinking": "Whether the model supports extended reasoning tokens (currently none do via OpenRouter or custom APIs)",
@@ -49,29 +49,29 @@
   },
   "models": [
     {
-      "model_name": "anthropic/claude-3-opus",
-      "aliases": ["opus", "claude-opus", "claude3-opus", "claude-3-opus"],
+      "model_name": "anthropic/claude-opus-4",
+      "aliases": ["opus", "claude-opus", "claude4-opus", "claude-4-opus"],
       "context_window": 200000,
       "supports_extended_thinking": false,
       "supports_json_mode": false,
       "supports_function_calling": false,
       "supports_images": true,
       "max_image_size_mb": 5.0,
-      "description": "Claude 3 Opus - Most capable Claude model with vision"
+      "description": "Claude 4 Opus - Most capable Claude model with vision"
     },
     {
-      "model_name": "anthropic/claude-3-sonnet",
-      "aliases": ["sonnet", "claude-sonnet", "claude3-sonnet", "claude-3-sonnet", "claude"],
+      "model_name": "anthropic/claude-sonnet-4",
+      "aliases": ["sonnet", "claude-sonnet", "claude4-sonnet", "claude-4-sonnet", "claude"],
       "context_window": 200000,
       "supports_extended_thinking": false,
       "supports_json_mode": false,
       "supports_function_calling": false,
       "supports_images": true,
       "max_image_size_mb": 5.0,
-      "description": "Claude 3 Sonnet - Balanced performance with vision"
+      "description": "Claude 4 Sonnet - Balanced performance with vision"
     },
     {
-      "model_name": "anthropic/claude-3-haiku",
+      "model_name": "anthropic/claude-3.5-haiku",
       "aliases": ["haiku", "claude-haiku", "claude3-haiku", "claude-3-haiku"],
       "context_window": 200000,
       "supports_extended_thinking": false,
