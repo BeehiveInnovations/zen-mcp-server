@@ -40,9 +40,17 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
             "findings": "Code analysis reveals performance issues 🔍",
             "files_checked": ["/src/main.py"],
             "relevant_files": ["/src/main.py"],
-            "issues_found": [{"severity": "high", "description": "Function too complex - refactoring needed"}],
+            "issues_found": [
+                {
+                    "severity": "high",
+                    "description": "Function too complex - refactoring needed"
+                }
+            ],
             "investigation_required": True,
-            "required_actions": ["Review code dependencies", "Analyze architectural patterns"],
+            "required_actions": [
+                "Review code dependencies",
+                "Analyze architectural patterns"
+            ],
         }
 
         # Test JSON serialization with ensure_ascii=False
@@ -68,19 +76,16 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content = AsyncMock(
             return_value=Mock(
-                content=json.dumps(
-                    {
-                        "status": "analysis_complete",
-                        "step_number": 1,
-                        "total_steps": 2,
-                        "next_step_required": True,
-                        "findings": "Architectural analysis completed successfully",
-                        "relevant_files": ["/test/main.py"],
-                        "issues_found": [],
-                        "confidence": "high",
-                    },
-                    ensure_ascii=False,
-                ),
+                content=json.dumps({
+                    "status": "analysis_complete",
+                    "step_number": 1,
+                    "total_steps": 2,
+                    "next_step_required": True,
+                    "findings": "Architectural analysis completed successfully",
+                    "relevant_files": ["/test/main.py"],
+                    "issues_found": [],
+                    "confidence": "high"
+                }, ensure_ascii=False),
                 usage={},
                 model_name="test-model",
                 metadata={},
@@ -202,22 +207,19 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
         mock_provider.supports_thinking_mode.return_value = False
         mock_provider.generate_content = AsyncMock(
             return_value=Mock(
-                content=json.dumps(
-                    {
-                        "status": "pause_for_investigation",
-                        "step_number": 1,
-                        "total_steps": 2,
-                        "next_step_required": True,
-                        "findings": "Erreur analysée: variable 'données' non définie. Cause probable: import manquant.",
-                        "files_checked": ["/src/data_processor.py"],
-                        "relevant_files": ["/src/data_processor.py"],
-                        "hypothesis": "Variable 'données' not defined - missing import",
-                        "confidence": "medium",
-                        "investigation_status": "in_progress",
-                        "error_analysis": "L'erreur concerne la variable 'données' qui n'est pas définie.",
-                    },
-                    ensure_ascii=False,
-                ),
+                content=json.dumps({
+                    "status": "pause_for_investigation",
+                    "step_number": 1,
+                    "total_steps": 2,
+                    "next_step_required": True,
+                    "findings": "Erreur analysée: variable 'données' non définie. Cause probable: import manquant.",
+                    "files_checked": ["/src/data_processor.py"],
+                    "relevant_files": ["/src/data_processor.py"],
+                    "hypothesis": "Variable 'données' not defined - missing import",
+                    "confidence": "medium",
+                    "investigation_status": "in_progress",
+                    "error_analysis": "L'erreur concerne la variable 'données' qui n'est pas définie.",
+                }, ensure_ascii=False),
                 usage={},
                 model_name="test-model",
                 metadata={},

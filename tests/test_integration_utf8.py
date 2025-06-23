@@ -316,7 +316,11 @@ Aucun problème critique détecté.
 1. **Documentation** : Certaines fonctions manquent de commentaires
 2. **Tests unitaires** : Couverture à améliorer
 
-### 🚀 Recommandations Prioritaires
+### � Détails de l'Analyse
+
+Pour plus de détails sur chaque problème identifié, consultez les recommandations ci-dessous.
+
+### �🚀 Recommandations Prioritaires
 
 1. **Optimisation DB** : Implémenter un cache Redis
 2. **Refactoring** : Séparer les responsabilités
