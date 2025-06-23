@@ -3,7 +3,7 @@
 [zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
 
 <div align="center">  
-  <b>🤖 Claude + [Gemini / OpenAI / Grok / OpenRouter / Ollama / Any Model] = Your Ultimate AI Development Team</b>
+  <b>🤖 Claude + [Gemini / OpenAI / Grok / OpenRouter / DIAL / Ollama / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -145,6 +145,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 - **X.AI**: Visit [X.AI Console](https://console.x.ai/) to get an API key for GROK model access.
+- **DIAL**: Visit [DIAL Platform](https://dialx.ai/) to get an API key for accessing multiple models through their unified API. DIAL is an open-source AI orchestration platform that provides vendor-agnostic access to models from major providers, open-source community, and self-hosted deployments. [API Documentation](https://dialx.ai/dial_api)
 
 **Option C: Custom API Endpoints (Local models like Ollama, vLLM)**
 [Please see the setup guide](docs/custom_models.md#option-2-custom-api-setup-ollama-vllm-etc). With a custom API you can use:
@@ -154,7 +155,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Text Generation WebUI**: Popular local interface for running models
 - **Any OpenAI-compatible API**: Custom endpoints for your own infrastructure
 
-> **Note:** Using all three options may create ambiguity about which provider / model to use if there is an overlap. 
+> **Note:** Using multiple provider options may create ambiguity about which provider / model to use if there is an overlap. 
 > If all APIs are configured, native APIs will take priority when there is a clash in model name, such as for `gemini` and `o3`.
 > Configure your model aliases and give them unique names in [`conf/custom_models.json`](conf/custom_models.json)
 
@@ -192,6 +193,12 @@ nano .env
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
 # OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/custom_models.md)
+# DIAL_API_KEY=your-dial-api-key-here      # For DIAL platform
+
+# For DIAL (optional configuration):
+# DIAL_API_HOST=https://core.dialx.ai      # Default DIAL host (optional)
+# DIAL_API_VERSION=2024-12-01-preview      # API version (optional)
+# DIAL_ALLOWED_MODELS=o3,gemini-2.5-pro    # Restrict to specific models (optional)
 
 # For local models (Ollama, vLLM, etc.):
 # CUSTOM_API_URL=http://localhost:11434/v1  # Ollama example
@@ -390,9 +397,19 @@ Nice! This is just one instance - take a look at [another example here](docs/too
 Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
 
 ```
-See logs under /Users/me/project/diagnostics.log and related code under the sync folder. Logs show that sync
-works but sometimes it gets stuck and there are no errors displayed to the user. Using zen's debug tool with gemini pro, find out
-why this is happening and what the root cause is and its fix 
+See logs under /Users/me/project/diagnostics.log and related code under the sync folder. 
+Logs show that sync works but sometimes it gets stuck and there are no errors displayed to 
+the user. Using zen's debug tool with gemini pro, find out why this is happening and what the root 
+cause is and its fix 
+```
+
+You can also add `do not use another model` to make Claude perform the entire workflow on its own. This is recommended
+for most debugging workflows, as Claude is usually able to confidently find the root cause by the time the workflow ends.
+
+When in doubt, you can always follow up with a new prompt and ask Claude to share its findings with another model:
+
+```text
+Use continuation with thinkdeep, share details with o4-mini-high to find out what the best fix is for this
 ```
 
 **[📖 Read More](docs/tools/debug.md)** - Step-by-step investigation methodology with workflow enforcement
@@ -527,10 +544,11 @@ Configure the Zen MCP Server through environment variables in your `.env` file. 
 DEFAULT_MODEL=auto
 GEMINI_API_KEY=your-gemini-key
 OPENAI_API_KEY=your-openai-key
+DIAL_API_KEY=your-dial-key  # Optional: Access to multiple models via DIAL
 ```
 
 **Key Configuration Options:**
-- **API Keys**: Native APIs (Gemini, OpenAI, X.AI), OpenRouter, or Custom endpoints (Ollama, vLLM)
+- **API Keys**: Native APIs (Gemini, OpenAI, X.AI), OpenRouter, DIAL, or Custom endpoints (Ollama, vLLM)
 - **Model Selection**: Auto mode or specific model defaults
 - **Usage Restrictions**: Control which models can be used for cost control
 - **Conversation Settings**: Timeout, turn limits, memory configuration

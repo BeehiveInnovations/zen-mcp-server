@@ -2,17 +2,19 @@
 
 **Step-by-step investigation followed by expert debugging assistance**
 
-The `debug` tool guides Claude through a systematic investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps. Once the investigation is complete, the tool provides expert analysis from the selected AI model based on all gathered findings.
-
-## Thinking Mode
-
-**Default is `medium` (8,192 tokens).** Use `high` for tricky bugs (investment in finding root cause) or `low` for simple errors (save tokens).
+The `debug` workflow guides Claude through a systematic investigation process where Claude performs methodical code 
+examination, evidence collection, and hypothesis formation across multiple steps. Once the investigation is complete, 
+the tool provides expert analysis from the selected AI model (optionally) based on all gathered findings.
 
 ## Example Prompts
 
-**Basic Usage:**
 ```
 Get gemini to debug why my API returns 400 errors randomly with the full stack trace: [paste traceback]
+```
+
+You can also ask it to debug on its own, no external model required (**recommended in most cases**).
+```
+Use debug tool to find out why the app is crashing, here are some app logs [paste app logs] and a crash trace: [paste crash trace]
 ```
 
 ## How It Works 
@@ -78,39 +80,34 @@ This structured approach ensures Claude performs methodical groundwork before ex
 
 ## Usage Examples
 
-**Basic Error Debugging:**
+**Error Debugging:**
 ```
-"Debug this TypeError: 'NoneType' object has no attribute 'split' in my parser.py"
+Debug this TypeError: 'NoneType' object has no attribute 'split' in my parser.py
 ```
 
 **With Stack Trace:**
 ```
-"Use gemini to debug why my API returns 500 errors with this stack trace: [paste full traceback]"
+Use gemini to debug why my API returns 500 errors with this stack trace: [paste full traceback]
 ```
 
 **With File Context:**
 ```
-"Debug the authentication failure in auth.py and user_model.py with o3"
+Debug without using external model, the authentication failure in auth.py and user_model.py
 ```
 
 **Performance Debugging:**
 ```
-"Use pro to debug why my application is consuming excessive memory during bulk operations"
-```
-
-**With Visual Context:**
-```
-"Debug this crash using the error screenshot and the related crash_report.log"
+Debug without using external model to find out why the app is consuming excessive memory during bulk edit operations
 ```
 
 **Runtime Environment Issues:**
 ```
-"Debug deployment issues with server startup failures, here's the runtime info: [environment details]"
+Debug deployment issues with server startup failures, here's the runtime info: [environment details]
 ```
 
 ## Investigation Methodology
 
-The debug tool enforces a structured investigation process:
+The debug tool enforces a thorough, structured investigation process:
 
 **Step-by-Step Investigation (Claude-Led):**
 1. **Initial Problem Description:** Claude describes the issue and begins thinking about possible causes, side-effects, and contributing factors
@@ -120,7 +117,7 @@ The debug tool enforces a structured investigation process:
 5. **Iterative Refinement:** Claude can backtrack and revise previous steps as understanding evolves
 6. **Investigation Completion:** Claude signals when sufficient evidence has been gathered
 
-**Expert Analysis Phase (AI Model):**
+**Expert Analysis Phase (Another AI Model When Used):**
 Once investigation is complete, the selected AI model performs:
 - **Root Cause Analysis:** Deep analysis of all investigation findings and evidence
 - **Solution Recommendations:** Specific fixes with implementation guidance

@@ -448,7 +448,7 @@ class BaseTool(ABC):
                 except Exception:
                     description += (
                         " OpenRouter: Any model available on openrouter.ai "
-                        "(e.g., 'gpt-4', 'claude-3-opus', 'mistral-large')."
+                        "(e.g., 'gpt-4', 'claude-4-opus', 'mistral-large')."
                     )
             description += f" Defaults to '{DEFAULT_MODEL}' if not specified."
 

@@ -118,6 +118,7 @@ class ModelProviderRegistry:
             ProviderType.GOOGLE,  # Direct Gemini access
             ProviderType.OPENAI,  # Direct OpenAI access
             ProviderType.XAI,  # Direct X.AI GROK access
+            ProviderType.DIAL,  # DIAL unified API access
             ProviderType.CUSTOM,  # Local/self-hosted models
             ProviderType.OPENROUTER,  # Catch-all for cloud models
         ]
@@ -237,6 +238,7 @@ class ModelProviderRegistry:
             ProviderType.XAI: "XAI_API_KEY",
             ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
             ProviderType.CUSTOM: "CUSTOM_API_KEY",  # Can be empty for providers that don't need auth
+            ProviderType.DIAL: "DIAL_API_KEY",
         }
 
         env_var = key_mapping.get(provider_type)
@@ -402,8 +404,8 @@ class ModelProviderRegistry:
         if openrouter_provider:
             # Prefer models known for deep reasoning
             preferred_models = [
-                "anthropic/claude-3.5-sonnet",
-                "anthropic/claude-3-opus-20240229",
+                "anthropic/claude-sonnet-4",
+                "anthropic/claude-opus-4",
                 "google/gemini-2.5-pro",
                 "google/gemini-pro-1.5",
                 "meta-llama/llama-3.1-70b-instruct",
