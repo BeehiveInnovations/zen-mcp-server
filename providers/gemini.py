@@ -315,7 +315,9 @@ class GeminiModelProvider(ModelProvider):
                 # This is an alias - check if the target model would be allowed
                 # Pass the alias name as original_name to handle restriction matching
                 target_model = config
-                if restriction_service and not restriction_service.is_allowed(self.get_provider_type(), target_model, original_name=model_name):
+                if restriction_service and not restriction_service.is_allowed(
+                    self.get_provider_type(), target_model, original_name=model_name
+                ):
                     continue
                 # Allow the alias
                 models.append(model_name)
