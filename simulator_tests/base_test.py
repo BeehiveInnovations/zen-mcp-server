@@ -136,11 +136,11 @@ class Calculator:
                 "id": 2,
                 "method": "tools/call",
                 "params": {"name": tool_name, "arguments": params},
-            }            # Combine all messages
+            }  # Combine all messages
             messages = [
-                json.dumps(init_request, ensure_ascii=False), 
-                json.dumps(initialized_notification, ensure_ascii=False), 
-                json.dumps(tool_request, ensure_ascii=False)
+                json.dumps(init_request, ensure_ascii=False),
+                json.dumps(initialized_notification, ensure_ascii=False),
+                json.dumps(tool_request, ensure_ascii=False),
             ]
 
             # Join with newlines as MCP expects

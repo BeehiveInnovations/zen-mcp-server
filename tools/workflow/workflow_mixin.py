@@ -715,10 +715,7 @@ class BaseWorkflowMixin(ABC):
             if continuation_id:
                 self.store_conversation_turn(continuation_id, response_data, request)
 
-            return [TextContent(
-                type="text", 
-                text=json.dumps(response_data, indent=2, ensure_ascii=False)
-            )]
+            return [TextContent(type="text", text=json.dumps(response_data, indent=2, ensure_ascii=False))]
 
         except Exception as e:
             logger.error(f"Error in {self.get_name()} work: {e}", exc_info=True)
@@ -731,10 +728,7 @@ class BaseWorkflowMixin(ABC):
             # Add metadata to error responses too
             self._add_workflow_metadata(error_data, arguments)
 
-            return [TextContent(
-                type="text", 
-                text=json.dumps(error_data, indent=2, ensure_ascii=False)
-            )]
+            return [TextContent(type="text", text=json.dumps(error_data, indent=2, ensure_ascii=False))]
 
     # Hook methods for tool customization
 
@@ -1272,8 +1266,7 @@ class BaseWorkflowMixin(ABC):
                 special_status = expert_analysis["status"]
                 response_data["status"] = special_status
                 response_data["content"] = expert_analysis.get(
-                    "raw_analysis", 
-                    json.dumps(expert_analysis, ensure_ascii=False)
+                    "raw_analysis", json.dumps(expert_analysis, ensure_ascii=False)
                 )
                 del response_data["expert_analysis"]
 
@@ -1533,17 +1526,17 @@ class BaseWorkflowMixin(ABC):
                 error_data = {"status": "error", "content": "No arguments provided"}
                 # Add basic metadata even for validation errors
                 error_data["metadata"] = {"tool_name": self.get_name()}
-                return [TextContent(
-                    type="text", 
-                    text=json.dumps(error_data, ensure_ascii=False)
-                )]
+                return [TextContent(type="text", text=json.dumps(error_data, ensure_ascii=False))]
 
             # Delegate to execute_workflow
             return await self.execute_workflow(arguments)
 
         except Exception as e:
             logger.error(f"Error in {self.get_name()} tool execution: {e}", exc_info=True)
-            error_data = {"status": "error", "content": f"Error in {self.get_name()}: {str(e)}"}            # Add metadata to error responses
+            error_data = {
+                "status": "error",
+                "content": f"Error in {self.get_name()}: {str(e)}",
+            }  # Add metadata to error responses
             self._add_workflow_metadata(error_data, arguments)
             return [
                 TextContent(

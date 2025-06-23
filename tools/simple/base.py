@@ -372,16 +372,15 @@ class SimpleTool(BaseTool):
 
                 follow_up_instructions = get_follow_up_instructions(0)
                 prompt = f"{prompt}\n\n{follow_up_instructions}"
-                logger.debug(f"Added follow-up instructions for new {self.get_name()} conversation")            # Validate images if any were provided
+                logger.debug(
+                    f"Added follow-up instructions for new {self.get_name()} conversation"
+                )  # Validate images if any were provided
             if images:
                 image_validation_error = self._validate_image_limits(
                     images, model_context=self._model_context, continuation_id=continuation_id
                 )
                 if image_validation_error:
-                    return [TextContent(
-                        type="text", 
-                        text=json.dumps(image_validation_error, ensure_ascii=False)
-                    )]
+                    return [TextContent(type="text", text=json.dumps(image_validation_error, ensure_ascii=False))]
 
             # Get and validate temperature against model constraints
             temperature, temp_warnings = self.get_validated_temperature(request, self._model_context)

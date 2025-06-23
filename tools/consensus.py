@@ -512,10 +512,7 @@ of the evidence, even when it strongly points in one direction.""",
                     "provider_used": provider.get_provider_type().value,
                 }
 
-                return [TextContent(
-                    type="text", 
-                    text=json.dumps(response_data, indent=2, ensure_ascii=False)
-                )]
+                return [TextContent(type="text", text=json.dumps(response_data, indent=2, ensure_ascii=False))]
 
         # Otherwise, use standard workflow execution
         return await super().execute_workflow(arguments)
