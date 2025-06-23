@@ -7,8 +7,6 @@ and prevents regression of the alias handling bug that prevented Flash model acc
 import os
 from unittest.mock import patch
 
-import pytest
-
 from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
 from providers.registry import ModelProviderRegistry
@@ -25,7 +23,7 @@ class TestFlashModelRegistry:
         import utils.model_restrictions
 
         utils.model_restrictions._restriction_service = None
-        
+
         # Clear registry cache to ensure clean state
         ModelProviderRegistry.clear_cache()
 
@@ -35,7 +33,7 @@ class TestFlashModelRegistry:
         import utils.model_restrictions
 
         utils.model_restrictions._restriction_service = None
-        
+
         # Clear registry cache
         ModelProviderRegistry.clear_cache()
 
@@ -44,16 +42,16 @@ class TestFlashModelRegistry:
         with patch.dict(os.environ, {}, clear=True):
             # Create provider instance directly
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Get all models without restrictions
             available_models = provider.list_models(respect_restrictions=True)
-            flash_models = [m for m in available_models if 'flash' in m.lower()]
-            
+            flash_models = [m for m in available_models if "flash" in m.lower()]
+
             # Should have Flash models available
             assert len(flash_models) > 0, "Flash models should be available without restrictions"
-            
+
             # Should include key Flash model variants (both canonical and aliases)
-            expected_flash_models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'flash']
+            expected_flash_models = ["gemini-2.5-flash", "gemini-2.0-flash", "flash"]
             for expected_model in expected_flash_models:
                 assert expected_model in available_models, f"{expected_model} should be available"
 
@@ -61,47 +59,47 @@ class TestFlashModelRegistry:
         """Test that Flash models are filtered out when GOOGLE_ALLOWED_MODELS=pro."""
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "pro"}):
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Get models with restrictions
             available_models = provider.list_models(respect_restrictions=True)
-            flash_models = [m for m in available_models if 'flash' in m.lower()]
-            
+            flash_models = [m for m in available_models if "flash" in m.lower()]
+
             # Flash models should be filtered out
             assert len(flash_models) == 0, "Flash models should be filtered out with pro restriction"
-            
+
             # Pro model should be available (alias form)
-            assert 'pro' in available_models, "Pro alias should be available"
+            assert "pro" in available_models, "Pro alias should be available"
 
     def test_flash_models_included_with_flash_restriction(self):
         """Test that Flash models are included when GOOGLE_ALLOWED_MODELS includes flash."""
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "flash,pro"}):
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Get models with restrictions
             available_models = provider.list_models(respect_restrictions=True)
-            flash_models = [m for m in available_models if 'flash' in m.lower()]
-            
+            flash_models = [m for m in available_models if "flash" in m.lower()]
+
             # Flash models should be available
             assert len(flash_models) > 0, "Flash models should be available with flash restriction"
-            
+
             # Should include the flash alias
-            assert 'flash' in available_models, "Flash alias should be available"
-            
+            assert "flash" in available_models, "Flash alias should be available"
+
             # Pro alias should also be available
-            assert 'pro' in available_models, "Pro alias should also be available"
+            assert "pro" in available_models, "Pro alias should also be available"
 
     def test_alias_resolution_flash_to_canonical(self):
         """Test that 'flash' alias correctly resolves to canonical model name."""
         with patch.dict(os.environ, {}):
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Test alias resolution
-            resolved = provider._resolve_model_name('flash')
-            assert resolved == 'gemini-2.5-flash', "Flash alias should resolve to gemini-2.5-flash"
-            
+            resolved = provider._resolve_model_name("flash")
+            assert resolved == "gemini-2.5-flash", "Flash alias should resolve to gemini-2.5-flash"
+
             # Test flash-2.0 alias resolution
-            resolved_2 = provider._resolve_model_name('flash-2.0')
-            assert resolved_2 == 'gemini-2.0-flash', "flash-2.0 alias should resolve to gemini-2.0-flash"
+            resolved_2 = provider._resolve_model_name("flash-2.0")
+            assert resolved_2 == "gemini-2.0-flash", "flash-2.0 alias should resolve to gemini-2.0-flash"
 
     def test_flash_model_validation_with_restrictions(self):
         """Test Flash model validation respects restrictions correctly."""
@@ -109,50 +107,54 @@ class TestFlashModelRegistry:
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "flash"}):
             # Clear cached restriction service
             import utils.model_restrictions
+
             utils.model_restrictions._restriction_service = None
-            
+
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Flash alias should be valid
-            assert provider.validate_model_name('flash'), "Flash alias should be valid when allowed"
-            
+            assert provider.validate_model_name("flash"), "Flash alias should be valid when allowed"
+
             # Canonical name should NOT be valid when only alias is allowed
             # This is the correct behavior - restrictions are exact matches
-            assert not provider.validate_model_name('gemini-2.5-flash'), "Canonical name should not be valid when only alias is allowed"
-            
+            assert not provider.validate_model_name(
+                "gemini-2.5-flash"
+            ), "Canonical name should not be valid when only alias is allowed"
+
             # Pro should not be valid
-            assert not provider.validate_model_name('pro'), "Pro should not be valid when not in restrictions"
+            assert not provider.validate_model_name("pro"), "Pro should not be valid when not in restrictions"
 
     def test_regression_prevention_parameter_order_bug(self):
         """Test that prevents regression of parameter order bug in restriction validation.
-        
+
         This test specifically catches the bug where parameters were incorrectly
         passed to is_allowed() method, causing Flash models to be incorrectly filtered.
         """
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "flash"}):
             # Clear cached restriction service
             import utils.model_restrictions
+
             utils.model_restrictions._restriction_service = None
-            
+
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Test the exact scenario that was failing before the fix
             # Only "flash" alias is allowed, test that provider correctly validates it
-            assert provider.validate_model_name('flash'), "Flash alias validation should work correctly"
-            
-            # Test getting capabilities works  
-            capabilities = provider.get_capabilities('flash')
-            assert capabilities.model_name == 'gemini-2.5-flash', "Capabilities should return canonical name"
-            
+            assert provider.validate_model_name("flash"), "Flash alias validation should work correctly"
+
+            # Test getting capabilities works
+            capabilities = provider.get_capabilities("flash")
+            assert capabilities.model_name == "gemini-2.5-flash", "Capabilities should return canonical name"
+
             # Test that the restriction service is called with correct parameters
             restriction_service = utils.model_restrictions.get_restriction_service()
-            
+
             # Manually test the parameter order that caused the bug
             # This call should succeed (flash is allowed)
-            assert restriction_service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-flash', 'flash')
-            
+            assert restriction_service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash", "flash")
+
             # This call should fail (only alias is allowed, not full name)
-            assert not restriction_service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-flash')
+            assert not restriction_service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash")
 
     def test_model_context_creation_for_flash_models(self):
         """Test that ModelContext can be created for Flash models."""
@@ -160,9 +162,9 @@ class TestFlashModelRegistry:
             # Clear and reinitialize registry with proper API key
             ModelProviderRegistry._instance = None
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-            
+
             # Test ModelContext creation with Flash alias
-            ctx = ModelContext('flash')
+            ctx = ModelContext("flash")
             assert ctx is not None, "ModelContext should be created for 'flash' alias"
             assert isinstance(ctx.provider, GeminiModelProvider), "Provider should be GeminiModelProvider"
 
@@ -172,33 +174,33 @@ class TestFlashModelRegistry:
             # Clear and reinitialize registry
             ModelProviderRegistry._instance = None
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-            
+
             # Get available models from registry
             available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
-            
+
             # Should include Flash models
-            flash_models = [m for m in available_models if 'flash' in m.lower()]
+            flash_models = [m for m in available_models if "flash" in m.lower()]
             assert len(flash_models) > 0, "Registry should include Flash models"
-            
+
             # Should include specific Flash alias
-            assert 'flash' in available_models, "Registry should include flash alias"
+            assert "flash" in available_models, "Registry should include flash alias"
 
     def test_multiple_flash_aliases_all_work(self):
         """Test that all Flash aliases resolve and work correctly when no restrictions are set."""
         with patch.dict(os.environ, {}, clear=True):
             provider = GeminiModelProvider(api_key="test-key")
-            
+
             # Test all flash aliases
-            flash_aliases = ['flash', 'flash-2.0', 'flash2', 'flash-lite', 'flashlite']
-            
+            flash_aliases = ["flash", "flash-2.0", "flash2", "flash-lite", "flashlite"]
+
             for alias in flash_aliases:
                 # Should validate when no restrictions
                 assert provider.validate_model_name(alias), f"Alias '{alias}' should validate without restrictions"
-                
+
                 # Should resolve to a canonical model name
                 resolved = provider._resolve_model_name(alias)
-                assert resolved.startswith('gemini-'), f"Alias '{alias}' should resolve to gemini-* model"
-                
+                assert resolved.startswith("gemini-"), f"Alias '{alias}' should resolve to gemini-* model"
+
                 # Should be able to get capabilities
                 capabilities = provider.get_capabilities(alias)
                 assert capabilities is not None, f"Should get capabilities for alias '{alias}'"
@@ -210,61 +212,63 @@ class TestFlashModelRestrictionService:
     def setup_method(self):
         """Set up clean state before each test."""
         import utils.model_restrictions
+
         utils.model_restrictions._restriction_service = None
 
     def teardown_method(self):
         """Clean up after each test."""
         import utils.model_restrictions
+
         utils.model_restrictions._restriction_service = None
 
     def test_restriction_service_flash_alias_handling(self):
         """Test that restriction service correctly handles Flash aliases."""
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "flash,pro"}):
             service = ModelRestrictionService()
-            
+
             # Test that both alias and canonical name are allowed through alias resolution
-            assert service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-flash', 'flash')
-            assert service.is_allowed(ProviderType.GOOGLE, 'flash')
-            
+            assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash", "flash")
+            assert service.is_allowed(ProviderType.GOOGLE, "flash")
+
             # Test that disallowed models are rejected
-            assert not service.is_allowed(ProviderType.GOOGLE, 'gemini-2.0-flash')
+            assert not service.is_allowed(ProviderType.GOOGLE, "gemini-2.0-flash")
 
     def test_restriction_service_filter_models_with_flash(self):
         """Test that filter_models correctly handles Flash models."""
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "flash,flash-2.0,pro"}):
             service = ModelRestrictionService()
-            
+
             test_models = [
-                'flash',  # Use aliases for filtering since that's what list_models returns
-                'flash-2.0', 
-                'flash-lite',
-                'pro'
+                "flash",  # Use aliases for filtering since that's what list_models returns
+                "flash-2.0",
+                "flash-lite",
+                "pro",
             ]
-            
+
             # Filter models - should keep flash and pro variants
             filtered = service.filter_models(ProviderType.GOOGLE, test_models)
-            
+
             # Should include Flash aliases and Pro
-            assert 'flash' in filtered
-            assert 'flash-2.0' in filtered
-            assert 'pro' in filtered
-            
+            assert "flash" in filtered
+            assert "flash-2.0" in filtered
+            assert "pro" in filtered
+
             # Should exclude flash-lite (not explicitly allowed)
-            assert 'flash-lite' not in filtered
+            assert "flash-lite" not in filtered
 
     def test_case_insensitive_flash_restrictions(self):
         """Test that Flash restrictions are case insensitive."""
         with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": "FLASH,Pro"}):
             service = ModelRestrictionService()
-            
+
             # Should work with any case
-            assert service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-flash', 'flash')
-            assert service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-flash', 'Flash')
-            assert service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-flash', 'FLASH')
-            
+            assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash", "flash")
+            assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash", "Flash")
+            assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-flash", "FLASH")
+
             # Pro should also work
-            assert service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-pro', 'pro')
-            assert service.is_allowed(ProviderType.GOOGLE, 'gemini-2.5-pro', 'Pro')
+            assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-pro", "pro")
+            assert service.is_allowed(ProviderType.GOOGLE, "gemini-2.5-pro", "Pro")
 
 
 class TestFlashModelRegressionPrevention:
@@ -273,12 +277,14 @@ class TestFlashModelRegressionPrevention:
     def setup_method(self):
         """Set up clean state before each test."""
         import utils.model_restrictions
+
         utils.model_restrictions._restriction_service = None
         ModelProviderRegistry.clear_cache()
 
     def teardown_method(self):
         """Clean up after each test."""
         import utils.model_restrictions
+
         utils.model_restrictions._restriction_service = None
         ModelProviderRegistry.clear_cache()
 
@@ -288,23 +294,23 @@ class TestFlashModelRegressionPrevention:
             # Clear and reinitialize everything
             ModelProviderRegistry._instance = None
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-            
+
             # Test 1: Registry shows Flash models
             available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
-            assert 'flash' in available_models, "Flash alias should be in registry"
-            
+            assert "flash" in available_models, "Flash alias should be in registry"
+
             # Test 2: Can create ModelContext
-            ctx = ModelContext('flash')
+            ctx = ModelContext("flash")
             assert ctx is not None, "Should create ModelContext for Flash"
             assert isinstance(ctx.provider, GeminiModelProvider), "Should use Gemini provider"
-            
+
             # Test 3: Provider validates correctly
             provider = ctx.provider
-            assert provider.validate_model_name('flash'), "Provider should validate Flash alias"
-            
+            assert provider.validate_model_name("flash"), "Provider should validate Flash alias"
+
             # Test 4: Can get capabilities
-            capabilities = provider.get_capabilities('flash')
-            assert capabilities.model_name == 'gemini-2.5-flash', "Should return canonical model name"
+            capabilities = provider.get_capabilities("flash")
+            assert capabilities.model_name == "gemini-2.5-flash", "Should return canonical model name"
             assert capabilities.provider == ProviderType.GOOGLE, "Should have correct provider type"
 
     def test_alias_parameter_order_regression_comprehensive(self):
@@ -318,15 +324,16 @@ class TestFlashModelRegressionPrevention:
             ("flash,pro", "flash", True, "Flash alias allowed in multi-model restriction"),
             ("flash,pro", "pro", True, "Pro alias allowed in multi-model restriction"),
         ]
-        
+
         for allowed_models, test_alias, expected, description in test_cases:
             with patch.dict(os.environ, {"GOOGLE_ALLOWED_MODELS": allowed_models}):
                 # Clear state
                 import utils.model_restrictions
+
                 utils.model_restrictions._restriction_service = None
-                
+
                 provider = GeminiModelProvider(api_key="test-key")
-                
+
                 # Test validation
                 result = provider.validate_model_name(test_alias)
                 assert result == expected, f"Case: {description} - Expected {expected}, got {result}"
@@ -341,20 +348,23 @@ class TestFlashModelRegressionPrevention:
             ("flash", True, "Flash only"),
             ("flash,pro", True, "Flash and Pro"),
         ]
-        
+
         for restriction, should_have_flash, description in scenarios:
             env_dict = {}
             if restriction is not None:
                 env_dict["GOOGLE_ALLOWED_MODELS"] = restriction
-                
+
             with patch.dict(os.environ, env_dict, clear=True):
                 # Clear state
                 import utils.model_restrictions
+
                 utils.model_restrictions._restriction_service = None
-                
+
                 provider = GeminiModelProvider(api_key="test-key")
                 available_models = provider.list_models(respect_restrictions=True)
-                flash_models = [m for m in available_models if 'flash' in m.lower()]
+                flash_models = [m for m in available_models if "flash" in m.lower()]
                 has_flash = len(flash_models) > 0
-                
-                assert has_flash == should_have_flash, f"Scenario '{description}': Expected flash={should_have_flash}, got {has_flash}. Models: {available_models}"
+
+                assert (
+                    has_flash == should_have_flash
+                ), f"Scenario '{description}': Expected flash={should_have_flash}, got {has_flash}. Models: {available_models}"
