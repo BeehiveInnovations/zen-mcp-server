@@ -206,8 +206,12 @@ if __name__ == "__main__":
             response2, continuation_id2 = self.call_mcp_tool(
                 "analyze",
                 {
-                    "prompt": "Analyze the performance implications of these recursive functions.",
-                    "files": [file1_path],
+                    "step": "Analyze the performance implications of these recursive functions.",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Analyzing performance characteristics of recursive algorithms in the math functions file.",
+                    "relevant_files": [file1_path],
                     "continuation_id": continuation_id1,  # Continue the chat conversation
                     "model": "flash",
                     "temperature": 0.7,

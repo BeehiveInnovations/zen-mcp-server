@@ -160,7 +160,17 @@ class ConversationBaseTest(BaseSimulatorTest):
                 return None, None
 
             # Extract response content
-            response_text = result[0].text if hasattr(result[0], "text") else str(result[0])
+            if hasattr(result[0], "text") and result[0].text:
+                response_text = result[0].text
+            elif hasattr(result[0], "content"):
+                # Handle structured response objects
+                content = result[0].content
+                if isinstance(content, dict):
+                    response_text = json.dumps(content)
+                else:
+                    response_text = str(content)
+            else:
+                response_text = str(result[0])
 
             # Parse response to extract continuation_id
             continuation_id = self._extract_continuation_id_from_response(response_text)
