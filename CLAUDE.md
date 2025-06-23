@@ -145,7 +145,9 @@ python communication_simulator_test.py --quick --verbose
 - `planner_validation` - Planner tool with flash model and complex planning workflows
 - `token_allocation_validation` - Token allocation and conversation history buildup testing
 
-**Why these 6 tests:** They cover all major tools (chat, planner, consensus, codereview + analyze, debug, thinkdeep), extensively test conversation memory functionality, use flash/flashlite models, and provide comprehensive app functionality coverage in minimal time.
+**Why these 6 tests:** They cover the core functionality including conversation memory (`utils/conversation_memory.py`), chat tool functionality, file processing and deduplication, model selection (flash/flashlite/o3), and cross-tool conversation workflows. These tests validate the most critical parts of the system in minimal time.
+
+**Note:** Some workflow tools (analyze, codereview, planner, consensus, etc.) require specific workflow parameters and may need individual testing rather than quick mode testing.
 
 #### Run Individual Simulator Tests (For Detailed Testing)
 ```bash

@@ -40,12 +40,12 @@ Available tests:
 
 Quick Test Mode (for time-limited testing):
     Use --quick to run the essential 6 tests that provide maximum coverage:
-    - cross_tool_continuation
-    - conversation_chain_validation  
-    - consensus_workflow_accurate
-    - codereview_validation
-    - planner_validation
-    - token_allocation_validation
+    - cross_tool_continuation (cross-tool conversation memory)
+    - basic_conversation (basic chat functionality)
+    - content_validation (content validation and deduplication)
+    - model_thinking_config (flash/flashlite model testing)
+    - o3_model_selection (o3 model selection testing)
+    - per_tool_deduplication (file deduplication for individual tools)
 
 Examples:
     # Run all tests
@@ -91,19 +91,25 @@ class CommunicationSimulator:
         self.server_process = None
         self.python_path = self._get_python_path()
 
+        # Configure logging first
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
+        self.logger = logging.getLogger(__name__)
+
         # Import test registry
         from simulator_tests import TEST_REGISTRY
 
         self.test_registry = TEST_REGISTRY
 
         # Define quick mode tests (essential tests for time-limited testing)
+        # Focus on tests that work with current tool configurations
         self.quick_mode_tests = [
-            "cross_tool_continuation",
-            "conversation_chain_validation", 
-            "consensus_workflow_accurate",
-            "codereview_validation",
-            "planner_validation",
-            "token_allocation_validation"
+            "cross_tool_continuation",        # Cross-tool conversation memory
+            "basic_conversation",             # Basic chat functionality
+            "content_validation",             # Content validation and deduplication
+            "model_thinking_config",          # Flash/flashlite model testing
+            "o3_model_selection",             # O3 model selection testing
+            "per_tool_deduplication"          # File deduplication for individual tools
         ]
 
         # If quick mode is enabled, override selected_tests
@@ -118,11 +124,6 @@ class CommunicationSimulator:
 
         # Test result tracking
         self.test_results = dict.fromkeys(self.test_registry.keys(), False)
-
-        # Configure logging
-        log_level = logging.DEBUG if verbose else logging.INFO
-        logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
-        self.logger = logging.getLogger(__name__)
 
     def _get_python_path(self) -> str:
         """Get the Python path for the virtual environment"""
