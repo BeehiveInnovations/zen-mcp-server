@@ -6,14 +6,14 @@ and the generation of properly encoded JSON responses.
 import json
 import os
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from tools.analyze import AnalyzeTool
 from tools.codereview import CodeReviewTool
 from tools.debug import DebugIssueTool
 
 
-class TestWorkflowToolsUTF8(unittest.TestCase):
+class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
     """Tests for UTF-8 encoding in workflow tools."""
 
     def setUp(self):
@@ -48,7 +48,7 @@ class TestWorkflowToolsUTF8(unittest.TestCase):
         # Test JSON serialization with ensure_ascii=False
         json_str = json.dumps(test_response, indent=2, ensure_ascii=False)
 
-        # UTF-8 checks
+        # Check UTF-8 characters are preserved
         self.assertIn("🔍", json_str)
 
         # No escaped characters
@@ -60,22 +60,24 @@ class TestWorkflowToolsUTF8(unittest.TestCase):
         self.assertEqual(len(parsed["issues_found"]), 1)
 
     @patch("tools.shared.base_tool.BaseTool.get_model_provider")
-    def test_analyze_tool_utf8_response(self, mock_get_provider):
+    async def test_analyze_tool_utf8_response(self, mock_get_provider):
         """Test that the analyze tool returns correct UTF-8 responses."""
         # Mock provider
         mock_provider = Mock()
         mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.generate_content.return_value = Mock(
-            content="Architectural analysis complete. Recommendations: improve modularity.",
-            usage={},
-            model_name="test-model",
-            metadata={},
+        mock_provider.generate_content = AsyncMock(
+            return_value=Mock(
+                content="Architectural analysis complete. Recommendations: improve modularity.",
+                usage={},
+                model_name="test-model",
+                metadata={},
+            )
         )
         mock_get_provider.return_value = mock_provider
 
         # Test the tool
         analyze_tool = AnalyzeTool()
-        result = analyze_tool.execute(
+        result = await analyze_tool.execute(
             {
                 "step": "Analyze system architecture to identify issues",
                 "step_number": 1,
@@ -106,17 +108,18 @@ class TestWorkflowToolsUTF8(unittest.TestCase):
         self.assertIn("fr-FR", system_prompt)
 
     @patch("tools.shared.base_tool.BaseTool.get_model_provider")
-    def test_codereview_tool_french_findings(self, mock_get_provider):
+    async def test_codereview_tool_french_findings(self, mock_get_provider):
         """Test that the codereview tool produces findings in French."""
         # Mock with analysis in French
         mock_provider = Mock()
         mock_provider.get_provider_type.return_value = Mock(value="test")
         mock_provider.supports_thinking_mode.return_value = False
-        mock_provider.generate_content.return_value = Mock(
-            content=json.dumps(
-                {
-                    "status": "analysis_complete",
-                    "raw_analysis": """
+        mock_provider.generate_content = AsyncMock(
+            return_value=Mock(
+                content=json.dumps(
+                    {
+                        "status": "analysis_complete",
+                        "raw_analysis": """
 🔴 CRITIQUE: Aucun problème critique trouvé.
 
 🟠 ÉLEVÉ: Fichier example.py:42 - Fonction trop complexe
@@ -132,18 +135,19 @@ class TestWorkflowToolsUTF8(unittest.TestCase):
 • Nomenclature cohérente
 • Tests unitaires présents
 """,
-                },
-                ensure_ascii=False,
-            ),
-            usage={},
-            model_name="test-model",
-            metadata={},
+                    },
+                    ensure_ascii=False,
+                ),
+                usage={},
+                model_name="test-model",
+                metadata={},
+            )
         )
         mock_get_provider.return_value = mock_provider
 
         # Test the tool
         codereview_tool = CodeReviewTool()
-        result = codereview_tool.execute(
+        result = await codereview_tool.execute(
             {
                 "step": "Complete review of Python code",
                 "step_number": 1,
@@ -177,22 +181,24 @@ class TestWorkflowToolsUTF8(unittest.TestCase):
             self.assertIn("✅", analysis)
 
     @patch("tools.shared.base_tool.BaseTool.get_model_provider")
-    def test_debug_tool_french_error_analysis(self, mock_get_provider):
+    async def test_debug_tool_french_error_analysis(self, mock_get_provider):
         """Test that the debug tool analyzes errors in French."""
         # Mock provider
         mock_provider = Mock()
         mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.generate_content.return_value = Mock(
-            content="Error analyzed: variable 'données' not defined. Probable cause: missing import.",
-            usage={},
-            model_name="test-model",
-            metadata={},
+        mock_provider.generate_content = AsyncMock(
+            return_value=Mock(
+                content="Error analyzed: variable 'données' not defined. Probable cause: missing import.",
+                usage={},
+                model_name="test-model",
+                metadata={},
+            )
         )
         mock_get_provider.return_value = mock_provider
 
         # Test the debug tool
         debug_tool = DebugIssueTool()
-        result = debug_tool.execute(
+        result = await debug_tool.execute(
             {
                 "step": "Analyze NameError in data processing file",
                 "step_number": 1,
@@ -220,67 +226,51 @@ class TestWorkflowToolsUTF8(unittest.TestCase):
         response_str = json.dumps(response_data, ensure_ascii=False)
         self.assertIn("données", response_str)
 
-    def test_json_utf8_serialization(self):
-        """Test UTF-8 serialization with ensure_ascii=False."""
-        # Test data with French characters and emojis
+    def test_utf8_emoji_preservation_in_workflow_responses(self):
+        """Test that emojis are preserved in workflow tool responses."""
+        # Mock workflow response with various emojis
         test_data = {
-            "analyse": {
-                "statut": "terminée",
-                "résultat": "Aucun problème critique détecté",
-                "recommandations": [
-                    "Améliorer la documentation",
-                    "Optimiser les performances",
-                    "Ajouter des tests unitaires",
-                ],
-                "métadonnées": {
-                    "créé_par": "Développeur Principal",
-                    "date_création": "2024-01-01",
-                    "dernière_modification": "2024-01-15",
-                },
-                "émojis_status": {
-                    "critique": "🔴",
-                    "élevé": "🟠",
-                    "moyen": "🟡",
-                    "faible": "🟢",
-                    "succès": "✅",
-                    "erreur": "❌",
-                },
-            }
+            "status": "analysis_complete",
+            "severity_indicators": {
+                "critical": "🔴",
+                "high": "🟠",
+                "medium": "🟡",
+                "low": "🟢",
+                "success": "✅",
+                "error": "❌",
+                "warning": "⚠️",
+            },
+            "progress": "Analysis completed 🎉",
+            "recommendations": [
+                "Optimize performance 🚀",
+                "Improve documentation 📚",
+                "Add unit tests 🧪",
+            ],
         }
 
-        # Test with ensure_ascii=False
-        json_correct = json.dumps(test_data, ensure_ascii=False, indent=2)
+        # Test JSON encoding with ensure_ascii=False
+        json_str = json.dumps(test_data, ensure_ascii=False, indent=2)
 
-        # Checks
-        utf8_terms = [
-            "terminée",
-            "résultat",
-            "détecté",
-            "Améliorer",
-            "créé_par",
-            "Développeur",
-            "création",
-            "métadonnées",
-            "dernière",
-            "émojis_status",
-            "élevé",
-        ]
+        # Check emojis are preserved
+        self.assertIn("🔴", json_str)
+        self.assertIn("🟠", json_str)
+        self.assertIn("🟡", json_str)
+        self.assertIn("🟢", json_str)
+        self.assertIn("✅", json_str)
+        self.assertIn("❌", json_str)
+        self.assertIn("⚠️", json_str)
+        self.assertIn("🎉", json_str)
+        self.assertIn("🚀", json_str)
+        self.assertIn("📚", json_str)
+        self.assertIn("🧪", json_str)
 
-        emojis = ["🔴", "🟠", "🟡", "🟢", "✅", "❌"]
+        # No escaped Unicode
+        self.assertNotIn("\\u", json_str)
 
-        for term in utf8_terms:
-            self.assertIn(term, json_correct)
-
-        for emoji in emojis:
-            self.assertIn(emoji, json_correct)
-
-        # Check for escaped characters
-        self.assertNotIn("\\u", json_correct)
-
-        # Test parsing
-        parsed = json.loads(json_correct)
-        self.assertEqual(parsed["analyse"]["statut"], "terminée")
-        self.assertEqual(parsed["analyse"]["émojis_status"]["critique"], "🔴")
+        # Test parsing preserves emojis
+        parsed = json.loads(json_str)
+        self.assertEqual(parsed["severity_indicators"]["critical"], "🔴")
+        self.assertEqual(parsed["progress"], "Analysis completed 🎉")
 
 
 if __name__ == "__main__":

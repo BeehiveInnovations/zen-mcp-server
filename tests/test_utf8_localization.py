@@ -384,16 +384,10 @@ class TestLocalizationIntegration(unittest.TestCase):
         # English
         os.environ["LOCALE"] = "en-US"
         instruction_en = tool.get_language_instruction()
-        self.assertIn("en-US", instruction_en)
-
-        # Spanish
-        os.environ["LOCALE"] = "es-ES"
-        instruction_es = tool.get_language_instruction()  # Spanish
+        self.assertIn("en-US", instruction_en)  # Spanish
         os.environ["LOCALE"] = "es-ES"
         instruction_es = tool.get_language_instruction()
-        self.assertIn("es-ES", instruction_es)
-
-        # Chinese
+        self.assertIn("es-ES", instruction_es)  # Chinese
         os.environ["LOCALE"] = "zh-CN"
         instruction_zh = tool.get_language_instruction()
         self.assertIn("zh-CN", instruction_zh)
