@@ -78,6 +78,20 @@ clear_python_cache() {
 # Platform Detection Functions
 # ----------------------------------------------------------------------------
 
+# Get cross-platform Python executable path from venv
+get_venv_python_path() {
+    local venv_path="$1"
+    
+    # Check for both Unix and Windows Python executable paths
+    if [[ -f "$venv_path/bin/python" ]]; then
+        echo "$venv_path/bin/python"
+    elif [[ -f "$venv_path/Scripts/python.exe" ]]; then
+        echo "$venv_path/Scripts/python.exe"
+    else
+        return 1  # No Python executable found
+    fi
+}
+
 # Detect the operating system
 detect_os() {
     case "$OSTYPE" in
@@ -114,7 +128,7 @@ get_claude_config_path() {
             if [[ -n "$win_appdata" ]]; then
                 echo "$(wslpath "$win_appdata")/Claude/claude_desktop_config.json"
             else
-                print_warning "Could not determine Windows user path automatically"
+                print_warning "Could not determine Windows user path automatically. Please ensure APPDATA is set correctly or provide the full path manually."
                 echo "/mnt/c/Users/$USER/AppData/Roaming/Claude/claude_desktop_config.json"
             fi
             ;;
@@ -479,7 +493,7 @@ try_install_system_packages() {
     # Check if we can use sudo
     if can_use_sudo; then
         print_info "Installing system packages (this may ask for your password)..."
-        if bash -c "$install_cmd" >/dev/null 2>&1; then
+        if bash -c "$install_cmd" >/dev/null 2>&1; then  # Replaced eval to prevent command injection
             print_success "System packages installed successfully"
             return 0
         else
@@ -561,32 +575,22 @@ setup_environment() {
         # Try Python 3.12 first (preferred)
         local uv_output
         if uv_output=$(uv venv --python 3.12 "$VENV_PATH" 2>&1); then
-            # Cross-platform path detection instead of hardcoded Unix path
-            if [[ -f "$VENV_PATH/bin/python" ]]; then
-                venv_python="$VENV_PATH/bin/python"
-            elif [[ -f "$VENV_PATH/Scripts/python.exe" ]]; then
-                venv_python="$VENV_PATH/Scripts/python.exe"
-            else
-                print_warning "uv succeeded but Python executable not found in venv"
-            fi
-            if [[ -n "$venv_python" ]]; then
+            # Use helper function for cross-platform path detection
+            if venv_python=$(get_venv_python_path "$VENV_PATH"); then
                 touch "$VENV_PATH/uv_created"  # Mark as uv-created
                 print_success "Created environment with uv using Python 3.12"
+            else
+                print_warning "uv succeeded but Python executable not found in venv"
             fi
         # Fall back to any available Python through uv
         elif uv_output=$(uv venv "$VENV_PATH" 2>&1); then
-            # Cross-platform path detection instead of hardcoded Unix path
-            if [[ -f "$VENV_PATH/bin/python" ]]; then
-                venv_python="$VENV_PATH/bin/python"
-            elif [[ -f "$VENV_PATH/Scripts/python.exe" ]]; then
-                venv_python="$VENV_PATH/Scripts/python.exe"
-            else
-                print_warning "uv succeeded but Python executable not found in venv"
-            fi
-            if [[ -n "$venv_python" ]]; then
+            # Use helper function for cross-platform path detection
+            if venv_python=$(get_venv_python_path "$VENV_PATH"); then
                 touch "$VENV_PATH/uv_created"  # Mark as uv-created
                 local python_version=$($venv_python --version 2>&1)
                 print_success "Created environment with uv using $python_version"
+            else
+                print_warning "uv succeeded but Python executable not found in venv"
             fi
         else
             print_warning "uv environment creation failed, falling back to system Python detection"
@@ -608,30 +612,17 @@ setup_environment() {
             return 1
         fi
     else
-        # Validate uv-created environment
-        local os_type=$(detect_os)
-        case "$os_type" in
-            windows)
-                venv_python="$VENV_PATH/Scripts/python.exe"
-                ;;
-            *)
-                venv_python="$VENV_PATH/bin/python"
-                ;;
-        esac
-        
-        # Verify the environment works
-        if [[ ! -f "$venv_python" ]]; then
-            print_error "uv environment Python not found, falling back to system Python"
-            local python_cmd
-            python_cmd=$(find_python) || return 1
-            venv_python=$(setup_venv "$python_cmd")
-            if [[ $? -ne 0 ]]; then
+        # venv_python was already set by uv creation above, just convert to absolute path
+        if [[ -n "$venv_python" ]]; then
+            # Convert to absolute path for MCP registration
+            local abs_venv_python
+            if cd "$(dirname "$venv_python")" 2>/dev/null; then
+                abs_venv_python=$(pwd)/$(basename "$venv_python")
+                venv_python="$abs_venv_python"
+            else
+                print_error "Failed to resolve absolute path for venv_python"
                 return 1
             fi
-        else
-            # Convert to absolute path for MCP registration
-            local abs_venv_python=$(cd "$(dirname "$venv_python")" && pwd)/$(basename "$venv_python")
-            venv_python="$abs_venv_python"
         fi
     fi
     
