@@ -559,18 +559,38 @@ setup_environment() {
         fi
         
         # Try Python 3.12 first (preferred)
-        if uv venv --python 3.12 "$VENV_PATH" 2>/dev/null; then
-            venv_python="$VENV_PATH/bin/python"
-            touch "$VENV_PATH/uv_created"  # Mark as uv-created
-            print_success "Created environment with uv using Python 3.12"
+        local uv_output
+        if uv_output=$(uv venv --python 3.12 "$VENV_PATH" 2>&1); then
+            # Cross-platform path detection instead of hardcoded Unix path
+            if [[ -f "$VENV_PATH/bin/python" ]]; then
+                venv_python="$VENV_PATH/bin/python"
+            elif [[ -f "$VENV_PATH/Scripts/python.exe" ]]; then
+                venv_python="$VENV_PATH/Scripts/python.exe"
+            else
+                print_warning "uv succeeded but Python executable not found in venv"
+            fi
+            if [[ -n "$venv_python" ]]; then
+                touch "$VENV_PATH/uv_created"  # Mark as uv-created
+                print_success "Created environment with uv using Python 3.12"
+            fi
         # Fall back to any available Python through uv
-        elif uv venv "$VENV_PATH" 2>/dev/null; then
-            venv_python="$VENV_PATH/bin/python"
-            touch "$VENV_PATH/uv_created"  # Mark as uv-created
-            local python_version=$($venv_python --version 2>&1)
-            print_success "Created environment with uv using $python_version"
+        elif uv_output=$(uv venv "$VENV_PATH" 2>&1); then
+            # Cross-platform path detection instead of hardcoded Unix path
+            if [[ -f "$VENV_PATH/bin/python" ]]; then
+                venv_python="$VENV_PATH/bin/python"
+            elif [[ -f "$VENV_PATH/Scripts/python.exe" ]]; then
+                venv_python="$VENV_PATH/Scripts/python.exe"
+            else
+                print_warning "uv succeeded but Python executable not found in venv"
+            fi
+            if [[ -n "$venv_python" ]]; then
+                touch "$VENV_PATH/uv_created"  # Mark as uv-created
+                local python_version=$($venv_python --version 2>&1)
+                print_success "Created environment with uv using $python_version"
+            fi
         else
             print_warning "uv environment creation failed, falling back to system Python detection"
+            print_warning "uv output: $uv_output"
         fi
     else
         print_info "uv not found, using system Python detection"
@@ -864,7 +884,7 @@ install_dependencies() {
     local install_cmd
     local use_uv=false
     
-    if command -v uv &> /dev/null && [[ "$python_cmd" == *"$VENV_PATH"* ]]; then
+    if command -v uv &> /dev/null && [[ -f "$VENV_PATH/uv_created" ]]; then
         # Use uv for faster installation if environment was created by uv
         install_cmd="uv pip install -q -r requirements.txt --python $python_cmd"
         use_uv=true
