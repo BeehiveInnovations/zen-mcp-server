@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from tools.chat import ChatTool
-from tools.codereview import CodereviewTool
+from tools.codereview import CodeReviewTool
 from tools.shared.base_tool import BaseTool
 
 
@@ -353,7 +353,7 @@ class TestLocalizationIntegration(unittest.TestCase):
         mock_get_provider.return_value = mock_provider
 
         # Test codereview tool
-        codereview_tool = CodereviewTool()
+        codereview_tool = CodeReviewTool()
         result = codereview_tool.execute(
             {
                 "step": "Source code review",
