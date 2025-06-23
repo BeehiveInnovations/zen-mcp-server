@@ -470,7 +470,7 @@ class TestAutoModeComprehensive:
             for key in env_to_clear:
                 if key in os.environ:
                     del os.environ[key]
-            # Allow all models for comprehensive testing  
+            # Allow all models for comprehensive testing
             if "GOOGLE_ALLOWED_MODELS" in os.environ:
                 del os.environ["GOOGLE_ALLOWED_MODELS"]
             import config

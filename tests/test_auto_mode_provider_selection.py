@@ -45,6 +45,9 @@ class TestAutoModeProviderSelection:
             os.environ["GEMINI_API_KEY"] = "test-key"
             for key in ["OPENAI_API_KEY", "XAI_API_KEY", "OPENROUTER_API_KEY"]:
                 os.environ.pop(key, None)
+            # Allow all models for comprehensive testing
+            if "GOOGLE_ALLOWED_MODELS" in os.environ:
+                del os.environ["GOOGLE_ALLOWED_MODELS"]
 
             # Register only Gemini provider
             from providers.gemini import GeminiModelProvider
