@@ -313,14 +313,15 @@ class GeminiModelProvider(ModelProvider):
             # Handle both base models (dict configs) and aliases (string values)
             if isinstance(config, str):
                 # This is an alias - check if the target model would be allowed
+                # Pass the alias name as original_name to handle restriction matching
                 target_model = config
-                if restriction_service and not restriction_service.is_allowed(self.get_provider_type(), target_model):
+                if restriction_service and not restriction_service.is_allowed(self.get_provider_type(), target_model, original_name=model_name):
                     continue
                 # Allow the alias
                 models.append(model_name)
             else:
                 # This is a base model with config dict
-                # Check restrictions if enabled
+                # Check restrictions if enabled - also check if this model might be referenced by aliases
                 if restriction_service and not restriction_service.is_allowed(self.get_provider_type(), model_name):
                     continue
                 models.append(model_name)
