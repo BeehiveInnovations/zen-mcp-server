@@ -254,7 +254,7 @@ python3 -m pip install --upgrade pip
 cat ~/.claude.json | grep -A 10 "zen"
 
 # The configuration should show the correct WSL path to the Python executable
-# Example: "/mnt/c/Users/52331/zen-mcp-server/.zen_venv/bin/python"
+# Example: "/home/YourName/zen-mcp-server/.zen_venv/bin/python"
 ```
 
 **Performance Tip:** For best performance, keep your zen-mcp-server directory in the WSL filesystem (e.g., `~/zen-mcp-server`) rather than in the Windows filesystem (`/mnt/c/...`).
