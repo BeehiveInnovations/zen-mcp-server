@@ -206,7 +206,7 @@ class TestRequestyProviderPriority:
             },
         ):
             # Register providers
-            from providers.openai import OpenAIModelProvider
+            from providers.openai_provider import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.REQUESTY, RequestyProvider)

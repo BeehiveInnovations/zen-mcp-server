@@ -10,10 +10,10 @@ Tests that verify Requesty provider functionality including:
 - Error handling when models are not available
 """
 
-import subprocess
-
 from .base_test import BaseSimulatorTest
+from .log_utils import LogUtils
 
+import subprocess
 
 class TestRequestyModels(BaseSimulatorTest):
     """Test Requesty provider functionality and alias mapping"""
@@ -28,19 +28,7 @@ class TestRequestyModels(BaseSimulatorTest):
 
     def get_recent_server_logs(self) -> str:
         """Get recent server logs from the log file directly"""
-        try:
-            # Read logs directly from the log file
-            cmd = ["docker", "exec", self.container_name, "tail", "-n", "500", "/tmp/mcp_server.log"]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode == 0:
-                return result.stdout
-            else:
-                self.logger.warning(f"Failed to read server logs: {result.stderr}")
-                return ""
-        except Exception as e:
-            self.logger.error(f"Failed to get server logs: {e}")
-            return ""
+        return LogUtils.get_recent_server_logs(lines=500)
 
     def run_test(self) -> bool:
         """Test Requesty provider models"""
@@ -48,20 +36,18 @@ class TestRequestyModels(BaseSimulatorTest):
             self.logger.info("Test: Requesty provider model functionality and alias mapping")
 
             # Check if Requesty API key is configured
-            check_cmd = [
-                "docker",
-                "exec",
-                self.container_name,
-                "python",
-                "-c",
-                'import os; print("REQUESTY_KEY:" + str(bool(os.environ.get("REQUESTY_API_KEY"))))',
-            ]
-            result = subprocess.run(check_cmd, capture_output=True, text=True)
+            import os
 
-            if result.returncode == 0 and "REQUESTY_KEY:False" in result.stdout:
-                self.logger.info("  ⚠️  Requesty API key not configured - skipping test")
-                self.logger.info("  ℹ️  This test requires REQUESTY_API_KEY to be set in .env")
-                return True  # Return True to indicate test is skipped, not failed
+            from dotenv import load_dotenv
+
+            # Load .env file to get the API key
+            load_dotenv()
+
+            requesty_key = os.environ.get("REQUESTY_API_KEY", "").strip()
+            if not requesty_key or requesty_key == "your_requesty_api_key_here":
+              self.logger.info("  ⚠️  Requesty API key not configured - skipping test")
+              self.logger.info("  ℹ️  This test requires REQUESTY_API_KEY to be set in .env")
+              return True  # Return True to indicate test is skipped, not failed
 
             # Setup test files for later use
             self.setup_test_files()

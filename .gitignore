@@ -181,3 +181,4 @@ CLAUDE.local.md
 logs/
 *.backup
 /.desktop_configured
+.env.backup_*
