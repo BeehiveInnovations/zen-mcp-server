@@ -209,6 +209,7 @@ class RequestyProvider(OpenAICompatibleProvider):
         # Unknown models default to False
         return False
 
+
     def list_models(self, respect_restrictions: bool = True) -> list[str]:
         """Return a list of model names supported by this provider.
 

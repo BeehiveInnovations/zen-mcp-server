@@ -13,6 +13,7 @@ Tests that verify Requesty provider functionality including:
 from .base_test import BaseSimulatorTest
 from .log_utils import LogUtils
 
+import subprocess
 
 class TestRequestyModels(BaseSimulatorTest):
     """Test Requesty provider functionality and alias mapping"""
@@ -44,9 +45,9 @@ class TestRequestyModels(BaseSimulatorTest):
 
             requesty_key = os.environ.get("REQUESTY_API_KEY", "").strip()
             if not requesty_key or requesty_key == "your_requesty_api_key_here":
-                self.logger.info("  ⚠️  Requesty API key not configured - skipping test")
-                self.logger.info("  ℹ️  This test requires REQUESTY_API_KEY to be set in .env")
-                return True  # Return True to indicate test is skipped, not failed
+              self.logger.info("  ⚠️  Requesty API key not configured - skipping test")
+              self.logger.info("  ℹ️  This test requires REQUESTY_API_KEY to be set in .env")
+              return True  # Return True to indicate test is skipped, not failed
 
             # Setup test files for later use
             self.setup_test_files()
