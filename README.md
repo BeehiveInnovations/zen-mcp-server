@@ -245,7 +245,7 @@ python3 -m pip install --upgrade pip
 ```
 
 **Path Issues:**
-- Always use the full WSL path for MCP configuration (e.g., `/mnt/c/Users/YourName/zen-mcp-server/`)
+- Always use the full WSL path for MCP configuration (e.g., `/home/YourName/zen-mcp-server/`)
 - The setup script automatically detects WSL and configures the correct paths
 
 **Claude Code Connection Issues:**
