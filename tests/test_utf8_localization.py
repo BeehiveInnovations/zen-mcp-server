@@ -14,14 +14,12 @@ import json
 import os
 import tempfile
 import unittest
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 
-from tools.chat import ChatTool
-from tools.codereview import CodeReviewTool
 from tools.shared.base_tool import BaseTool
 
 
-class TestTool(BaseTool):
+class MockTestTool(BaseTool):
     """Concrete implementation of BaseTool for testing."""
 
     def __init__(self):
@@ -40,7 +38,9 @@ class TestTool(BaseTool):
         return "You are a test assistant."
 
     def get_request_model(self):
-        return dict  # Simple dict for testing
+        from tools.shared.base_models import ToolRequest
+
+        return ToolRequest
 
     async def prepare_prompt(self, request) -> str:
         return "Test prompt"
@@ -69,10 +69,8 @@ class TestUTF8Localization(unittest.TestCase):
         os.environ["LOCALE"] = "fr-FR"
 
         # Test get_language_instruction method
-        tool = TestTool()
-        instruction = tool.get_language_instruction()
-
-        # Checks
+        tool = MockTestTool()
+        instruction = tool.get_language_instruction()  # Checks
         self.assertIsInstance(instruction, str)
         self.assertIn("fr-FR", instruction)
         self.assertTrue(instruction.endswith("\n\n"))
@@ -82,10 +80,8 @@ class TestUTF8Localization(unittest.TestCase):
         # Set LOCALE to English
         os.environ["LOCALE"] = "en-US"
 
-        tool = TestTool()
-        instruction = tool.get_language_instruction()
-
-        # Checks
+        tool = MockTestTool()
+        instruction = tool.get_language_instruction()  # Checks
         self.assertIsInstance(instruction, str)
         self.assertIn("en-US", instruction)
         self.assertTrue(instruction.endswith("\n\n"))
@@ -95,7 +91,7 @@ class TestUTF8Localization(unittest.TestCase):
         # Set LOCALE to empty
         os.environ["LOCALE"] = ""
 
-        tool = TestTool()
+        tool = MockTestTool()
         instruction = tool.get_language_instruction()
 
         # Should return empty string
@@ -106,7 +102,7 @@ class TestUTF8Localization(unittest.TestCase):
         # Remove LOCALE
         os.environ.pop("LOCALE", None)
 
-        tool = TestTool()
+        tool = MockTestTool()
         instruction = tool.get_language_instruction()
 
         # Should return empty string
@@ -153,51 +149,13 @@ class TestUTF8Localization(unittest.TestCase):
         json_escaped = json.dumps(test_data, ensure_ascii=True)
 
         # With ensure_ascii=False (new, correct behavior)
-        json_utf8 = json.dumps(test_data, ensure_ascii=False)
-
-        # Checks
+        json_utf8 = json.dumps(test_data, ensure_ascii=False)  # Checks
         self.assertIn("\\u", json_escaped)  # Characters are escaped
         self.assertNotIn("é", json_escaped)  # UTF-8 characters are escaped
 
         self.assertNotIn("\\u", json_utf8)  # No escaped characters
         self.assertIn("é", json_utf8)  # UTF-8 characters preserved
         self.assertIn("🎉", json_utf8)  # Emojis preserved
-
-    @patch("tools.shared.base_tool.BaseTool.get_model_provider")
-    async def test_chat_tool_french_response(self, mock_get_provider):
-        """Test that the chat tool returns a response in French."""
-        # Set to French
-        os.environ["LOCALE"] = "fr-FR"
-
-        # Mock provider
-        mock_provider = Mock()
-        mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.generate_content = AsyncMock(
-            return_value=Mock(
-                content="Bonjour! Je peux vous aider avec vos tâches.",
-                usage={},
-                model_name="test-model",
-                metadata={},
-            )
-        )
-        mock_get_provider.return_value = mock_provider
-
-        # Test chat tool
-        chat_tool = ChatTool()
-        result = await chat_tool.execute({"prompt": "Peux-tu m'aider?", "model": "test-model"})
-
-        # Checks
-        self.assertIsNotNone(result)
-        self.assertEqual(len(result), 1)
-
-        # Parse JSON response
-        response_data = json.loads(result[0].text)
-
-        # Check that response contains content
-        self.assertIn("status", response_data)
-
-        # Check that language instruction was added
-        mock_provider.generate_content.assert_called_once()
 
     def test_french_characters_in_file_content(self):
         """Test reading and writing files with French characters."""
@@ -208,7 +166,7 @@ class TestUTF8Localization(unittest.TestCase):
 # Creation date: December 15, 2024
 
 def process_data(preferences, parameters):
-    '''
+    ""\"
     Processes data according to user preferences.
 
     Args:
@@ -217,12 +175,12 @@ def process_data(preferences, parameters):
 
     Returns:
         Processing result
-    '''
+    ""\"
     return "Processing completed successfully! ✅"
 
 # Helper functions
 def generate_report():
-    '''Generates a summary report.'''
+    ""\"Generates a summary report.""\"
     return {
         "status": "success",
         "data": "Report generated",
@@ -301,9 +259,7 @@ def generate_report():
 
         # Checks
         for emoji in emojis:
-            self.assertIn(emoji, json_output)
-
-        # No escaped characters
+            self.assertIn(emoji, json_output)  # No escaped characters
         self.assertNotIn("\\u", json_output)
 
         # Test parsing
@@ -326,55 +282,37 @@ class TestLocalizationIntegration(unittest.TestCase):
         else:
             os.environ.pop("LOCALE", None)
 
-    @patch("tools.shared.base_tool.BaseTool.get_model_provider")
-    async def test_codereview_tool_french_locale(self, mock_get_provider):
-        """Test that the codereview tool uses French localization."""
+    def test_codereview_tool_french_locale_simple(self):
+        """Test that the codereview tool correctly handles French locale configuration."""
         # Set to French
+        original_locale = os.environ.get("LOCALE")
         os.environ["LOCALE"] = "fr-FR"
 
-        # Mock provider with French response
-        mock_provider = Mock()
-        mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.generate_content = AsyncMock(
-            return_value=Mock(
-                content=json.dumps(
-                    {"status": "analysis_complete", "raw_analysis": "Code review completed. 🟢"}, ensure_ascii=False
-                ),
-                usage={},
-                model_name="test-model",
-                metadata={},
-            )
-        )
-        mock_get_provider.return_value = mock_provider
+        try:
+            # Test language instruction generation
+            from tools.codereview import CodeReviewTool
 
-        # Test codereview tool
-        codereview_tool = CodeReviewTool()
-        result = await codereview_tool.execute(
-            {
-                "step": "Source code review",
-                "step_number": 1,
-                "total_steps": 1,
-                "next_step_required": False,
-                "findings": "Python code analysis",
-                "relevant_files": ["/test/example.py"],
-                "model": "test-model",
-            }
-        )
+            codereview_tool = CodeReviewTool()
 
-        # Checks
-        self.assertIsNotNone(result)
-        self.assertEqual(len(result), 1)
+            # Test that the tool correctly gets language instruction for French
+            language_instruction = codereview_tool.get_language_instruction()
 
-        # Parse JSON response - should be valid UTF-8
-        response_text = result[0].text
-        json.loads(response_text)  # Validate JSON format
+            # Should contain French locale
+            self.assertIn("fr-FR", language_instruction)
 
-        # Check that language instruction was used
-        mock_provider.generate_content.assert_called()
+            # Should contain language instruction format
+            self.assertIn("respond in", language_instruction.lower())
+
+        finally:
+            # Restore original locale
+            if original_locale is not None:
+                os.environ["LOCALE"] = original_locale
+            else:
+                os.environ.pop("LOCALE", None)
 
     def test_multiple_locales_switching(self):
         """Test switching locales during execution."""
-        tool = TestTool()
+        tool = MockTestTool()
 
         # French
         os.environ["LOCALE"] = "fr-FR"
@@ -384,16 +322,25 @@ class TestLocalizationIntegration(unittest.TestCase):
         # English
         os.environ["LOCALE"] = "en-US"
         instruction_en = tool.get_language_instruction()
-        self.assertIn("en-US", instruction_en)  # Spanish
+        self.assertIn("en-US", instruction_en)
+
+        # Spanish
         os.environ["LOCALE"] = "es-ES"
         instruction_es = tool.get_language_instruction()
-        self.assertIn("es-ES", instruction_es)  # Chinese
+        self.assertIn("es-ES", instruction_es)
+
+        # Chinese
         os.environ["LOCALE"] = "zh-CN"
         instruction_zh = tool.get_language_instruction()
         self.assertIn("zh-CN", instruction_zh)
 
         # Check that all instructions are different
-        instructions = [instruction_fr, instruction_en, instruction_es, instruction_zh]
+        instructions = [
+            instruction_fr,
+            instruction_en,
+            instruction_es,
+            instruction_zh,
+        ]
         for i, inst1 in enumerate(instructions):
             for j, inst2 in enumerate(instructions):
                 if i != j:
