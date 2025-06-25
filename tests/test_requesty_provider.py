@@ -75,6 +75,139 @@ class TestRequestyProvider:
         assert capabilities.temperature_constraint.max_temp == 1.0
         assert capabilities.temperature_constraint.default_temp == 0.7
 
+    def test_list_models(self):
+        """Test list_models method returns all supported models."""
+        provider = RequestyProvider("test-key")
+
+        # Test with restrictions disabled (get all models)
+        all_models = provider.list_models(respect_restrictions=False)
+
+        # Should include both base models and aliases
+        expected_base_models = [
+            "coding/claude-4-sonnet",
+            "anthropic/claude-3-5-haiku-latest",
+            "anthropic/claude-opus-4-20250514",
+            "openai/o3",
+            "openai/o3-mini",
+            "perplexity/sonar",
+            "mistral/devstral-small-latest",
+            "mistral/mistral-large-latest",
+            "google/gemini-2.5-pro-preview-06-05",
+            "google/gemini-2.5-flash-preview-05-20",
+        ]
+
+        expected_aliases = [
+            "claude-4-sonnet",
+            "claude-haiku",
+            "claude-opus-4",
+            "o3",
+            "o3-mini",
+            "sonar",
+            "devstral",
+            "mistral-large",
+            "gemini-pro",
+            "gemini-flash",
+            "flash",
+            "pro",
+        ]
+
+        # Check all base models are present
+        for model in expected_base_models:
+            assert model in all_models, f"Base model {model} should be in list"
+
+        # Check all aliases are present
+        for alias in expected_aliases:
+            assert alias in all_models, f"Alias {alias} should be in list"
+
+        # Verify total count
+        assert len(all_models) == len(expected_base_models) + len(expected_aliases)
+
+    @patch("utils.model_restrictions.get_restriction_service")
+    def test_list_models_with_restrictions(self, mock_get_restriction_service):
+        """Test list_models respects restrictions when enabled."""
+        provider = RequestyProvider("test-key")
+
+        # Set up mock restriction service
+        mock_restriction_service = MagicMock()
+        mock_get_restriction_service.return_value = mock_restriction_service
+
+        # Configure allowed models - only allow claude models
+        def is_allowed_side_effect(provider_type, resolved_name, original_name):
+            # Allow only claude-related models
+            allowed_models = [
+                "coding/claude-4-sonnet",
+                "anthropic/claude-3-5-haiku-latest",
+                "anthropic/claude-opus-4-20250514",
+            ]
+            allowed_aliases = ["claude-4-sonnet", "claude-haiku", "claude-opus-4"]
+            return resolved_name in allowed_models or original_name in allowed_aliases
+
+        mock_restriction_service.is_allowed.side_effect = is_allowed_side_effect
+
+        # Test with restrictions enabled
+        restricted_models = provider.list_models(respect_restrictions=True)
+
+        # Should only include allowed models
+        expected_allowed = [
+            "coding/claude-4-sonnet",
+            "anthropic/claude-3-5-haiku-latest",
+            "anthropic/claude-opus-4-20250514",
+            "claude-4-sonnet",
+            "claude-haiku",
+            "claude-opus-4",
+        ]
+
+        # Verify only allowed models are present
+        assert len(restricted_models) == len(expected_allowed)
+        for model in restricted_models:
+            assert model in expected_allowed, f"Model {model} should be allowed"
+
+        # Verify non-allowed models are excluded
+        excluded_models = ["o3", "openai/o3", "gemini-pro", "sonar"]
+        for model in excluded_models:
+            assert model not in restricted_models, f"Model {model} should be excluded"
+
+    def test_list_all_known_models(self):
+        """Test list_all_known_models returns all models including alias targets."""
+        provider = RequestyProvider("test-key")
+
+        all_known = provider.list_all_known_models()
+
+        # Should include all model names in lowercase
+        expected_models = [
+            # Base models
+            "coding/claude-4-sonnet",
+            "anthropic/claude-3-5-haiku-latest",
+            "anthropic/claude-opus-4-20250514",
+            "openai/o3",
+            "openai/o3-mini",
+            "perplexity/sonar",
+            "mistral/devstral-small-latest",
+            "mistral/mistral-large-latest",
+            "google/gemini-2.5-pro-preview-06-05",
+            "google/gemini-2.5-flash-preview-05-20",
+            # Aliases
+            "claude-4-sonnet",
+            "claude-haiku",
+            "claude-opus-4",
+            "o3",
+            "o3-mini",
+            "sonar",
+            "devstral",
+            "mistral-large",
+            "gemini-pro",
+            "gemini-flash",
+            "flash",
+            "pro",
+        ]
+
+        # All models should be in lowercase
+        for model in expected_models:
+            assert model.lower() in all_known, f"Model {model.lower()} should be in all_known_models"
+
+        # Check no duplicates
+        assert len(all_known) == len(set(all_known)), "Should have no duplicate models"
+
 
 class TestRequestyAutoMode:
     """Test auto mode functionality when only Requesty is configured."""
