@@ -45,13 +45,8 @@ class ListModelsTool(BaseTool):
         """Return the JSON schema for the tool's input"""
         return {
             "type": "object",
-            "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Model to use (ignored by listmodels tool)"
-                }
-            },
-            "required": []
+            "properties": {"model": {"type": "string", "description": "Model to use (ignored by listmodels tool)"}},
+            "required": [],
         }
 
     def get_system_prompt(self) -> str:

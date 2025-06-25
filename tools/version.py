@@ -149,13 +149,8 @@ class VersionTool(BaseTool):
         """Return the JSON schema for the tool's input"""
         return {
             "type": "object",
-            "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Model to use (ignored by version tool)"
-                }
-            },
-            "required": []
+            "properties": {"model": {"type": "string", "description": "Model to use (ignored by version tool)"}},
+            "required": [],
         }
 
     def get_system_prompt(self) -> str:
