@@ -229,6 +229,7 @@ class RequestyProvider(OpenAICompatibleProvider):
             if isinstance(config, str):
                 # This is an alias - check if the target model would be allowed
                 target_model = config
+
                 if restriction_service and not restriction_service.is_allowed(
                     self.get_provider_type(), target_model, model_name
                 ):
