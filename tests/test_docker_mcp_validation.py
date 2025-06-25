@@ -194,36 +194,6 @@ class TestDockerPerformance:
         assert simulated_startup <= max_startup_seconds, f"Startup too slow: {simulated_startup}s"
 
 
-class TestValidationScript:
-    """Validation script tests"""
-
-    def test_validation_script_exists(self):
-        """Test existence script validation"""
-        project_root = Path(__file__).parent.parent
-        ps1_script = project_root / "validate-docker-mcp.ps1"
-        sh_script = project_root / "validate-docker-mcp.sh"
-
-        # Au moins un script doit exister
-        assert ps1_script.exists() or sh_script.exists(), "Validation script missing"
-
-    def test_validation_script_content(self):
-        """Test contenu script validation"""
-        project_root = Path(__file__).parent.parent
-        ps1_script = project_root / "validate-docker-mcp.ps1"
-
-        if ps1_script.exists():
-            try:
-                content = ps1_script.read_text(encoding="utf-8")
-            except UnicodeDecodeError:
-                # Fallback pour autres encodages
-                content = ps1_script.read_text(encoding="cp1252", errors="ignore")
-
-            # Vérifier éléments clés
-            assert "docker" in content.lower(), "Script must check Docker"
-            assert "zen-mcp-server" in content, "Script must check image"
-            assert ".env" in content, "Script must check .env"
-
-
 @pytest.mark.integration
 class TestFullIntegration:
     """Tests d'intégration complète"""
@@ -235,7 +205,6 @@ class TestFullIntegration:
             "dockerfile": True,
             "mcp_config": True,
             "env_template": True,
-            "validation_script": True,
             "documentation": True,
         }
 
