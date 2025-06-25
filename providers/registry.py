@@ -86,18 +86,20 @@ class ModelProviderRegistry:
             # Handle Azure OpenAI special initialization
             resource_name = os.getenv("AZURE_OPENAI_RESOURCE_NAME", "")
             endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
-            
+
             # Check if either resource name or endpoint is provided
             if not resource_name and not endpoint:
                 if api_key:  # Key is set but neither resource name nor endpoint is provided
-                    logging.warning("AZURE_OPENAI_API_KEY set but neither AZURE_OPENAI_RESOURCE_NAME nor AZURE_OPENAI_ENDPOINT provided – skipping Azure OpenAI provider")
+                    logging.warning(
+                        "AZURE_OPENAI_API_KEY set but neither AZURE_OPENAI_RESOURCE_NAME nor AZURE_OPENAI_ENDPOINT provided – skipping Azure OpenAI provider"
+                    )
                 return None
             if not api_key:
                 return None
-            
+
             # Get optional API version
             api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
-            
+
             # Initialize Azure OpenAI provider with either resource name or endpoint
             if endpoint:
                 provider = provider_class(endpoint=endpoint, api_key=api_key, api_version=api_version)
@@ -150,14 +152,17 @@ class ModelProviderRegistry:
         logging.debug(f"Available providers in registry: {list(instance._providers.keys())}")
 
         # Special handling: If Azure OpenAI is configured, skip regular OpenAI
-        azure_configured = bool(os.getenv("AZURE_OPENAI_RESOURCE_NAME") and os.getenv("AZURE_OPENAI_API_KEY"))
+        azure_configured = bool(
+            (os.getenv("AZURE_OPENAI_RESOURCE_NAME") or os.getenv("AZURE_OPENAI_ENDPOINT"))
+            and os.getenv("AZURE_OPENAI_API_KEY")
+        )
 
         for provider_type in PROVIDER_PRIORITY_ORDER:
             # Skip regular OpenAI if Azure OpenAI is configured
             if provider_type == ProviderType.OPENAI and azure_configured:
                 logging.debug(f"Skipping {provider_type} because Azure OpenAI is configured")
                 continue
-                
+
             if provider_type in instance._providers:
                 logging.debug(f"Found {provider_type} in registry")
                 # Get or create provider instance
@@ -311,7 +316,7 @@ class ModelProviderRegistry:
         xai_available = bool(xai_models)
         openrouter_available = bool(openrouter_models)
         custom_available = bool(custom_models)
-        
+
         # Prefer Azure OpenAI over regular OpenAI if available
         openai_or_azure_available = azure_openai_available or openai_available
         openai_or_azure_models = azure_openai_models if azure_openai_available else openai_models

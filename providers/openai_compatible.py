@@ -289,18 +289,8 @@ class OpenAICompatibleProvider(ModelProvider):
             elif role == "assistant":
                 input_messages.append({"role": "assistant", "content": [{"type": "output_text", "text": content}]})
 
-        # Extract reasoning effort from kwargs or environment variable
-        reasoning_effort = kwargs.get("reasoning_effort")
-        if not reasoning_effort:
-            # Check for provider-specific or global default
-            provider_type = self.get_provider_type().value.upper()
-            reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv("OPENAI_REASONING_EFFORT", "medium")
-        
-        # Validate reasoning effort value
-        valid_efforts = ["low", "medium", "high"]
-        if reasoning_effort not in valid_efforts:
-            logging.warning(f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}")
-            reasoning_effort = "medium"
+        # Extract and validate reasoning effort
+        reasoning_effort = self._get_validated_reasoning_effort(kwargs)
 
         # Prepare completion parameters for responses endpoint
         # Based on OpenAI documentation, use nested reasoning object for responses endpoint
@@ -486,17 +476,7 @@ class OpenAICompatibleProvider(ModelProvider):
         # Add reasoning effort for O3 models (not just O3-pro)
         if resolved_model.startswith("o3") or resolved_model.startswith("o4"):
             # O3/O4 models support reasoning effort in chat completions
-            # Check for reasoning effort in kwargs or environment variable
-            reasoning_effort = kwargs.get("reasoning_effort")
-            if not reasoning_effort:
-                # Check for provider-specific or global default
-                provider_type = self.get_provider_type().value.upper()
-                reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv("OPENAI_REASONING_EFFORT", "medium")
-            
-            valid_efforts = ["low", "medium", "high"]
-            if reasoning_effort not in valid_efforts:
-                logging.warning(f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}")
-                reasoning_effort = "medium"
+            reasoning_effort = self._get_validated_reasoning_effort(kwargs)
             completion_params["reasoning_effort"] = reasoning_effort
 
         # Add any additional OpenAI-specific parameters
@@ -724,6 +704,30 @@ class OpenAICompatibleProvider(ModelProvider):
         supports = model_name.lower() in vision_models
         logging.debug(f"Model '{model_name}' vision support: {supports}")
         return supports
+
+    def _get_validated_reasoning_effort(self, kwargs: dict) -> str:
+        """Extract and validate reasoning effort from kwargs or environment.
+        
+        Args:
+            kwargs: Keyword arguments that may contain reasoning_effort
+            
+        Returns:
+            Valid reasoning effort value ('low', 'medium', or 'high')
+        """
+        # Extract reasoning effort from kwargs or environment variable
+        reasoning_effort = kwargs.get("reasoning_effort")
+        if not reasoning_effort:
+            # Check for provider-specific or global default
+            provider_type = self.get_provider_type().value.upper()
+            reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv("OPENAI_REASONING_EFFORT", "medium")
+        
+        # Validate reasoning effort value
+        valid_efforts = ["low", "medium", "high"]
+        if reasoning_effort not in valid_efforts:
+            logging.warning(f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}")
+            reasoning_effort = "medium"
+            
+        return reasoning_effort
 
     def _is_error_retryable(self, error: Exception) -> bool:
         """Determine if an error should be retried based on structured error codes.

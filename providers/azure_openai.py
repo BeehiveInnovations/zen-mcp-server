@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from typing import Optional
 
 from openai import AzureOpenAI
@@ -63,9 +64,16 @@ class AzureOpenAIModelProvider(OpenAICompatibleProvider):
         ),
     }
 
-    def __init__(self, resource_name: str = None, endpoint: str = None, api_key: str = None, api_version: str = "2025-01-01-preview", **kwargs):
+    def __init__(
+        self,
+        resource_name: str = None,
+        endpoint: str = None,
+        api_key: str = None,
+        api_version: str = "2025-01-01-preview",
+        **kwargs,
+    ):
         """Initialize Azure OpenAI provider with resource name or endpoint and API key.
-        
+
         Args:
             resource_name: Azure OpenAI resource name (e.g., "mycompany-openai")
             endpoint: Full Azure endpoint URL (alternative to resource_name)
@@ -76,10 +84,9 @@ class AzureOpenAIModelProvider(OpenAICompatibleProvider):
         # Determine Azure endpoint
         if endpoint:
             # Use provided endpoint directly
-            azure_endpoint = endpoint.rstrip('/')  # Remove trailing slash if present
+            azure_endpoint = endpoint.rstrip("/")  # Remove trailing slash if present
             # Extract resource name from endpoint if possible
-            import re
-            match = re.match(r'https://([^.]+)\.openai\.azure\.com', azure_endpoint)
+            match = re.match(r"https://([^.]+)\.openai\.azure\.com", azure_endpoint)
             self.resource_name = match.group(1) if match else "azure-openai"
         elif resource_name:
             # Construct Azure endpoint from resource name
@@ -87,15 +94,15 @@ class AzureOpenAIModelProvider(OpenAICompatibleProvider):
             self.resource_name = resource_name
         else:
             raise ValueError("Either resource_name or endpoint must be provided")
-        
+
         # Store Azure-specific configuration
         self.api_version = api_version
         self._azure_client = None
-        
+
         # Initialize parent with constructed endpoint
         # Note: We pass the endpoint as base_url for compatibility
         super().__init__(api_key, base_url=azure_endpoint, **kwargs)
-        
+
         logger.info(f"Initialized Azure OpenAI provider with endpoint: {azure_endpoint}")
 
     @property
@@ -161,7 +168,7 @@ class AzureOpenAIModelProvider(OpenAICompatibleProvider):
         **kwargs,
     ) -> ModelResponse:
         """Generate content using Azure OpenAI API with proper model name resolution.
-        
+
         Note: Azure OpenAI uses deployment names, not model names. The model_name
         parameter here represents the deployment name in your Azure resource.
         """
@@ -170,7 +177,9 @@ class AzureOpenAIModelProvider(OpenAICompatibleProvider):
 
         # For Azure, the deployment name might be different from the model name
         # Users can configure custom deployment names via environment variables
-        deployment_name = os.getenv(f"AZURE_OPENAI_{resolved_model_name.upper().replace('-', '_')}_DEPLOYMENT", resolved_model_name)
+        deployment_name = os.getenv(
+            f"AZURE_OPENAI_{resolved_model_name.upper().replace('-', '_')}_DEPLOYMENT", resolved_model_name
+        )
 
         # Call parent implementation with deployment name
         return super().generate_content(
@@ -189,43 +198,42 @@ class AzureOpenAIModelProvider(OpenAICompatibleProvider):
 
     def _resolve_model_name(self, model_name: str) -> str:
         """Resolve model name aliases to canonical model names.
-        
+
         Args:
             model_name: Input model name or alias
-            
+
         Returns:
             Canonical model name
         """
         # Convert to lowercase for case-insensitive comparison
         lower_name = model_name.lower()
-        
+
         # Check each supported model's aliases
         for canonical_name, capabilities in self.SUPPORTED_MODELS.items():
             if lower_name == canonical_name.lower() or lower_name in [alias.lower() for alias in capabilities.aliases]:
                 return canonical_name
-                
+
         # If no alias match, return original name (will fail in validation)
         return model_name
 
     def list_models(self, respect_restrictions: bool = True) -> list[str]:
         """List available Azure OpenAI models.
-        
+
         Args:
             respect_restrictions: Whether to filter by model restrictions
-            
+
         Returns:
             List of available model names
         """
-        models = []
-        
         if respect_restrictions:
             from utils.model_restrictions import get_restriction_service
+
             restriction_service = get_restriction_service()
-            
-            for model_name in self.SUPPORTED_MODELS:
-                if restriction_service.is_allowed(ProviderType.AZURE_OPENAI, model_name):
-                    models.append(model_name)
+
+            return [
+                model_name
+                for model_name in self.SUPPORTED_MODELS
+                if restriction_service.is_allowed(ProviderType.AZURE_OPENAI, model_name)
+            ]
         else:
-            models = list(self.SUPPORTED_MODELS.keys())
-            
-        return models
+            return list(self.SUPPORTED_MODELS.keys())
