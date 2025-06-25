@@ -362,6 +362,7 @@ def configure_providers():
         ValueError: If no valid API keys are found or conflicting configurations detected
     """
     from providers import ModelProviderRegistry
+    from providers.azure_openai import AzureOpenAIModelProvider
     from providers.base import ProviderType
     from providers.custom import CustomProvider
     from providers.dial import DIALModelProvider
@@ -383,12 +384,27 @@ def configure_providers():
         has_native_apis = True
         logger.info("Gemini API key found - Gemini models available")
 
-    # Check for OpenAI API key
+    # Check for Azure OpenAI configuration
+    azure_openai_resource = os.getenv("AZURE_OPENAI_RESOURCE_NAME")
+    azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_openai_key = os.getenv("AZURE_OPENAI_API_KEY")
+    azure_openai_configured = bool((azure_openai_resource or azure_openai_endpoint) and azure_openai_key)
+    if azure_openai_configured:
+        valid_providers.append("Azure OpenAI (O3/O4-mini)")
+        has_native_apis = True
+        if azure_openai_endpoint:
+            logger.info(f"Azure OpenAI configured with endpoint: {azure_openai_endpoint}")
+        else:
+            logger.info(f"Azure OpenAI configured with resource: {azure_openai_resource}")
+
+    # Check for OpenAI API key (skip if Azure is configured)
     openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key and openai_key != "your_openai_api_key_here":
+    if openai_key and openai_key != "your_openai_api_key_here" and not azure_openai_configured:
         valid_providers.append("OpenAI (o3)")
         has_native_apis = True
         logger.info("OpenAI API key found - o3 model available")
+    elif openai_key and azure_openai_configured:
+        logger.info("OpenAI API key found but Azure OpenAI is configured - using Azure OpenAI instead")
 
     # Check for X.AI API key
     xai_key = os.getenv("XAI_API_KEY")
@@ -433,7 +449,10 @@ def configure_providers():
     if has_native_apis:
         if gemini_key and gemini_key != "your_gemini_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-        if openai_key and openai_key != "your_openai_api_key_here":
+        if azure_openai_configured:
+            ModelProviderRegistry.register_provider(ProviderType.AZURE_OPENAI, AzureOpenAIModelProvider)
+        elif openai_key and openai_key != "your_openai_api_key_here":
+            # Only register regular OpenAI if Azure is not configured
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)

@@ -82,6 +82,27 @@ class ModelProviderRegistry:
                 api_key = api_key or ""
                 # Initialize custom provider with both API key and base URL
                 provider = provider_class(api_key=api_key, base_url=custom_url)
+        elif provider_type == ProviderType.AZURE_OPENAI:
+            # Handle Azure OpenAI special initialization
+            resource_name = os.getenv("AZURE_OPENAI_RESOURCE_NAME", "")
+            endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+            
+            # Check if either resource name or endpoint is provided
+            if not resource_name and not endpoint:
+                if api_key:  # Key is set but neither resource name nor endpoint is provided
+                    logging.warning("AZURE_OPENAI_API_KEY set but neither AZURE_OPENAI_RESOURCE_NAME nor AZURE_OPENAI_ENDPOINT provided – skipping Azure OpenAI provider")
+                return None
+            if not api_key:
+                return None
+            
+            # Get optional API version
+            api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
+            
+            # Initialize Azure OpenAI provider with either resource name or endpoint
+            if endpoint:
+                provider = provider_class(endpoint=endpoint, api_key=api_key, api_version=api_version)
+            else:
+                provider = provider_class(resource_name=resource_name, api_key=api_key, api_version=api_version)
         else:
             if not api_key:
                 return None
@@ -112,8 +133,10 @@ class ModelProviderRegistry:
 
         # Define explicit provider priority order
         # Native APIs first, then custom endpoints, then catch-all providers
+        # Azure OpenAI takes precedence over regular OpenAI when configured
         PROVIDER_PRIORITY_ORDER = [
             ProviderType.GOOGLE,  # Direct Gemini access
+            ProviderType.AZURE_OPENAI,  # Azure OpenAI (checked before regular OpenAI)
             ProviderType.OPENAI,  # Direct OpenAI access
             ProviderType.XAI,  # Direct X.AI GROK access
             ProviderType.DIAL,  # DIAL unified API access
@@ -126,7 +149,15 @@ class ModelProviderRegistry:
         logging.debug(f"Registry instance: {instance}")
         logging.debug(f"Available providers in registry: {list(instance._providers.keys())}")
 
+        # Special handling: If Azure OpenAI is configured, skip regular OpenAI
+        azure_configured = bool(os.getenv("AZURE_OPENAI_RESOURCE_NAME") and os.getenv("AZURE_OPENAI_API_KEY"))
+
         for provider_type in PROVIDER_PRIORITY_ORDER:
+            # Skip regular OpenAI if Azure OpenAI is configured
+            if provider_type == ProviderType.OPENAI and azure_configured:
+                logging.debug(f"Skipping {provider_type} because Azure OpenAI is configured")
+                continue
+                
             if provider_type in instance._providers:
                 logging.debug(f"Found {provider_type} in registry")
                 # Get or create provider instance
@@ -232,6 +263,7 @@ class ModelProviderRegistry:
         key_mapping = {
             ProviderType.GOOGLE: "GEMINI_API_KEY",
             ProviderType.OPENAI: "OPENAI_API_KEY",
+            ProviderType.AZURE_OPENAI: "AZURE_OPENAI_API_KEY",
             ProviderType.XAI: "XAI_API_KEY",
             ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
             ProviderType.CUSTOM: "CUSTOM_API_KEY",  # Can be empty for providers that don't need auth
@@ -267,24 +299,30 @@ class ModelProviderRegistry:
 
         # Group by provider
         openai_models = [m for m, p in available_models.items() if p == ProviderType.OPENAI]
+        azure_openai_models = [m for m, p in available_models.items() if p == ProviderType.AZURE_OPENAI]
         gemini_models = [m for m, p in available_models.items() if p == ProviderType.GOOGLE]
         xai_models = [m for m, p in available_models.items() if p == ProviderType.XAI]
         openrouter_models = [m for m, p in available_models.items() if p == ProviderType.OPENROUTER]
         custom_models = [m for m, p in available_models.items() if p == ProviderType.CUSTOM]
 
         openai_available = bool(openai_models)
+        azure_openai_available = bool(azure_openai_models)
         gemini_available = bool(gemini_models)
         xai_available = bool(xai_models)
         openrouter_available = bool(openrouter_models)
         custom_available = bool(custom_models)
+        
+        # Prefer Azure OpenAI over regular OpenAI if available
+        openai_or_azure_available = azure_openai_available or openai_available
+        openai_or_azure_models = azure_openai_models if azure_openai_available else openai_models
 
         if tool_category == ToolModelCategory.EXTENDED_REASONING:
             # Prefer thinking-capable models for deep reasoning tools
-            if openai_available and "o3" in openai_models:
+            if openai_or_azure_available and "o3" in openai_or_azure_models:
                 return "o3"  # O3 for deep reasoning
-            elif openai_available and openai_models:
-                # Fall back to any available OpenAI model
-                return openai_models[0]
+            elif openai_or_azure_available and openai_or_azure_models:
+                # Fall back to any available OpenAI/Azure model
+                return openai_or_azure_models[0]
             elif xai_available and "grok-3" in xai_models:
                 return "grok-3"  # GROK-3 for deep reasoning
             elif xai_available and xai_models:
@@ -312,13 +350,13 @@ class ModelProviderRegistry:
 
         elif tool_category == ToolModelCategory.FAST_RESPONSE:
             # Prefer fast, cost-efficient models
-            if openai_available and "o4-mini" in openai_models:
+            if openai_or_azure_available and "o4-mini" in openai_or_azure_models:
                 return "o4-mini"  # Latest, fast and efficient
-            elif openai_available and "o3-mini" in openai_models:
+            elif openai_or_azure_available and "o3-mini" in openai_or_azure_models:
                 return "o3-mini"  # Second choice
-            elif openai_available and openai_models:
-                # Fall back to any available OpenAI model
-                return openai_models[0]
+            elif openai_or_azure_available and openai_or_azure_models:
+                # Fall back to any available OpenAI/Azure model
+                return openai_or_azure_models[0]
             elif xai_available and "grok-3-fast" in xai_models:
                 return "grok-3-fast"  # GROK-3 Fast for speed
             elif xai_available and xai_models:
@@ -345,12 +383,12 @@ class ModelProviderRegistry:
                 return "gemini-2.5-flash"
 
         # BALANCED or no category specified - use existing balanced logic
-        if openai_available and "o4-mini" in openai_models:
+        if openai_or_azure_available and "o4-mini" in openai_or_azure_models:
             return "o4-mini"  # Latest balanced performance/cost
-        elif openai_available and "o3-mini" in openai_models:
+        elif openai_or_azure_available and "o3-mini" in openai_or_azure_models:
             return "o3-mini"  # Second choice
-        elif openai_available and openai_models:
-            return openai_models[0]
+        elif openai_or_azure_available and openai_or_azure_models:
+            return openai_or_azure_models[0]
         elif xai_available and "grok-3" in xai_models:
             return "grok-3"  # GROK-3 as balanced choice
         elif xai_available and xai_models:

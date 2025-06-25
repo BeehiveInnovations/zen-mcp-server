@@ -289,12 +289,25 @@ class OpenAICompatibleProvider(ModelProvider):
             elif role == "assistant":
                 input_messages.append({"role": "assistant", "content": [{"type": "output_text", "text": content}]})
 
+        # Extract reasoning effort from kwargs or environment variable
+        reasoning_effort = kwargs.get("reasoning_effort")
+        if not reasoning_effort:
+            # Check for provider-specific or global default
+            provider_type = self.get_provider_type().value.upper()
+            reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv("OPENAI_REASONING_EFFORT", "medium")
+        
+        # Validate reasoning effort value
+        valid_efforts = ["low", "medium", "high"]
+        if reasoning_effort not in valid_efforts:
+            logging.warning(f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}")
+            reasoning_effort = "medium"
+
         # Prepare completion parameters for responses endpoint
         # Based on OpenAI documentation, use nested reasoning object for responses endpoint
         completion_params = {
             "model": model_name,
             "input": input_messages,
-            "reasoning": {"effort": "medium"},  # Use nested object for responses endpoint
+            "reasoning": {"effort": reasoning_effort},  # Use configurable reasoning effort
             "store": True,
         }
 
@@ -470,6 +483,22 @@ class OpenAICompatibleProvider(ModelProvider):
         if max_output_tokens and supports_temperature:
             completion_params["max_tokens"] = max_output_tokens
 
+        # Add reasoning effort for O3 models (not just O3-pro)
+        if resolved_model.startswith("o3") or resolved_model.startswith("o4"):
+            # O3/O4 models support reasoning effort in chat completions
+            # Check for reasoning effort in kwargs or environment variable
+            reasoning_effort = kwargs.get("reasoning_effort")
+            if not reasoning_effort:
+                # Check for provider-specific or global default
+                provider_type = self.get_provider_type().value.upper()
+                reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv("OPENAI_REASONING_EFFORT", "medium")
+            
+            valid_efforts = ["low", "medium", "high"]
+            if reasoning_effort not in valid_efforts:
+                logging.warning(f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}")
+                reasoning_effort = "medium"
+            completion_params["reasoning_effort"] = reasoning_effort
+
         # Add any additional OpenAI-specific parameters
         # Use capabilities to filter parameters for reasoning models
         for key, value in kwargs.items():
@@ -478,6 +507,9 @@ class OpenAICompatibleProvider(ModelProvider):
                 if not supports_temperature and key in ["top_p", "frequency_penalty", "presence_penalty"]:
                     continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
+            elif key == "reasoning_effort":
+                # Already handled above for O3/O4 models
+                continue
 
         # Check if this is o3-pro and needs the responses endpoint
         if resolved_model == "o3-pro-2025-06-10":
