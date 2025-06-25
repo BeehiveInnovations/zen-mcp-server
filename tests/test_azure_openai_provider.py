@@ -3,8 +3,6 @@
 import os
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from providers.azure_openai import AzureOpenAIModelProvider
 from providers.base import ProviderType
 
@@ -103,20 +101,25 @@ class TestAzureOpenAIProvider:
         """Test custom deployment name from environment variable."""
         provider = AzureOpenAIModelProvider(resource_name="test-resource", api_key="test-key")
 
-        # Mock the parent generate_content to capture the deployment name
-        with patch.object(provider, "client") as mock_client:
-            mock_response = MagicMock()
-            mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message.content = "Test response"
-            mock_response.usage = MagicMock()
-            mock_response.usage.prompt_tokens = 10
-            mock_response.usage.completion_tokens = 20
-            mock_response.usage.total_tokens = 30
+        # Create a mock client
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Test response"
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
 
-            mock_client.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = mock_response
 
+        # Set the mock client directly on the private attribute
+        provider._azure_client = mock_client
+
+        # Mock the parent class's validate_model_name to accept the custom deployment name
+        with patch.object(provider, "validate_model_name", return_value=True):
             # Generate content should use custom deployment name
-            result = provider.generate_content(
+            provider.generate_content(
                 prompt="Test prompt", model_name="o3", system_prompt="Test system", temperature=1.0
             )
 
@@ -168,33 +171,36 @@ class TestAzureOpenAIProvider:
         """Test reasoning effort configuration for O3/O4 models."""
         provider = AzureOpenAIModelProvider(resource_name="test-resource", api_key="test-key")
 
-        # Mock the client to test reasoning effort parameter
-        with patch.object(provider, "client") as mock_client:
-            mock_response = MagicMock()
-            mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message.content = "Test response"
-            mock_response.usage = MagicMock()
-            mock_response.usage.prompt_tokens = 10
-            mock_response.usage.completion_tokens = 20
-            mock_response.usage.total_tokens = 30
-            mock_response.choices[0].finish_reason = "stop"
-            mock_response.model = "o3"
-            mock_response.id = "test-id"
-            mock_response.created = 1234567890
+        # Create a mock client
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Test response"
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+        mock_response.choices[0].finish_reason = "stop"
+        mock_response.model = "o3"
+        mock_response.id = "test-id"
+        mock_response.created = 1234567890
 
-            mock_client.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = mock_response
 
-            # Test with explicit reasoning effort
-            result = provider.generate_content(prompt="Test prompt", model_name="o3", reasoning_effort="high")
+        # Set the mock client directly on the private attribute
+        provider._azure_client = mock_client
 
-            # Check that reasoning effort was passed
+        # Test with explicit reasoning effort
+        provider.generate_content(prompt="Test prompt", model_name="o3", reasoning_effort="high")
+
+        # Check that reasoning effort was passed
+        call_args = mock_client.chat.completions.create.call_args
+        assert call_args.kwargs["reasoning_effort"] == "high"
+
+        # Test with environment variable
+        with patch.dict(os.environ, {"AZURE_OPENAI_REASONING_EFFORT": "low"}):
+            provider.generate_content(prompt="Test prompt", model_name="o4-mini")
+
+            # Check that env var reasoning effort was used
             call_args = mock_client.chat.completions.create.call_args
-            assert call_args.kwargs["reasoning_effort"] == "high"
-
-            # Test with environment variable
-            with patch.dict(os.environ, {"AZURE_OPENAI_REASONING_EFFORT": "low"}):
-                result = provider.generate_content(prompt="Test prompt", model_name="o4-mini")
-
-                # Check that env var reasoning effort was used
-                call_args = mock_client.chat.completions.create.call_args
-                assert call_args.kwargs["reasoning_effort"] == "low"
+            assert call_args.kwargs["reasoning_effort"] == "low"
