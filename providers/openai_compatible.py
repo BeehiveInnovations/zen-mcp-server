@@ -707,10 +707,10 @@ class OpenAICompatibleProvider(ModelProvider):
 
     def _get_validated_reasoning_effort(self, kwargs: dict) -> str:
         """Extract and validate reasoning effort from kwargs or environment.
-        
+
         Args:
             kwargs: Keyword arguments that may contain reasoning_effort
-            
+
         Returns:
             Valid reasoning effort value ('low', 'medium', or 'high')
         """
@@ -719,14 +719,18 @@ class OpenAICompatibleProvider(ModelProvider):
         if not reasoning_effort:
             # Check for provider-specific or global default
             provider_type = self.get_provider_type().value.upper()
-            reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv("OPENAI_REASONING_EFFORT", "medium")
-        
+            reasoning_effort = os.getenv(f"{provider_type}_REASONING_EFFORT") or os.getenv(
+                "OPENAI_REASONING_EFFORT", "medium"
+            )
+
         # Validate reasoning effort value
         valid_efforts = ["low", "medium", "high"]
         if reasoning_effort not in valid_efforts:
-            logging.warning(f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}")
+            logging.warning(
+                f"Invalid reasoning effort '{reasoning_effort}', using 'medium'. Valid values: {valid_efforts}"
+            )
             reasoning_effort = "medium"
-            
+
         return reasoning_effort
 
     def _is_error_retryable(self, error: Exception) -> bool:

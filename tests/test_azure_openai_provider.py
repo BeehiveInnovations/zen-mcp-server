@@ -25,9 +25,7 @@ class TestAzureOpenAIProvider:
     def test_initialization_with_endpoint(self):
         """Test provider initialization with direct endpoint."""
         provider = AzureOpenAIModelProvider(
-            endpoint="https://custom-endpoint.openai.azure.com/", 
-            api_key="test-key", 
-            api_version="2025-01-01-preview"
+            endpoint="https://custom-endpoint.openai.azure.com/", api_key="test-key", api_version="2025-01-01-preview"
         )
         assert provider.resource_name == "custom-endpoint"
         assert provider.api_key == "test-key"
