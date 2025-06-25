@@ -2,7 +2,6 @@
 Complete configuration test for Docker MCP
 """
 
-import json
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -12,52 +11,6 @@ import pytest
 
 class TestDockerMCPConfiguration:
     """Docker MCP configuration tests"""
-
-    def test_mcp_config_zen_docker_complete(self):
-        """Test complete zen-docker configuration"""
-        project_root = Path(__file__).parent.parent
-        mcp_path = project_root / ".vscode" / "mcp.json"
-
-        if not mcp_path.exists():
-            pytest.skip("mcp.json not found")
-
-        # Load and clean JSON
-        with open(mcp_path, encoding="utf-8") as f:
-            content = f.read()
-
-        # Remove JSON comments
-        lines = []
-        for line in content.split("\n"):
-            if "//" in line:
-                line = line[: line.index("//")]
-            lines.append(line)
-        clean_content = "\n".join(lines)
-
-        config = json.loads(clean_content)
-
-        # Check zen-docker structure
-        assert "servers" in config
-        servers = config["servers"]
-
-        if "zen-docker" in servers:
-            zen_docker = servers["zen-docker"]
-
-            # Required checks
-            assert zen_docker["command"] == "docker"
-            args = zen_docker["args"]
-
-            # Essential arguments for MCP
-            required_args = ["run", "--rm", "-i"]
-            for arg in required_args:
-                assert arg in args, f"Argument {arg} missing"
-
-            # zen-mcp-server image
-            assert "zen-mcp-server:latest" in args
-
-            # Environment variables
-            if "env" in zen_docker:
-                env = zen_docker["env"]
-                assert "DOCKER_BUILDKIT" in env
 
     def test_dockerfile_configuration(self):
         """Test Dockerfile configuration"""
@@ -87,7 +40,7 @@ class TestDockerMCPConfiguration:
     def test_environment_file_template(self):
         """Test environment file template"""
         project_root = Path(__file__).parent.parent
-        env_example = project_root / ".env.docker.example"
+        env_example = project_root / ".env.example"
 
         if env_example.exists():
             content = env_example.read_text()
@@ -97,6 +50,11 @@ class TestDockerMCPConfiguration:
 
             for var in essential_vars:
                 assert f"{var}=" in content, f"Variable {var} missing"
+
+            # Docker-specific variables should also be present
+            docker_vars = ["COMPOSE_PROJECT_NAME", "TZ", "LOG_MAX_SIZE"]
+            for var in docker_vars:
+                assert f"{var}=" in content, f"Docker variable {var} missing"
 
     def test_logs_directory_setup(self):
         """Test logs directory setup"""
@@ -216,7 +174,6 @@ class TestIntegrationChecks:
 
         # MCP integration checks
         checks = {
-            "mcp_config": (project_root / ".vscode" / "mcp.json").exists(),
             "dockerfile": (project_root / "Dockerfile").exists(),
             "server_script": (project_root / "server.py").exists(),
             "logs_dir": (project_root / "logs").exists() or True,

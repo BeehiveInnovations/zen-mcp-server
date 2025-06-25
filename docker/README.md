@@ -11,7 +11,7 @@
 
 ```bash
 # Copy environment template
-cp .env.docker.example .env
+cp .env.example .env
 
 # Edit with your API keys (at least one required)
 # Required: GEMINI_API_KEY or OPENAI_API_KEY or XAI_API_KEY

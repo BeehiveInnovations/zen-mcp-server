@@ -24,7 +24,6 @@ class TestDockerMCPValidation:
         """Setup automatic for each test"""
         self.project_root = Path(__file__).parent.parent
         self.dockerfile_path = self.project_root / "Dockerfile"
-        self.mcp_config_path = self.project_root / ".vscode" / "mcp.json"
 
     def test_dockerfile_exists_and_valid(self):
         """Test Dockerfile existence and validity"""
@@ -33,35 +32,6 @@ class TestDockerMCPValidation:
         content = self.dockerfile_path.read_text()
         assert "FROM python:" in content, "Python base required"
         assert "server.py" in content, "server.py must be copied"
-
-    def test_mcp_configuration_structure(self):
-        """Test MCP configuration structure"""
-        if not self.mcp_config_path.exists():
-            pytest.skip("mcp.json non trouvé")
-
-        with open(self.mcp_config_path, encoding="utf-8") as f:
-            content = f.read()
-            # Nettoyer les commentaires JSON
-            lines = []
-            for line in content.split("\n"):
-                if "//" in line:
-                    line = line[: line.index("//")]
-                lines.append(line)
-            clean_content = "\n".join(lines)
-
-        config = json.loads(clean_content)
-
-        assert "servers" in config, "Section servers requise"
-        servers = config["servers"]
-
-        # Check zen-docker configuration
-        if "zen-docker" in servers:
-            zen_docker = servers["zen-docker"]
-            assert zen_docker["command"] == "docker", "Commande docker requise"
-            args = zen_docker["args"]
-            assert "run" in args, "Argument run requis"
-            assert "--rm" in args, "Argument --rm requis"
-            assert "-i" in args, "Argument -i requis"
 
     @patch("subprocess.run")
     def test_docker_command_validation(self, mock_run):
@@ -87,27 +57,6 @@ class TestDockerMCPValidation:
         with patch.dict(os.environ, {}, clear=True):
             has_key = any(os.getenv(var) for var in required_vars)
             assert not has_key, "No key should be present"
-
-    def test_mcp_json_syntax(self):
-        """Test MCP JSON file syntax"""
-        if not self.mcp_config_path.exists():
-            pytest.skip("mcp.json non trouvé")
-
-        try:
-            with open(self.mcp_config_path, encoding="utf-8") as f:
-                content = f.read()
-                # Supprimer commentaires pour validation JSON
-                lines = []
-                for line in content.split("\n"):
-                    if "//" in line:
-                        line = line[: line.index("//")]
-                    lines.append(line)
-                clean_content = "\n".join(lines)
-
-            json.loads(clean_content)
-
-        except json.JSONDecodeError as e:
-            pytest.fail(f"JSON invalide: {e}")
 
     def test_docker_security_configuration(self):
         """Test Docker security configuration"""

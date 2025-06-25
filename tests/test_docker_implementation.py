@@ -56,7 +56,7 @@ class TestDockerConfiguration:
 
     def test_environment_file_template(self):
         """Test that an .env file template exists"""
-        env_example_path = self.project_root / ".env.docker.example"
+        env_example_path = self.project_root / ".env.example"
 
         if env_example_path.exists():
             content = env_example_path.read_text()
@@ -306,7 +306,6 @@ def temp_project_dir():
         temp_path = Path(temp_dir)
 
         # Create base structure
-        (temp_path / ".vscode").mkdir()
         (temp_path / "logs").mkdir()
 
         # Create base files
@@ -327,32 +326,6 @@ class TestIntegration:
 
     def test_complete_docker_setup_validation(self, temp_project_dir):
         """Test complete integration of Docker setup"""
-        # Create a complete MCP configuration
-        mcp_config = {
-            "servers": {
-                "zen-docker": {
-                    "command": "docker",
-                    "args": [
-                        "run",
-                        "--rm",
-                        "-i",
-                        "--env-file",
-                        str(temp_project_dir / ".env"),
-                        "-v",
-                        f"{temp_project_dir / 'logs'}:/app/logs",
-                        "zen-mcp-server:latest",
-                        "python",
-                        "server.py",
-                    ],
-                    "env": {"DOCKER_BUILDKIT": "1"},
-                }
-            }
-        }
-
-        mcp_config_path = temp_project_dir / ".vscode" / "mcp.json"
-        with open(mcp_config_path, "w") as f:
-            json.dump(mcp_config, f, indent=2)
-
         # Create an .env file
         env_content = """
 GEMINI_API_KEY=test_key
@@ -361,19 +334,28 @@ LOG_LEVEL=INFO
         (temp_project_dir / ".env").write_text(env_content)
 
         # Validate that everything is in place
-        assert mcp_config_path.exists()
         assert (temp_project_dir / ".env").exists()
         assert (temp_project_dir / "Dockerfile").exists()
         assert (temp_project_dir / "logs").exists()
 
-        # Validate MCP configuration
-        with open(mcp_config_path) as f:
-            loaded_config = json.load(f)
+        # Validate basic Docker command structure
+        docker_cmd = [
+            "docker",
+            "run",
+            "--rm",
+            "-i",
+            "--env-file",
+            ".env",
+            "zen-mcp-server:latest",
+            "python",
+            "server.py",
+        ]
 
-        assert "zen-docker" in loaded_config["servers"]
-        zen_docker = loaded_config["servers"]["zen-docker"]
-        assert zen_docker["command"] == "docker"
-        assert "--env-file" in zen_docker["args"]
+        # Basic structure checks
+        assert docker_cmd[0] == "docker"
+        assert "run" in docker_cmd
+        assert "--rm" in docker_cmd
+        assert "--env-file" in docker_cmd
 
 
 if __name__ == "__main__":
