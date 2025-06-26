@@ -110,6 +110,21 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
         """
         return []
 
+    def get_annotations(self) -> Optional[dict[str, Any]]:
+        """
+        Return tool annotations. Workflow tools are read-only by default.
+
+        All workflow tools perform analysis and investigation without modifying
+        the environment. They may call external AI models for expert analysis,
+        but they don't write files or make system changes.
+
+        Override this method if your workflow tool needs different annotations.
+
+        Returns:
+            Dictionary with readOnlyHint set to True
+        """
+        return {"readOnlyHint": True}
+
     def get_input_schema(self) -> dict[str, Any]:
         """
         Generate the complete input schema using SchemaBuilder.

@@ -147,11 +147,11 @@ class VersionTool(BaseTool):
 
     def get_input_schema(self) -> dict[str, Any]:
         """Return the JSON schema for the tool's input"""
-        return {
-            "type": "object",
-            "properties": {"model": {"type": "string", "description": "Model to use (ignored by version tool)"}},
-            "required": [],
-        }
+        return {"type": "object", "properties": {}, "required": []}
+
+    def get_annotations(self) -> Optional[dict[str, Any]]:
+        """Return tool annotations indicating this is a read-only tool"""
+        return {"readOnlyHint": True}
 
     def get_system_prompt(self) -> str:
         """No AI model needed for this tool"""
@@ -160,6 +160,9 @@ class VersionTool(BaseTool):
     def get_request_model(self):
         """Return the Pydantic model for request validation."""
         return ToolRequest
+
+    def requires_model(self) -> bool:
+        return False
 
     async def prepare_prompt(self, request: ToolRequest) -> str:
         """Not used for this utility tool"""
