@@ -365,7 +365,14 @@ function Initialize-Environment {
             Write-Info "Creating virtual environment with uv..."
             uv venv $VENV_PATH --python 3.12
             if ($LASTEXITCODE -eq 0) {
-                Write-Success "Environment created with uv"
+                # Install pip in the uv environment for compatibility
+                Write-Info "Installing pip in uv environment..."
+                uv pip install --python "$VENV_PATH\Scripts\python.exe" pip
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Success "Environment created with uv (pip installed)"
+                } else {
+                    Write-Success "Environment created with uv"
+                }
                 return "$VENV_PATH\Scripts\python.exe"
             }
         } catch {
@@ -546,8 +553,18 @@ function Install-Dependencies {
     if (Test-Uv) {
         Write-Info "Installing dependencies with uv..."
         try {
-            uv pip install -r requirements.txt
+            # Install in the virtual environment
+            uv pip install --python "$VENV_PATH\Scripts\python.exe" -r requirements.txt
             if ($LASTEXITCODE -eq 0) {
+                # Also install dev dependencies if available
+                if (Test-Path "requirements-dev.txt") {
+                    uv pip install --python "$VENV_PATH\Scripts\python.exe" -r requirements-dev.txt
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Success "Development dependencies installed with uv"
+                    } else {
+                        Write-Warning "Failed to install dev dependencies with uv, continuing..."
+                    }
+                }
                 Write-Success "Dependencies installed with uv"
                 return
             }
@@ -804,7 +821,7 @@ if exist ".zen_venv\Scripts\python.exe" (
 ) else (
     python server.py %*
 )
-"@ | Out-File -FilePath $zenWrapper -Encoding ASCII
+"@ | Out-File -FilePath $zenWrapper -Encoding UTF8
         
         Write-Success "Created zen-mcp-server.cmd wrapper script"
     }

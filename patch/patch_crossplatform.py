@@ -33,6 +33,14 @@ FIXED ISSUES:
     - Simulator couldn't find Windows Python executable
     - Solution: Added Windows-specific path detection
 
+7. BASE TEST CLASSES LOGGER BUG:
+    - AttributeError: logger used before initialization in test classes
+    - Solution: Initialize logger before calling _get_python_path() in BaseSimulatorTest
+
+8. BASE TEST PYTHON PATH DETECTION ON WINDOWS:
+    - Test classes couldn't find Windows Python executable
+    - Solution: Added Windows-specific path detection to BaseSimulatorTest
+
 MODIFIED FILES:
 - utils/file_utils.py : Home patterns + Unix path validation
 - tests/test_file_protection.py : Cross-platform assertions
@@ -40,6 +48,7 @@ MODIFIED FILES:
 - run_integration_tests.sh : Windows venv detection
 - code_quality_checks.sh : Windows venv and tools detection
 - communication_simulator_test.py : Logger initialization order + Windows paths
+- simulator_tests/base_test.py : Logger initialization order + Windows paths
 
 Usage:
      python patch_complet_crossplatform.py [--dry-run] [--backup] [--validate-only]
@@ -73,6 +82,7 @@ class CrossPlatformPatcher:
             "run_integration_tests_sh": self.workspace_root / "run_integration_tests.sh",
             "code_quality_checks_sh": self.workspace_root / "code_quality_checks.sh",
             "communication_simulator": self.workspace_root / "communication_simulator_test.py",
+            "base_test": self.workspace_root / "simulator_tests" / "base_test.py",
         }
 
         for _, path in files.items():
@@ -509,7 +519,7 @@ fi"""
 
         # Fallback to system python if venv doesn't exist
         self.logger.warning("Virtual environment not found, using system python")
-        return "python\""""
+        return "python"""
 
         new_python_path = """    def _get_python_path(self) -> str:
         \"\"\"Get the Python path for the virtual environment\"\"\"
@@ -536,7 +546,89 @@ fi"""
 
         # Fallback to system python if venv doesn't exist
         self.logger.warning("Virtual environment not found, using system python")
-        return "python\""""
+        return "python"""
+
+        if old_python_path in content:
+            content = content.replace(old_python_path, new_python_path)
+            return content, True
+
+        return content, False
+
+    def patch_base_test_logger_init(self, content: str) -> tuple[str, bool]:
+        """Patch 11: Fix logger initialization order in BaseSimulatorTest."""
+        # Check if already patched
+        if "# Configure logging first" in content and "# Now get python path" in content:
+            return content, False
+
+        # Fix the initialization order in BaseSimulatorTest
+        old_init_order = """    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+        self.test_files = {}
+        self.test_dir = None
+        self.python_path = self._get_python_path()
+
+        # Configure logging
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
+        self.logger = logging.getLogger(self.__class__.__name__)"""
+
+        new_init_order = """    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+        self.test_files = {}
+        self.test_dir = None
+
+        # Configure logging first
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        # Now get python path (after logger is configured)
+        self.python_path = self._get_python_path()"""
+
+        if old_init_order in content:
+            content = content.replace(old_init_order, new_init_order)
+            return content, True
+
+        return content, False
+
+    def patch_base_test_python_path(self, content: str) -> tuple[str, bool]:
+        """Patch 12: Add Windows Python path detection to BaseSimulatorTest."""
+        # Check if already patched
+        if "import platform" in content and 'platform.system() == "Windows"' in content:
+            return content, False
+
+        # Fix the _get_python_path method in BaseSimulatorTest
+        old_python_path = """    def _get_python_path(self) -> str:
+        \"\"\"Get the Python path for the virtual environment\"\"\"
+        current_dir = os.getcwd()
+        venv_python = os.path.join(current_dir, ".zen_venv", "bin", "python")
+
+        if os.path.exists(venv_python):
+            return venv_python
+
+        # Fallback to system python if venv doesn't exist
+        self.logger.warning("Virtual environment not found, using system python")
+        return "python"""
+
+        new_python_path = """    def _get_python_path(self) -> str:
+        \"\"\"Get the Python path for the virtual environment\"\"\"
+        import platform
+        current_dir = os.getcwd()
+
+        # Check for different venv structures
+        if platform.system() == "Windows":
+            # Windows paths
+            zen_venv_python = os.path.join(current_dir, ".zen_venv", "Scripts", "python.exe")
+        else:
+            # Unix/Linux/macOS paths
+            zen_venv_python = os.path.join(current_dir, ".zen_venv", "bin", "python")
+
+        if os.path.exists(zen_venv_python):
+            return zen_venv_python
+
+        # Fallback to system python if venv doesn't exist
+        self.logger.warning("Virtual environment not found, using system python")
+        return "python"""
 
         if old_python_path in content:
             content = content.replace(old_python_path, new_python_path)
@@ -674,68 +766,28 @@ fi"""
         else:
             print("  ℹ️  communication_simulator_test.py already patched")
 
-        # Patch 6: run_integration_tests.sh
-        print("\n🔧 Patching run_integration_tests.sh...")
+        # Patch 11 & 12: simulator_tests/base_test.py
+        print("\n🔧 Patching simulator_tests/base_test.py...")
 
-        run_integration_content = self.read_file(files["run_integration_tests_sh"])
-        run_integration_content, modified6 = self.patch_shell_venv_detection(run_integration_content)
+        base_test_content = self.read_file(files["base_test"])
+        base_test_content, modified11 = self.patch_base_test_logger_init(base_test_content)
+        base_test_content, modified12 = self.patch_base_test_python_path(base_test_content)
 
-        if modified6:
+        if modified11 or modified12:
             if create_backups:
-                backup = self.create_backup(files["run_integration_tests_sh"])
+                backup = self.create_backup(files["base_test"])
                 print(f"  ✅ Backup created: {backup}")
 
-            self.write_file(files["run_integration_tests_sh"], run_integration_content)
-            print("  ✅ Windows venv detection added")
-            self.patches_applied.append("Windows venv detection (run_integration_tests.sh)")
-        else:
-            print("  ℹ️  run_integration_tests.sh already patched")
+            self.write_file(files["base_test"], base_test_content)
 
-        # Patch 7 & 8: code_quality_checks.sh
-        print("\n🔧 Patching code_quality_checks.sh...")
-
-        code_quality_content = self.read_file(files["code_quality_checks_sh"])
-        code_quality_content, modified7 = self.patch_shell_python_detection(code_quality_content)
-        code_quality_content, modified8 = self.patch_shell_tool_paths(code_quality_content)
-
-        if modified7 or modified8:
-            if create_backups:
-                backup = self.create_backup(files["code_quality_checks_sh"])
-                print(f"  ✅ Backup created: {backup}")
-
-            self.write_file(files["code_quality_checks_sh"], code_quality_content)
-
-            if modified7:
-                print("  ✅ Windows Python detection added")
-                self.patches_applied.append("Windows Python detection (code_quality_checks.sh)")
-            if modified8:
-                print("  ✅ Windows tool paths added")
-                self.patches_applied.append("Windows tool paths (code_quality_checks.sh)")
-        else:
-            print("  ℹ️  code_quality_checks.sh already patched")
-
-        # Patch 9: communication_simulator_test.py
-        print("\n🔧 Patching communication_simulator_test.py...")
-
-        simulator_content = self.read_file(files["communication_simulator"])
-        simulator_content, modified9 = self.patch_simulator_logger_init(simulator_content)
-        simulator_content, modified10 = self.patch_simulator_python_path(simulator_content)
-
-        if modified9 or modified10:
-            if create_backups:
-                backup = self.create_backup(files["communication_simulator"])
-                print(f"  ✅ Backup created: {backup}")
-
-            self.write_file(files["communication_simulator"], simulator_content)
-
-            if modified9:
+            if modified11:
                 print("  ✅ Logger initialization order fixed")
-                self.patches_applied.append("Logger initialization order")
-            if modified10:
+                self.patches_applied.append("Logger initialization (base_test.py)")
+            if modified12:
                 print("  ✅ Windows Python path detection added")
-                self.patches_applied.append("Windows Python path detection")
+                self.patches_applied.append("Windows Python paths (base_test.py)")
         else:
-            print("  ℹ️  communication_simulator_test.py already patched")
+            print("  ℹ️  simulator_tests/base_test.py already patched")
 
         return all_success
 
@@ -790,6 +842,15 @@ fi"""
                 errors.append("Logger initialization fix missing in communication_simulator_test.py")
             if "import platform" not in simulator_content:
                 errors.append("Windows Python path detection missing in communication_simulator_test.py")
+
+        # Validate simulator_tests/base_test.py
+        base_test_content = self.read_file(files["base_test"])
+
+        if "# Configure logging first" not in base_test_content or "# Now get python path" not in base_test_content:
+            errors.append("Logger initialization order missing in base_test.py")
+
+        if "import platform" not in base_test_content or 'platform.system() == "Windows"' not in base_test_content:
+            errors.append("Windows Python path detection missing in base_test.py")
 
         return errors
 
