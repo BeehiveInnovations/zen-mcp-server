@@ -28,13 +28,20 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
 
-from dotenv import load_dotenv
-
-# Load environment variables from .env file in the script's directory
-# This ensures .env is loaded regardless of the current working directory
-script_dir = Path(__file__).parent
-env_file = script_dir / ".env"
-load_dotenv(dotenv_path=env_file)
+# Try to load environment variables from .env file if dotenv is available
+# This is optional - environment variables can still be passed directly
+try:
+    from dotenv import load_dotenv
+    
+    # Load environment variables from .env file in the script's directory
+    # This ensures .env is loaded regardless of the current working directory
+    script_dir = Path(__file__).parent
+    env_file = script_dir / ".env"
+    load_dotenv(dotenv_path=env_file)
+except ImportError:
+    # dotenv not available - this is fine, environment variables can still be passed directly
+    # This commonly happens when running via uvx or in minimal environments
+    pass
 
 from mcp.server import Server  # noqa: E402
 from mcp.server.models import InitializationOptions  # noqa: E402
@@ -362,6 +369,12 @@ def configure_providers():
     Raises:
         ValueError: If no valid API keys are found or conflicting configurations detected
     """
+    # Log environment variable status for debugging
+    logger.debug("Checking environment variables for API keys...")
+    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
+    for key in api_keys_to_check:
+        value = os.getenv(key)
+        logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
     from providers import ModelProviderRegistry
     from providers.base import ProviderType
     from providers.custom import CustomProvider
@@ -386,10 +399,16 @@ def configure_providers():
 
     # Check for OpenAI API key
     openai_key = os.getenv("OPENAI_API_KEY")
+    logger.debug(f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
     if openai_key and openai_key != "your_openai_api_key_here":
         valid_providers.append("OpenAI (o3)")
         has_native_apis = True
         logger.info("OpenAI API key found - o3 model available")
+    else:
+        if not openai_key:
+            logger.debug("OpenAI API key not found in environment")
+        else:
+            logger.debug("OpenAI API key is placeholder value")
 
     # Check for X.AI API key
     xai_key = os.getenv("XAI_API_KEY")
@@ -407,10 +426,16 @@ def configure_providers():
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    logger.debug(f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
     if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
         valid_providers.append("OpenRouter")
         has_openrouter = True
         logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
+    else:
+        if not openrouter_key:
+            logger.debug("OpenRouter API key not found in environment")
+        else:
+            logger.debug("OpenRouter API key is placeholder value")
 
     # Check for custom API endpoint (Ollama, vLLM, etc.)
     custom_url = os.getenv("CUSTOM_API_URL")
@@ -1285,9 +1310,14 @@ async def main():
         )
 
 
-if __name__ == "__main__":
+def run():
+    """Console script entry point for zen-mcp-server."""
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         # Handle graceful shutdown
         pass
+
+
+if __name__ == "__main__":
+    run()
