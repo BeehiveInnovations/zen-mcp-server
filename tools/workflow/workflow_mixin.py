@@ -1265,7 +1265,9 @@ class BaseWorkflowMixin(ABC):
                 # Promote the special status to the main response
                 special_status = expert_analysis["status"]
                 response_data["status"] = special_status
-                response_data["content"] = expert_analysis.get("raw_analysis", json.dumps(expert_analysis, ensure_ascii=False))
+                response_data["content"] = expert_analysis.get(
+                    "raw_analysis", json.dumps(expert_analysis, ensure_ascii=False)
+                )
                 del response_data["expert_analysis"]
 
                 # Update next steps for special status
