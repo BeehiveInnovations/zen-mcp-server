@@ -395,7 +395,7 @@ class SimpleTool(BaseTool):
                     images, model_context=self._model_context, continuation_id=continuation_id
                 )
                 if image_validation_error:
-                    return [TextContent(type="text", text=json.dumps(image_validation_error))]
+                    return [TextContent(type="text", text=json.dumps(image_validation_error, ensure_ascii=False))]
 
             # Get and validate temperature against model constraints
             temperature, temp_warnings = self.get_validated_temperature(request, self._model_context)
