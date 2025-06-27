@@ -304,7 +304,7 @@ class DebugIssueTool(WorkflowTool):
         """
         Decide when to call external model based on investigation completeness.
 
-        Don't call expert analysis if Claude has certain confidence - trust their judgment.
+        Don't call expert analysis if the CLI agent has certain confidence - trust their judgment.
         """
         # Check if user requested to skip assistant model
         if request and not self.get_request_use_assistant_model(request):
@@ -326,7 +326,7 @@ class DebugIssueTool(WorkflowTool):
         # Add investigation summary
         investigation_summary = self._build_investigation_summary(consolidated_findings)
         context_parts.append(
-            f"\n=== CLAUDE'S INVESTIGATION FINDINGS ===\n{investigation_summary}\n=== END FINDINGS ==="
+            f"\n=== AGENT'S INVESTIGATION FINDINGS ===\n{investigation_summary}\n=== END FINDINGS ==="
         )
 
         # Add error context if available
@@ -468,7 +468,7 @@ class DebugIssueTool(WorkflowTool):
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
         """
-        Debug tool skips expert analysis when Claude has "certain" confidence.
+        Debug tool skips expert analysis when agent has "certain" confidence.
         """
         return request.confidence == "certain" and not request.next_step_required
 
@@ -501,7 +501,7 @@ class DebugIssueTool(WorkflowTool):
 
     def get_skip_reason(self) -> str:
         """Debug-specific skip reason."""
-        return "Claude identified exact root cause with minimal fix requirement"
+        return "Identified exact root cause with minimal fix requirement locally"
 
     def get_request_relevant_context(self, request) -> list:
         """Get relevant_context for debug tool."""

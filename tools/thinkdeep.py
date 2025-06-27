@@ -277,7 +277,7 @@ class ThinkDeepTool(WorkflowTool):
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
         """
-        ThinkDeep tool skips expert analysis when Claude has "certain" confidence.
+        ThinkDeep tool skips expert analysis when the CLI agent has "certain" confidence.
         """
         return request.confidence == "certain" and not request.next_step_required
 
@@ -299,7 +299,7 @@ class ThinkDeepTool(WorkflowTool):
 
     def get_skip_reason(self) -> str:
         """Reason for skipping expert analysis."""
-        return "Claude expressed certain confidence in the deep thinking analysis - no additional validation needed"
+        return "Expressed 'certain' confidence in the deep thinking analysis - no additional validation needed"
 
     def get_completion_message(self) -> str:
         """Message for completion without expert analysis."""

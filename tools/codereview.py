@@ -2,7 +2,7 @@
 CodeReview Workflow tool - Systematic code review with step-by-step analysis
 
 This tool provides a structured workflow for comprehensive code review and analysis.
-It guides Claude through systematic investigation steps with forced pauses between each step
+It guides the CLI agent through systematic investigation steps with forced pauses between each step
 to ensure thorough code examination, issue identification, and quality assessment before proceeding.
 The tool supports complex review scenarios including security analysis, performance evaluation,
 and architectural assessment.
@@ -358,7 +358,7 @@ class CodeReviewTool(WorkflowTool):
         """
         Decide when to call external model based on investigation completeness.
 
-        Don't call expert analysis if Claude has certain confidence - trust their judgment.
+        Don't call expert analysis if the CLI agent has certain confidence - trust their judgment.
         """
         # Check if user requested to skip assistant model
         if request and not self.get_request_use_assistant_model(request):
@@ -380,7 +380,7 @@ class CodeReviewTool(WorkflowTool):
         # Add investigation summary
         investigation_summary = self._build_code_review_summary(consolidated_findings)
         context_parts.append(
-            f"\\n=== CLAUDE'S CODE REVIEW INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
+            f"\\n=== AGENT'S CODE REVIEW INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
         )
 
         # Add review configuration context if available
@@ -479,7 +479,7 @@ class CodeReviewTool(WorkflowTool):
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
         """
-        Code review workflow skips expert analysis when Claude has "certain" confidence.
+        Code review workflow skips expert analysis when the CLI agent has "certain" confidence.
         """
         return request.confidence == "certain" and not request.next_step_required
 
@@ -516,7 +516,7 @@ class CodeReviewTool(WorkflowTool):
 
     def get_skip_reason(self) -> str:
         """Code review-specific skip reason."""
-        return "Claude completed comprehensive code review with full confidence"
+        return "Completed comprehensive code review with full confidence locally"
 
     def get_skip_expert_analysis_status(self) -> str:
         """Code review-specific expert analysis skip status."""

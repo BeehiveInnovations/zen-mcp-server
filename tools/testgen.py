@@ -2,7 +2,7 @@
 TestGen Workflow tool - Step-by-step test generation with expert validation
 
 This tool provides a structured workflow for comprehensive test generation.
-It guides Claude through systematic investigation steps with forced pauses between each step
+It guides the CLI agent through systematic investigation steps with forced pauses between each step
 to ensure thorough code examination, test planning, and pattern identification before proceeding.
 The tool supports backtracking, finding updates, and expert analysis integration for
 comprehensive test suite generation.
@@ -315,7 +315,7 @@ class TestGenTool(WorkflowTool):
         # Add investigation summary
         investigation_summary = self._build_test_generation_summary(consolidated_findings)
         context_parts.append(
-            f"\n=== CLAUDE'S TEST PLANNING INVESTIGATION ===\n{investigation_summary}\n=== END INVESTIGATION ==="
+            f"\n=== AGENT'S TEST PLANNING INVESTIGATION ===\n{investigation_summary}\n=== END INVESTIGATION ==="
         )
 
         # Add relevant code elements if available
@@ -388,7 +388,7 @@ class TestGenTool(WorkflowTool):
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
         """
-        Test generation workflow skips expert analysis when Claude has "certain" confidence.
+        Test generation workflow skips expert analysis when the CLI agent has "certain" confidence.
         """
         return request.confidence == "certain" and not request.next_step_required
 
@@ -425,7 +425,7 @@ class TestGenTool(WorkflowTool):
 
     def get_skip_reason(self) -> str:
         """Test generation-specific skip reason."""
-        return "Claude completed comprehensive test planning with full confidence"
+        return "Completed comprehensive test planning with full confidence locally"
 
     def get_skip_expert_analysis_status(self) -> str:
         """Test generation-specific expert analysis skip status."""

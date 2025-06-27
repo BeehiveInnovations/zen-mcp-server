@@ -2,7 +2,7 @@
 Tracer Workflow tool - Step-by-step code tracing and dependency analysis
 
 This tool provides a structured workflow for comprehensive code tracing and analysis.
-It guides Claude through systematic investigation steps with forced pauses between each step
+It guides the CLI agent through systematic investigation steps with forced pauses between each step
 to ensure thorough code examination, dependency mapping, and execution flow analysis before proceeding.
 
 The tracer guides users through sequential code analysis with full context awareness and
@@ -545,7 +545,7 @@ class TracerTool(WorkflowTool):
 
     def _get_rendering_instructions(self, trace_mode: str) -> str:
         """
-        Get mode-specific rendering instructions for Claude.
+        Get mode-specific rendering instructions for the CLI agent.
 
         Args:
             trace_mode: Either "precision" or "dependencies"

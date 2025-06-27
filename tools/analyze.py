@@ -2,7 +2,7 @@
 AnalyzeWorkflow tool - Step-by-step code analysis with systematic investigation
 
 This tool provides a structured workflow for comprehensive code and file analysis.
-It guides Claude through systematic investigation steps with forced pauses between each step
+It guides the CLI agent through systematic investigation steps with forced pauses between each step
 to ensure thorough code examination, pattern identification, and architectural assessment before proceeding.
 The tool supports complex analysis scenarios including architectural review, performance analysis,
 security assessment, and maintainability evaluation.
@@ -348,7 +348,7 @@ class AnalyzeTool(WorkflowTool):
         # Add investigation summary
         investigation_summary = self._build_analysis_summary(consolidated_findings)
         context_parts.append(
-            f"\\n=== CLAUDE'S ANALYSIS INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
+            f"\\n=== AGENT'S ANALYSIS INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
         )
 
         # Add analysis configuration context if available
@@ -477,7 +477,7 @@ class AnalyzeTool(WorkflowTool):
 
     def get_skip_reason(self) -> str:
         """Analyze-specific skip reason."""
-        return "Claude completed comprehensive analysis"
+        return "Completed comprehensive analysis locally"
 
     def get_skip_expert_analysis_status(self) -> str:
         """Analyze-specific expert analysis skip status."""

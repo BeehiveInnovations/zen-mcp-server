@@ -2,7 +2,7 @@
 SECAUDIT Workflow tool - Comprehensive security audit with systematic investigation
 
 This tool provides a structured workflow for comprehensive security assessment and analysis.
-It guides Claude through systematic investigation steps with forced pauses between each step
+It guides the CLI agent through systematic investigation steps with forced pauses between each step
 to ensure thorough security examination, vulnerability identification, and compliance assessment
 before proceeding. The tool supports complex security scenarios including OWASP Top 10 coverage,
 compliance framework mapping, and technology-specific security patterns.
@@ -351,7 +351,7 @@ class SecauditTool(WorkflowTool):
         # Add investigation summary
         investigation_summary = self._build_security_audit_summary(consolidated_findings)
         context_parts.append(
-            f"\n=== CLAUDE'S SECURITY INVESTIGATION ===\n{investigation_summary}\n=== END INVESTIGATION ==="
+            f"\n=== AGENT'S SECURITY INVESTIGATION ===\n{investigation_summary}\n=== END INVESTIGATION ==="
         )
 
         # Add security configuration context if available
@@ -566,7 +566,7 @@ class SecauditTool(WorkflowTool):
         return step_data
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
-        """Security audit workflow skips expert analysis when Claude has "certain" confidence."""
+        """Security audit workflow skips expert analysis when the CLI agent has "certain" confidence."""
         return request.confidence == "certain" and not request.next_step_required
 
     def store_initial_issue(self, step_description: str):
@@ -762,7 +762,7 @@ class SecauditTool(WorkflowTool):
 
     def get_skip_reason(self) -> str:
         """Security audit-specific skip reason."""
-        return "Claude completed comprehensive security audit with full confidence"
+        return "Completed comprehensive security audit with full confidence locally"
 
     def get_skip_expert_analysis_status(self) -> str:
         """Security audit-specific expert analysis skip status."""
