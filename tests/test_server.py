@@ -102,7 +102,6 @@ class TestServerTools:
 
         # Check for expected content in the markdown output
         assert "# Zen MCP Server Version" in content
-        assert "## Available Tools" in content
-        assert "thinkdeep" in content
-        assert "docgen" in content
-        assert "version" in content
+        assert "## Server Information" in content
+        assert "## Configuration" in content
+        assert "Current Version" in content

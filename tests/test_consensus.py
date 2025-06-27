@@ -21,7 +21,7 @@ class TestConsensusTool:
         assert "COMPREHENSIVE CONSENSUS WORKFLOW" in tool.get_description()
         assert tool.get_default_temperature() == 0.2  # TEMPERATURE_ANALYTICAL
         assert tool.get_model_category() == ToolModelCategory.EXTENDED_REASONING
-        assert tool.requires_model() is True
+        assert tool.requires_model() is False  # Consensus manages its own models
 
     def test_request_validation_step1(self):
         """Test Pydantic request model validation for step 1."""
@@ -119,8 +119,11 @@ class TestConsensusTool:
         # confidence field should be excluded
         assert "confidence" not in schema["properties"]
         assert "models" in schema["properties"]
-        # relevant_files should also be excluded
-        assert "relevant_files" not in schema["properties"]
+        # relevant_files should be present as it's used by consensus
+        assert "relevant_files" in schema["properties"]
+
+        # model field should be present for Gemini compatibility (consensus uses 'models' as well)
+        assert "model" in schema["properties"]
 
         # Verify workflow fields that should NOT be present
         assert "files_checked" not in schema["properties"]
