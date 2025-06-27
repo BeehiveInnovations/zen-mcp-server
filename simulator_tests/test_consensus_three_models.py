@@ -23,7 +23,7 @@ class TestConsensusThreeModels(BaseSimulatorTest):
         try:
             self.logger.info("Testing consensus tool with three models: flash:against, flash:for, local-llama:neutral")
 
-            # Send request with three ModelConfig objects using new workflow parameters
+            # Send request with three objects using new workflow parameters
             response, continuation_id = self.call_mcp_tool(
                 "consensus",
                 {

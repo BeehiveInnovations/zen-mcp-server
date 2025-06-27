@@ -80,10 +80,6 @@ CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS = {
 }
 
 
-class ModelConfig(dict):
-    """Model configuration for consensus workflow"""
-
-
 class ConsensusRequest(WorkflowRequest):
     """Request model for consensus workflow steps"""
 
@@ -95,7 +91,7 @@ class ConsensusRequest(WorkflowRequest):
 
     # Investigation tracking fields
     findings: str = Field(..., description=CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["findings"])
-    confidence: str | None = Field("exploring", exclude=True)  # Not used in consensus workflow
+    confidence: str = Field(default="exploring", exclude=True, description="Not used")
 
     # Consensus-specific fields (only needed in step 1)
     models: list[dict] | None = Field(None, description=CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["models"])
@@ -114,8 +110,10 @@ class ConsensusRequest(WorkflowRequest):
         description=CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["model_responses"],
     )
 
+    # Optional images for visual debugging
+    images: list[str] | None = Field(default=None, description=CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["images"])
+
     # Override inherited fields to exclude them from schema
-    model: str | None = Field(default=None, exclude=True)  # Consensus uses 'models' field instead
     temperature: float | None = Field(default=None, exclude=True)
     thinking_mode: str | None = Field(default=None, exclude=True)
     use_websearch: bool | None = Field(default=None, exclude=True)
@@ -126,7 +124,6 @@ class ConsensusRequest(WorkflowRequest):
     issues_found: list[dict] | None = Field(default_factory=list, exclude=True)
     hypothesis: str | None = Field(None, exclude=True)
     backtrack_from_step: int | None = Field(None, exclude=True)
-    images: list[str] | None = Field(default_factory=list)  # Enable images for consensus workflow
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
@@ -174,19 +171,19 @@ class ConsensusTool(WorkflowTool):
     def get_description(self) -> str:
         return (
             "COMPREHENSIVE CONSENSUS WORKFLOW - Step-by-step multi-model consensus with structured analysis. "
-            "This tool guides you through a systematic process where you:\\n\\n"
-            "1. Start with step 1: provide your own neutral analysis of the proposal\\n"
-            "2. The tool will then consult each specified model one by one\\n"
-            "3. You'll receive each model's response in subsequent steps\\n"
-            "4. Track and synthesize perspectives as they accumulate\\n"
-            "5. Final step: present comprehensive consensus and recommendations\\n\\n"
-            "IMPORTANT: This workflow enforces sequential model consultation:\\n"
-            "- Step 1 is always your independent analysis\\n"
-            "- Each subsequent step processes one model response\\n"
-            "- Total steps = number of models (each step includes consultation + response)\\n"
-            "- Models can have stances (for/against/neutral) for structured debate\\n"
-            "- Same model can be used multiple times with different stances\\n"
-            "- Each model + stance combination must be unique\\n\\n"
+            "This tool guides you through a systematic process where you:\n\n"
+            "1. Start with step 1: provide your own neutral analysis of the proposal\n"
+            "2. The tool will then consult each specified model one by one\n"
+            "3. You'll receive each model's response in subsequent steps\n"
+            "4. Track and synthesize perspectives as they accumulate\n"
+            "5. Final step: present comprehensive consensus and recommendations\n\n"
+            "IMPORTANT: This workflow enforces sequential model consultation:\n"
+            "- Step 1 is always your independent analysis\n"
+            "- Each subsequent step processes one model response\n"
+            "- Total steps = number of models (each step includes consultation + response)\n"
+            "- Models can have stances (for/against/neutral) for structured debate\n"
+            "- Same model can be used multiple times with different stances\n"
+            "- Each model + stance combination must be unique\n\n"
             "Perfect for: complex decisions, architectural choices, feature proposals, "
             "technology evaluations, strategic planning."
         )
@@ -230,8 +227,9 @@ of the evidence, even when it strongly points in one direction.""",
         """Generate input schema for consensus workflow."""
         from .workflow.schema_builders import WorkflowSchemaBuilder
 
-        # Consensus workflow-specific field overrides
+        # Consensus tool-specific field definitions
         consensus_field_overrides = {
+            # Override standard workflow fields that need consensus-specific descriptions
             "step": {
                 "type": "string",
                 "description": CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["step"],
@@ -259,6 +257,7 @@ of the evidence, even when it strongly points in one direction.""",
                 "items": {"type": "string"},
                 "description": CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["relevant_files"],
             },
+            # consensus-specific fields (not in base workflow)
             "models": {
                 "type": "array",
                 "items": {
@@ -289,31 +288,33 @@ of the evidence, even when it strongly points in one direction.""",
             },
         }
 
-        # Build schema without standard workflow fields we don't use
+        # Define excluded fields for consensus workflow
+        excluded_workflow_fields = [
+            "files_checked",  # Not used in consensus workflow
+            "relevant_context",  # Not used in consensus workflow
+            "issues_found",  # Not used in consensus workflow
+            "hypothesis",  # Not used in consensus workflow
+            "backtrack_from_step",  # Not used in consensus workflow
+            "confidence",  # Not used in consensus workflow
+        ]
+
+        excluded_common_fields = [
+            "model",  # Consensus uses 'models' field instead
+            "temperature",  # Not used in consensus workflow
+            "thinking_mode",  # Not used in consensus workflow
+            "use_websearch",  # Not used in consensus workflow
+        ]
+
+        # Build schema with proper field exclusion
+        # Note: We don't pass model_field_schema because consensus uses 'models' instead of 'model'
         schema = WorkflowSchemaBuilder.build_schema(
             tool_specific_fields=consensus_field_overrides,
             model_field_schema=self.get_model_field_schema(),
             auto_mode=self.is_effective_auto_mode(),
             tool_name=self.get_name(),
+            excluded_workflow_fields=excluded_workflow_fields,
+            excluded_common_fields=excluded_common_fields,
         )
-
-        # Remove unused workflow fields
-        if "properties" in schema:
-            for field in [
-                "files_checked",
-                "relevant_context",
-                "issues_found",
-                "hypothesis",
-                "backtrack_from_step",
-                "confidence",  # Not used in consensus workflow
-                "model",  # Consensus uses 'models' field instead
-                "temperature",  # Not used in consensus workflow
-                "thinking_mode",  # Not used in consensus workflow
-                "use_websearch",  # Not used in consensus workflow
-                "relevant_files",  # Not used in consensus workflow
-            ]:
-                schema["properties"].pop(field, None)
-
         return schema
 
     def get_required_actions(
@@ -355,6 +356,17 @@ of the evidence, even when it strongly points in one direction.""",
 
     def requires_expert_analysis(self) -> bool:
         """Consensus workflow handles its own model consultations."""
+        return False
+
+    def requires_model(self) -> bool:
+        """
+        Consensus tool doesn't require model resolution at the MCP boundary.
+
+        Uses it's own set of models
+
+        Returns:
+            bool: False
+        """
         return False
 
     # Hook method overrides for consensus-specific behavior
@@ -601,9 +613,7 @@ YOUR SUPPORTIVE ANALYSIS SHOULD:
 - Suggest optimizations that enhance value
 - Present realistic implementation pathways
 
-Remember: Being "for" means finding the BEST possible version of the idea IF it has merit, not blindly supporting bad """
-            "ideas."
-            "",
+Remember: Being "for" means finding the BEST possible version of the idea IF it has merit, not blindly supporting bad ideas.""",
             "against": """CRITICAL PERSPECTIVE WITH RESPONSIBILITY
 
 You are tasked with critiquing this proposal, but with ESSENTIAL BOUNDARIES:
@@ -627,9 +637,7 @@ YOUR CRITICAL ANALYSIS SHOULD:
 - Highlight potential negative consequences
 - Question assumptions that may be flawed
 
-Remember: Being "against" means rigorous scrutiny to ensure quality, not undermining good ideas that deserve """
-            "support."
-            "",
+Remember: Being "against" means rigorous scrutiny to ensure quality, not undermining good ideas that deserve support.""",
             "neutral": """BALANCED PERSPECTIVE
 
 Provide objective analysis considering both positive and negative aspects. However, if there is overwhelming evidence

@@ -153,6 +153,19 @@ class BaseTool(ABC):
         """
         pass
 
+    def get_annotations(self) -> Optional[dict[str, Any]]:
+        """
+        Return optional annotations for this tool.
+
+        Annotations provide hints about tool behavior without being security-critical.
+        They help MCP clients make better decisions about tool usage.
+
+        Returns:
+            Optional[dict]: Dictionary with annotation fields like readOnlyHint, destructiveHint, etc.
+                           Returns None if no annotations are needed.
+        """
+        return None
+
     def requires_model(self) -> bool:
         """
         Return whether this tool requires AI model access.
