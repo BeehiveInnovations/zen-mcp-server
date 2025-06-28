@@ -1720,12 +1720,12 @@ main() {
         
         # Check if authentication is enabled
         if [[ "${MCP_REQUIRE_AUTH:-true}" == "true" ]]; then
-            if [[ -z "${MCP_AUTH_TOKEN:-}" ]] || [[ "${MCP_AUTH_TOKEN:-}" == "your_secure_token_here" ]]; then
-                print_warning "Authentication is enabled but MCP_AUTH_TOKEN is not set properly!"
-                echo "Please set MCP_AUTH_TOKEN in your .env file to a secure value."
+            if [[ -z "${MCP_API_KEY:-}" ]] || [[ "${MCP_API_KEY:-}" == "your_secure_api_key_here" ]]; then
+                print_warning "Authentication is enabled but MCP_API_KEY is not set properly!"
+                echo "Please set MCP_API_KEY in your .env file to a secure value."
                 echo ""
             else
-                print_success "Authentication enabled with Bearer token"
+                print_success "Authentication enabled with API key"
             fi
         else
             print_warning "Authentication is disabled (MCP_REQUIRE_AUTH=false)"

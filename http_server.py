@@ -40,15 +40,15 @@ server_task: Optional[asyncio.Task] = None
 
 class AuthenticationMiddleware:
     """
-    Simple authentication middleware for protecting MCP endpoints.
+    API key authentication middleware for protecting MCP endpoints.
     
-    Supports both Bearer token and API key authentication methods.
+    Uses x-api-key header for authentication, similar to Claude's remote MCP.
     Can be configured via environment variables.
     """
     
     def __init__(self, app):
         self.app = app
-        self.auth_token = os.getenv("MCP_AUTH_TOKEN")
+        self.api_key = os.getenv("MCP_API_KEY")
         self.require_auth = os.getenv("MCP_REQUIRE_AUTH", "true").lower() == "true"
     
     async def __call__(self, scope, receive, send):
@@ -61,24 +61,18 @@ class AuthenticationMiddleware:
             await self.app(scope, receive, send)
             return
         
-        # Check authorization header
+        # Check x-api-key header
         headers = dict(scope["headers"])
-        auth_header = headers.get(b"authorization", b"").decode()
+        api_key_header = headers.get(b"x-api-key", b"").decode()
         
-        if not auth_header:
-            response = PlainTextResponse("Unauthorized", status_code=401)
+        if not api_key_header:
+            response = PlainTextResponse("Missing API key", status_code=401)
             await response(scope, receive, send)
             return
         
-        # Validate token
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
-            if token != self.auth_token:
-                response = PlainTextResponse("Invalid token", status_code=403)
-                await response(scope, receive, send)
-                return
-        else:
-            response = PlainTextResponse("Invalid authorization format", status_code=401)
+        # Validate API key
+        if api_key_header != self.api_key:
+            response = PlainTextResponse("Invalid API key", status_code=403)
             await response(scope, receive, send)
             return
         

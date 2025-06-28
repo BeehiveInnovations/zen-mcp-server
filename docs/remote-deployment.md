@@ -33,7 +33,7 @@ Edit `.env` file to set secure authentication:
 
 ```bash
 # Required for remote access
-MCP_AUTH_TOKEN=your-very-secure-token-here
+MCP_API_KEY=your-very-secure-api-key-here
 
 # Optional: Disable auth for testing (NOT recommended for production)
 # MCP_REQUIRE_AUTH=false
@@ -56,7 +56,7 @@ MCP_HOST=0.0.0.0 MCP_PORT=8000 ./run-server.sh --transport http
 
 Configure your MCP client to connect to:
 - **URL**: `https://your-server.com:8000/sse`
-- **Auth**: Bearer token from `MCP_AUTH_TOKEN`
+- **Auth**: API key header `x-api-key` with value from `MCP_API_KEY`
 
 ## Production Deployment
 
@@ -186,9 +186,9 @@ server {
 ### Authentication
 
 1. **Always use authentication in production**
-   - Set a strong `MCP_AUTH_TOKEN`
-   - Never commit tokens to version control
-   - Rotate tokens regularly
+   - Set a strong `MCP_API_KEY`
+   - Never commit API keys to version control
+   - Rotate API keys regularly
 
 2. **Use HTTPS**
    - Deploy behind a reverse proxy with SSL
@@ -206,7 +206,7 @@ Required for secure deployment:
 ```bash
 # Authentication
 MCP_REQUIRE_AUTH=true
-MCP_AUTH_TOKEN=<generate-secure-token>
+MCP_API_KEY=<generate-secure-api-key>
 
 # API Keys (same as local setup)
 GEMINI_API_KEY=your-key
@@ -254,7 +254,7 @@ OPENAI_API_KEY=your-key
 2. Deploy:
    ```bash
    heroku create your-zen-mcp
-   heroku config:set MCP_TRANSPORT=http MCP_AUTH_TOKEN=your-token
+   heroku config:set MCP_TRANSPORT=http MCP_API_KEY=your-api-key
    git push heroku main
    ```
 
@@ -301,8 +301,8 @@ tail -f logs/mcp_server.log
    - Check authentication token
 
 2. **"Unauthorized"**
-   - Ensure `MCP_AUTH_TOKEN` is set correctly
-   - Include `Authorization: Bearer <token>` header
+   - Ensure `MCP_API_KEY` is set correctly
+   - Include `x-api-key: <your-api-key>` header
 
 3. **Connection refused from browsers**
    - Note: CORS is not supported; this server is designed for MCP clients only
@@ -323,7 +323,7 @@ Test your deployment with [MCP Inspector](https://github.com/modelcontextprotoco
 ```bash
 npx @modelcontextprotocol/inspector \
   --url https://your-server.com:8000/sse \
-  --header "Authorization: Bearer your-token"
+  --header "x-api-key: your-api-key"
 ```
 
 ### Custom Client
@@ -333,7 +333,7 @@ Example client connection:
 const client = new MCPClient({
   url: 'https://your-server.com:8000/sse',
   headers: {
-    'Authorization': 'Bearer your-token'
+    'x-api-key': 'your-api-key'
   }
 });
 ```
