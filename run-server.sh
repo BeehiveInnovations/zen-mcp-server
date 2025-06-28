@@ -217,6 +217,7 @@ cleanup_docker() {
 
 # Find suitable Python command
 find_python() {
+    local non_interactive="${1:-false}"
     # Pyenv should already be initialized at script start, but check if .python-version exists
     if [[ -f ".python-version" ]] && command -v pyenv &> /dev/null; then
         # Ensure pyenv respects the local .python-version
@@ -262,6 +263,10 @@ find_python() {
             if ! pyenv versions 2>/dev/null | grep -E "3\.(1[2-9]|[2-9][0-9])" >/dev/null; then
                 echo ""
                 echo "Python 3.10+ is required. Pyenv can install Python 3.12 locally for this project."
+                if [[ "$non_interactive" == true ]]; then
+                    print_error "Python 3.10+ not found. Please install Python 3.10 or newer."
+                    return 1
+                fi
                 read -p "Install Python 3.12 using pyenv? (Y/n): " -n 1 -r
                 echo ""
                 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
@@ -279,6 +284,10 @@ find_python() {
                 if [[ ! -f ".python-version" ]] || ! grep -qE "3\.(1[2-9]|[2-9][0-9])" .python-version 2>/dev/null; then
                     echo ""
                     print_info "Python 3.12 is installed via pyenv but not set for this project."
+                    if [[ "$non_interactive" == true ]]; then
+                        print_warning "Skipping pyenv configuration in non-interactive mode"
+                        return 1
+                    fi
                     read -p "Set Python 3.12.0 for this project? (Y/n): " -n 1 -r
                     echo ""
                     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
@@ -560,6 +569,7 @@ bootstrap_pip() {
 
 # Setup environment using uv-first approach
 setup_environment() {
+    local non_interactive="${1:-false}"
     local venv_python=""
     
     # Try uv-first approach
@@ -604,7 +614,7 @@ setup_environment() {
     if [[ -z "$venv_python" ]]; then
         print_info "Setting up environment with system Python..."
         local python_cmd
-        python_cmd=$(find_python) || return 1
+        python_cmd=$(find_python "$non_interactive") || return 1
         
         # Use existing venv creation logic
         venv_python=$(setup_venv "$python_cmd")
@@ -1089,8 +1099,12 @@ validate_api_keys() {
 check_claude_cli_integration() {
     local python_cmd="$1"
     local server_path="$2"
+    local non_interactive="${3:-false}"
     
     if ! command -v claude &> /dev/null; then
+        if [[ "$non_interactive" == true ]]; then
+            return 0  # Skip in non-interactive mode
+        fi
         echo ""
         print_warning "Claude CLI not found"
         echo ""
@@ -1151,6 +1165,9 @@ check_claude_cli_integration() {
         fi
     else
         # Not registered at all, ask user if they want to add it
+        if [[ "$non_interactive" == true ]]; then
+            return 0  # Skip in non-interactive mode
+        fi
         echo ""
         read -p "Add Zen to Claude Code? (Y/n): " -n 1 -r
         echo ""
@@ -1177,9 +1194,10 @@ check_claude_cli_integration() {
 check_claude_desktop_integration() {
     local python_cmd="$1"
     local server_path="$2"
+    local non_interactive="${3:-false}"
     
-    # Skip if already configured (check flag)
-    if [[ -f "$DESKTOP_CONFIG_FLAG" ]]; then
+    # Skip if already configured (check flag) or non-interactive
+    if [[ -f "$DESKTOP_CONFIG_FLAG" ]] || [[ "$non_interactive" == true ]]; then
         return 0
     fi
     
@@ -1301,6 +1319,7 @@ EOF
 # Check and update Gemini CLI configuration
 check_gemini_cli_integration() {
     local script_dir="$1"
+    local non_interactive="${2:-false}"
     local zen_wrapper="$script_dir/zen-mcp-server"
     
     # Check if Gemini settings file exists
@@ -1313,6 +1332,11 @@ check_gemini_cli_integration() {
     # Check if zen is already configured
     if grep -q '"zen"' "$gemini_config" 2>/dev/null; then
         # Already configured
+        return 0
+    fi
+    
+    # Skip interactive prompts in non-interactive mode
+    if [[ "$non_interactive" == true ]]; then
         return 0
     fi
     
@@ -1485,6 +1509,7 @@ show_help() {
     echo "  -f, --follow    Follow server logs in real-time"
     echo "  -c, --config    Show configuration instructions for Claude clients"
     echo "  --clear-cache   Clear Python cache and exit (helpful for import issues)"
+    echo "  --non-interactive  Run without prompts (for services/automation)"
     echo ""
     echo "Transport Options:"
     echo "  --transport     Transport mode: stdio (default) or http"
@@ -1497,6 +1522,7 @@ show_help() {
     echo "  $0 -c           Show configuration instructions"
     echo "  $0 --transport http          Run in HTTP/SSE mode"
     echo "  $0 --transport http --host 0.0.0.0 --port 8080"
+    echo "  $0 --transport http --non-interactive   For systemd/services"
     echo ""
     echo "For more information, visit:"
     echo "  https://github.com/BeehiveInnovations/zen-mcp-server"
@@ -1534,6 +1560,12 @@ main() {
     local host="127.0.0.1"
     local port="8000"
     local server_args=""
+    local non_interactive=false
+    
+    # Check if running non-interactively (no TTY)
+    if [[ ! -t 0 ]] || [[ ! -t 1 ]]; then
+        non_interactive=true
+    fi
     
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -1550,7 +1582,7 @@ main() {
                 echo "Setting up environment for configuration display..."
                 echo ""
                 local python_cmd
-                python_cmd=$(setup_environment) || exit 1
+                python_cmd=$(setup_environment "$non_interactive") || exit 1
                 local script_dir=$(get_script_dir)
                 local server_path="$script_dir/server.py"
                 display_config_instructions "$python_cmd" "$server_path"
@@ -1567,6 +1599,10 @@ main() {
                 echo ""
                 echo "You can now run './run-server.sh' normally"
                 exit 0
+                ;;
+            --non-interactive)
+                non_interactive=true
+                shift
                 ;;
             --transport)
                 if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
@@ -1648,7 +1684,7 @@ main() {
     
     # Step 5: Setup Python environment (uv-first approach)
     local python_cmd
-    python_cmd=$(setup_environment) || exit 1
+    python_cmd=$(setup_environment "$non_interactive") || exit 1
     
     # Step 6: Install dependencies
     install_dependencies "$python_cmd" || exit 1
@@ -1661,11 +1697,11 @@ main() {
     display_setup_instructions "$python_cmd" "$server_path"
     
     # Step 9: Check Claude integrations
-    check_claude_cli_integration "$python_cmd" "$server_path"
-    check_claude_desktop_integration "$python_cmd" "$server_path"
+    check_claude_cli_integration "$python_cmd" "$server_path" "$non_interactive"
+    check_claude_desktop_integration "$python_cmd" "$server_path" "$non_interactive"
     
     # Step 10: Check Gemini CLI integration
-    check_gemini_cli_integration "$script_dir"
+    check_gemini_cli_integration "$script_dir" "$non_interactive"
     
     # Step 11: Display log information
     echo ""
