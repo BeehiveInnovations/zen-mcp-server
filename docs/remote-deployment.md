@@ -93,75 +93,39 @@ sudo systemctl start zen-mcp
 sudo systemctl status zen-mcp
 ```
 
-### Using Docker
+### Using PM2 (Process Manager)
 
-Create `Dockerfile`:
-
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create non-root user
-RUN useradd -m -u 1000 zenuser && chown -R zenuser:zenuser /app
-USER zenuser
-
-# Expose port
-EXPOSE 8000
-
-# Run the server
-CMD ["python", "server.py", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Build and run:
+Install PM2 globally:
 ```bash
-# Build the image
-docker build -t zen-mcp-server .
-
-# Run with environment file
-docker run -d \
-  --name zen-mcp \
-  -p 8000:8000 \
-  --env-file .env \
-  zen-mcp-server
+npm install -g pm2
 ```
 
-### Using Docker Compose
-
-Create `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  zen-mcp:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - MCP_TRANSPORT=http
-      - MCP_HOST=0.0.0.0
-      - MCP_PORT=8000
-    env_file:
-      - .env
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+Create `ecosystem.config.js`:
+```javascript
+module.exports = {
+  apps: [{
+    name: 'zen-mcp',
+    script: 'server.py',
+    interpreter: '.zen_venv/bin/python',
+    args: '--transport http --host 0.0.0.0 --port 8000',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      MCP_TRANSPORT: 'http',
+      MCP_HOST: '0.0.0.0',
+      MCP_PORT: '8000'
+    }
+  }]
+};
 ```
 
-Run:
+Start with PM2:
 ```bash
-docker-compose up -d
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup  # Enable autostart on boot
 ```
 
 ## Nginx Reverse Proxy
@@ -270,21 +234,22 @@ OPENAI_API_KEY=your-key
 4. Configure Nginx with SSL using Let's Encrypt
 5. Set up as systemd service
 
-### Google Cloud Run
+### Google Cloud Compute Engine
 
-1. Create `Dockerfile` (see above)
-2. Build and push to Container Registry:
+1. Create a VM instance
+2. SSH into the instance
+3. Install Python and dependencies:
    ```bash
-   gcloud builds submit --tag gcr.io/PROJECT-ID/zen-mcp
+   sudo apt update
+   sudo apt install python3.12 python3.12-venv git
    ```
-3. Deploy:
+4. Clone and setup:
    ```bash
-   gcloud run deploy zen-mcp \
-     --image gcr.io/PROJECT-ID/zen-mcp \
-     --platform managed \
-     --port 8000 \
-     --set-env-vars MCP_TRANSPORT=http,MCP_HOST=0.0.0.0
+   git clone https://github.com/BeehiveInnovations/zen-mcp-server.git
+   cd zen-mcp-server
+   ./run-server.sh
    ```
+5. Set up as systemd service (see above)
 
 ### Heroku
 
@@ -325,8 +290,8 @@ View server logs:
 # Systemd
 sudo journalctl -u zen-mcp -f
 
-# Docker
-docker logs -f zen-mcp
+# PM2
+pm2 logs zen-mcp
 
 # Direct
 tail -f logs/mcp_server.log
