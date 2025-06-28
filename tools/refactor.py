@@ -96,7 +96,8 @@ REFACTOR_FIELD_DESCRIPTIONS = {
         "Use 'complete' ONLY when you have fully analyzed all code, identified all significant refactoring "
         "opportunities, and can provide comprehensive recommendations without expert assistance. When files are "
         "too large to read fully or analysis is uncertain, use 'partial'. Using 'complete' prevents expert "
-        "analysis to save time and money."
+        "analysis to save time and money. Do NOT set confidence to 'certain' if the user has strongly requested that "
+        "external validation MUST be performed."
     ),
     "backtrack_from_step": (
         "If an earlier finding or assessment needs to be revised or discarded, specify the step number from which to "

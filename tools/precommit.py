@@ -90,7 +90,8 @@ PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS = {
         "'very_high' (very strong evidence), 'almost_certain' (nearly complete validation), 'certain' (100% confidence - "
         "analysis is complete and all issues are identified with no need for external model validation). "
         "Do NOT use 'certain' unless the pre-commit validation is thoroughly complete, use 'very_high' or 'almost_certain' instead if not 100% sure. "
-        "Using 'certain' means you have complete confidence locally and prevents external model validation."
+        "Using 'certain' means you have complete confidence locally and prevents external model validation. Also "
+        "do NOT set confidence to 'certain' if the user has strongly requested that external validation MUST be performed."
     ),
     "backtrack_from_step": (
         "If an earlier finding or assessment needs to be revised or discarded, specify the step number from which to "
