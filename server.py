@@ -1286,8 +1286,49 @@ async def main():
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        # Handle graceful shutdown
-        pass
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Zen MCP Server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default="stdio",
+        help="Transport mode: stdio (default) or http"
+    )
+    parser.add_argument(
+        "--host",
+        default=os.getenv("MCP_HOST", "127.0.0.1"),
+        help="Host to bind HTTP server to (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MCP_PORT", "8000")),
+        help="Port to bind HTTP server to (default: 8000)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Store transport mode in environment for other modules
+    os.environ["MCP_TRANSPORT"] = args.transport
+    
+    if args.transport == "http":
+        # Run HTTP/SSE server
+        import uvicorn
+        from http_server import app
+        
+        logger.info(f"Starting Zen MCP Server in HTTP/SSE mode on {args.host}:{args.port}")
+        uvicorn.run(
+            app,
+            host=args.host,
+            port=args.port,
+            log_level=log_level.lower(),
+        )
+    else:
+        # Run stdio server (default)
+        try:
+            asyncio.run(main())
+        except KeyboardInterrupt:
+            # Handle graceful shutdown
+            pass

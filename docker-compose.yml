@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  zen-mcp:
+    build: .
+    container_name: zen-mcp-server
+    ports:
+      - "8000:8000"
+    environment:
+      # Transport configuration
+      - MCP_TRANSPORT=http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      
+      # Authentication (override in .env file)
+      - MCP_REQUIRE_AUTH=${MCP_REQUIRE_AUTH:-true}
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-changeme}
+      
+      # CORS configuration
+      - MCP_CORS_ORIGINS=${MCP_CORS_ORIGINS:-*}
+      
+      # AI API Keys (set in .env file)
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - XAI_API_KEY=${XAI_API_KEY:-}
+      - DIAL_API_KEY=${DIAL_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      
+      # Model configuration
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-auto}
+      - DEFAULT_THINKING_MODE_THINKDEEP=${DEFAULT_THINKING_MODE_THINKDEEP:-high}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - .env
+    volumes:
+      # Persist logs
+      - ./logs:/app/logs
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Nginx reverse proxy for SSL
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: zen-mcp-nginx
+  #   ports:
+  #     - "443:443"
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - zen-mcp
+  #   restart: unless-stopped

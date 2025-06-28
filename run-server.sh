@@ -1477,7 +1477,7 @@ show_help() {
     echo "$header"
     printf '%*s\n' "${#header}" | tr ' ' '='
     echo ""
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: $0 [OPTIONS] [--transport stdio|http] [--host HOST] [--port PORT]"
     echo ""
     echo "Options:"
     echo "  -h, --help      Show this help message"
@@ -1486,12 +1486,17 @@ show_help() {
     echo "  -c, --config    Show configuration instructions for Claude clients"
     echo "  --clear-cache   Clear Python cache and exit (helpful for import issues)"
     echo ""
+    echo "Transport Options:"
+    echo "  --transport     Transport mode: stdio (default) or http"
+    echo "  --host          Host to bind HTTP server to (default: 127.0.0.1)"
+    echo "  --port          Port to bind HTTP server to (default: 8000)"
+    echo ""
     echo "Examples:"
-    echo "  $0              Setup and start the MCP server"
+    echo "  $0              Setup and run in stdio mode (default)"
     echo "  $0 -f           Setup and follow logs"
     echo "  $0 -c           Show configuration instructions"
-    echo "  $0 --version    Show version only"
-    echo "  $0 --clear-cache Clear Python cache (fixes import issues)"
+    echo "  $0 --transport http          Run in HTTP/SSE mode"
+    echo "  $0 --transport http --host 0.0.0.0 --port 8080"
     echo ""
     echo "For more information, visit:"
     echo "  https://github.com/BeehiveInnovations/zen-mcp-server"
@@ -1524,49 +1529,88 @@ follow_logs() {
 
 main() {
     # Parse command line arguments
-    local arg="${1:-}"
+    local follow_logs=false
+    local transport="stdio"
+    local host="127.0.0.1"
+    local port="8000"
+    local server_args=""
     
-    case "$arg" in
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        -v|--version)
-            show_version
-            exit 0
-            ;;
-        -c|--config)
-            # Setup minimal environment to get paths for config display
-            echo "Setting up environment for configuration display..."
-            echo ""
-            local python_cmd
-            python_cmd=$(setup_environment) || exit 1
-            local script_dir=$(get_script_dir)
-            local server_path="$script_dir/server.py"
-            display_config_instructions "$python_cmd" "$server_path"
-            exit 0
-            ;;
-        -f|--follow)
-            # Continue with normal setup then follow logs
-            ;;
-        --clear-cache)
-            # Clear cache and exit
-            clear_python_cache
-            print_success "Cache cleared successfully"
-            echo ""
-            echo "You can now run './run-server.sh' normally"
-            exit 0
-            ;;
-        "")
-            # Normal setup without following logs
-            ;;
-        *)
-            print_error "Unknown option: $arg"
-            echo "" >&2
-            show_help
-            exit 1
-            ;;
-    esac
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -v|--version)
+                show_version
+                exit 0
+                ;;
+            -c|--config)
+                # Setup minimal environment to get paths for config display
+                echo "Setting up environment for configuration display..."
+                echo ""
+                local python_cmd
+                python_cmd=$(setup_environment) || exit 1
+                local script_dir=$(get_script_dir)
+                local server_path="$script_dir/server.py"
+                display_config_instructions "$python_cmd" "$server_path"
+                exit 0
+                ;;
+            -f|--follow)
+                follow_logs=true
+                shift
+                ;;
+            --clear-cache)
+                # Clear cache and exit
+                clear_python_cache
+                print_success "Cache cleared successfully"
+                echo ""
+                echo "You can now run './run-server.sh' normally"
+                exit 0
+                ;;
+            --transport)
+                if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
+                    transport="$2"
+                    shift 2
+                else
+                    print_error "Missing value for --transport"
+                    show_help
+                    exit 1
+                fi
+                ;;
+            --host)
+                if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
+                    host="$2"
+                    shift 2
+                else
+                    print_error "Missing value for --host"
+                    show_help
+                    exit 1
+                fi
+                ;;
+            --port)
+                if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
+                    port="$2"
+                    shift 2
+                else
+                    print_error "Missing value for --port"
+                    show_help
+                    exit 1
+                fi
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                echo "" >&2
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Build server arguments
+    if [[ "$transport" == "http" ]]; then
+        server_args="--transport http --host $host --port $port"
+    fi
     
     # Display header
     local main_header="🤖 Zen MCP Server"
@@ -1628,15 +1672,47 @@ main() {
     echo "Logs will be written to: $script_dir/$LOG_DIR/$LOG_FILE"
     echo ""
     
-    # Step 11: Handle command line arguments
-    if [[ "$arg" == "-f" ]] || [[ "$arg" == "--follow" ]]; then
-        follow_logs
-    else
-        echo "To follow logs: ./run-server.sh -f"
-        echo "To show config: ./run-server.sh -c"
-        echo "To update: git pull, then run ./run-server.sh again"
+    # Step 11: Start the server if in HTTP mode
+    if [[ "$transport" == "http" ]]; then
         echo ""
-        echo "Happy coding! 🎉"
+        print_info "Starting Zen MCP Server in HTTP/SSE mode..."
+        echo "Host: $host"
+        echo "Port: $port"
+        echo ""
+        print_info "Server will be available at: http://$host:$port"
+        echo ""
+        
+        # Check if authentication is enabled
+        if [[ "${MCP_REQUIRE_AUTH:-true}" == "true" ]]; then
+            if [[ -z "${MCP_AUTH_TOKEN:-}" ]] || [[ "${MCP_AUTH_TOKEN:-}" == "your_secure_token_here" ]]; then
+                print_warning "Authentication is enabled but MCP_AUTH_TOKEN is not set properly!"
+                echo "Please set MCP_AUTH_TOKEN in your .env file to a secure value."
+                echo ""
+            else
+                print_success "Authentication enabled with Bearer token"
+            fi
+        else
+            print_warning "Authentication is disabled (MCP_REQUIRE_AUTH=false)"
+        fi
+        
+        echo ""
+        print_info "Starting server..."
+        
+        # Execute the server with arguments
+        exec "$python_cmd" "$server_path" $server_args
+    else
+        # Step 12: Handle stdio mode
+        if [[ "$follow_logs" == "true" ]]; then
+            follow_logs
+        else
+            echo "To follow logs: ./run-server.sh -f"
+            echo "To show config: ./run-server.sh -c"
+            echo "To update: git pull, then run ./run-server.sh again"
+            echo ""
+            echo "For remote hosting: ./run-server.sh --transport http"
+            echo ""
+            echo "Happy coding! 🎉"
+        fi
     fi
 }
 

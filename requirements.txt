@@ -4,6 +4,12 @@ openai>=1.55.2  # Minimum version for httpx 0.28.0 compatibility
 pydantic>=2.0.0
 python-dotenv>=1.0.0
 
+# Web server dependencies for remote hosting
+starlette>=0.37.0
+uvicorn[standard]>=0.30.0
+PyJWT>=2.8.0
+python-multipart>=0.0.9
+
 # Development dependencies (install with pip install -r requirements-dev.txt)
 # pytest>=7.4.0
 # pytest-asyncio>=0.21.0

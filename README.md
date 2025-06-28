@@ -217,6 +217,8 @@ nano .env
 **Next**: Now run `claude` from your project folder using the terminal for it to connect to the newly added mcp server. 
 If you were already running a `claude` code session, please exit and start a new session.
 
+**Remote Deployment**: Want to host Zen MCP on a server? See our [Remote Deployment Guide](docs/remote-deployment.md) for instructions on running Zen with HTTP/SSE transport.
+
 #### If Setting up for Claude Desktop
 
 **Need the exact configuration?** Run `./run-server.sh -c` to display the platform-specific setup instructions with correct paths.
