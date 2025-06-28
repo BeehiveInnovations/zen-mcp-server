@@ -37,9 +37,6 @@ MCP_AUTH_TOKEN=your-very-secure-token-here
 
 # Optional: Disable auth for testing (NOT recommended for production)
 # MCP_REQUIRE_AUTH=false
-
-# Configure CORS for web clients
-MCP_CORS_ORIGINS=https://your-app.com,http://localhost:3000
 ```
 
 ### 3. Start the Server
@@ -211,9 +208,6 @@ Required for secure deployment:
 MCP_REQUIRE_AUTH=true
 MCP_AUTH_TOKEN=<generate-secure-token>
 
-# CORS (restrict to your domains)
-MCP_CORS_ORIGINS=https://your-app.com
-
 # API Keys (same as local setup)
 GEMINI_API_KEY=your-key
 OPENAI_API_KEY=your-key
@@ -310,9 +304,9 @@ tail -f logs/mcp_server.log
    - Ensure `MCP_AUTH_TOKEN` is set correctly
    - Include `Authorization: Bearer <token>` header
 
-3. **CORS errors**
-   - Update `MCP_CORS_ORIGINS` to include your domain
-   - Restart the server
+3. **Connection refused from browsers**
+   - Note: CORS is not supported; this server is designed for MCP clients only
+   - Use proper MCP client libraries for connections
 
 ### Performance
 

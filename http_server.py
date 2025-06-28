@@ -19,7 +19,6 @@ from typing import Optional
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Mount, Route
@@ -172,18 +171,8 @@ def create_app() -> Starlette:
     
     Sets up routes, middleware, and server configuration.
     """
-    # Configure CORS
-    cors_origins = os.getenv("MCP_CORS_ORIGINS", "*").split(",")
-    
-    # Configure middleware
+    # Configure middleware (authentication only, no CORS)
     middleware = [
-        Middleware(
-            CORSMiddleware,
-            allow_origins=cors_origins,
-            allow_credentials=True,
-            allow_methods=["GET", "POST"],
-            allow_headers=["*"],
-        ),
         Middleware(AuthenticationMiddleware),
     ]
     
