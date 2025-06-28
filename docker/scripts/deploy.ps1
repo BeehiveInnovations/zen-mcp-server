@@ -158,7 +158,7 @@ try {
 if (!$SkipHealthCheck) {
     Write-ColorText "Waiting for service to be healthy..." -Color Green
     
-    # Simple timeout approach for health check
+    # Try simple timeout first, then use exponential backoff if needed
     $timeout = $HealthCheckTimeout
     $elapsed = 0
     $healthy = $false
@@ -182,10 +182,13 @@ if (!$SkipHealthCheck) {
     }
 
     if (!$healthy) {
-        Write-ColorText "Service failed to become healthy within timeout" -Color Red
-        Write-ColorText "Checking logs:" -Color Yellow
-        docker-compose logs zen-mcp
-        exit 1
+        # Use exponential backoff retry mechanism
+        if (!(Wait-ForHealth)) {
+            Write-ColorText "Service failed to become healthy" -Color Red
+            Write-ColorText "Checking logs:" -Color Yellow
+            docker-compose logs zen-mcp
+            exit 1
+        }
     }
 }
 

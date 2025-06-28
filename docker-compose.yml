@@ -52,6 +52,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - zen-mcp-config:/app/conf
+      - /etc/localtime:/etc/localtime:ro
     
     # Network configuration
     networks:

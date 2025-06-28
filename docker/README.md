@@ -112,10 +112,34 @@ The container includes health checks that verify:
 - Log directory is writable  
 - API keys are configured
 
-## Volumes
+## Volumes and Persistent Data
 
-- `./logs:/app/logs` - Persistent log storage
-- `zen-mcp-config:/app/conf` - Configuration persistence
+The Docker setup includes persistent volumes to preserve data between container runs:
+
+- **`./logs:/app/logs`** - Persistent log storage (local folder mount)
+- **`zen-mcp-config:/app/conf`** - Configuration persistence (named Docker volume)
+- **`/etc/localtime:/etc/localtime:ro`** - Host timezone synchronization (read-only)
+
+### How Persistent Volumes Work
+
+The `zen-mcp` service (used by `zen-docker-compose` and Docker Compose commands) mounts the named volume `zen-mcp-config` persistently. All data placed in `/app/conf` inside the container is preserved between runs thanks to this Docker volume.
+
+In the `docker-compose.yml` file, you will find:
+
+```yaml
+volumes:
+  - ./logs:/app/logs
+  - zen-mcp-config:/app/conf
+  - /etc/localtime:/etc/localtime:ro
+```
+
+and the named volume definition:
+
+```yaml
+volumes:
+  zen-mcp-config:
+    driver: local
+```
 
 ## Security
 
@@ -189,9 +213,7 @@ docker run --rm -i --env-file .env zen-mcp-server:latest 2>&1 | tee docker.log
 
 ## MCP Integration (Claude Desktop)
 
-### Configuration File Setup
-
-Add to your Claude Desktop MCP configuration:
+### Recommended Configuration (docker run)
 
 ```json
 {
@@ -206,21 +228,14 @@ Add to your Claude Desktop MCP configuration:
         "/absolute/path/to/zen-mcp-server/.env",
         "-v",
         "/absolute/path/to/zen-mcp-server/logs:/app/logs",
-        "zen-mcp-server:latest",
-        "python",
-        "server.py"
-      ],
-      "env": {
-        "DOCKER_BUILDKIT": "1"
-      }
+        "zen-mcp-server:latest"
+      ]
     }
   }
 }
 ```
 
-### Windows MCP Configuration
-
-For Windows users, use forward slashes in paths:
+### Windows Example
 
 ```json
 {
@@ -235,13 +250,27 @@ For Windows users, use forward slashes in paths:
         "C:/Users/YourName/path/to/zen-mcp-server/.env",
         "-v",
         "C:/Users/YourName/path/to/zen-mcp-server/logs:/app/logs",
-        "zen-mcp-server:latest",
-        "python",
-        "server.py"
-      ],
-      "env": {
-        "DOCKER_BUILDKIT": "1"
-      }
+        "zen-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+### Advanced Option: docker-compose run (uses compose configuration)
+
+```json
+{
+  "servers": {
+    "zen-docker": {
+      "command": "docker-compose",
+      "args": [
+        "-f",
+        "/absolute/path/to/zen-mcp-server/docker-compose.yml",
+        "run",
+        "--rm",
+        "zen-mcp"
+      ]
     }
   }
 }
@@ -249,7 +278,7 @@ For Windows users, use forward slashes in paths:
 
 ### Environment File Template
 
-Create `.env` file with at least one API key:
+Create a `.env` file with at least one API key:
 
 ```bash
 # Required: At least one API key

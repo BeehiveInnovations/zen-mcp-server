@@ -81,6 +81,7 @@ docker-compose up -d
 # Wait for health check
 echo -e "${GREEN}Waiting for service to be healthy...${NC}"
 timeout 60 bash -c 'while [[ "$(docker-compose ps -q zen-mcp | xargs docker inspect -f "{{.State.Health.Status}}")" != "healthy" ]]; do sleep 2; done' || {
+    wait_for_health
     echo -e "${RED}Service failed to become healthy${NC}"
     echo -e "${YELLOW}Checking logs:${NC}"
     docker-compose logs zen-mcp

@@ -7,8 +7,6 @@ import os
 import subprocess
 import sys
 
-import openai
-
 
 def check_process():
     """Check if the main server process is running"""
@@ -77,33 +75,6 @@ def check_environment():
             if len(value.strip()) < 10:
                 print(f"API key {key} appears too short or invalid", file=sys.stderr)
                 return False
-
-    # Optionally, try a minimal connectivity check for OpenAI and Google Gemini
-    # (only if their API keys are present)
-    try:
-        if os.getenv("OPENAI_API_KEY"):
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-            try:
-                openai.Model.list()
-            except Exception as e:
-                print(f"OpenAI connectivity check failed: {e}", file=sys.stderr)
-                return False
-    except ImportError:
-        pass  # Already checked in check_python_imports
-
-    try:
-        if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
-            import google.genai as genai
-
-            key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            genai.configure(api_key=key)
-            try:
-                genai.list_models()
-            except Exception as e:
-                print(f"Google Gemini connectivity check failed: {e}", file=sys.stderr)
-                return False
-    except ImportError:
-        pass  # Already checked in check_python_imports
 
     return True
 
