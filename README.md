@@ -3,12 +3,12 @@
 [zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
 
 <div align="center">  
-  <b>🤖 Claude + [Gemini / OpenAI / Grok / OpenRouter / DIAL / Ollama / Any Model] = Your Ultimate AI Development Team</b>
+  <b>🤖 <a href="https://www.anthropic.com/claude-code">Claude</a> OR <a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> + [Gemini / OpenAI / Grok / OpenRouter / DIAL / Ollama / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
 
-The ultimate development partners for Claude - a Model Context Protocol server that gives Claude access to multiple AI 
+The ultimate development partners for your favorite Coding Agent ([Claude](https://www.anthropic.com/claude-code) OR [Gemini CLI](https://github.com/google-gemini/gemini-cli)) - a Model Context Protocol server that gives you access to multiple AI 
 models for enhanced code analysis, problem-solving, and collaborative development.
 
 **Features true AI orchestration with conversations that continue across workflows** - Give Claude a complex
@@ -73,6 +73,7 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
   - [Complete Advanced Guide](docs/advanced-usage.md) - Model configuration, thinking modes, workflows, tool parameters
 
 - **Setup & Support**
+  - [WSL Setup Guide](docs/wsl-setup.md) - Windows Subsystem for Linux configuration
   - [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and debugging steps
   - [License](#license) - Apache 2.0
 
@@ -180,8 +181,11 @@ cd zen-mcp-server
 - **Sets up everything automatically** - Python environment, dependencies, configuration
 - **Configures Claude integrations** - Adds to Claude Code CLI and guides Desktop setup
 - **Ready to use immediately** - No manual configuration needed
+- **Also works with Gemini CLI** - See [Gemini CLI Setup](docs/gemini-setup.md) for configuration
 
 **After updates:** Always run `./run-server.sh` again after `git pull` to ensure everything stays current.
+
+**Windows users:** Using WSL? See the [WSL Setup Guide](docs/wsl-setup.md) for detailed instructions.
 
 ### 3. Add Your API Keys
 

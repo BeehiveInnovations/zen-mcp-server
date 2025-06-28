@@ -149,6 +149,10 @@ class VersionTool(BaseTool):
         """Return the JSON schema for the tool's input"""
         return {"type": "object", "properties": {}, "required": []}
 
+    def get_annotations(self) -> Optional[dict[str, Any]]:
+        """Return tool annotations indicating this is a read-only tool"""
+        return {"readOnlyHint": True}
+
     def get_system_prompt(self) -> str:
         """No AI model needed for this tool"""
         return ""
@@ -156,6 +160,9 @@ class VersionTool(BaseTool):
     def get_request_model(self):
         """Return the Pydantic model for request validation."""
         return ToolRequest
+
+    def requires_model(self) -> bool:
+        return False
 
     async def prepare_prompt(self, request: ToolRequest) -> str:
         """Not used for this utility tool"""
@@ -243,42 +250,6 @@ class VersionTool(BaseTool):
 
         output_lines.append("")
 
-        # Python and system information
-        output_lines.append("## System Information")
-        output_lines.append(
-            f"**Python Version**: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-        )
-        output_lines.append(f"**Platform**: {platform.system()} {platform.release()}")
-        output_lines.append(f"**Architecture**: {platform.machine()}")
-        output_lines.append("")
-
-        # Available tools
-        try:
-            # Import here to avoid circular imports
-            from server import TOOLS
-
-            tool_names = sorted(TOOLS.keys())
-            output_lines.append("## Available Tools")
-            output_lines.append(f"**Total Tools**: {len(tool_names)}")
-            output_lines.append("\n**Tool List**:")
-
-            for tool_name in tool_names:
-                tool = TOOLS[tool_name]
-                # Get the first line of the tool's description for a brief summary
-                description = tool.get_description().split("\n")[0]
-                # Truncate if too long
-                if len(description) > 80:
-                    description = description[:77] + "..."
-                output_lines.append(f"- `{tool_name}` - {description}")
-
-            output_lines.append("")
-
-        except Exception as e:
-            logger.warning(f"Error loading tools list: {e}")
-            output_lines.append("## Available Tools")
-            output_lines.append("**Error**: Could not load tools list")
-            output_lines.append("")
-
         # Configuration information
         output_lines.append("## Configuration")
 
@@ -294,10 +265,11 @@ class VersionTool(BaseTool):
                 ProviderType.GOOGLE,
                 ProviderType.OPENAI,
                 ProviderType.XAI,
+                ProviderType.DIAL,
                 ProviderType.OPENROUTER,
                 ProviderType.CUSTOM,
             ]
-            provider_names = ["Google Gemini", "OpenAI", "X.AI", "OpenRouter", "Custom/Local"]
+            provider_names = ["Google Gemini", "OpenAI", "X.AI", "DIAL", "OpenRouter", "Custom/Local"]
 
             for provider_type, provider_name in zip(provider_types, provider_names):
                 provider = ModelProviderRegistry.get_provider(provider_type)
@@ -310,22 +282,15 @@ class VersionTool(BaseTool):
             # Get total available models
             try:
                 available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
-                output_lines.append(f"\n**Available Models**: {len(available_models)}")
+                output_lines.append(f"\n\n**Available Models**: {len(available_models)}")
             except Exception:
-                output_lines.append("\n**Available Models**: Unknown")
+                output_lines.append("\n\n**Available Models**: Unknown")
 
         except Exception as e:
             logger.warning(f"Error checking provider configuration: {e}")
-            output_lines.append("**Providers**: Error checking configuration")
+            output_lines.append("\n\n**Providers**: Error checking configuration")
 
         output_lines.append("")
-
-        # Usage information
-        output_lines.append("## Usage")
-        output_lines.append("- Use `listmodels` tool to see all available AI models")
-        output_lines.append("- Use `chat` for interactive conversations and brainstorming")
-        output_lines.append("- Use workflow tools (`debug`, `codereview`, `docgen`, etc.) for systematic analysis")
-        output_lines.append("- Set DEFAULT_MODEL=auto to let Claude choose the best model for each task")
 
         # Format output
         content = "\n".join(output_lines)

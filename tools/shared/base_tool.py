@@ -153,6 +153,19 @@ class BaseTool(ABC):
         """
         pass
 
+    def get_annotations(self) -> Optional[dict[str, Any]]:
+        """
+        Return optional annotations for this tool.
+
+        Annotations provide hints about tool behavior without being security-critical.
+        They help MCP clients make better decisions about tool usage.
+
+        Returns:
+            Optional[dict]: Dictionary with annotation fields like readOnlyHint, destructiveHint, etc.
+                           Returns None if no annotations are needed.
+        """
+        return None
+
     def requires_model(self) -> bool:
         """
         Return whether this tool requires AI model access.
@@ -1070,6 +1083,26 @@ Consider requesting searches for:
 - Performance benchmarks and optimizations
 
 When recommending searches, be specific about what information you need and why it would improve your analysis. Always remember to instruct Claude to use the continuation_id from this response when providing search results."""
+
+    def get_language_instruction(self) -> str:
+        """
+        Generate language instruction based on LOCALE configuration.
+
+        Returns:
+            str: Language instruction to prepend to prompt, or empty string if
+                 no locale set
+        """
+        # Read LOCALE directly from environment to support dynamic changes
+        # This allows tests to modify os.environ["LOCALE"] and see the changes
+        import os
+
+        locale = os.getenv("LOCALE", "").strip()
+
+        if not locale:
+            return ""
+
+        # Simple language instruction
+        return f"Always respond in {locale}.\n\n"
 
     # === ABSTRACT METHODS FOR SIMPLE TOOLS ===
 

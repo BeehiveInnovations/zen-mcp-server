@@ -21,7 +21,7 @@ architectural decisions, and breaking down large problems into manageable steps.
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_validator
 
@@ -67,12 +67,12 @@ class PlannerRequest(WorkflowRequest):
     next_step_required: bool = Field(..., description=PLANNER_FIELD_DESCRIPTIONS["next_step_required"])
 
     # Optional revision/branching fields (planning-specific)
-    is_step_revision: Optional[bool] = Field(False, description=PLANNER_FIELD_DESCRIPTIONS["is_step_revision"])
-    revises_step_number: Optional[int] = Field(None, description=PLANNER_FIELD_DESCRIPTIONS["revises_step_number"])
-    is_branch_point: Optional[bool] = Field(False, description=PLANNER_FIELD_DESCRIPTIONS["is_branch_point"])
-    branch_from_step: Optional[int] = Field(None, description=PLANNER_FIELD_DESCRIPTIONS["branch_from_step"])
-    branch_id: Optional[str] = Field(None, description=PLANNER_FIELD_DESCRIPTIONS["branch_id"])
-    more_steps_needed: Optional[bool] = Field(False, description=PLANNER_FIELD_DESCRIPTIONS["more_steps_needed"])
+    is_step_revision: bool | None = Field(False, description=PLANNER_FIELD_DESCRIPTIONS["is_step_revision"])
+    revises_step_number: int | None = Field(None, description=PLANNER_FIELD_DESCRIPTIONS["revises_step_number"])
+    is_branch_point: bool | None = Field(False, description=PLANNER_FIELD_DESCRIPTIONS["is_branch_point"])
+    branch_from_step: int | None = Field(None, description=PLANNER_FIELD_DESCRIPTIONS["branch_from_step"])
+    branch_id: str | None = Field(None, description=PLANNER_FIELD_DESCRIPTIONS["branch_id"])
+    more_steps_needed: bool | None = Field(False, description=PLANNER_FIELD_DESCRIPTIONS["more_steps_needed"])
 
     # Exclude all investigation/analysis fields that aren't relevant to planning
     findings: str = Field(
@@ -85,15 +85,15 @@ class PlannerRequest(WorkflowRequest):
     )
     issues_found: list[dict] = Field(default_factory=list, exclude=True, description="Planning doesn't find issues")
     confidence: str = Field(default="planning", exclude=True, description="Planning uses different confidence model")
-    hypothesis: Optional[str] = Field(default=None, exclude=True, description="Planning doesn't use hypothesis")
-    backtrack_from_step: Optional[int] = Field(default=None, exclude=True, description="Planning uses revision instead")
+    hypothesis: str | None = Field(default=None, exclude=True, description="Planning doesn't use hypothesis")
+    backtrack_from_step: int | None = Field(default=None, exclude=True, description="Planning uses revision instead")
 
     # Exclude other non-planning fields
-    temperature: Optional[float] = Field(default=None, exclude=True)
-    thinking_mode: Optional[str] = Field(default=None, exclude=True)
-    use_websearch: Optional[bool] = Field(default=None, exclude=True)
-    use_assistant_model: Optional[bool] = Field(default=False, exclude=True, description="Planning is self-contained")
-    images: Optional[list] = Field(default=None, exclude=True, description="Planning doesn't use images")
+    temperature: float | None = Field(default=None, exclude=True)
+    thinking_mode: str | None = Field(default=None, exclude=True)
+    use_websearch: bool | None = Field(default=None, exclude=True)
+    use_assistant_model: bool | None = Field(default=False, exclude=True, description="Planning is self-contained")
+    images: list | None = Field(default=None, exclude=True, description="Planning doesn't use images")
 
     @field_validator("step_number")
     @classmethod
@@ -184,10 +184,18 @@ class PlannerTool(WorkflowTool):
         """Return the planner-specific request model."""
         return PlannerRequest
 
-    def get_tool_fields(self) -> dict[str, dict[str, Any]]:
-        """Return planning-specific field definitions beyond the standard workflow fields."""
-        return {
-            # Planning-specific optional fields
+    def get_input_schema(self) -> dict[str, Any]:
+        """Generate input schema for planner workflow using override pattern."""
+        from .workflow.schema_builders import WorkflowSchemaBuilder
+
+        # Planner tool-specific field definitions
+        planner_field_overrides = {
+            # Override standard workflow fields that need planning-specific descriptions
+            "step": {
+                "type": "string",
+                "description": PLANNER_FIELD_DESCRIPTIONS["step"],  # Very planning-specific instructions
+            },
+            # NEW planning-specific fields (not in base workflow)
             "is_step_revision": {
                 "type": "boolean",
                 "description": PLANNER_FIELD_DESCRIPTIONS["is_step_revision"],
@@ -216,11 +224,7 @@ class PlannerTool(WorkflowTool):
             },
         }
 
-    def get_input_schema(self) -> dict[str, Any]:
-        """Generate input schema using WorkflowSchemaBuilder with field exclusion."""
-        from .workflow.schema_builders import WorkflowSchemaBuilder
-
-        # Exclude investigation-specific fields that planning doesn't need
+        # Define excluded fields for planner workflow
         excluded_workflow_fields = [
             "findings",  # Planning uses step content instead
             "files_checked",  # Planning doesn't examine files
@@ -232,7 +236,6 @@ class PlannerTool(WorkflowTool):
             "backtrack_from_step",  # Planning uses revision instead
         ]
 
-        # Exclude common fields that planning doesn't need
         excluded_common_fields = [
             "temperature",  # Planning doesn't need temperature control
             "thinking_mode",  # Planning doesn't need thinking mode
@@ -241,8 +244,9 @@ class PlannerTool(WorkflowTool):
             "files",  # Planning doesn't use files
         ]
 
+        # Build schema with proper field exclusion (following consensus pattern)
         return WorkflowSchemaBuilder.build_schema(
-            tool_specific_fields=self.get_tool_fields(),
+            tool_specific_fields=planner_field_overrides,
             required_fields=[],  # No additional required fields beyond workflow defaults
             model_field_schema=self.get_model_field_schema(),
             auto_mode=self.is_effective_auto_mode(),

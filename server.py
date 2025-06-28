@@ -47,6 +47,7 @@ from mcp.types import (  # noqa: E402
     ServerCapabilities,
     TextContent,
     Tool,
+    ToolAnnotations,
     ToolsCapability,
 )
 
@@ -578,11 +579,16 @@ async def handle_list_tools() -> list[Tool]:
 
     # Add all registered AI-powered tools from the TOOLS registry
     for tool in TOOLS.values():
+        # Get optional annotations from the tool
+        annotations = tool.get_annotations()
+        tool_annotations = ToolAnnotations(**annotations) if annotations else None
+
         tools.append(
             Tool(
                 name=tool.name,
                 description=tool.description,
                 inputSchema=tool.get_input_schema(),
+                annotations=tool_annotations,
             )
         )
 

@@ -309,26 +309,26 @@ class TestGenTool(WorkflowTool):
     def prepare_expert_analysis_context(self, consolidated_findings) -> str:
         """Prepare context for external model call for test generation validation."""
         context_parts = [
-            f"=== TEST GENERATION REQUEST ===\\n{self.initial_request or 'Test generation workflow initiated'}\\n=== END REQUEST ==="
+            f"=== TEST GENERATION REQUEST ===\n{self.initial_request or 'Test generation workflow initiated'}\n=== END REQUEST ==="
         ]
 
         # Add investigation summary
         investigation_summary = self._build_test_generation_summary(consolidated_findings)
         context_parts.append(
-            f"\\n=== CLAUDE'S TEST PLANNING INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
+            f"\n=== CLAUDE'S TEST PLANNING INVESTIGATION ===\n{investigation_summary}\n=== END INVESTIGATION ==="
         )
 
         # Add relevant code elements if available
         if consolidated_findings.relevant_context:
-            methods_text = "\\n".join(f"- {method}" for method in consolidated_findings.relevant_context)
-            context_parts.append(f"\\n=== CODE ELEMENTS TO TEST ===\\n{methods_text}\\n=== END CODE ELEMENTS ===")
+            methods_text = "\n".join(f"- {method}" for method in consolidated_findings.relevant_context)
+            context_parts.append(f"\n=== CODE ELEMENTS TO TEST ===\n{methods_text}\n=== END CODE ELEMENTS ===")
 
         # Add images if available
         if consolidated_findings.images:
-            images_text = "\\n".join(f"- {img}" for img in consolidated_findings.images)
-            context_parts.append(f"\\n=== VISUAL DOCUMENTATION ===\\n{images_text}\\n=== END VISUAL DOCUMENTATION ===")
+            images_text = "\n".join(f"- {img}" for img in consolidated_findings.images)
+            context_parts.append(f"\n=== VISUAL DOCUMENTATION ===\n{images_text}\n=== END VISUAL DOCUMENTATION ===")
 
-        return "\\n".join(context_parts)
+        return "\n".join(context_parts)
 
     def _build_test_generation_summary(self, consolidated_findings) -> str:
         """Prepare a comprehensive summary of the test generation investigation."""
