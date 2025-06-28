@@ -150,6 +150,9 @@ async def lifespan(app: Starlette):
     # Initialize SSE transport with the messages endpoint
     sse_transport = SseServerTransport("/messages/")
     
+    # Mount the message handler
+    app.mount("/messages/", sse_transport.handle_post_message)
+    
     logger.info(f"Server ready - listening for HTTP/SSE connections")
     logger.info(f"Available tools: {list(TOOLS.keys())}")
     
@@ -185,12 +188,6 @@ def create_app() -> Starlette:
     # Mount routes on the app
     for route in routes:
         app.add_route(route.path, route.endpoint, methods=route.methods)
-    
-    # Add SSE transport message handler
-    @app.on_event("startup")
-    async def add_message_handler():
-        if sse_transport:
-            app.mount("/messages/", sse_transport.handle_post_message)
     
     return app
 
