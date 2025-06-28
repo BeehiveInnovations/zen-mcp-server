@@ -306,11 +306,11 @@ of the evidence, even when it strongly points in one direction.""",
         ]
 
         # Build schema with proper field exclusion
-        # Note: We don't pass model_field_schema because consensus uses 'models' instead of 'model'
+        # Include model field for compatibility but don't require it
         schema = WorkflowSchemaBuilder.build_schema(
             tool_specific_fields=consensus_field_overrides,
             model_field_schema=self.get_model_field_schema(),
-            auto_mode=self.is_effective_auto_mode(),
+            auto_mode=False,  # Consensus doesn't require model at MCP boundary
             tool_name=self.get_name(),
             excluded_workflow_fields=excluded_workflow_fields,
             excluded_common_fields=excluded_common_fields,
