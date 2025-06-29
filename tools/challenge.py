@@ -23,8 +23,10 @@ from .simple.base import SimpleTool
 # Field descriptions for the Challenge tool
 CHALLENGE_FIELD_DESCRIPTIONS = {
     "prompt": (
-        "The statement, question, or assertion the user wants to challenge critically. "
-        "This may be a claim, suggestion, or idea that requires thoughtful reconsideration, not automatic agreement."
+        "The original statement, question, or assertion the user intends to critically evaluate. "
+        "This may be a claim, suggestion, or idea that requires thoughtful analysis, not automatic agreement. "
+        "MANDATORY: Do NOT rephrase or paraphrase. Submit the statement EXACTLY AS PROVIDED, as it will be used "
+        "verbatim in a new prompt."
     ),
 }
 
@@ -53,11 +55,11 @@ class ChallengeTool(SimpleTool):
 
     def get_description(self) -> str:
         return (
-            "CRITICAL CHALLENGE PROMPT – Use this to frame your statement in a way that prompts "
-            "the CLI agent to challenge it thoughtfully instead of agreeing by default. Ideal for "
-            "challenging assumptions, validating ideas, and seeking honest, analytical feedback as part of an ongoing "
-            "task. The tool wraps your input with instructions explicitly telling the agent to think critically "
-            "and disagree if warranted."
+            "CRITICAL CHALLENGE PROMPT – Use this to explicitly frame your input for critical examination. "
+            "Instead of default agreement, the CLI agent will be instructed to analyze, question, and, if needed, "
+            "disagree with your statement. Ideal for validating assumptions, pressure-testing ideas, and eliciting "
+            "honest feedback during complex workflows. The tool ensures your input is wrapped with clear guidance "
+            "to encourage thoughtful scrutiny."
         )
 
     def get_system_prompt(self) -> str:
@@ -133,8 +135,9 @@ class ChallengeTool(SimpleTool):
                 "challenge_prompt": wrapped_prompt,
                 "instructions": (
                     "Present the challenge_prompt to yourself and follow its instructions. "
-                    "Challenge the statement critically before forming your response. "
-                    "If you disagree after careful reconsideration, explain why."
+                    "Reassess the statement carefully and critically before responding. "
+                    "If, after reflection, you find reasons to disagree or qualify it, explain your reasoning. "
+                    "Likewise, if you find reasons to agree, articulate them clearly and justify your agreement."
                 ),
             }
 
@@ -165,11 +168,12 @@ class ChallengeTool(SimpleTool):
             The statement wrapped in challenge instructions
         """
         return (
-            f"CHALLENGE THIS STATEMENT - Do not automatically agree:\n\n"
+            f"CRITICAL REASSESSMENT – Do not automatically agree:\n\n"
             f'"{prompt}"\n\n'
-            f"Is this actually correct? Check carefully. If it's wrong, incomplete, misleading or incorrect, "
-            f"you must say so. Provide your honest assessment, not automatic agreement. If you "
-            f"feel there is merit in what the user is saying, explain WHY you agree."
+            f"Carefully evaluate the statement above. Is it accurate, complete, and well-reasoned? "
+            f"Investigate if needed before replying, and stay focused. If you identify flaws, gaps, or misleading "
+            f"points, explain them clearly. Likewise, if you find the reasoning sound, explain why it holds up. "
+            f"Respond with thoughtful analysis—stay to the point and avoid reflexive agreement."
         )
 
     # Required method implementations from SimpleTool

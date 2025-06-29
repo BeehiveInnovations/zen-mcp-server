@@ -25,8 +25,8 @@ class TestChallengeTool:
         """Test that tool metadata matches requirements"""
         assert self.tool.get_name() == "challenge"
         assert "CRITICAL CHALLENGE PROMPT" in self.tool.get_description()
-        assert "challenge it thoughtfully" in self.tool.get_description()
-        assert "agreeing by default" in self.tool.get_description()
+        assert "critical examination" in self.tool.get_description()
+        assert "default agreement" in self.tool.get_description()
         assert self.tool.get_default_temperature() == 0.2  # TEMPERATURE_ANALYTICAL
 
     def test_requires_model(self):
@@ -100,11 +100,11 @@ class TestChallengeTool:
 
         # Check that the challenge prompt contains critical thinking instructions
         challenge_prompt = response_data["challenge_prompt"]
-        assert "CHALLENGE THIS STATEMENT - Do not automatically agree" in challenge_prompt
-        assert "Is this actually correct? Check carefully" in challenge_prompt
+        assert "CRITICAL REASSESSMENT – Do not automatically agree" in challenge_prompt
+        assert "Carefully evaluate the statement above" in challenge_prompt
         assert response_data["original_statement"] in challenge_prompt
-        assert "you must say so" in challenge_prompt
-        assert "Provide your honest assessment, not automatic agreement" in challenge_prompt
+        assert "flaws, gaps, or misleading points" in challenge_prompt
+        assert "thoughtful analysis" in challenge_prompt
 
     @pytest.mark.asyncio
     async def test_execute_error_handling(self):
@@ -124,11 +124,11 @@ class TestChallengeTool:
         wrapped = self.tool._wrap_prompt_for_challenge(original_prompt)
 
         # Check structure
-        assert "CHALLENGE THIS STATEMENT - Do not automatically agree" in wrapped
-        assert "Is this actually correct? Check carefully" in wrapped
+        assert "CRITICAL REASSESSMENT – Do not automatically agree" in wrapped
+        assert "Carefully evaluate the statement above" in wrapped
         assert f'"{original_prompt}"' in wrapped
-        assert "you must say so" in wrapped
-        assert "Provide your honest assessment, not automatic agreement" in wrapped
+        assert "flaws, gaps, or misleading points" in wrapped
+        assert "thoughtful analysis" in wrapped
 
     def test_multiple_prompts(self):
         """Test that tool handles various types of prompts correctly"""
@@ -146,7 +146,7 @@ class TestChallengeTool:
 
             # Each wrapped prompt should contain the original
             assert prompt in wrapped
-            assert "CHALLENGE THIS STATEMENT" in wrapped
+            assert "CRITICAL REASSESSMENT" in wrapped
 
     def test_tool_fields(self):
         """Test tool-specific field definitions"""
@@ -155,7 +155,7 @@ class TestChallengeTool:
         assert "prompt" in fields
         assert fields["prompt"]["type"] == "string"
         assert "statement" in fields["prompt"]["description"]
-        assert "challenge" in fields["prompt"]["description"]
+        assert "critically evaluate" in fields["prompt"]["description"]
 
     def test_required_fields_list(self):
         """Test required fields list"""
