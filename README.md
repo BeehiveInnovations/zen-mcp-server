@@ -2,22 +2,22 @@
 
 [zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
 
-<div align="center">  
+<div align="center">
   <b>🤖 <a href="https://www.anthropic.com/claude-code">Claude</a> OR <a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> + [Gemini / OpenAI / Grok / OpenRouter / DIAL / Ollama / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
 
-The ultimate development partners for your favorite Coding Agent ([Claude](https://www.anthropic.com/claude-code) OR [Gemini CLI](https://github.com/google-gemini/gemini-cli)) - a Model Context Protocol server that gives you access to multiple AI 
+The ultimate development partners for your favorite Coding Agent ([Claude](https://www.anthropic.com/claude-code) OR [Gemini CLI](https://github.com/google-gemini/gemini-cli)) - a Model Context Protocol server that gives you access to multiple AI
 models for enhanced code analysis, problem-solving, and collaborative development.
 
 **Features true AI orchestration with conversations that continue across workflows** - Give Claude a complex
-_workflow_ and let it orchestrate between models automatically. Claude stays in control, performs the actual work, 
-but gets perspectives from the best AI for each subtask. With tools like [`planner`](#3-planner---interactive-step-by-step-planning) for 
-breaking down complex projects, [`analyze`](#8-analyze---smart-file-analysis) for understanding codebases, 
-[`codereview`](#5-codereview---professional-code-review) for audits, [`refactor`](#9-refactor---intelligent-code-refactoring) for 
-improving code structure, [`debug`](#7-debug---expert-debugging-assistant) for solving complex problems, and [`precommit`](#6-precommit---pre-commit-validation) for 
-validating changes, Claude can switch between different tools _and_ models mid-conversation, 
+_workflow_ and let it orchestrate between models automatically. Claude stays in control, performs the actual work,
+but gets perspectives from the best AI for each subtask. With tools like [`planner`](#3-planner---interactive-step-by-step-planning) for
+breaking down complex projects, [`analyze`](#8-analyze---smart-file-analysis) for understanding codebases,
+[`codereview`](#5-codereview---professional-code-review) for audits, [`refactor`](#9-refactor---intelligent-code-refactoring) for
+improving code structure, [`debug`](#7-debug---expert-debugging-assistant) for solving complex problems, and [`precommit`](#6-precommit---pre-commit-validation) for
+validating changes, Claude can switch between different tools _and_ models mid-conversation,
 with context carrying forward seamlessly.
 
 **Example Workflow - Claude Code:**
@@ -38,10 +38,10 @@ and review into consideration to aid with its final pre-commit review.
 
 **Think of it as Claude Code _for_ Claude Code.** This MCP isn't magic. It's just **super-glue**.
 
-> **Remember:** Claude stays in full control — but **YOU** call the shots. 
-> Zen is designed to have Claude engage other models only when needed — and to follow through with meaningful back-and-forth. 
-> **You're** the one who crafts the powerful prompt that makes Claude bring in Gemini, Flash, O3 — or fly solo.  
-> You're the guide. The prompter. The puppeteer. 
+> **Remember:** Claude stays in full control — but **YOU** call the shots.
+> Zen is designed to have Claude engage other models only when needed — and to follow through with meaningful back-and-forth.
+> **You're** the one who crafts the powerful prompt that makes Claude bring in Gemini, Flash, O3 — or fly solo.
+> You're the guide. The prompter. The puppeteer.
 > ### You are the AI - **Actually Intelligent**.
 
 Because these AI models [clearly aren't when they get chatty →](docs/ai_banter.md)
@@ -103,11 +103,11 @@ Claude is brilliant, but sometimes you need:
 **This is an extremely powerful feature that cannot be highlighted enough**:
 
 > The most amazing side-effect of this _conversation continuation_ system is that even AFTER Claude's context resets or
-> compacts, since the continuation info is kept within MCP's memory, you can ask it to _continue_ discussing 
-> the plan with `o3`, and it will suddenly revive Claude because O3 would know what was being talked about and 
+> compacts, since the continuation info is kept within MCP's memory, you can ask it to _continue_ discussing
+> the plan with `o3`, and it will suddenly revive Claude because O3 would know what was being talked about and
 > relay this back in a way that re-ignites Claude's understanding. All this without wasting context on asking Claude to
 > ingest lengthy documents / code again and re-prompting it to communicate with another model. Zen manages that internally. The model's response
-> revives Claude with better context around the discussion than an automatic summary ever can.   
+> revives Claude with better context around the discussion than an automatic summary ever can.
 
 **[📖 Read the complete technical deep-dive on how this revolutionary system works](docs/context-revival.md)**
 
@@ -156,11 +156,62 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Text Generation WebUI**: Popular local interface for running models
 - **Any OpenAI-compatible API**: Custom endpoints for your own infrastructure
 
-> **Note:** Using multiple provider options may create ambiguity about which provider / model to use if there is an overlap. 
+> **Note:** Using multiple provider options may create ambiguity about which provider / model to use if there is an overlap.
 > If all APIs are configured, native APIs will take priority when there is a clash in model name, such as for `gemini` and `o3`.
 > Configure your model aliases and give them unique names in [`conf/custom_models.json`](conf/custom_models.json)
 
-### 2. Clone and Set Up
+### 2. Choose Your Installation Method
+
+**Option A: Quick Install with uvx**
+
+**Prerequisites**: Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first (required for uvx)
+
+For **Claude Desktop**, add this to your `claude_desktop_config.json`
+```json
+{
+  "mcpServers": {
+    "zen": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
+        "zen-mcp-server"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+For **Claude Code CLI**, create a `.mcp.json` file in your project root for [project-scoped configuration](https://docs.anthropic.com/en/docs/claude-code/mcp#project-scope):
+```json
+{
+  "mcpServers": {
+    "zen": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/BeehiveInnovations/zen-mcp-server.git",
+        "zen-mcp-server"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+**What this does:**
+- **Zero setup required** - uvx handles everything automatically
+- **Always up-to-date** - Pulls latest version on each run
+- **No local dependencies** - Works without Python environment setup
+- **Instant availability** - Ready to use immediately
+
+
+**Option B: Traditional Clone and Set Up**
 
 ```bash
 # Clone to your preferred location
@@ -170,11 +221,20 @@ cd zen-mcp-server
 # One-command setup installs Zen in Claude
 ./run-server.sh
 
+# Or for Windows users using PowerShell:
+./run-server.ps1
+
 # To view MCP configuration for Claude
 ./run-server.sh -c
 
+# PowerShell:
+./run-server.ps1 -Config
+
 # See help for more
 ./run-server.sh --help
+
+# PowerShell:
+./run-server.ps1 -Help
 ```
 
 **What this does:**
@@ -212,9 +272,9 @@ nano .env
 # Note: At least one API key OR custom URL is required
 ```
 
-**No restart needed**: The server reads the .env file each time Claude calls a tool, so changes take effect immediately. 
+**No restart needed**: The server reads the .env file each time Claude calls a tool, so changes take effect immediately.
 
-**Next**: Now run `claude` from your project folder using the terminal for it to connect to the newly added mcp server. 
+**Next**: Now run `claude` from your project folder using the terminal for it to connect to the newly added mcp server.
 If you were already running a `claude` code session, please exit and start a new session.
 
 #### If Setting up for Claude Desktop
@@ -240,11 +300,11 @@ Just ask Claude naturally:
 
 ## Available Tools
 
-These aren't just tools—they're how you get Claude to think like a real developer. Instead of rushing to reply with 
-surface-level takes or shallow-insight, these workflows make Claude pause, dig into your code, and reason through 
-problems step by step. 
+These aren't just tools—they're how you get Claude to think like a real developer. Instead of rushing to reply with
+surface-level takes or shallow-insight, these workflows make Claude pause, dig into your code, and reason through
+problems step by step.
 
-It's the difference between a rushed guess and a focused second pair of eyes that actually understands your code. Try them 
+It's the difference between a rushed guess and a focused second pair of eyes that actually understands your code. Try them
 and feel the difference.
 
 **Quick Tool Selection Guide:**
@@ -306,26 +366,26 @@ Get a second opinion to augment Claude's own extended thinking. Uses specialized
 
 ```
 The button won't animate when clicked, it seems something else is intercepting the clicks. Use thinkdeep with gemini pro after gathering related code and handing it the files
-and find out what the root cause is  
+and find out what the root cause is
 ```
 
 **[📖 Read More](docs/tools/thinkdeep.md)** - Enhanced analysis capabilities and critical evaluation process
 
 ### 3. `planner` - Interactive Step-by-Step Planning
-Break down complex projects or ideas into manageable, structured plans through step-by-step thinking. 
-Perfect for adding new features to an existing system, scaling up system design, migration strategies, 
+Break down complex projects or ideas into manageable, structured plans through step-by-step thinking.
+Perfect for adding new features to an existing system, scaling up system design, migration strategies,
 and architectural planning with branching and revision capabilities.
 
 #### Pro Tip
-Claude supports `sub-tasks` where it will spawn and run separate background tasks. You can ask Claude to 
+Claude supports `sub-tasks` where it will spawn and run separate background tasks. You can ask Claude to
 run Zen's planner with two separate ideas. Then when it's done, use Zen's `consensus` tool to pass the entire
 plan and get expert perspective from two powerful AI models on which one to work on first! Like performing **AB** testing
 in one-go without the wait!
 
 ```
-Create two separate sub-tasks: in one, using planner tool show me how to add natural language support 
-to my cooking app. In the other sub-task, use planner to plan how to add support for voice notes to my cooking app. 
-Once done, start a consensus by sharing both plans to o3 and flash to give me the final verdict. Which one do 
+Create two separate sub-tasks: in one, using planner tool show me how to add natural language support
+to my cooking app. In the other sub-task, use planner to plan how to add support for voice notes to my cooking app.
+Once done, start a consensus by sharing both plans to o3 and flash to give me the final verdict. Which one do
 I implement first?
 ```
 
@@ -335,7 +395,7 @@ I implement first?
 Get diverse expert opinions from multiple AI models on technical proposals and decisions. Supports stance steering (for/against/neutral) and structured decision-making.
 
 ```
-Get a consensus with flash taking a supportive stance and gemini pro being critical to evaluate whether we should 
+Get a consensus with flash taking a supportive stance and gemini pro being critical to evaluate whether we should
 migrate from REST to GraphQL for our API. I need a definitive answer.
 ```
 
@@ -345,7 +405,7 @@ migrate from REST to GraphQL for our API. I need a definitive answer.
 Comprehensive code analysis with prioritized feedback and severity levels. This workflow tool guides Claude through systematic investigation steps with forced pauses between each step to ensure thorough code examination, issue identification, and quality assessment before providing expert analysis.
 
 ```
-Perform a codereview with gemini pro especially the auth.py as I feel some of the code is bypassing security checks 
+Perform a codereview with gemini pro especially the auth.py as I feel some of the code is bypassing security checks
 and there may be more potential vulnerabilities. Find and share related code."
 ```
 
@@ -368,7 +428,7 @@ Perform a thorough precommit with o3, we want to only highlight critical issues,
 I then ran:
 
 ```text
-Run a precommit with o3 confirm our changes are sound and diffs are valid. Confirm this won't cause breakage or 
+Run a precommit with o3 confirm our changes are sound and diffs are valid. Confirm this won't cause breakage or
 regressions and codesmells are out
 ```
 
@@ -386,9 +446,9 @@ Output:
   ...
 ```
 
-The reported issue was in fact a _very subtle bug_ that slipped through the quick glance — and a unit test for this exact case apparently 
-was missing (out of 540 existing tests!) - explains the zero reported regressions. The fix was ultimately simple, but the 
-fact Claude (and by extension, I) overlooked this, was a stark reminder: no number of eyeballs is ever enough. Fixed the 
+The reported issue was in fact a _very subtle bug_ that slipped through the quick glance — and a unit test for this exact case apparently
+was missing (out of 540 existing tests!) - explains the zero reported regressions. The fix was ultimately simple, but the
+fact Claude (and by extension, I) overlooked this, was a stark reminder: no number of eyeballs is ever enough. Fixed the
 issue, ran `precommit` with o3 again and got:
 
  **RECOMMENDATION: PROCEED WITH COMMIT**
@@ -401,10 +461,10 @@ Nice! This is just one instance - take a look at [another example here](docs/too
 Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
 
 ```
-See logs under /Users/me/project/diagnostics.log and related code under the sync folder. 
-Logs show that sync works but sometimes it gets stuck and there are no errors displayed to 
-the user. Using zen's debug tool with gemini pro, find out why this is happening and what the root 
-cause is and its fix 
+See logs under /Users/me/project/diagnostics.log and related code under the sync folder.
+Logs show that sync works but sometimes it gets stuck and there are no errors displayed to
+the user. Using zen's debug tool with gemini pro, find out why this is happening and what the root
+cause is and its fix
 ```
 
 You can also add `do not use another model` to make Claude perform the entire workflow on its own. This is recommended
@@ -467,7 +527,7 @@ Perform a secaudit with o3 on this e-commerce web application focusing on paymen
 Generates thorough documentation with complexity analysis and gotcha identification. This workflow tool guides Claude through systematic investigation of code structure, function complexity, and documentation needs across multiple steps before generating comprehensive documentation that includes algorithmic complexity, call flow information, and unexpected behaviors that developers should know about.
 
 ```
-# Includes complexity Big-O notiation, documents dependencies / code-flow, fixes existing stale docs 
+# Includes complexity Big-O notiation, documents dependencies / code-flow, fixes existing stale docs
 Use docgen to documentation the UserManager class
 
 # Includes complexity Big-O notiation, documents dependencies / code-flow

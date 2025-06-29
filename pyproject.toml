@@ -1,3 +1,31 @@
+[project]
+name = "zen-mcp-server"
+version = "0.1.0"
+description = "AI-powered MCP server with multiple model providers"
+requires-python = ">=3.9"
+dependencies = [
+    "mcp>=1.0.0",
+    "google-genai>=1.19.0",
+    "openai>=1.55.2",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["tools*", "providers*", "systemprompts*", "utils*"]
+
+[tool.setuptools]
+py-modules = ["server", "config"]
+
+[tool.setuptools.package-data]
+"*" = ["conf/*.json"]
+
+[tool.setuptools.data-files]
+"conf" = ["conf/custom_models.json"]
+
+[project.scripts]
+zen-mcp-server = "server:run"
+
 [tool.black]
 line-length = 120
 target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
