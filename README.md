@@ -56,17 +56,18 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking
   - [`thinkdeep`](#2-thinkdeep---extended-reasoning-partner) - Extended reasoning
-  - [`planner`](#3-planner---interactive-step-by-step-planning) - Interactive step-by-step planning
-  - [`consensus`](#4-consensus---multi-model-perspective-gathering) - Multi-model consensus analysis
-  - [`codereview`](#5-codereview---professional-code-review) - Code review
-  - [`precommit`](#6-precommit---pre-commit-validation) - Pre-commit validation
-  - [`debug`](#7-debug---expert-debugging-assistant) - Debugging help
-  - [`analyze`](#8-analyze---smart-file-analysis) - File analysis
-  - [`refactor`](#9-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
-  - [`tracer`](#10-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
-  - [`testgen`](#11-testgen---comprehensive-test-generation) - Test generation with edge cases
-  - [`secaudit`](#12-secaudit---comprehensive-security-audit) - Security audit with OWASP analysis
-  - [`docgen`](#13-docgen---comprehensive-documentation-generation) - Documentation generation with complexity analysis
+  - [`challenge`](#3-challenge---critical-challenge-prompt) - Prevents **You're absolutely right!** responses
+  - [`planner`](#4-planner---interactive-step-by-step-planning) - Interactive step-by-step planning
+  - [`consensus`](#5-consensus---multi-model-perspective-gathering) - Multi-model consensus analysis
+  - [`codereview`](#6-codereview---professional-code-review) - Code review
+  - [`precommit`](#7-precommit---pre-commit-validation) - Pre-commit validation
+  - [`debug`](#8-debug---expert-debugging-assistant) - Debugging help
+  - [`analyze`](#9-analyze---smart-file-analysis) - File analysis
+  - [`refactor`](#10-refactor---intelligent-code-refactoring) - Code refactoring with decomposition focus
+  - [`tracer`](#11-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
+  - [`testgen`](#12-testgen---comprehensive-test-generation) - Test generation with edge cases
+  - [`secaudit`](#13-secaudit---comprehensive-security-audit) - Security audit with OWASP analysis
+  - [`docgen`](#14-docgen---comprehensive-documentation-generation) - Documentation generation with complexity analysis
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
@@ -343,6 +344,7 @@ and feel the difference.
 **Quick Tool Selection Guide:**
 - **Need a thinking partner?** → `chat` (brainstorm ideas, get second opinions, validate approaches)
 - **Need deeper thinking?** → `thinkdeep` (extends analysis, finds edge cases)
+- **Want to prevent "You're absolutely right!" responses?** → `challenge` (challenges assumptions, encourages thoughtful re-evaluation)
 - **Need to break down complex projects?** → `planner` (step-by-step planning, project structure, breaking down complex ideas)
 - **Need multiple perspectives?** → `consensus` (get diverse expert opinions on proposals and decisions)
 - **Code needs review?** → `codereview` (bugs, security, performance issues)
@@ -371,19 +373,20 @@ and feel the difference.
 **Tools Overview:**
 1. [`chat`](docs/tools/chat.md) - Collaborative thinking and development conversations
 2. [`thinkdeep`](docs/tools/thinkdeep.md) - Extended reasoning and problem-solving
-3. [`planner`](docs/tools/planner.md) - Interactive sequential planning for complex projects
-4. [`consensus`](docs/tools/consensus.md) - Multi-model consensus analysis with stance steering
-5. [`codereview`](docs/tools/codereview.md) - Professional code review with severity levels
-6. [`precommit`](docs/tools/precommit.md) - Validate git changes before committing
-7. [`debug`](docs/tools/debug.md) - Systematic investigation and debugging
-8. [`analyze`](docs/tools/analyze.md) - General-purpose file and code analysis
-9. [`refactor`](docs/tools/refactor.md) - Code refactoring with decomposition focus
-10. [`tracer`](docs/tools/tracer.md) - Static code analysis prompt generator for call-flow mapping
-11. [`testgen`](docs/tools/testgen.md) - Comprehensive test generation with edge case coverage
-12. [`secaudit`](docs/tools/secaudit.md) - Comprehensive security audit with OWASP Top 10 analysis
-13. [`docgen`](docs/tools/docgen.md) - Comprehensive documentation generation with complexity analysis
-14. [`listmodels`](docs/tools/listmodels.md) - Display all available AI models organized by provider
-15. [`version`](docs/tools/version.md) - Get server version and configuration
+3. [`challenge`](docs/tools/challenge.md) - Critical challenge prompt, prevents **You're absolutely right!**
+4. [`planner`](docs/tools/planner.md) - Interactive sequential planning for complex projects
+5. [`consensus`](docs/tools/consensus.md) - Multi-model consensus analysis with stance steering
+6. [`codereview`](docs/tools/codereview.md) - Professional code review with severity levels
+7. [`precommit`](docs/tools/precommit.md) - Validate git changes before committing
+8. [`debug`](docs/tools/debug.md) - Systematic investigation and debugging
+9. [`analyze`](docs/tools/analyze.md) - General-purpose file and code analysis
+10. [`refactor`](docs/tools/refactor.md) - Code refactoring with decomposition focus
+11. [`tracer`](docs/tools/tracer.md) - Static code analysis prompt generator for call-flow mapping
+12. [`testgen`](docs/tools/testgen.md) - Comprehensive test generation with edge case coverage
+13. [`secaudit`](docs/tools/secaudit.md) - Comprehensive security audit with OWASP Top 10 analysis
+14. [`docgen`](docs/tools/docgen.md) - Comprehensive documentation generation with complexity analysis
+15. [`listmodels`](docs/tools/listmodels.md) - Display all available AI models organized by provider
+16. [`version`](docs/tools/version.md) - Get server version and configuration
 
 ### 1. `chat` - General Development Chat & Collaborative Thinking
 Your thinking partner for brainstorming, getting second opinions, and validating approaches. Perfect for technology comparisons, architecture discussions, and collaborative problem-solving.
@@ -404,7 +407,20 @@ and find out what the root cause is
 
 **[📖 Read More](docs/tools/thinkdeep.md)** - Enhanced analysis capabilities and critical evaluation process
 
-### 3. `planner` - Interactive Step-by-Step Planning
+### 3. `challenge` - Critical Challenge Prompt
+Encourages thoughtful reassessment of statements instead of automatic agreement, especially when you're wrong.
+Wraps your input with instructions for critical thinking and honest analysis.
+
+```
+challenge isn't adding this function to the base class was a bad idea?
+```
+
+Normally, your favorite coding agent will enthusiastically reply with **“You’re absolutely right!”**—then proceed 
+to completely reverse the _correct_ strategy, without ever explaining why you're wrong.
+
+**[📖 Read More](docs/tools/challenge.md)** - Critical thinking tool for validating ideas
+
+### 4. `planner` - Interactive Step-by-Step Planning
 Break down complex projects or ideas into manageable, structured plans through step-by-step thinking.
 Perfect for adding new features to an existing system, scaling up system design, migration strategies,
 and architectural planning with branching and revision capabilities.
@@ -424,7 +440,7 @@ I implement first?
 
 **[📖 Read More](docs/tools/planner.md)** - Step-by-step planning methodology and multi-session continuation
 
-### 4. `consensus` - Multi-Model Perspective Gathering
+### 5. `consensus` - Multi-Model Perspective Gathering
 Get diverse expert opinions from multiple AI models on technical proposals and decisions. Supports stance steering (for/against/neutral) and structured decision-making.
 
 ```
@@ -434,7 +450,7 @@ migrate from REST to GraphQL for our API. I need a definitive answer.
 
 **[📖 Read More](docs/tools/consensus.md)** - Multi-model orchestration and decision analysis
 
-### 5. `codereview` - Professional Code Review
+### 6. `codereview` - Professional Code Review
 Comprehensive code analysis with prioritized feedback and severity levels. This workflow tool guides Claude through systematic investigation steps with forced pauses between each step to ensure thorough code examination, issue identification, and quality assessment before providing expert analysis.
 
 ```
@@ -449,7 +465,7 @@ and there may be more potential vulnerabilities. Find and share related code."
 
 **[📖 Read More](docs/tools/codereview.md)** - Professional review workflow with step-by-step analysis
 
-### 6. `precommit` - Pre-Commit Validation
+### 7. `precommit` - Pre-Commit Validation
 Comprehensive review of staged/unstaged git changes across multiple repositories. This workflow tool guides Claude through systematic investigation of git changes, repository status, and file modifications across multiple steps before providing expert validation to ensure changes meet requirements and prevent regressions.
 
 ```
@@ -499,7 +515,7 @@ Nice! This is just one instance - take a look at [another example here](docs/too
 
 **[📖 Read More](docs/tools/precommit.md)** - Multi-repository validation and change analysis
 
-### 7. `debug` - Expert Debugging Assistant
+### 8. `debug` - Expert Debugging Assistant
 Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow 
 tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, 
 and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's 
@@ -525,7 +541,7 @@ Use continuation with thinkdeep, share details with o4-mini to find out what the
 
 **[📖 Read More](docs/tools/debug.md)** - Step-by-step investigation methodology with workflow enforcement
 
-### 8. `analyze` - Smart File Analysis
+### 9. `analyze` - Smart File Analysis
 General-purpose code understanding and exploration. This workflow tool guides Claude through systematic investigation of code structure, patterns, and architectural decisions across multiple steps, gathering comprehensive insights before providing expert analysis for architecture assessment, pattern detection, and strategic improvement recommendations.
 
 ```
@@ -534,7 +550,7 @@ Use gemini to analyze main.py to understand how it works
 
 **[📖 Read More](docs/tools/analyze.md)** - Comprehensive analysis workflow with step-by-step investigation
 
-### 9. `refactor` - Intelligent Code Refactoring
+### 10. `refactor` - Intelligent Code Refactoring
 Comprehensive refactoring analysis with top-down decomposition strategy. This workflow tool enforces systematic investigation of code smells, decomposition opportunities, and modernization possibilities across multiple steps, ensuring thorough analysis before providing expert refactoring recommendations with precise implementation guidance.
 
 ```
@@ -543,7 +559,7 @@ Use gemini pro to decompose my_crazy_big_class.m into smaller extensions
 
 **[📖 Read More](docs/tools/refactor.md)** - Workflow-driven refactoring with progressive analysis
 
-### 10. `tracer` - Static Code Analysis Prompt Generator
+### 11. `tracer` - Static Code Analysis Prompt Generator
 Creates detailed analysis prompts for call-flow mapping and dependency tracing. Generates structured analysis requests for precision execution flow or dependency mapping.
 
 ```
@@ -552,7 +568,7 @@ Use zen tracer to analyze how UserAuthManager.authenticate is used and why
 
 **[📖 Read More](docs/tools/tracer.md)** - Prompt generation and analysis modes
 
-### 11. `testgen` - Comprehensive Test Generation
+### 12. `testgen` - Comprehensive Test Generation
 Generates thorough test suites with edge case coverage based on existing code and test framework. This workflow tool guides Claude through systematic investigation of code functionality, critical paths, edge cases, and integration points across multiple steps before generating comprehensive tests with realistic failure mode analysis.
 
 ```
@@ -561,7 +577,7 @@ Use zen to generate tests for User.login() method
 
 **[📖 Read More](docs/tools/testgen.md)** - Workflow-based test generation with comprehensive coverage
 
-### 12. `secaudit` - Comprehensive Security Audit
+### 13. `secaudit` - Comprehensive Security Audit
 Systematic OWASP-based security assessment with compliance evaluation. This workflow tool guides Claude through methodical security investigation steps with forced pauses between each step to ensure thorough vulnerability assessment, security pattern analysis, and compliance verification before providing expert analysis.
 
 ```
@@ -570,7 +586,7 @@ Perform a secaudit with o3 on this e-commerce web application focusing on paymen
 
 **[📖 Read More](docs/tools/secaudit.md)** - OWASP Top 10 analysis with compliance framework support
 
-### 13. `docgen` - Comprehensive Documentation Generation
+### 14. `docgen` - Comprehensive Documentation Generation
 Generates thorough documentation with complexity analysis and gotcha identification. This workflow tool guides Claude through systematic investigation of code structure, function complexity, and documentation needs across multiple steps before generating comprehensive documentation that includes algorithmic complexity, call flow information, and unexpected behaviors that developers should know about.
 
 ```
@@ -583,7 +599,7 @@ Use docgen to add complexity analysis to all the new swift functions I added but
 
 **[📖 Read More](docs/tools/docgen.md)** - Workflow-based documentation generation with gotcha detection
 
-### 14. `listmodels` - List Available Models
+### 15. `listmodels` - List Available Models
 Display all available AI models organized by provider, showing capabilities, context windows, and configuration status.
 
 ```
@@ -592,7 +608,7 @@ Use zen to list available models
 
 **[📖 Read More](docs/tools/listmodels.md)** - Model capabilities and configuration details
 
-### 15. `version` - Server Information
+### 16. `version` - Server Information
 Get server version, configuration details, and system status for debugging and troubleshooting.
 
 ```

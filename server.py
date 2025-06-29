@@ -64,6 +64,7 @@ from config import (  # noqa: E402
 )
 from tools import (  # noqa: E402
     AnalyzeTool,
+    ChallengeTool,
     ChatTool,
     CodeReviewTool,
     ConsensusTool,
@@ -274,6 +275,7 @@ TOOLS = {
     "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
     "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
+    "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "version": VersionTool(),  # Display server version and system information
 }
@@ -345,6 +347,11 @@ PROMPT_TEMPLATES = {
         "name": "testgen",
         "description": "Generate comprehensive tests",
         "template": "Generate comprehensive tests with {model}",
+    },
+    "challenge": {
+        "name": "challenge",
+        "description": "Challenge a statement critically without automatic agreement",
+        "template": "Challenge this statement critically",
     },
     "listmodels": {
         "name": "listmodels",

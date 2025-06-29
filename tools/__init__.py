@@ -3,6 +3,7 @@ Tool implementations for Zen MCP Server
 """
 
 from .analyze import AnalyzeTool
+from .challenge import ChallengeTool
 from .chat import ChatTool
 from .codereview import CodeReviewTool
 from .consensus import ConsensusTool
@@ -29,6 +30,7 @@ __all__ = [
     "ListModelsTool",
     "PlannerTool",
     "PrecommitTool",
+    "ChallengeTool",
     "RefactorTool",
     "SecauditTool",
     "TestGenTool",
