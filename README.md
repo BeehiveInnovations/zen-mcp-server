@@ -442,6 +442,11 @@ Perform a codereview with gemini pro especially the auth.py as I feel some of th
 and there may be more potential vulnerabilities. Find and share related code."
 ```
 
+**Tips**:
+* To avoid extra API costs, add `do not use another model` to run the entire codereview workflow locally.
+* If you want to **always** consult an external model (recommended for code reviews) regardless of Claude’s confidence level in identifying issues, use `must codereview using <model name>`. This ensures the model is consulted even if Claude is _certain_ about identified issues.
+
+
 **[📖 Read More](docs/tools/codereview.md)** - Professional review workflow with step-by-step analysis
 
 ### 6. `precommit` - Pre-Commit Validation
@@ -488,10 +493,18 @@ issue, ran `precommit` with o3 again and got:
 
 Nice! This is just one instance - take a look at [another example here](docs/tools/precommit.md).
 
+**Tips**:
+* To avoid extra API costs, add `do not use another model` to run the entire precommit workflow locally.
+* If you want to **always** consult an external model (recommended for pre-commit analysis) regardless of Claude’s confidence level in identifying issues, use `must precommit using <model name>`. This ensures the model is consulted even if Claude is _certain_ about identified issues.
+
 **[📖 Read More](docs/tools/precommit.md)** - Multi-repository validation and change analysis
 
 ### 7. `debug` - Expert Debugging Assistant
-Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's confidence reaches **100% certainty** during the investigative workflow, expert analysis via another model is skipped to save on tokens and cost, and Claude proceeds directly to fixing the issue.
+Systematic investigation-guided debugging that walks Claude through step-by-step root cause analysis. This workflow 
+tool enforces a structured investigation process where Claude performs methodical code examination, evidence collection, 
+and hypothesis formation across multiple steps before receiving expert analysis from the selected AI model. When Claude's 
+confidence reaches **100% certainty** during the investigative workflow, expert analysis via another model is skipped to 
+save on tokens and cost, and Claude proceeds directly to fixing the issue. 
 
 ```
 See logs under /Users/me/project/diagnostics.log and related code under the sync folder.
@@ -500,8 +513,9 @@ the user. Using zen's debug tool with gemini pro, find out why this is happening
 cause is and its fix
 ```
 
-You can also add `do not use another model` to make Claude perform the entire workflow on its own. This is recommended
-for most debugging workflows, as Claude is usually able to confidently find the root cause by the time the workflow ends.
+**Tips**:
+* To avoid extra API costs, add `do not use another model` to run the entire debugging workflow locally. This is recommended in most cases, as Claude typically identifies the root cause with high confidence by the end.
+* If you want to **always** consult an external model regardless of Claude’s confidence level, use `must debug using <model name>`. This ensures the model is consulted even if Claude is _certain_ about the issue.
 
 When in doubt, you can always follow up with a new prompt and ask Claude to share its findings with another model:
 
