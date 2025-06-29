@@ -418,7 +418,7 @@ challenge isn't adding this function to the base class a bad idea?
 Normally, your favorite coding agent will enthusiastically reply with **“You’re absolutely right!”**—then proceed 
 to completely reverse the _correct_ strategy, without ever explaining why you're wrong.
 
-**[📖 Read More](docs/tools/challenge.md)** - Critical thinking tool for validating ideas
+**[📖 Read More](docs/tools/challenge.md)** - Challenge an approach or validate ideas with confidence
 
 ### 4. `planner` - Interactive Step-by-Step Planning
 Break down complex projects or ideas into manageable, structured plans through step-by-step thinking.
