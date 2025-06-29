@@ -412,7 +412,7 @@ Encourages thoughtful reassessment of statements instead of automatic agreement,
 Wraps your input with instructions for critical thinking and honest analysis.
 
 ```
-challenge isn't adding this function to the base class was a bad idea?
+challenge isn't adding this function to the base class a bad idea?
 ```
 
 Normally, your favorite coding agent will enthusiastically reply with **“You’re absolutely right!”**—then proceed 
