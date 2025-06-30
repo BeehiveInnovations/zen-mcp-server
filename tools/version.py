@@ -147,7 +147,11 @@ class VersionTool(BaseTool):
 
     def get_input_schema(self) -> dict[str, Any]:
         """Return the JSON schema for the tool's input"""
-        return {"type": "object", "properties": {}, "required": []}
+        return {
+            "type": "object",
+            "properties": {"model": {"type": "string", "description": "Model to use (ignored by version tool)"}},
+            "required": [],
+        }
 
     def get_annotations(self) -> Optional[dict[str, Any]]:
         """Return tool annotations indicating this is a read-only tool"""
@@ -192,6 +196,20 @@ class VersionTool(BaseTool):
         output_lines.append(f"**Last Updated**: {__updated__}")
         output_lines.append(f"**Author**: {__author__}")
 
+        # Try to get client information
+        try:
+            # We need access to the server instance
+            # This is a bit hacky but works for now
+            import server as server_module
+            from utils.client_info import format_client_info, get_client_info_from_context
+
+            client_info = get_client_info_from_context(server_module.server)
+            if client_info:
+                formatted = format_client_info(client_info)
+                output_lines.append(f"**Connected Client**: {formatted}")
+        except Exception as e:
+            logger.debug(f"Could not get client info: {e}")
+
         # Get the current working directory (MCP server location)
         current_path = Path.cwd()
         output_lines.append(f"**Installation Path**: `{current_path}`")
@@ -224,7 +242,7 @@ class VersionTool(BaseTool):
                     output_lines.append("git pull")
                     output_lines.append("```")
                     output_lines.append("")
-                    output_lines.append("*Note: Restart your Claude session after updating to use the new version.*")
+                    output_lines.append("*Note: Restart your session after updating to use the new version.*")
                 elif comparison == 0:
                     # Up to date
                     output_lines.append("")

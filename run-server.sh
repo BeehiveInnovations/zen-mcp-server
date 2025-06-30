@@ -521,7 +521,7 @@ bootstrap_pip() {
     print_info "Bootstrapping pip in virtual environment..."
     
     # Try ensurepip first
-    if $venv_python -m ensurepip --default-pip 2>/dev/null; then
+    if $venv_python -m ensurepip --default-pip >/dev/null 2>&1; then
         print_success "Successfully bootstrapped pip using ensurepip"
         return 0
     fi
@@ -589,6 +589,17 @@ setup_environment() {
             if venv_python=$(get_venv_python_path "$VENV_PATH"); then
                 touch "$VENV_PATH/uv_created"  # Mark as uv-created
                 print_success "Created environment with uv using Python 3.12"
+                
+                # Ensure pip is installed in uv environment
+                if ! $venv_python -m pip --version &>/dev/null 2>&1; then
+                    print_info "Installing pip in uv environment..."
+                    # uv doesn't install pip by default, use bootstrap method
+                    if bootstrap_pip "$venv_python" "python3"; then
+                        print_success "pip installed in uv environment"
+                    else
+                        print_warning "Failed to install pip in uv environment"
+                    fi
+                fi
             else
                 print_warning "uv succeeded but Python executable not found in venv"
             fi
@@ -599,6 +610,17 @@ setup_environment() {
                 touch "$VENV_PATH/uv_created"  # Mark as uv-created
                 local python_version=$($venv_python --version 2>&1)
                 print_success "Created environment with uv using $python_version"
+                
+                # Ensure pip is installed in uv environment
+                if ! $venv_python -m pip --version &>/dev/null 2>&1; then
+                    print_info "Installing pip in uv environment..."
+                    # uv doesn't install pip by default, use bootstrap method
+                    if bootstrap_pip "$venv_python" "python3"; then
+                        print_success "pip installed in uv environment"
+                    else
+                        print_warning "Failed to install pip in uv environment"
+                    fi
+                fi
             else
                 print_warning "uv succeeded but Python executable not found in venv"
             fi
@@ -765,8 +787,10 @@ setup_venv() {
         exit 1
     fi
     
-    # Check if pip exists in the virtual environment (skip check if using uv-created environment)
-    if [[ ! -f "$VENV_PATH/uv_created" ]] && [[ ! -f "$venv_pip" ]] && ! $venv_python -m pip --version &>/dev/null 2>&1; then
+    # Always check if pip exists in the virtual environment (regardless of how it was created)
+    if [[ ! -f "$venv_pip" ]] && ! $venv_python -m pip --version &>/dev/null 2>&1; then
+        print_warning "pip not found in virtual environment, installing..."
+        
         # On Linux, try to install system packages if pip is missing
         local os_type=$(detect_os)
         if [[ "$os_type" == "linux" || "$os_type" == "wsl" ]]; then
@@ -848,8 +872,8 @@ install_dependencies() {
     local python_cmd="$1"
     local deps_needed=false
     
-    # First verify pip is available (skip check if using uv)
-    if [[ ! -f "$VENV_PATH/uv_created" ]] && ! $python_cmd -m pip --version &>/dev/null 2>&1; then
+    # First verify pip is available (always check, even for uv environments)
+    if ! $python_cmd -m pip --version &>/dev/null 2>&1; then
         print_error "pip is not available in the Python environment"
         echo ""
         echo "This indicates an incomplete Python installation."

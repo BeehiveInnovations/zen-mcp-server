@@ -28,13 +28,20 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
 
-from dotenv import load_dotenv
+# Try to load environment variables from .env file if dotenv is available
+# This is optional - environment variables can still be passed directly
+try:
+    from dotenv import load_dotenv
 
-# Load environment variables from .env file in the script's directory
-# This ensures .env is loaded regardless of the current working directory
-script_dir = Path(__file__).parent
-env_file = script_dir / ".env"
-load_dotenv(dotenv_path=env_file)
+    # Load environment variables from .env file in the script's directory
+    # This ensures .env is loaded regardless of the current working directory
+    script_dir = Path(__file__).parent
+    env_file = script_dir / ".env"
+    load_dotenv(dotenv_path=env_file)
+except ImportError:
+    # dotenv not available - this is fine, environment variables can still be passed directly
+    # This commonly happens when running via uvx or in minimal environments
+    pass
 
 from mcp.server import Server  # noqa: E402
 from mcp.server.models import InitializationOptions  # noqa: E402
@@ -57,6 +64,7 @@ from config import (  # noqa: E402
 )
 from tools import (  # noqa: E402
     AnalyzeTool,
+    ChallengeTool,
     ChatTool,
     CodeReviewTool,
     ConsensusTool,
@@ -154,6 +162,7 @@ except Exception as e:
     print(f"Warning: Could not set up file logging: {e}", file=sys.stderr)
 
 logger = logging.getLogger(__name__)
+
 
 # Create the MCP server instance with a unique name identifier
 # This name is used by MCP clients to identify and connect to this specific server
@@ -267,6 +276,7 @@ TOOLS = {
     "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
     "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
+    "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "version": VersionTool(),  # Display server version and system information
 }
@@ -339,6 +349,11 @@ PROMPT_TEMPLATES = {
         "description": "Generate comprehensive tests",
         "template": "Generate comprehensive tests with {model}",
     },
+    "challenge": {
+        "name": "challenge",
+        "description": "Challenge a statement critically without automatic agreement",
+        "template": "Challenge this statement critically",
+    },
     "listmodels": {
         "name": "listmodels",
         "description": "List available AI models",
@@ -362,6 +377,12 @@ def configure_providers():
     Raises:
         ValueError: If no valid API keys are found or conflicting configurations detected
     """
+    # Log environment variable status for debugging
+    logger.debug("Checking environment variables for API keys...")
+    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
+    for key in api_keys_to_check:
+        value = os.getenv(key)
+        logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
     from providers import ModelProviderRegistry
     from providers.base import ProviderType
     from providers.custom import CustomProvider
@@ -386,10 +407,16 @@ def configure_providers():
 
     # Check for OpenAI API key
     openai_key = os.getenv("OPENAI_API_KEY")
+    logger.debug(f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
     if openai_key and openai_key != "your_openai_api_key_here":
         valid_providers.append("OpenAI (o3)")
         has_native_apis = True
         logger.info("OpenAI API key found - o3 model available")
+    else:
+        if not openai_key:
+            logger.debug("OpenAI API key not found in environment")
+        else:
+            logger.debug("OpenAI API key is placeholder value")
 
     # Check for X.AI API key
     xai_key = os.getenv("XAI_API_KEY")
@@ -407,10 +434,16 @@ def configure_providers():
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    logger.debug(f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
     if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
         valid_providers.append("OpenRouter")
         has_openrouter = True
         logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
+    else:
+        if not openrouter_key:
+            logger.debug("OpenRouter API key not found in environment")
+        else:
+            logger.debug("OpenRouter API key is placeholder value")
 
     # Check for custom API endpoint (Ollama, vLLM, etc.)
     custom_url = os.getenv("CUSTOM_API_URL")
@@ -556,6 +589,27 @@ async def handle_list_tools() -> list[Tool]:
         List of Tool objects representing all available tools
     """
     logger.debug("MCP client requested tool list")
+
+    # Try to log client info if available (this happens early in the handshake)
+    try:
+        from utils.client_info import format_client_info, get_client_info_from_context
+
+        client_info = get_client_info_from_context(server)
+        if client_info:
+            formatted = format_client_info(client_info)
+            logger.info(f"MCP Client Connected: {formatted}")
+
+            # Log to activity file as well
+            try:
+                mcp_activity_logger = logging.getLogger("mcp_activity")
+                friendly_name = client_info.get("friendly_name", "Claude")
+                raw_name = client_info.get("name", "Unknown")
+                version = client_info.get("version", "Unknown")
+                mcp_activity_logger.info(f"MCP_CLIENT_INFO: {friendly_name} (raw={raw_name} v{version})")
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug(f"Could not log client info during list_tools: {e}")
     tools = []
 
     # Add all registered AI-powered tools from the TOOLS registry
@@ -1252,6 +1306,9 @@ async def main():
     logger.info("Zen MCP Server starting up...")
     logger.info(f"Log level: {log_level}")
 
+    # Note: MCP client info will be logged during the protocol handshake
+    # (when handle_list_tools is called)
+
     # Log current model mode
     from config import IS_AUTO_MODE
 
@@ -1285,7 +1342,8 @@ async def main():
         )
 
 
-if __name__ == "__main__":
+def run():
+    """Console script entry point for zen-mcp-server."""
     import argparse
     
     # Parse command line arguments
@@ -1332,3 +1390,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             # Handle graceful shutdown
             pass
+
+if __name__ == "__main__":
+    run()
