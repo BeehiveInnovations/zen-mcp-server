@@ -75,9 +75,30 @@ class InMemoryStorage:
 
     def _cleanup_worker(self):
         """Background thread that periodically cleans up expired entries"""
+        logger.debug("Storage cleanup worker thread started")
+        
         while not self._shutdown:
-            time.sleep(self._cleanup_interval)
-            self._cleanup_expired()
+            try:
+                # Sleep in smaller intervals to check shutdown flag more frequently
+                # This prevents the thread from hanging during shutdown
+                sleep_time = min(self._cleanup_interval, 30.0)  # Max 30 second sleep intervals
+                
+                for _ in range(int(self._cleanup_interval / sleep_time)):
+                    if self._shutdown:
+                        break
+                    time.sleep(sleep_time)
+                
+                # Perform cleanup if not shutting down
+                if not self._shutdown:
+                    self._cleanup_expired()
+                    
+            except Exception as e:
+                logger.error(f"Error in storage cleanup worker: {e}")
+                # Don't exit on error, but wait before retrying
+                if not self._shutdown:
+                    time.sleep(60)  # Wait 1 minute before retrying on error
+        
+        logger.debug("Storage cleanup worker thread terminated")
 
     def _cleanup_expired(self):
         """Remove all expired entries"""
@@ -92,9 +113,17 @@ class InMemoryStorage:
 
     def shutdown(self):
         """Graceful shutdown of background thread"""
+        logger.debug("Initiating storage backend shutdown")
         self._shutdown = True
+        
         if self._cleanup_thread.is_alive():
-            self._cleanup_thread.join(timeout=1)
+            logger.debug("Waiting for cleanup thread to terminate")
+            self._cleanup_thread.join(timeout=5.0)  # Increased timeout
+            
+            if self._cleanup_thread.is_alive():
+                logger.warning("Cleanup thread failed to shutdown gracefully within 5 seconds")
+            else:
+                logger.debug("Cleanup thread terminated successfully")
 
 
 # Global singleton instance

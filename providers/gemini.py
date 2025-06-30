@@ -119,6 +119,11 @@ class GeminiModelProvider(ModelProvider):
         super().__init__(api_key, **kwargs)
         self._client = None
         self._token_counters = {}  # Cache for token counting
+        # Cache management settings to prevent memory leaks
+        self._cache_max_entries = 100  # Maximum cache entries
+        self._cache_max_text_length = 10000  # Don't cache very large texts
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     @property
     def client(self):
@@ -465,3 +470,60 @@ class GeminiModelProvider(ModelProvider):
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return None
+
+    def _cleanup_token_cache_if_needed(self):
+        """Clean token cache when it gets too large to prevent memory leaks."""
+        if len(self._token_counters) > self._cache_max_entries:
+            # Keep only the most recent 50% of entries to maintain cache efficiency
+            # while preventing unbounded growth
+            target_size = self._cache_max_entries // 2
+            
+            # Convert to list of items and keep the most recent ones
+            # Note: In Python 3.7+, dict maintains insertion order
+            items = list(self._token_counters.items())
+            self._token_counters = dict(items[-target_size:])
+            
+            logger.debug(
+                f"Token cache cleaned: reduced from {len(items)} to {len(self._token_counters)} entries"
+            )
+
+    def _get_cached_token_count(self, text: str) -> Optional[int]:
+        """Get token count from cache if available and text is suitable for caching."""
+        # Don't cache very large texts to prevent memory issues
+        if len(text) > self._cache_max_text_length:
+            self._cache_misses += 1
+            return None
+            
+        if text in self._token_counters:
+            self._cache_hits += 1
+            return self._token_counters[text]
+        
+        self._cache_misses += 1
+        return None
+
+    def _cache_token_count(self, text: str, token_count: int):
+        """Cache token count for future use, with size limits."""
+        # Don't cache very large texts
+        if len(text) > self._cache_max_text_length:
+            return
+            
+        # Clean cache if needed before adding new entry
+        self._cleanup_token_cache_if_needed()
+        
+        self._token_counters[text] = token_count
+
+    def get_cache_stats(self) -> dict[str, int]:
+        """Get cache performance statistics for monitoring."""
+        total_requests = self._cache_hits + self._cache_misses
+        hit_rate = (self._cache_hits / total_requests * 100) if total_requests > 0 else 0
+        
+        # Estimate cache memory usage
+        cache_memory_bytes = sum(len(k) + 8 for k in self._token_counters.keys())  # text + int
+        
+        return {
+            "cache_entries": len(self._token_counters),
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate_percent": round(hit_rate, 1),
+            "cache_memory_mb": round(cache_memory_bytes / 1024 / 1024, 2),
+        }

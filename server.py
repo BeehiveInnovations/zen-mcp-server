@@ -699,8 +699,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(f"TOOL_CALL: {name} with {len(arguments)} arguments")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to log tool call activity: {e}")
 
     # Handle thread context reconstruction if continuation_id is present
     if "continuation_id" in arguments and arguments["continuation_id"]:
@@ -715,8 +715,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
             mcp_activity_logger.info(f"CONVERSATION_RESUME: {name} resuming thread {continuation_id}")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to log conversation resume activity: {e}")
 
         arguments = await reconstruct_thread_context(arguments)
         logger.debug(f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
@@ -812,8 +812,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
             mcp_activity_logger.info(f"TOOL_COMPLETED: {name}")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to log tool completion activity: {e}")
         return result
 
     # Handle unknown tool requests gracefully
@@ -1288,6 +1288,30 @@ async def handle_get_prompt(name: str, arguments: dict[str, Any] = None) -> GetP
     )
 
 
+async def _start_cache_monitoring():
+    """Start background cache monitoring for memory management."""
+    import asyncio
+    
+    # Wait 10 minutes before first check, then check every 30 minutes
+    await asyncio.sleep(600)  # 10 minutes initial delay
+    
+    while True:
+        try:
+            # Check storage backend only to avoid registry complications
+            from utils.storage_backend import get_storage_backend
+            storage = get_storage_backend()
+            if hasattr(storage, '_store'):
+                storage_entries = len(storage._store)
+                if storage_entries > 0:
+                    logger.info(f"💾 Memory monitor: {storage_entries} active conversation threads")
+                    
+        except Exception as e:
+            logger.debug(f"Cache monitoring error: {e}")
+            
+        # Wait 30 minutes before next check
+        await asyncio.sleep(1800)
+
+
 async def main():
     """
     Main entry point for the MCP server.
@@ -1324,6 +1348,14 @@ async def main():
 
     logger.info(f"Available tools: {list(TOOLS.keys())}")
     logger.info("Server ready - waiting for tool requests...")
+
+    # Start cache monitoring in background (non-blocking)
+    try:
+        import asyncio
+        cache_monitor_task = asyncio.create_task(_start_cache_monitoring())
+        # Don't await the task - let it run in background
+    except Exception as e:
+        logger.debug(f"Cache monitoring disabled due to error: {e}")
 
     # Run the server using stdio transport (standard input/output)
     # This allows the server to be launched by MCP clients as a subprocess
