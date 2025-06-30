@@ -17,7 +17,8 @@ Normally, your favorite coding agent will enthusiastically reply with **â€œYouâ€
 reverse the _correct_ strategy entirely, without stopping to consider that you might actually be wrong, missing the 
 bigger picture or ignoring architectural constraints.
 
-`challenge` fixes this.
+`challenge` fixes this. Claude can even _detect_ when you're challenging something and automatically invokes this tool
+to ensure thoughtful analysis instead of reflexive agreement.
 
 **Without Zen:**
 ![without_zen@2x](https://github.com/user-attachments/assets/64f3c9fb-7ca9-4876-b687-25e847edfd87)
