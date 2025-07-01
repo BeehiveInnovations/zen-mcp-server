@@ -82,6 +82,9 @@ def pytest_configure(config):
     """Configure pytest with custom markers"""
     config.addinivalue_line("markers", "asyncio: mark test as async")
     config.addinivalue_line("markers", "no_mock_provider: disable automatic provider mocking")
+    config.addinivalue_line("markers", "performance: mark test as performance benchmark")
+    config.addinivalue_line("markers", "phase3: mark test as Phase 3 component test")
+    config.addinivalue_line("markers", "integration: mark test as integration test")
 
 
 @pytest.fixture(autouse=True)

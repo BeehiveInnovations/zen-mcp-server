@@ -28,85 +28,66 @@ from systemprompts import DEBUG_ISSUE_PROMPT
 from tools.shared.base_models import WorkflowRequest
 
 from .workflow.base import WorkflowTool
+from .workflow.shared_utilities import (
+    ResponseCustomizer,
+    WorkflowFieldMapper,
+    WorkflowStepProcessor,
+    WorkflowUtilities,
+)
 
 logger = logging.getLogger(__name__)
 
-# Tool-specific field descriptions matching original debug tool
-DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = {
-    "step": (
-        "Describe what you're currently investigating by thinking deeply about the issue and its possible causes. "
-        "In step 1, clearly state the issue and begin forming an investigative direction after thinking carefully"
-        "about the described problem. Ask further questions from the user if you think these will help with your"
-        "understanding and investigation. CRITICAL: Remember that reported symptoms might originate from code far from "
-        "where they manifest. Also be aware that after thorough investigation, you might find NO BUG EXISTS - it could "
-        "be a misunderstanding or expectation mismatch. Consider not only obvious failures, but also subtle "
-        "contributing factors like upstream logic, invalid inputs, missing preconditions, or hidden side effects. "
-        "Map out the flow of related functions or modules. Identify call paths where input values or branching logic "
-        "could cause instability. In concurrent systems, watch for race conditions, shared state, or timing "
-        "dependencies. In all later steps, continue exploring with precision: trace deeper dependencies, verify "
-        "hypotheses, and adapt your understanding as you uncover more evidence."
-    ),
-    "step_number": (
-        "The index of the current step in the investigation sequence, beginning at 1. Each step should build upon or "
-        "revise the previous one."
-    ),
-    "total_steps": (
-        "Your current estimate for how many steps will be needed to complete the investigation. "
-        "Adjust as new findings emerge."
-    ),
-    "next_step_required": (
-        "Set to true if you plan to continue the investigation with another step. False means you believe the root "
-        "cause is known or the investigation is complete."
-    ),
-    "findings": (
-        "Summarize everything discovered in this step. Include new clues, unexpected behavior, evidence from code or "
-        "logs, or disproven theories. Be specific and avoid vague language—document what you now know and how it "
-        "affects your hypothesis. IMPORTANT: If you find no evidence supporting the reported issue after thorough "
-        "investigation, document this clearly. Finding 'no bug' is a valid outcome if the "
-        "investigation was comprehensive. "
-        "In later steps, confirm or disprove past findings with reason."
-    ),
-    "files_checked": (
-        "List all files (as absolute paths, do not clip or shrink file names) examined during "
-        "the investigation so far. "
-        "Include even files ruled out, as this tracks your exploration path."
-    ),
-    "relevant_files": (
-        "Subset of files_checked (as full absolute paths) that contain code directly relevant to the issue. Only list "
-        "those that are directly tied to the root cause or its effects. This could include the cause, trigger, or "
-        "place of manifestation."
-    ),
-    "relevant_context": (
-        "List methods or functions that are central to the issue, in the format "
-        "'ClassName.methodName' or 'functionName'. "
-        "Prioritize those that influence or process inputs, drive branching, or pass state between modules."
-    ),
-    "hypothesis": (
-        "A concrete theory for what's causing the issue based on the evidence so far. This can include suspected "
-        "failures, incorrect assumptions, or violated constraints. VALID HYPOTHESES INCLUDE: 'No bug found - possible "
-        "user misunderstanding' or 'Symptoms appear unrelated to any code issue' if evidence supports this. When "
-        "no bug is found, consider suggesting: 'Recommend discussing with thought partner/engineering assistant for "
-        "clarification of expected behavior.' You are encouraged to revise or abandon hypotheses in later steps as "
-        "needed based on evidence."
-    ),
-    "confidence": (
-        "Indicate your current confidence in the hypothesis. Use: 'exploring' (starting out), 'low' (early idea), "
-        "'medium' (some supporting evidence), 'high' (strong evidence), 'very_high' (very strong evidence), "
-        "'almost_certain' (nearly confirmed), 'certain' (100% confidence - root cause and minimal fix are both "
-        "confirmed locally with no need for external model validation). Do NOT use 'certain' unless the issue can be "
-        "fully resolved with a fix, use 'very_high' or 'almost_certain' instead when not 100% sure. Using 'certain' "
-        "means you have complete confidence locally and prevents external model validation. Also do "
-        "NOT set confidence to 'certain' if the user has strongly requested that external validation MUST be performed."
-    ),
-    "backtrack_from_step": (
-        "If an earlier finding or hypothesis needs to be revised or discarded, specify the step number from which to "
-        "start over. Use this to acknowledge investigative dead ends and correct the course."
-    ),
-    "images": (
-        "Optional list of absolute paths to screenshots or UI visuals that clarify the issue. "
-        "Only include if they materially assist understanding or hypothesis formulation."
-    ),
-}
+# Tool-specific field descriptions using shared utilities base
+DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS = WorkflowFieldMapper.map_with_overrides(
+    {
+        "step": {
+            "type": "string",
+            "description": (
+                "Describe what you're currently investigating by thinking deeply about the issue and its possible causes. "
+                "In step 1, clearly state the issue and begin forming an investigative direction after thinking carefully "
+                "about the described problem. CRITICAL: Remember that reported symptoms might originate from code far from "
+                "where they manifest. Also be aware that after thorough investigation, you might find NO BUG EXISTS - it could "
+                "be a misunderstanding or expectation mismatch. Consider not only obvious failures, but also subtle "
+                "contributing factors like upstream logic, invalid inputs, missing preconditions, or hidden side effects. "
+                "In all later steps, continue exploring with precision: trace deeper dependencies, verify "
+                "hypotheses, and adapt your understanding as you uncover more evidence."
+            ),
+        },
+        "findings": {
+            "type": "string",
+            "description": (
+                "Summarize everything discovered in this step. Include new clues, unexpected behavior, evidence from code or "
+                "logs, or disproven theories. Be specific and avoid vague language—document what you now know and how it "
+                "affects your hypothesis. IMPORTANT: If you find no evidence supporting the reported issue after thorough "
+                "investigation, document this clearly. Finding 'no bug' is a valid outcome if the "
+                "investigation was comprehensive. In later steps, confirm or disprove past findings with reason."
+            ),
+        },
+        "hypothesis": {
+            "type": "string",
+            "description": (
+                "A concrete theory for what's causing the issue based on the evidence so far. This can include suspected "
+                "failures, incorrect assumptions, or violated constraints. VALID HYPOTHESES INCLUDE: 'No bug found - possible "
+                "user misunderstanding' or 'Symptoms appear unrelated to any code issue' if evidence supports this. When "
+                "no bug is found, consider suggesting: 'Recommend discussing with thought partner/engineering assistant for "
+                "clarification of expected behavior.' You are encouraged to revise or abandon hypotheses in later steps as "
+                "needed based on evidence."
+            ),
+        },
+        "confidence": {
+            "type": "string",
+            "enum": ["exploring", "low", "medium", "high", "very_high", "almost_certain", "certain"],
+            "description": (
+                "Indicate your current confidence in the hypothesis. Use: 'exploring' (starting out), 'low' (early idea), "
+                "'medium' (some supporting evidence), 'high' (strong evidence), 'very_high' (very strong evidence), "
+                "'almost_certain' (nearly confirmed), 'certain' (100% confidence - root cause and minimal fix are both "
+                "confirmed locally with no need for external model validation). Do NOT use 'certain' unless the issue can be "
+                "fully resolved with a fix, use 'very_high' or 'almost_certain' instead when not 100% sure. Using 'certain' "
+                "means you have complete confidence locally and prevents external model validation."
+            ),
+        },
+    }
+)
 
 
 class DebugInvestigationRequest(WorkflowRequest):
@@ -204,60 +185,8 @@ class DebugIssueTool(WorkflowTool):
         """Generate input schema using WorkflowSchemaBuilder with debug-specific overrides."""
         from .workflow.schema_builders import WorkflowSchemaBuilder
 
-        # Debug-specific field overrides
-        debug_field_overrides = {
-            "step": {
-                "type": "string",
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["step"],
-            },
-            "step_number": {
-                "type": "integer",
-                "minimum": 1,
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["step_number"],
-            },
-            "total_steps": {
-                "type": "integer",
-                "minimum": 1,
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["total_steps"],
-            },
-            "next_step_required": {
-                "type": "boolean",
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["next_step_required"],
-            },
-            "findings": {
-                "type": "string",
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["findings"],
-            },
-            "files_checked": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["files_checked"],
-            },
-            "relevant_files": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["relevant_files"],
-            },
-            "confidence": {
-                "type": "string",
-                "enum": ["exploring", "low", "medium", "high", "very_high", "almost_certain", "certain"],
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["confidence"],
-            },
-            "hypothesis": {
-                "type": "string",
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["hypothesis"],
-            },
-            "backtrack_from_step": {
-                "type": "integer",
-                "minimum": 1,
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["backtrack_from_step"],
-            },
-            "images": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS["images"],
-            },
-        }
+        # Use shared utilities for field mapping
+        debug_field_overrides = DEBUG_INVESTIGATION_FIELD_DESCRIPTIONS
 
         # Use WorkflowSchemaBuilder with debug-specific tool fields
         return WorkflowSchemaBuilder.build_schema(
@@ -268,66 +197,27 @@ class DebugIssueTool(WorkflowTool):
         )
 
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
-        """Define required actions for each investigation phase."""
-        if step_number == 1:
-            # Initial investigation tasks
-            return [
-                "Search for code related to the reported issue or symptoms",
-                "Examine relevant files and understand the current implementation",
-                "Understand the project structure and locate relevant modules",
-                "Identify how the affected functionality is supposed to work",
-            ]
-        elif confidence in ["exploring", "low"]:
-            # Need deeper investigation
-            return [
-                "Examine the specific files you've identified as relevant",
-                "Trace method calls and data flow through the system",
-                "Check for edge cases, boundary conditions, and assumptions in the code",
-                "Look for related configuration, dependencies, or external factors",
-            ]
-        elif confidence in ["medium", "high", "very_high"]:
-            # Close to root cause - need confirmation
-            return [
-                "Examine the exact code sections where you believe the issue occurs",
-                "Trace the execution path that leads to the failure",
-                "Verify your hypothesis with concrete code evidence",
-                "Check for any similar patterns elsewhere in the codebase",
-            ]
-        elif confidence == "almost_certain":
-            # Almost certain - final verification before conclusion
-            return [
-                "Finalize your root cause analysis with specific evidence",
-                "Document the complete chain of causation from symptom to root cause",
-                "Verify the minimal fix approach is correct",
-                "Consider if expert analysis would provide additional insights",
-            ]
-        else:
-            # General investigation needed
-            return [
-                "Continue examining the code paths identified in your hypothesis",
-                "Gather more evidence using appropriate investigation tools",
-                "Test edge cases and boundary conditions",
-                "Look for patterns that confirm or refute your theory",
-            ]
+        """Define required actions for each investigation phase using shared utilities."""
+        return WorkflowStepProcessor.generate_required_actions(
+            step_number=step_number,
+            confidence=confidence,
+            tool_name=self.get_name(),
+            findings=findings,
+            total_steps=total_steps,
+        )
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """
-        Decide when to call external model based on investigation completeness.
-
-        Don't call expert analysis if the CLI agent has certain confidence - trust their judgment.
+        Decide when to call external model using shared utilities.
         """
         # Check if user requested to skip assistant model
         if request and not self.get_request_use_assistant_model(request):
             return False
 
-        # Check if we have meaningful investigation data
-        return (
-            len(consolidated_findings.relevant_files) > 0
-            or len(consolidated_findings.findings) >= 2
-            or len(consolidated_findings.issues_found) > 0
-        )
+        # Use shared utility to determine expert analysis usage
+        return WorkflowUtilities.should_use_expert_analysis(consolidated_findings, confidence_threshold="certain")
 
-    def prepare_expert_analysis_context(self, consolidated_findings) -> str:
+    async def prepare_expert_analysis_context(self, consolidated_findings) -> str:
         """Prepare context for external model call matching original debug tool format."""
         context_parts = [
             f"=== ISSUE DESCRIPTION ===\n{self.initial_issue or 'Investigation initiated'}\n=== END DESCRIPTION ==="
@@ -377,7 +267,7 @@ class DebugIssueTool(WorkflowTool):
 
         # Add file content if we have relevant files
         if consolidated_findings.relevant_files:
-            file_content, _ = self._prepare_file_content_for_prompt(
+            file_content, _ = await self._prepare_file_content_for_prompt(
                 list(consolidated_findings.relevant_files), None, "Essential debugging files"
             )
             if file_content:
@@ -388,21 +278,8 @@ class DebugIssueTool(WorkflowTool):
         return "\n".join(context_parts)
 
     def _build_investigation_summary(self, consolidated_findings) -> str:
-        """Prepare a comprehensive summary of the investigation."""
-        summary_parts = [
-            "=== SYSTEMATIC INVESTIGATION SUMMARY ===",
-            f"Total steps: {len(consolidated_findings.findings)}",
-            f"Files examined: {len(consolidated_findings.files_checked)}",
-            f"Relevant files identified: {len(consolidated_findings.relevant_files)}",
-            f"Methods/functions involved: {len(consolidated_findings.relevant_context)}",
-            "",
-            "=== INVESTIGATION PROGRESSION ===",
-        ]
-
-        for finding in consolidated_findings.findings:
-            summary_parts.append(finding)
-
-        return "\n".join(summary_parts)
+        """Prepare a comprehensive summary using shared utilities."""
+        return WorkflowUtilities.build_expert_context_summary(consolidated_findings, self.get_name())
 
     def _extract_error_context(self, consolidated_findings) -> Optional[str]:
         """Extract error context from investigation findings."""
@@ -415,86 +292,19 @@ class DebugIssueTool(WorkflowTool):
 
         return "\n".join(error_context_parts) if error_context_parts else None
 
-    def get_step_guidance(self, step_number: int, confidence: str, request) -> dict[str, Any]:
-        """
-        Provide step-specific guidance matching original debug tool behavior.
-
-        This method generates debug-specific guidance that's used by get_step_guidance_message().
-        """
-        # Generate the next steps instruction based on required actions
-        required_actions = self.get_required_actions(step_number, confidence, request.findings, request.total_steps)
-
-        if step_number == 1:
-            next_steps = (
-                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first investigate "
-                f"the codebase using appropriate tools. CRITICAL AWARENESS: The reported symptoms might be "
-                f"caused by issues elsewhere in the code, not where symptoms appear. Also, after thorough "
-                f"investigation, it's possible NO BUG EXISTS - the issue might be a misunderstanding or "
-                f"user expectation mismatch. Search broadly, examine implementations, understand the logic flow. "
-                f"Only call {self.get_name()} again AFTER gathering concrete evidence. When you call "
-                f"{self.get_name()} next time, "
-                f"use step_number: {step_number + 1} and report specific files examined and findings discovered."
-            )
-        elif confidence in ["exploring", "low"]:
-            next_steps = (
-                f"STOP! Do NOT call {self.get_name()} again yet. Based on your findings, you've identified potential areas "
-                f"but need concrete evidence. MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\n"
-                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nOnly call {self.get_name()} again with step_number: {step_number + 1} AFTER "
-                + "completing these investigations."
-            )
-        elif confidence in ["medium", "high", "very_high"]:
-            next_steps = (
-                f"WAIT! Your hypothesis needs verification. DO NOT call {self.get_name()} immediately. REQUIRED ACTIONS:\n"
-                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\n\nREMEMBER: If you cannot find concrete evidence of a bug causing the reported symptoms, "
-                f"'no bug found' is a valid conclusion. Consider suggesting discussion with your thought partner "
-                f"or engineering assistant for clarification. Document findings with specific file:line references, "
-                f"then call {self.get_name()} with step_number: {step_number + 1}."
-            )
-        elif confidence == "almost_certain":
-            next_steps = (
-                "ALMOST CERTAIN - Prepare for final analysis. REQUIRED ACTIONS:\n"
-                + "\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + "\n\nIMPORTANT: You're almost certain about the root cause. If you have NOT found the bug with "
-                "100% certainty, consider setting next_step_required=false to invoke expert analysis. The expert "
-                "can validate your hypotheses and provide additional insights. If you ARE 100% certain and have "
-                "identified the exact bug and fix, proceed to confidence='certain'. Otherwise, let expert analysis "
-                "help finalize the investigation."
-            )
-        else:
-            next_steps = (
-                f"PAUSE INVESTIGATION. Before calling {self.get_name()} step {step_number + 1}, you MUST examine code. "
-                + "Required: "
-                + ", ".join(required_actions[:2])
-                + ". "
-                + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
-                f"NEW evidence from actual code examination, not just theories. If no bug evidence "
-                f"is found, suggesting "
-                f"collaboration with thought partner is valuable. NO recursive {self.get_name()} calls "
-                f"without investigation work!"
-            )
-
-        return {"next_steps": next_steps}
-
     # Hook method overrides for debug-specific behavior
 
     def prepare_step_data(self, request) -> dict:
         """
-        Prepare debug-specific step data for processing.
+        Prepare debug-specific step data using shared utilities.
         """
-        step_data = {
-            "step": request.step,
-            "step_number": request.step_number,
-            "findings": request.findings,
-            "files_checked": request.files_checked,
-            "relevant_files": request.relevant_files,
-            "relevant_context": request.relevant_context,
-            "issues_found": [],  # Debug tool doesn't use issues_found field
-            "confidence": request.confidence,
-            "hypothesis": request.hypothesis,
-            "images": request.images or [],
-        }
+        step_data = WorkflowStepProcessor.process_step_data(request, self.get_name())
+
+        # Debug-specific adjustments - ensure hypothesis and confidence are preserved
+        step_data["hypothesis"] = request.hypothesis
+        step_data["confidence"] = request.confidence
+        step_data["issues_found"] = []  # Debug tool doesn't use issues_found field
+
         return step_data
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
@@ -590,50 +400,35 @@ class DebugIssueTool(WorkflowTool):
 
     def get_step_guidance_message(self, request) -> str:
         """
-        Debug-specific step guidance with detailed investigation instructions.
+        Debug-specific step guidance using shared utilities.
         """
-        step_guidance = self.get_step_guidance(request.step_number, request.confidence, request)
-        return step_guidance["next_steps"]
+        required_actions = self.get_required_actions(
+            request.step_number, request.confidence, request.findings, request.total_steps
+        )
+        return WorkflowUtilities.generate_step_guidance_message(
+            request.step_number, request.confidence, self.get_name(), required_actions
+        )
 
     def customize_workflow_response(self, response_data: dict, request) -> dict:
         """
-        Customize response to match original debug tool format.
+        Customize response using shared utilities.
         """
         # Store initial issue on first step
         if request.step_number == 1:
             self.initial_issue = request.step
 
-        # Convert generic status names to debug-specific ones
-        tool_name = self.get_name()
-        status_mapping = {
-            f"{tool_name}_in_progress": "investigation_in_progress",
-            f"pause_for_{tool_name}": "pause_for_investigation",
-            f"{tool_name}_required": "investigation_required",
-            f"{tool_name}_complete": "investigation_complete",
-        }
+        # Use shared utilities for response customization
+        status_mappings = ResponseCustomizer.get_standard_status_mappings(self.get_name())
 
-        if response_data["status"] in status_mapping:
-            response_data["status"] = status_mapping[response_data["status"]]
+        # Add debug-specific status data
+        additional_data = {}
+        if hasattr(self, "consolidated_findings") and self.consolidated_findings:
+            if f"{self.get_name()}_status" in response_data:
+                additional_data["investigation_status"] = {
+                    "hypotheses_formed": len(getattr(self.consolidated_findings, "hypotheses", [])),
+                }
 
-        # Rename status field to match debug tool
-        if f"{tool_name}_status" in response_data:
-            response_data["investigation_status"] = response_data.pop(f"{tool_name}_status")
-            # Add debug-specific status fields
-            response_data["investigation_status"]["hypotheses_formed"] = len(self.consolidated_findings.hypotheses)
-
-        # Rename complete investigation data
-        if f"complete_{tool_name}" in response_data:
-            response_data["complete_investigation"] = response_data.pop(f"complete_{tool_name}")
-
-        # Map the completion flag to match original debug tool
-        if f"{tool_name}_complete" in response_data:
-            response_data["investigation_complete"] = response_data.pop(f"{tool_name}_complete")
-
-        # Map the required flag to match original debug tool
-        if f"{tool_name}_required" in response_data:
-            response_data["investigation_required"] = response_data.pop(f"{tool_name}_required")
-
-        return response_data
+        return ResponseCustomizer.customize_response(response_data, self.get_name(), status_mappings, additional_data)
 
     # Required abstract methods from BaseTool
     def get_request_model(self):

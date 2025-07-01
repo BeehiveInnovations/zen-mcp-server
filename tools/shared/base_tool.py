@@ -27,7 +27,7 @@ from utils.conversation_memory import (
     get_conversation_file_list,
     get_thread,
 )
-from utils.file_utils import read_file_content, read_files
+from utils.file_utils import read_file_content, read_files_async
 
 # Import models from tools.models for compatibility
 try:
@@ -868,7 +868,7 @@ class BaseTool(ABC):
             }
         return None
 
-    def _prepare_file_content_for_prompt(
+    async def _prepare_file_content_for_prompt(
         self,
         request_files: list[str],
         continuation_id: Optional[str],
@@ -977,7 +977,7 @@ class BaseTool(ABC):
                     f"[FILES] {self.name}: Expanded {len(files_to_embed)} paths to {len(expanded_files)} individual files"
                 )
 
-                file_content = read_files(
+                file_content = await read_files_async(
                     files_to_embed,
                     max_tokens=effective_max_tokens + reserve_tokens,
                     reserve_tokens=reserve_tokens,

@@ -197,7 +197,7 @@ class ChatTool(SimpleTool):
         SimpleTool convenience methods for cleaner code.
         """
         # Use SimpleTool's Chat-style prompt preparation
-        return self.prepare_chat_style_prompt(request)
+        return await self.prepare_chat_style_prompt(request)
 
     def format_response(self, response: str, request: ChatRequest, model_info: Optional[dict] = None) -> str:
         """

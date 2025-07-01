@@ -17,9 +17,10 @@ from .base import (
     ModelResponse,
     ProviderType,
 )
+from .connection_mixin import ConnectionPoolMixin
 
 
-class OpenAICompatibleProvider(ModelProvider):
+class OpenAICompatibleProvider(ModelProvider, ConnectionPoolMixin):
     """Base class for any provider using an OpenAI-compatible API.
 
     This includes:
@@ -195,11 +196,9 @@ class OpenAICompatibleProvider(ModelProvider):
 
     @property
     def client(self):
-        """Lazy initialization of OpenAI client with security checks and timeout configuration."""
+        """Lazy initialization of OpenAI client with connection pooling and security checks."""
         if self._client is None:
             import os
-
-            import httpx
 
             # Temporarily disable proxy environment variables to prevent httpx from detecting them
             original_env = {}
@@ -211,21 +210,17 @@ class OpenAICompatibleProvider(ModelProvider):
                     del os.environ[var]
 
             try:
-                # Create a custom httpx client that explicitly avoids proxy parameters
+                # Get timeout configuration
                 timeout_config = (
-                    self.timeout_config
-                    if hasattr(self, "timeout_config") and self.timeout_config
-                    else httpx.Timeout(30.0)
+                    self.timeout_config if hasattr(self, "timeout_config") and self.timeout_config else None
                 )
 
-                # Create httpx client with minimal config to avoid proxy conflicts
-                # Note: proxies parameter was removed in httpx 0.28.0
-                http_client = httpx.Client(
-                    timeout=timeout_config,
-                    follow_redirects=True,
+                # Get pooled HTTP client with connection reuse
+                http_client = self.get_pooled_http_client(
+                    base_url=self.base_url, timeout=timeout_config, headers=self.DEFAULT_HEADERS
                 )
 
-                # Keep client initialization minimal to avoid proxy parameter conflicts
+                # Create OpenAI client with pooled HTTP client
                 client_kwargs = {
                     "api_key": self.api_key,
                     "http_client": http_client,
@@ -237,18 +232,18 @@ class OpenAICompatibleProvider(ModelProvider):
                 if self.organization:
                     client_kwargs["organization"] = self.organization
 
-                # Add default headers if any
+                # Add default headers if any (already included in http_client)
                 if self.DEFAULT_HEADERS:
                     client_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
 
-                logging.debug(f"OpenAI client initialized with custom httpx client and timeout: {timeout_config}")
+                logging.debug(f"OpenAI client initialized with pooled HTTP client (timeout: {timeout_config})")
 
-                # Create OpenAI client with custom httpx client
+                # Create OpenAI client with pooled httpx client
                 self._client = OpenAI(**client_kwargs)
 
             except Exception as e:
-                # If all else fails, try absolute minimal client without custom httpx
-                logging.warning(f"Failed to create client with custom httpx, falling back to minimal config: {e}")
+                # If all else fails, try absolute minimal client without pooled httpx
+                logging.warning(f"Failed to create client with pooled httpx, falling back to minimal config: {e}")
                 try:
                     minimal_kwargs = {"api_key": self.api_key}
                     if self.base_url:
@@ -815,3 +810,26 @@ class OpenAICompatibleProvider(ModelProvider):
         except Exception as e:
             logging.error(f"Error processing image {image_path}: {e}")
             return None
+
+    def close(self):
+        """Clean up resources including HTTP connections.
+
+        This method should be called when the provider is being destroyed
+        to ensure proper cleanup of pooled connections.
+        """
+        # Clean up the OpenAI client
+        if hasattr(self, "_client") and self._client is not None:
+            try:
+                # Close the OpenAI client if it has a close method
+                if hasattr(self._client, "close"):
+                    self._client.close()
+            except Exception as e:
+                logging.debug(f"Error closing OpenAI client: {e}")
+            finally:
+                self._client = None
+
+        # Clean up pooled HTTP clients from mixin
+        self.cleanup_http_clients()
+
+        # Call parent cleanup
+        super().close()

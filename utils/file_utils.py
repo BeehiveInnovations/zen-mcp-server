@@ -37,11 +37,14 @@ multi-turn file handling:
    - Error handling preserves conversation flow when files become unavailable
 """
 
+import asyncio
 import json
 import logging
 import os
 from pathlib import Path
 from typing import Optional
+
+import aiofiles
 
 from .file_types import BINARY_EXTENSIONS, CODE_EXTENSIONS, IMAGE_EXTENSIONS, TEXT_EXTENSIONS
 from .security_config import EXCLUDED_DIRS, is_dangerous_path
@@ -862,3 +865,634 @@ def check_total_file_size(files: list[str], model_name: str) -> Optional[dict]:
         }
 
     return None  # Proceed with ALL files
+
+
+# =============================================================================
+# ASYNC FILE OPERATIONS
+# =============================================================================
+
+# Global semaphore for async file operations to limit concurrency
+_async_file_semaphore = None
+
+
+def _get_async_file_semaphore():
+    """Get or create the global semaphore for async file operations."""
+    global _async_file_semaphore
+    if _async_file_semaphore is None:
+        _async_file_semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent operations
+    return _async_file_semaphore
+
+
+async def check_total_file_size_async(files: list[str], model_name: str) -> Optional[dict]:
+    """
+    Async version of check_total_file_size with semaphore-based concurrency control.
+
+    This function checks if total file sizes would exceed token threshold before embedding,
+    using async I/O operations for better performance with multiple files.
+
+    Args:
+        files: List of file paths to check
+        model_name: The resolved model name for context-aware thresholds (required)
+
+    Returns:
+        Dict with `code_too_large` response if too large, None if acceptable
+    """
+    if not files:
+        return None
+
+    # Validate we have a proper model name (not auto or None)
+    if not model_name or model_name.lower() == "auto":
+        raise ValueError(
+            f"check_total_file_size_async called with unresolved model: '{model_name}'. "
+            "Model must be resolved before file size checking."
+        )
+
+    logger.info(f"Async file size check: Using model '{model_name}' for token limit calculation")
+
+    from utils.model_context import ModelContext
+
+    model_context = ModelContext(model_name)
+    token_allocation = model_context.calculate_token_allocation()
+
+    # Dynamic threshold based on model capacity
+    context_window = token_allocation.total_tokens
+    if context_window >= 1_000_000:  # Gemini-class models
+        threshold_percent = 0.8  # Can be more generous
+    elif context_window >= 500_000:  # Mid-range models
+        threshold_percent = 0.7  # Moderate
+    else:  # OpenAI-class models (200K)
+        threshold_percent = 0.6  # Conservative
+
+    max_file_tokens = int(token_allocation.file_tokens * threshold_percent)
+
+    # Use async file size checking with semaphore control
+    within_limit, total_estimated_tokens, file_count = await check_files_size_limit_async(files, max_file_tokens)
+
+    if not within_limit:
+        return {
+            "status": "code_too_large",
+            "content": (
+                f"The selected files are too large for analysis "
+                f"(estimated {total_estimated_tokens:,} tokens, limit {max_file_tokens:,}). "
+                f"Please select fewer, more specific files that are most relevant "
+                f"to your question, then invoke the tool again."
+            ),
+            "content_type": "text",
+            "metadata": {
+                "total_estimated_tokens": total_estimated_tokens,
+                "max_file_tokens": max_file_tokens,
+                "file_count": file_count,
+                "threshold_percent": threshold_percent,
+                "model_context_window": context_window,
+                "model_name": model_name,
+                "instructions": "Reduce file selection and try again - all files must fit within budget. If this persists, please use a model with a larger context window where available.",
+            },
+        }
+
+    return None  # Proceed with ALL files
+
+
+async def check_files_size_limit_async(files: list[str], max_tokens: int) -> tuple[bool, int, int]:
+    """
+    Async version of centralized file size checking with concurrent processing.
+
+    Args:
+        files: List of file paths to check
+        max_tokens: Maximum allowed total tokens
+
+    Returns:
+        Tuple of (within_limit, total_estimated_tokens, file_count)
+    """
+    semaphore = _get_async_file_semaphore()
+
+    async def check_single_file_size(file_path: str) -> int:
+        """Check size of a single file with semaphore control."""
+        async with semaphore:
+            try:
+                # Use asyncio.to_thread for I/O operations that don't have async equivalents
+                stat_result = await asyncio.to_thread(os.stat, file_path)
+                file_size = stat_result.st_size
+
+                # Quick token estimation based on file size
+                # Roughly 4 characters per token for text files
+                estimated_tokens = file_size // 4
+
+                logger.debug(f"[ASYNC] File {file_path}: {file_size:,} bytes, ~{estimated_tokens:,} tokens")
+                return estimated_tokens
+            except OSError as e:
+                logger.debug(f"[ASYNC] Error checking file {file_path}: {e}")
+                return 0
+
+    # Process all files concurrently
+    tasks = [check_single_file_size(file_path) for file_path in files]
+    token_estimates = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Calculate totals, handling any exceptions
+    total_estimated_tokens = 0
+    successful_files = 0
+
+    for i, result in enumerate(token_estimates):
+        if isinstance(result, Exception):
+            logger.debug(f"[ASYNC] Exception checking file {files[i]}: {result}")
+        else:
+            total_estimated_tokens += result
+            successful_files += 1
+
+    within_limit = total_estimated_tokens <= max_tokens
+
+    logger.debug(
+        f"[ASYNC] File size check: {successful_files}/{len(files)} files, "
+        f"{total_estimated_tokens:,} tokens, limit {max_tokens:,}, within_limit={within_limit}"
+    )
+
+    return within_limit, total_estimated_tokens, successful_files
+
+
+async def read_file_content_async(
+    file_path: str, max_size: int = 1_000_000, chunk_size: int = 8192, *, include_line_numbers: Optional[bool] = None
+) -> tuple[str, int]:
+    """
+    Async version of read_file_content with chunked reading for memory efficiency.
+
+    This function handles file reading asynchronously with memory-efficient chunked processing
+    and proper error handling through context managers.
+
+    Args:
+        file_path: Path to file (must be absolute)
+        max_size: Maximum file size to read (default 1MB to prevent memory issues)
+        chunk_size: Size of chunks to read (default 8KB for memory efficiency)
+        include_line_numbers: Whether to add line numbers. If None, auto-detects based on file type
+
+    Returns:
+        Tuple of (formatted_content, estimated_tokens)
+        Content is wrapped with clear delimiters for AI parsing
+    """
+    logger.debug(f"[ASYNC FILES] read_file_content_async called for: {file_path}")
+    semaphore = _get_async_file_semaphore()
+
+    async with semaphore:
+        try:
+            # Validate path security before any file operations
+            path = resolve_and_validate_path(file_path)
+            logger.debug(f"[ASYNC FILES] Path validated and resolved: {path}")
+        except (ValueError, PermissionError) as e:
+            # Return error in a format that provides context to the AI
+            logger.debug(f"[ASYNC FILES] Path validation failed for {file_path}: {type(e).__name__}: {e}")
+            error_msg = str(e)
+            content = f"\n--- ERROR ACCESSING FILE: {file_path} ---\nError: {error_msg}\n--- END FILE ---\n"
+            tokens = estimate_tokens(content)
+            return content, tokens
+
+        try:
+            # Check file size first
+            stat_result = await asyncio.to_thread(os.stat, path)
+            file_size = stat_result.st_size
+
+            if file_size > max_size:
+                logger.debug(f"[ASYNC FILES] File {file_path} too large: {file_size} bytes > {max_size} bytes")
+                content = (
+                    f"\n--- FILE TOO LARGE: {file_path} ---\n"
+                    f"File size: {file_size:,} bytes (max: {max_size:,} bytes)\n"
+                    f"Please use a smaller file or increase the max_size parameter.\n"
+                    f"--- END FILE ---\n"
+                )
+                tokens = estimate_tokens(content)
+                return content, tokens
+
+            # Read file content in chunks for memory efficiency
+            content_chunks = []
+
+            async with aiofiles.open(path, encoding="utf-8", errors="replace") as f:
+                while True:
+                    chunk = await f.read(chunk_size)
+                    if not chunk:
+                        break
+                    content_chunks.append(chunk)
+
+                    # Safety check to prevent memory issues
+                    if len("".join(content_chunks).encode("utf-8")) > max_size:
+                        logger.debug(f"[ASYNC FILES] File {file_path} exceeded max_size during reading")
+                        break
+
+            file_content = "".join(content_chunks)
+
+            # Determine if we should add line numbers
+            add_line_numbers = should_add_line_numbers(file_path, include_line_numbers)
+            logger.debug(f"[ASYNC FILES] Line numbers for {file_path}: {'enabled' if add_line_numbers else 'disabled'}")
+
+            # Add line numbers if requested or auto-detected
+            if add_line_numbers:
+                # Simple line numbering implementation
+                lines = file_content.split("\n")
+                numbered_lines = [f"{i+1:4d}→{line}" for i, line in enumerate(lines)]
+                file_content = "\n".join(numbered_lines)
+                logger.debug(f"[ASYNC FILES] Added line numbers to {file_path}")
+
+            # Format with clear delimiters that match sync version
+            content = f"\n--- BEGIN FILE: {file_path} ---\n{file_content}\n--- END FILE: {file_path} ---\n"
+            tokens = estimate_tokens(content)
+
+            logger.debug(f"[ASYNC FILES] Successfully read {file_path}: {len(file_content)} chars, {tokens} tokens")
+            return content, tokens
+
+        except UnicodeDecodeError as e:
+            logger.debug(f"[ASYNC FILES] Unicode decode error for {file_path}: {e}")
+            content = (
+                f"\n--- BINARY FILE: {file_path} ---\n"
+                f"This appears to be a binary file that cannot be displayed as text.\n"
+                f"File size: {file_size:,} bytes\n"
+                f"--- END FILE ---\n"
+            )
+            tokens = estimate_tokens(content)
+            return content, tokens
+
+        except OSError as e:
+            logger.debug(f"[ASYNC FILES] I/O error reading {file_path}: {e}")
+            content = f"\n--- ERROR READING FILE: {file_path} ---\nError: {str(e)}\n--- END FILE ---\n"
+            tokens = estimate_tokens(content)
+            return content, tokens
+
+
+async def read_files_async(
+    file_paths: list[str],
+    code: Optional[str] = None,
+    max_tokens: Optional[int] = None,
+    reserve_tokens: int = 50_000,
+    *,
+    include_line_numbers: bool = False,
+) -> str:
+    """
+    Async version of read_files with concurrent processing and smart token management.
+
+    This function implements intelligent token budgeting to maximize the amount
+    of relevant content that can be included in an AI prompt while staying
+    within token limits, using async I/O for better performance.
+
+    Args:
+        file_paths: List of file or directory paths (absolute paths required)
+        code: Optional direct code to include (prioritized over files)
+        max_tokens: Maximum tokens to use (defaults to DEFAULT_CONTEXT_WINDOW)
+        reserve_tokens: Tokens to reserve for prompt and response (default 50K)
+        include_line_numbers: Whether to add line numbers to file content
+
+    Returns:
+        str: All file contents formatted for AI consumption
+    """
+    if max_tokens is None:
+        max_tokens = DEFAULT_CONTEXT_WINDOW
+
+    logger.debug(f"[ASYNC FILES] read_files_async called with {len(file_paths)} paths")
+    logger.debug(
+        f"[ASYNC FILES] Token budget: max={max_tokens:,}, reserve={reserve_tokens:,}, available={max_tokens - reserve_tokens:,}"
+    )
+
+    content_parts = []
+    total_tokens = 0
+    available_tokens = max_tokens - reserve_tokens
+    files_skipped = []
+
+    # Handle direct code first (highest priority)
+    if code:
+        logger.debug("[ASYNC FILES] Processing direct code input")
+        code_content = f"\n--- DIRECT CODE INPUT ---\n{code}\n--- END CODE ---\n"
+        code_tokens = estimate_tokens(code_content)
+
+        if code_tokens <= available_tokens:
+            content_parts.append(code_content)
+            total_tokens += code_tokens
+            logger.debug(f"[ASYNC FILES] Added direct code: {code_tokens:,} tokens")
+        else:
+            logger.debug(f"[ASYNC FILES] Direct code too large: {code_tokens:,} tokens > {available_tokens:,}")
+            files_skipped.append("DIRECT_CODE")
+
+    # Expand directories to individual files
+    all_files = []
+    for path in file_paths:
+        try:
+            if os.path.isdir(path):
+                # Expand directory - use sync version as it's complex logic
+                dir_files = expand_paths([path])
+                all_files.extend(dir_files)
+                logger.debug(f"[ASYNC FILES] Expanded directory {path} to {len(dir_files)} files")
+            else:
+                all_files.append(path)
+        except Exception as e:
+            logger.debug(f"[ASYNC FILES] Error expanding path {path}: {e}")
+            files_skipped.append(path)
+
+    if all_files:
+        logger.debug(
+            f"[ASYNC FILES] Reading {len(all_files)} files with token budget {available_tokens - total_tokens:,}"
+        )
+
+        # Process files concurrently but respect token budget
+        semaphore = _get_async_file_semaphore()
+
+        async def process_file_with_budget(file_path: str) -> tuple[str, str, int, bool]:
+            """Process a single file and return (file_path, content, tokens, success)."""
+            nonlocal total_tokens
+
+            async with semaphore:
+                try:
+                    file_content, file_tokens = await read_file_content_async(
+                        file_path, include_line_numbers=include_line_numbers
+                    )
+                    return file_path, file_content, file_tokens, True
+                except Exception as e:
+                    logger.debug(f"[ASYNC FILES] Error reading {file_path}: {e}")
+                    return file_path, "", 0, False
+
+        # We need to process files sequentially for token budget management
+        # but can still benefit from async I/O within each file read
+        for i, file_path in enumerate(all_files):
+            if total_tokens >= available_tokens:
+                logger.debug(f"[ASYNC FILES] Token budget exhausted, skipping remaining {len(all_files) - i} files")
+                files_skipped.extend(all_files[i:])
+                break
+
+            file_path, file_content, file_tokens, success = await process_file_with_budget(file_path)
+
+            if not success:
+                files_skipped.append(file_path)
+                continue
+
+            logger.debug(f"[ASYNC FILES] File {file_path}: {file_tokens:,} tokens")
+
+            # Check if adding this file would exceed limit
+            if total_tokens + file_tokens <= available_tokens:
+                content_parts.append(file_content)
+                total_tokens += file_tokens
+                logger.debug(f"[ASYNC FILES] Added file {file_path}, total tokens: {total_tokens:,}")
+            else:
+                # File too large for remaining budget
+                logger.debug(
+                    f"[ASYNC FILES] File {file_path} too large for remaining budget "
+                    f"({file_tokens:,} tokens, {available_tokens - total_tokens:,} remaining)"
+                )
+                files_skipped.append(file_path)
+
+    # Add informative note about skipped files
+    if files_skipped:
+        skipped_count = len(files_skipped)
+        budget_used_percent = (total_tokens / available_tokens) * 100
+
+        content_parts.append(
+            f"\n--- NOTE: {skipped_count} files skipped due to token budget constraints ---\n"
+            f"Token budget used: {total_tokens:,} / {available_tokens:,} ({budget_used_percent:.1f}%)\n"
+            f"Skipped files: {', '.join(files_skipped[:5])}"
+            f"{f' and {skipped_count - 5} more...' if skipped_count > 5 else ''}\n"
+            f"--- END NOTE ---\n"
+        )
+
+    final_content = "".join(content_parts)
+    logger.debug(
+        f"[ASYNC FILES] read_files_async completed: {total_tokens:,} tokens, {len(files_skipped)} files skipped"
+    )
+
+    return final_content
+
+
+# =============================================================================
+# STREAMING FILE PROCESSING INTEGRATION
+# =============================================================================
+
+
+async def read_file_content_streaming(
+    file_path: str,
+    max_size: int = 100 * 1024 * 1024,  # 100MB default for streaming
+    chunk_size: int = 8192,
+    *,
+    include_line_numbers: Optional[bool] = None,
+) -> tuple[str, int]:
+    """
+    Read file content using streaming for memory efficiency with large files.
+
+    This function provides an alternative to read_file_content_async that uses
+    the StreamingFileReader for memory-efficient processing of large files.
+    It maintains the same interface as existing file reading functions.
+
+    Args:
+        file_path: Path to file (must be absolute)
+        max_size: Maximum file size to read (default 100MB for streaming)
+        chunk_size: Size of chunks to read (default 8KB)
+        include_line_numbers: Whether to add line numbers
+
+    Returns:
+        Tuple of (formatted_content, estimated_tokens)
+    """
+    logger.debug(f"[STREAMING INTEGRATION] read_file_content_streaming called for: {file_path}")
+
+    try:
+        from .streaming_file_reader import read_large_file_streaming
+
+        return await read_large_file_streaming(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            max_file_size=max_size,
+            include_line_numbers=include_line_numbers,
+        )
+
+    except Exception as e:
+        # Fallback to standard async reading for compatibility
+        logger.debug(f"[STREAMING INTEGRATION] Streaming failed, falling back to async: {e}")
+        return await read_file_content_async(
+            file_path=file_path, max_size=max_size, chunk_size=chunk_size, include_line_numbers=include_line_numbers
+        )
+
+
+async def read_files_streaming(
+    file_paths: list[str],
+    code: Optional[str] = None,
+    max_tokens: Optional[int] = None,
+    reserve_tokens: int = 50_000,
+    *,
+    include_line_numbers: bool = False,
+    use_streaming: bool = True,
+    chunk_size: int = 8192,
+    max_file_size: int = 100 * 1024 * 1024,
+) -> str:
+    """
+    Read multiple files with optional streaming for memory efficiency.
+
+    This function provides an enhanced version of read_files_async that can
+    optionally use streaming for memory-efficient processing of large files.
+    When use_streaming=True, files larger than a threshold will be processed
+    using the StreamingFileReader.
+
+    Args:
+        file_paths: List of file or directory paths (absolute paths required)
+        code: Optional direct code to include (prioritized over files)
+        max_tokens: Maximum tokens to use (defaults to DEFAULT_CONTEXT_WINDOW)
+        reserve_tokens: Tokens to reserve for prompt and response (default 50K)
+        include_line_numbers: Whether to add line numbers to file content
+        use_streaming: Whether to use streaming for large files (default True)
+        chunk_size: Size of chunks for streaming (default 8KB)
+        max_file_size: Maximum individual file size for streaming (default 100MB)
+
+    Returns:
+        str: All file contents formatted for AI consumption
+    """
+    if max_tokens is None:
+        max_tokens = DEFAULT_CONTEXT_WINDOW
+
+    logger.debug(
+        f"[STREAMING INTEGRATION] read_files_streaming called with {len(file_paths)} paths, "
+        f"streaming={'enabled' if use_streaming else 'disabled'}"
+    )
+
+    # If streaming is disabled, use the existing async implementation
+    if not use_streaming:
+        return await read_files_async(
+            file_paths=file_paths,
+            code=code,
+            max_tokens=max_tokens,
+            reserve_tokens=reserve_tokens,
+            include_line_numbers=include_line_numbers,
+        )
+
+    # Use streaming implementation for memory efficiency
+    try:
+        from .streaming_file_reader import read_multiple_files_streaming
+
+        # Handle direct code separately (same as existing implementation)
+        content_parts = []
+        total_tokens = 0
+        available_tokens = max_tokens - reserve_tokens
+
+        if code:
+            formatted_code = f"\n--- BEGIN DIRECT CODE ---\n{code}\n--- END DIRECT CODE ---\n"
+            code_tokens = estimate_tokens(formatted_code)
+
+            if code_tokens <= available_tokens:
+                content_parts.append(formatted_code)
+                total_tokens += code_tokens
+                available_tokens -= code_tokens
+                logger.debug(f"[STREAMING INTEGRATION] Added direct code: {code_tokens} tokens")
+
+        # Use streaming reader for files
+        if file_paths:
+            streaming_content = await read_multiple_files_streaming(
+                file_paths=file_paths,
+                chunk_size=chunk_size,
+                max_file_size=max_file_size,
+                include_line_numbers=include_line_numbers,
+                max_tokens=available_tokens,
+                reserve_tokens=0,  # Already accounted for above
+            )
+
+            if streaming_content:
+                content_parts.append(streaming_content)
+
+        result = "\n\n".join(content_parts) if content_parts else ""
+        logger.debug(f"[STREAMING INTEGRATION] Completed with streaming: {len(result)} chars")
+        return result
+
+    except Exception as e:
+        # Fallback to standard async implementation
+        logger.warning(f"[STREAMING INTEGRATION] Streaming failed, falling back to async: {e}")
+        return await read_files_async(
+            file_paths=file_paths,
+            code=code,
+            max_tokens=max_tokens,
+            reserve_tokens=reserve_tokens,
+            include_line_numbers=include_line_numbers,
+        )
+
+
+def should_use_streaming_for_file(file_path: str, size_threshold: int = 10 * 1024 * 1024) -> bool:
+    """
+    Determine if a file should be processed using streaming based on size.
+
+    This function helps decide whether to use streaming file reading for a
+    particular file based on its size and characteristics.
+
+    Args:
+        file_path: Path to the file to check
+        size_threshold: Size threshold in bytes (default 10MB)
+
+    Returns:
+        True if streaming should be used, False otherwise
+    """
+    try:
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            return False
+
+        file_size = os.path.getsize(file_path)
+
+        # Use streaming for files larger than threshold
+        if file_size > size_threshold:
+            logger.debug(f"[STREAMING INTEGRATION] Recommending streaming for {file_path}: {file_size:,} bytes")
+            return True
+
+        return False
+
+    except OSError:
+        # If we can't check size, don't use streaming
+        return False
+
+
+def get_streaming_recommendations(file_paths: list[str]) -> dict:
+    """
+    Analyze files and provide streaming recommendations.
+
+    This function analyzes a list of files and provides recommendations
+    about which files should use streaming and what settings to use.
+
+    Args:
+        file_paths: List of file paths to analyze
+
+    Returns:
+        Dictionary with streaming recommendations
+    """
+    recommendations = {
+        "use_streaming": False,
+        "total_size": 0,
+        "large_files": [],
+        "streaming_files": [],
+        "normal_files": [],
+        "recommended_chunk_size": 8192,
+        "recommended_max_file_size": 100 * 1024 * 1024,
+    }
+
+    total_size = 0
+    large_files = []
+    streaming_threshold = 10 * 1024 * 1024  # 10MB
+
+    for file_path in file_paths:
+        try:
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                file_size = os.path.getsize(file_path)
+                total_size += file_size
+
+                if file_size > streaming_threshold:
+                    large_files.append({"path": file_path, "size": file_size, "size_mb": file_size / 1024 / 1024})
+                    recommendations["streaming_files"].append(file_path)
+                else:
+                    recommendations["normal_files"].append(file_path)
+
+        except OSError:
+            # Skip files we can't access
+            continue
+
+    recommendations["total_size"] = total_size
+    recommendations["large_files"] = large_files
+
+    # Recommend streaming if we have large files or total size is significant
+    if large_files or total_size > 50 * 1024 * 1024:  # 50MB total
+        recommendations["use_streaming"] = True
+
+        # Adjust chunk size based on file sizes
+        if large_files:
+            max_file_size = max(f["size"] for f in large_files)
+            if max_file_size > 50 * 1024 * 1024:  # 50MB+
+                recommendations["recommended_chunk_size"] = 16384  # 16KB
+            elif max_file_size > 100 * 1024 * 1024:  # 100MB+
+                recommendations["recommended_chunk_size"] = 32768  # 32KB
+
+    logger.debug(
+        f"[STREAMING INTEGRATION] Analysis: {len(large_files)} large files, "
+        f"total: {total_size / 1024 / 1024:.1f}MB, "
+        f"recommend streaming: {recommendations['use_streaming']}"
+    )
+
+    return recommendations

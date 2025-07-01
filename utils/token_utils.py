@@ -9,13 +9,17 @@ approximate. For production systems requiring precise token counts,
 consider using the actual tokenizer for the specific model.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Default fallback for token limit (conservative estimate)
 DEFAULT_CONTEXT_WINDOW = 200_000  # Conservative fallback for unknown models
 
 
-def estimate_tokens(text: str) -> int:
+def estimate_tokens(text: str, model_name: str = "default") -> int:
     """
-    Estimate token count using a character-based approximation.
+    Estimate token count using a character-based approximation with caching.
 
     This uses a rough heuristic where 1 token ≈ 4 characters, which is
     a reasonable approximation for English text. The actual token count
@@ -26,11 +30,27 @@ def estimate_tokens(text: str) -> int:
 
     Args:
         text: The text to estimate tokens for
+        model_name: Name of the model for model-specific caching
 
     Returns:
         int: Estimated number of tokens
     """
-    return len(text) // 4
+    # Import here to avoid circular imports
+    try:
+        from utils.token_cache import get_token_cache
+
+        cache = get_token_cache()
+
+        def compute_tokens(input_text: str) -> int:
+            return len(input_text) // 4
+
+        # Use cache with compute function
+        return cache.get_or_compute(text, compute_tokens, model_name)
+
+    except ImportError:
+        # Fallback to direct computation if cache is not available
+        logger.debug("Token cache not available, using direct computation")
+        return len(text) // 4
 
 
 def check_token_limit(text: str, context_window: int = DEFAULT_CONTEXT_WINDOW) -> tuple[bool, int]:

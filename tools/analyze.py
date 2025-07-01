@@ -29,74 +29,64 @@ from systemprompts import ANALYZE_PROMPT
 from tools.shared.base_models import WorkflowRequest
 
 from .workflow.base import WorkflowTool
+from .workflow.shared_utilities import (
+    ResponseCustomizer,
+    WorkflowFieldMapper,
+    WorkflowStepProcessor,
+    WorkflowUtilities,
+)
 
 logger = logging.getLogger(__name__)
 
-# Tool-specific field descriptions for analyze workflow
-ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS = {
-    "step": (
-        "What to analyze or look for in this step. In step 1, describe what you want to analyze and begin forming "
-        "an analytical approach after thinking carefully about what needs to be examined. Consider code quality, "
-        "performance implications, architectural patterns, and design decisions. Map out the codebase structure, "
-        "understand the business logic, and identify areas requiring deeper analysis. In later steps, continue "
-        "exploring with precision and adapt your understanding as you uncover more insights."
-    ),
-    "step_number": (
-        "The index of the current step in the analysis sequence, beginning at 1. Each step should build upon or "
-        "revise the previous one."
-    ),
-    "total_steps": (
-        "Your current estimate for how many steps will be needed to complete the analysis. "
-        "Adjust as new findings emerge."
-    ),
-    "next_step_required": (
-        "Set to true if you plan to continue the investigation with another step. False means you believe the "
-        "analysis is complete and ready for expert validation."
-    ),
-    "findings": (
-        "Summarize everything discovered in this step about the code being analyzed. Include analysis of architectural "
-        "patterns, design decisions, tech stack assessment, scalability characteristics, performance implications, "
-        "maintainability factors, security posture, and strategic improvement opportunities. Be specific and avoid "
-        "vague language—document what you now know about the codebase and how it affects your assessment. "
-        "IMPORTANT: Document both strengths (good patterns, solid architecture, well-designed components) and "
-        "concerns (tech debt, scalability risks, overengineering, unnecessary complexity). In later steps, confirm "
-        "or update past findings with additional evidence."
-    ),
-    "files_checked": (
-        "List all files (as absolute paths, do not clip or shrink file names) examined during the analysis "
-        "investigation so far. Include even files ruled out or found to be unrelated, as this tracks your "
-        "exploration path."
-    ),
-    "relevant_files": (
-        "Subset of files_checked (as full absolute paths) that contain code directly relevant to the analysis or "
-        "contain significant patterns, architectural decisions, or examples worth highlighting. Only list those that are "
-        "directly tied to important findings, architectural insights, performance characteristics, or strategic "
-        "improvement opportunities. This could include core implementation files, configuration files, or files "
-        "demonstrating key patterns."
-    ),
-    "relevant_context": (
-        "List methods, functions, classes, or modules that are central to the analysis findings, in the format "
-        "'ClassName.methodName', 'functionName', or 'module.ClassName'. Prioritize those that demonstrate important "
-        "patterns, represent key architectural decisions, show performance characteristics, or highlight strategic "
-        "improvement opportunities."
-    ),
-    "backtrack_from_step": (
-        "If an earlier finding or assessment needs to be revised or discarded, specify the step number from which to "
-        "start over. Use this to acknowledge investigative dead ends and correct the course."
-    ),
-    "images": (
-        "Optional list of absolute paths to architecture diagrams, design documents, or visual references "
-        "that help with analysis context. Only include if they materially assist understanding or assessment."
-    ),
-    "confidence": (
-        "Your confidence level in the current analysis findings: exploring (early investigation), "
-        "low (some insights but more needed), medium (solid understanding), high (comprehensive insights), "
-        "very_high (very comprehensive insights), almost_certain (nearly complete analysis), "
-        "certain (100% confidence - complete analysis ready for expert validation)"
-    ),
-    "analysis_type": "Type of analysis to perform (architecture, performance, security, quality, general)",
-    "output_format": "How to format the output (summary, detailed, actionable)",
-}
+# Tool-specific field descriptions for analyze workflow (using shared utilities base)
+ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS = WorkflowFieldMapper.map_with_overrides(
+    {
+        "step": {
+            "type": "string",
+            "description": (
+                "What to analyze or look for in this step. In step 1, describe what you want to analyze and begin forming "
+                "an analytical approach after thinking carefully about what needs to be examined. Consider code quality, "
+                "performance implications, architectural patterns, and design decisions. Map out the codebase structure, "
+                "understand the business logic, and identify areas requiring deeper analysis. In later steps, continue "
+                "exploring with precision and adapt your understanding as you uncover more insights."
+            ),
+        },
+        "findings": {
+            "type": "string",
+            "description": (
+                "Summarize everything discovered in this step about the code being analyzed. Include analysis of architectural "
+                "patterns, design decisions, tech stack assessment, scalability characteristics, performance implications, "
+                "maintainability factors, security posture, and strategic improvement opportunities. Be specific and avoid "
+                "vague language—document what you now know about the codebase and how it affects your assessment. "
+                "IMPORTANT: Document both strengths (good patterns, solid architecture, well-designed components) and "
+                "concerns (tech debt, scalability risks, overengineering, unnecessary complexity). In later steps, confirm "
+                "or update past findings with additional evidence."
+            ),
+        },
+        "confidence": {
+            "type": "string",
+            "enum": ["exploring", "low", "medium", "high", "very_high", "almost_certain", "certain"],
+            "description": (
+                "Your confidence level in the current analysis findings: exploring (early investigation), "
+                "low (some insights but more needed), medium (solid understanding), high (comprehensive insights), "
+                "very_high (very comprehensive insights), almost_certain (nearly complete analysis), "
+                "certain (100% confidence - complete analysis ready for expert validation)"
+            ),
+        },
+        "analysis_type": {
+            "type": "string",
+            "enum": ["architecture", "performance", "security", "quality", "general"],
+            "default": "general",
+            "description": "Type of analysis to perform (architecture, performance, security, quality, general)",
+        },
+        "output_format": {
+            "type": "string",
+            "enum": ["summary", "detailed", "actionable"],
+            "default": "detailed",
+            "description": "How to format the output (summary, detailed, actionable)",
+        },
+    }
+)
 
 
 class AnalyzeWorkflowRequest(WorkflowRequest):
@@ -214,75 +204,14 @@ class AnalyzeTool(WorkflowTool):
         """Generate input schema using WorkflowSchemaBuilder with analyze-specific overrides."""
         from .workflow.schema_builders import WorkflowSchemaBuilder
 
-        # Fields to exclude from analyze workflow (inherited from WorkflowRequest but not used)
-        excluded_fields = {"hypothesis", "confidence"}
+        # Use shared utilities for field mapping
+        analyze_field_overrides = ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS
 
-        # Analyze workflow-specific field overrides
-        analyze_field_overrides = {
-            "step": {
-                "type": "string",
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["step"],
-            },
-            "step_number": {
-                "type": "integer",
-                "minimum": 1,
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["step_number"],
-            },
-            "total_steps": {
-                "type": "integer",
-                "minimum": 1,
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["total_steps"],
-            },
-            "next_step_required": {
-                "type": "boolean",
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["next_step_required"],
-            },
-            "findings": {
-                "type": "string",
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["findings"],
-            },
-            "files_checked": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["files_checked"],
-            },
-            "relevant_files": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["relevant_files"],
-            },
-            "confidence": {
-                "type": "string",
-                "enum": ["exploring", "low", "medium", "high", "very_high", "almost_certain", "certain"],
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["confidence"],
-            },
-            "backtrack_from_step": {
-                "type": "integer",
-                "minimum": 1,
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"],
-            },
-            "images": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["images"],
-            },
-            "issues_found": {
-                "type": "array",
-                "items": {"type": "object"},
-                "description": "Issues or concerns identified during analysis, each with severity level (critical, high, medium, low)",
-            },
-            "analysis_type": {
-                "type": "string",
-                "enum": ["architecture", "performance", "security", "quality", "general"],
-                "default": "general",
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["analysis_type"],
-            },
-            "output_format": {
-                "type": "string",
-                "enum": ["summary", "detailed", "actionable"],
-                "default": "detailed",
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["output_format"],
-            },
+        # Add issues_found field for analyze workflow
+        analyze_field_overrides["issues_found"] = {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Issues or concerns identified during analysis, each with severity level (critical, high, medium, low)",
         }
 
         # Use WorkflowSchemaBuilder with analyze-specific tool fields
@@ -291,54 +220,29 @@ class AnalyzeTool(WorkflowTool):
             model_field_schema=self.get_model_field_schema(),
             auto_mode=self.is_effective_auto_mode(),
             tool_name=self.get_name(),
-            excluded_workflow_fields=list(excluded_fields),
+            excluded_workflow_fields=["hypothesis"],  # Analyze doesn't use hypothesis field
         )
 
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
-        """Define required actions for each investigation phase."""
-        if step_number == 1:
-            # Initial analysis investigation tasks
-            return [
-                "Read and understand the code files specified for analysis",
-                "Map the tech stack, frameworks, and overall architecture",
-                "Identify the main components, modules, and their relationships",
-                "Understand the business logic and intended functionality",
-                "Examine architectural patterns and design decisions used",
-                "Look for strengths, risks, and strategic improvement areas",
-            ]
-        elif step_number < total_steps:
-            # Need deeper investigation
-            return [
-                "Examine specific architectural patterns and design decisions in detail",
-                "Analyze scalability characteristics and performance implications",
-                "Assess maintainability factors: module cohesion, coupling, tech debt",
-                "Identify security posture and potential systemic vulnerabilities",
-                "Look for overengineering, unnecessary complexity, or missing abstractions",
-                "Evaluate how well the architecture serves business and scaling goals",
-            ]
-        else:
-            # Close to completion - need final verification
-            return [
-                "Verify all significant architectural insights have been documented",
-                "Confirm strategic improvement opportunities are comprehensively captured",
-                "Ensure both strengths and risks are properly identified with evidence",
-                "Validate that findings align with the analysis type and goals specified",
-                "Check that recommendations are actionable and proportional to the codebase",
-                "Confirm the analysis provides clear guidance for strategic decisions",
-            ]
+        """Define required actions for each investigation phase using shared utilities."""
+        return WorkflowStepProcessor.generate_required_actions(
+            step_number=step_number,
+            confidence=confidence,
+            tool_name=self.get_name(),
+            findings=findings,
+            total_steps=total_steps,
+        )
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """
-        Always call expert analysis for comprehensive validation.
-
-        Analysis benefits from a second opinion to ensure completeness.
+        Always call expert analysis for comprehensive validation using shared utilities.
         """
         # Check if user explicitly requested to skip assistant model
         if request and not self.get_request_use_assistant_model(request):
             return False
 
-        # For analysis, we always want expert validation if we have any meaningful data
-        return len(consolidated_findings.relevant_files) > 0 or len(consolidated_findings.findings) >= 1
+        # Use shared utility to determine expert analysis usage
+        return WorkflowUtilities.should_use_expert_analysis(consolidated_findings, confidence_threshold="certain")
 
     def prepare_expert_analysis_context(self, consolidated_findings) -> str:
         """Prepare context for external model call for final analysis validation."""
@@ -379,21 +283,8 @@ class AnalyzeTool(WorkflowTool):
         return "\\n".join(context_parts)
 
     def _build_analysis_summary(self, consolidated_findings) -> str:
-        """Prepare a comprehensive summary of the analysis investigation."""
-        summary_parts = [
-            "=== SYSTEMATIC ANALYSIS INVESTIGATION SUMMARY ===",
-            f"Total steps: {len(consolidated_findings.findings)}",
-            f"Files examined: {len(consolidated_findings.files_checked)}",
-            f"Relevant files identified: {len(consolidated_findings.relevant_files)}",
-            f"Code elements analyzed: {len(consolidated_findings.relevant_context)}",
-            "",
-            "=== INVESTIGATION PROGRESSION ===",
-        ]
-
-        for finding in consolidated_findings.findings:
-            summary_parts.append(finding)
-
-        return "\\n".join(summary_parts)
+        """Prepare a comprehensive summary using shared utilities."""
+        return WorkflowUtilities.build_expert_context_summary(consolidated_findings, self.get_name())
 
     def should_include_files_in_expert_prompt(self) -> bool:
         """Include files in expert analysis for comprehensive validation."""
@@ -419,20 +310,14 @@ class AnalyzeTool(WorkflowTool):
 
     def prepare_step_data(self, request) -> dict:
         """
-        Map analyze-specific fields for internal processing.
+        Map analyze-specific fields for internal processing using shared utilities.
         """
-        step_data = {
-            "step": request.step,
-            "step_number": request.step_number,
-            "findings": request.findings,
-            "files_checked": request.files_checked,
-            "relevant_files": request.relevant_files,
-            "relevant_context": request.relevant_context,
-            "issues_found": request.issues_found,  # Analyze workflow uses issues_found for structured problem tracking
-            "confidence": "medium",  # Fixed value for workflow compatibility
-            "hypothesis": request.findings,  # Map findings to hypothesis for compatibility
-            "images": request.images or [],
-        }
+        step_data = WorkflowStepProcessor.process_step_data(request, self.get_name())
+
+        # Analyze-specific adjustments
+        step_data["confidence"] = "medium"  # Fixed value for workflow compatibility
+        step_data["hypothesis"] = request.findings  # Map findings to hypothesis for compatibility
+
         return step_data
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
@@ -524,51 +409,18 @@ class AnalyzeTool(WorkflowTool):
 
     def get_step_guidance_message(self, request) -> str:
         """
-        Analyze-specific step guidance with detailed investigation instructions.
+        Analyze-specific step guidance using shared utilities.
         """
-        step_guidance = self.get_analyze_step_guidance(request.step_number, request)
-        return step_guidance["next_steps"]
-
-    def get_analyze_step_guidance(self, step_number: int, request) -> dict[str, Any]:
-        """
-        Provide step-specific guidance for analyze workflow.
-        """
-        # Generate the next steps instruction based on required actions
-        required_actions = self.get_required_actions(step_number, "medium", request.findings, request.total_steps)
-
-        if step_number == 1:
-            next_steps = (
-                f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first examine "
-                f"the code files thoroughly using appropriate tools. CRITICAL AWARENESS: You need to understand "
-                f"the architectural patterns, assess scalability and performance characteristics, identify strategic "
-                f"improvement areas, and look for systemic risks, overengineering, and missing abstractions. "
-                f"Use file reading tools, code analysis, and systematic examination to gather comprehensive information. "
-                f"Only call {self.get_name()} again AFTER completing your investigation. When you call "
-                f"{self.get_name()} next time, use step_number: {step_number + 1} and report specific "
-                f"files examined, architectural insights found, and strategic assessment discoveries."
-            )
-        elif step_number < request.total_steps:
-            next_steps = (
-                f"STOP! Do NOT call {self.get_name()} again yet. Based on your findings, you've identified areas that need "
-                f"deeper analysis. MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\\n"
-                + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\\n\\nOnly call {self.get_name()} again with step_number: {step_number + 1} AFTER "
-                + "completing these analysis tasks."
-            )
-        else:
-            next_steps = (
-                f"WAIT! Your analysis needs final verification. DO NOT call {self.get_name()} immediately. REQUIRED ACTIONS:\\n"
-                + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
-                + f"\\n\\nREMEMBER: Ensure you have identified all significant architectural insights and strategic "
-                f"opportunities across all areas. Document findings with specific file references and "
-                f"code examples where applicable, then call {self.get_name()} with step_number: {step_number + 1}."
-            )
-
-        return {"next_steps": next_steps}
+        required_actions = self.get_required_actions(
+            request.step_number, "medium", request.findings, request.total_steps
+        )
+        return WorkflowUtilities.generate_step_guidance_message(
+            request.step_number, "medium", self.get_name(), required_actions
+        )
 
     def customize_workflow_response(self, response_data: dict, request) -> dict:
         """
-        Customize response to match analyze workflow format.
+        Customize response using shared utilities.
         """
         # Store initial request on first step
         if request.step_number == 1:
@@ -577,43 +429,26 @@ class AnalyzeTool(WorkflowTool):
             if request.relevant_files:
                 self.analysis_config = {
                     "relevant_files": request.relevant_files,
-                    "analysis_type": request.analysis_type,
-                    "output_format": request.output_format,
+                    "analysis_type": getattr(request, "analysis_type", "general"),
+                    "output_format": getattr(request, "output_format", "detailed"),
                 }
 
-        # Convert generic status names to analyze-specific ones
-        tool_name = self.get_name()
-        status_mapping = {
-            f"{tool_name}_in_progress": "analysis_in_progress",
-            f"pause_for_{tool_name}": "pause_for_analysis",
-            f"{tool_name}_required": "analysis_required",
-            f"{tool_name}_complete": "analysis_complete",
-        }
+        # Use shared utilities for response customization
+        status_mappings = ResponseCustomizer.get_standard_status_mappings(self.get_name())
 
-        if response_data["status"] in status_mapping:
-            response_data["status"] = status_mapping[response_data["status"]]
+        # Add analyze-specific status data
+        additional_data = {}
+        if hasattr(self, "consolidated_findings") and self.consolidated_findings:
+            issues_summary = WorkflowUtilities.format_issues_summary(
+                getattr(self.consolidated_findings, "issues_found", [])
+            )
+            if f"{self.get_name()}_status" in response_data:
+                additional_data["analysis_status"] = {
+                    "insights_by_severity": issues_summary,
+                    "analysis_confidence": self.get_request_confidence(request),
+                }
 
-        # Rename status field to match analyze workflow
-        if f"{tool_name}_status" in response_data:
-            response_data["analysis_status"] = response_data.pop(f"{tool_name}_status")
-            # Add analyze-specific status fields
-            response_data["analysis_status"]["insights_by_severity"] = {}
-            for insight in self.consolidated_findings.issues_found:
-                severity = insight.get("severity", "unknown")
-                if severity not in response_data["analysis_status"]["insights_by_severity"]:
-                    response_data["analysis_status"]["insights_by_severity"][severity] = 0
-                response_data["analysis_status"]["insights_by_severity"][severity] += 1
-            response_data["analysis_status"]["analysis_confidence"] = self.get_request_confidence(request)
-
-        # Map complete_analyze to complete_analysis
-        if f"complete_{tool_name}" in response_data:
-            response_data["complete_analysis"] = response_data.pop(f"complete_{tool_name}")
-
-        # Map the completion flag to match analyze workflow
-        if f"{tool_name}_complete" in response_data:
-            response_data["analysis_complete"] = response_data.pop(f"{tool_name}_complete")
-
-        return response_data
+        return ResponseCustomizer.customize_response(response_data, self.get_name(), status_mappings, additional_data)
 
     # Required abstract methods from BaseTool
     def get_request_model(self):

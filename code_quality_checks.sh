@@ -48,33 +48,60 @@ else
     echo "✅ Development dependencies already installed"
 fi
 
-# Set tool paths
-if [[ -f ".zen_venv/bin/ruff" ]]; then
-    RUFF=".zen_venv/bin/ruff"
-    BLACK=".zen_venv/bin/black"
-    ISORT=".zen_venv/bin/isort"
-    PYTEST=".zen_venv/bin/pytest"
-else
-    RUFF="ruff"
-    BLACK="black"
-    ISORT="isort"
-    PYTEST="pytest"
-fi
+# Tool path caching with associative arrays for performance optimization
+declare -A _tool_cache
+get_tool_path() {
+    local tool="$1"
+    if [[ -z "${_tool_cache[$tool]:-}" ]]; then
+        if [[ -f ".zen_venv/bin/$tool" ]]; then
+            _tool_cache[$tool]=".zen_venv/bin/$tool"
+        else
+            _tool_cache[$tool]="$tool"
+        fi
+    fi
+    echo "${_tool_cache[$tool]}"
+}
+
+# Set tool paths using caching
+RUFF=$(get_tool_path "ruff")
+BLACK=$(get_tool_path "black")
+ISORT=$(get_tool_path "isort")
+PYTEST=$(get_tool_path "pytest")
 echo ""
 
-# Step 1: Linting and Formatting
-echo "📋 Step 1: Running Linting and Formatting Checks"
-echo "--------------------------------------------------"
+# Step 1: Linting and Formatting (Parallel Execution)
+echo "📋 Step 1: Running Linting and Formatting Checks (Parallel)"
+echo "------------------------------------------------------------"
 
-echo "🔧 Running ruff linting with auto-fix..."
-$RUFF check --fix --exclude test_simulation_files
+echo "🔧 Running linting and formatting tools in parallel..."
 
-echo "🎨 Running black code formatting..."
-$BLACK . --exclude="test_simulation_files/"
+# Run tools in parallel with background processes
+echo "  🔧 Starting ruff fix..." && $RUFF check --fix --exclude test_simulation_files &
+ruff_fix_pid=$!
 
-echo "📦 Running import sorting with isort..."
-$ISORT . --skip-glob=".zen_venv/*" --skip-glob="test_simulation_files/*"
+echo "  🎨 Starting black formatting..." && $BLACK . --exclude="test_simulation_files/" &
+black_pid=$!
 
+echo "  📦 Starting isort..." && $ISORT . --skip-glob=".zen_venv/*" --skip-glob="test_simulation_files/*" &
+isort_pid=$!
+
+# Wait for all parallel operations and track failures
+failed_jobs=()
+echo "  ⏳ Waiting for parallel jobs to complete..."
+
+wait $ruff_fix_pid || failed_jobs+=("ruff-fix")
+wait $black_pid || failed_jobs+=("black")
+wait $isort_pid || failed_jobs+=("isort")
+
+# Check if any jobs failed
+if [[ ${#failed_jobs[@]} -gt 0 ]]; then
+    echo "❌ Failed jobs: ${failed_jobs[*]}"
+    exit 1
+fi
+
+echo "✅ All parallel formatting jobs completed successfully!"
+
+# Final verification (must run after all formatting is complete)
 echo "✅ Verifying all linting passes..."
 $RUFF check --exclude test_simulation_files
 

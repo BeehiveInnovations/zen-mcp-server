@@ -59,56 +59,121 @@ class SchemaBuilder:
 
     @staticmethod
     def build_schema(
+        tool_name: str = "unknown",
         tool_specific_fields: dict[str, dict[str, Any]] = None,
         required_fields: list[str] = None,
         model_field_schema: dict[str, Any] = None,
         auto_mode: bool = False,
+        tool_version: str = None,
     ) -> dict[str, Any]:
         """
-        Build complete schema for simple tools.
+        Build complete schema for simple tools with caching.
 
         Args:
+            tool_name: Name of the tool (for caching)
             tool_specific_fields: Additional fields specific to the tool
             required_fields: List of required field names
             model_field_schema: Schema for the model field
             auto_mode: Whether the tool is in auto mode (affects model requirement)
+            tool_version: Version of the tool (for cache invalidation)
 
         Returns:
             Complete JSON schema for the tool
         """
-        properties = {}
+        # Try to use cache first
+        try:
+            from tools.shared.schema_cache import get_schema_cache
 
-        # Add common fields (temperature, thinking_mode, etc.)
-        properties.update(SchemaBuilder.COMMON_FIELD_SCHEMAS)
+            cache = get_schema_cache()
 
-        # Add simple tool-specific fields (files field for simple tools)
-        properties.update(SchemaBuilder.SIMPLE_FIELD_SCHEMAS)
+            # Create cache parameters
+            cache_params = {
+                "tool_specific_fields": tool_specific_fields,
+                "required_fields": required_fields,
+                "model_field_schema": model_field_schema,
+                "auto_mode": auto_mode,
+            }
 
-        # Add model field if provided
-        if model_field_schema:
-            properties["model"] = model_field_schema
+            def generate_schema() -> dict[str, Any]:
+                properties = {}
 
-        # Add tool-specific fields if provided
-        if tool_specific_fields:
-            properties.update(tool_specific_fields)
+                # Add common fields (temperature, thinking_mode, etc.)
+                properties.update(SchemaBuilder.COMMON_FIELD_SCHEMAS)
 
-        # Build required fields list
-        required = required_fields or []
-        if auto_mode and "model" not in required:
-            required.append("model")
+                # Add simple tool-specific fields (files field for simple tools)
+                properties.update(SchemaBuilder.SIMPLE_FIELD_SCHEMAS)
 
-        # Build the complete schema
-        schema = {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "type": "object",
-            "properties": properties,
-            "additionalProperties": False,
-        }
+                # Add model field if provided
+                if model_field_schema:
+                    properties["model"] = model_field_schema
 
-        if required:
-            schema["required"] = required
+                # Add tool-specific fields if provided
+                if tool_specific_fields:
+                    properties.update(tool_specific_fields)
 
-        return schema
+                # Build required fields list
+                required = required_fields or []
+                if auto_mode and "model" not in required:
+                    required.append("model")
+
+                # Build the complete schema
+                schema = {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "type": "object",
+                    "properties": properties,
+                    "additionalProperties": False,
+                }
+
+                if required:
+                    schema["required"] = required
+
+                return schema
+
+            # Use cache with generator function
+            return cache.get_or_generate(
+                tool_name=tool_name, parameters=cache_params, generator_func=generate_schema, tool_version=tool_version
+            )
+
+        except ImportError:
+            # Fallback to direct generation if cache is not available
+            import logging
+
+            logging.getLogger(__name__).debug("Schema cache not available, using direct generation")
+
+            # Direct generation fallback
+            properties = {}
+
+            # Add common fields (temperature, thinking_mode, etc.)
+            properties.update(SchemaBuilder.COMMON_FIELD_SCHEMAS)
+
+            # Add simple tool-specific fields (files field for simple tools)
+            properties.update(SchemaBuilder.SIMPLE_FIELD_SCHEMAS)
+
+            # Add model field if provided
+            if model_field_schema:
+                properties["model"] = model_field_schema
+
+            # Add tool-specific fields if provided
+            if tool_specific_fields:
+                properties.update(tool_specific_fields)
+
+            # Build required fields list
+            required = required_fields or []
+            if auto_mode and "model" not in required:
+                required.append("model")
+
+            # Build the complete schema
+            schema = {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": properties,
+                "additionalProperties": False,
+            }
+
+            if required:
+                schema["required"] = required
+
+            return schema
 
     @staticmethod
     def get_common_fields() -> dict[str, dict[str, Any]]:

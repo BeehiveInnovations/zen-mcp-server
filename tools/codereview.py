@@ -29,6 +29,10 @@ from systemprompts import CODEREVIEW_PROMPT
 from tools.shared.base_models import WorkflowRequest
 
 from .workflow.base import WorkflowTool
+from .workflow.shared_utilities import (
+    WorkflowStepProcessor,
+    WorkflowUtilities,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -315,46 +319,14 @@ class CodeReviewTool(WorkflowTool):
         )
 
     def get_required_actions(self, step_number: int, confidence: str, findings: str, total_steps: int) -> list[str]:
-        """Define required actions for each investigation phase."""
-        if step_number == 1:
-            # Initial code review investigation tasks
-            return [
-                "Read and understand the code files specified for review",
-                "Examine the overall structure, architecture, and design patterns used",
-                "Identify the main components, classes, and functions in the codebase",
-                "Understand the business logic and intended functionality",
-                "Look for obvious issues: bugs, security concerns, performance problems",
-                "Note any code smells, anti-patterns, or areas of concern",
-            ]
-        elif confidence in ["exploring", "low"]:
-            # Need deeper investigation
-            return [
-                "Examine specific code sections you've identified as concerning",
-                "Analyze security implications: input validation, authentication, authorization",
-                "Check for performance issues: algorithmic complexity, resource usage, inefficiencies",
-                "Look for architectural problems: tight coupling, missing abstractions, scalability issues",
-                "Identify code quality issues: readability, maintainability, error handling",
-                "Search for over-engineering, unnecessary complexity, or design patterns that could be simplified",
-            ]
-        elif confidence in ["medium", "high"]:
-            # Close to completion - need final verification
-            return [
-                "Verify all identified issues have been properly documented with severity levels",
-                "Check for any missed critical security vulnerabilities or performance bottlenecks",
-                "Confirm that architectural concerns and code quality issues are comprehensively captured",
-                "Ensure positive aspects and well-implemented patterns are also noted",
-                "Validate that your assessment aligns with the review type and focus areas specified",
-                "Double-check that findings are actionable and provide clear guidance for improvements",
-            ]
-        else:
-            # General investigation needed
-            return [
-                "Continue examining the codebase for additional patterns and potential issues",
-                "Gather more evidence using appropriate code analysis techniques",
-                "Test your assumptions about code behavior and design decisions",
-                "Look for patterns that confirm or refute your current assessment",
-                "Focus on areas that haven't been thoroughly examined yet",
-            ]
+        """Define required actions for each investigation phase using shared utilities."""
+        return WorkflowStepProcessor.generate_required_actions(
+            step_number=step_number,
+            confidence=confidence,
+            tool_name=self.get_name(),
+            findings=findings,
+            total_steps=total_steps,
+        )
 
     def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
         """
@@ -421,22 +393,8 @@ class CodeReviewTool(WorkflowTool):
         return "\\n".join(context_parts)
 
     def _build_code_review_summary(self, consolidated_findings) -> str:
-        """Prepare a comprehensive summary of the code review investigation."""
-        summary_parts = [
-            "=== SYSTEMATIC CODE REVIEW INVESTIGATION SUMMARY ===",
-            f"Total steps: {len(consolidated_findings.findings)}",
-            f"Files examined: {len(consolidated_findings.files_checked)}",
-            f"Relevant files identified: {len(consolidated_findings.relevant_files)}",
-            f"Code elements analyzed: {len(consolidated_findings.relevant_context)}",
-            f"Issues identified: {len(consolidated_findings.issues_found)}",
-            "",
-            "=== INVESTIGATION PROGRESSION ===",
-        ]
-
-        for finding in consolidated_findings.findings:
-            summary_parts.append(finding)
-
-        return "\\n".join(summary_parts)
+        """Prepare a comprehensive summary using shared utilities."""
+        return WorkflowUtilities.build_expert_context_summary(consolidated_findings, self.get_name())
 
     def should_include_files_in_expert_prompt(self) -> bool:
         """Include files in expert analysis for comprehensive code review."""
@@ -463,20 +421,13 @@ class CodeReviewTool(WorkflowTool):
 
     def prepare_step_data(self, request) -> dict:
         """
-        Map code review-specific fields for internal processing.
+        Map code review-specific fields using shared utilities.
         """
-        step_data = {
-            "step": request.step,
-            "step_number": request.step_number,
-            "findings": request.findings,
-            "files_checked": request.files_checked,
-            "relevant_files": request.relevant_files,
-            "relevant_context": request.relevant_context,
-            "issues_found": request.issues_found,
-            "confidence": request.confidence,
-            "hypothesis": request.findings,  # Map findings to hypothesis for compatibility
-            "images": request.images or [],
-        }
+        step_data = WorkflowStepProcessor.process_step_data(request, self.get_name())
+
+        # CodeReview-specific adjustments
+        step_data["hypothesis"] = request.findings  # Map findings to hypothesis for compatibility
+
         return step_data
 
     def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:

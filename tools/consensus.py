@@ -539,7 +539,7 @@ of the evidence, even when it strongly points in one direction.""",
             # Prepare the prompt with any relevant files
             prompt = self.initial_prompt
             if request.relevant_files:
-                file_content, _ = self._prepare_file_content_for_prompt(
+                file_content, _ = await self._prepare_file_content_for_prompt(
                     request.relevant_files,
                     request.continuation_id,
                     "Context files",

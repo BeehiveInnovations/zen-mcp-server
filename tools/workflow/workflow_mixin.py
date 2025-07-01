@@ -105,7 +105,7 @@ class BaseWorkflowMixin(ABC):
         pass
 
     @abstractmethod
-    def _prepare_file_content_for_prompt(
+    async def _prepare_file_content_for_prompt(
         self,
         files: list[str],
         continuation_id: Optional[str],
@@ -436,7 +436,7 @@ class BaseWorkflowMixin(ABC):
     # Context-Aware File Embedding - Core Implementation
     # ================================================================================
 
-    def _handle_workflow_file_context(self, request: Any, arguments: dict[str, Any]) -> None:
+    async def _handle_workflow_file_context(self, request: Any, arguments: dict[str, Any]) -> None:
         """
         Handle file context appropriately based on workflow phase.
 
@@ -467,7 +467,7 @@ class BaseWorkflowMixin(ABC):
         if should_embed_files:
             # Final step or expert analysis - embed full file content
             logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Embedding files for final step/expert analysis")
-            self._embed_workflow_files(request, arguments)
+            await self._embed_workflow_files(request, arguments)
         else:
             # Intermediate step with continuation - only reference file names
             logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Only referencing file names for intermediate step")
@@ -503,7 +503,7 @@ class BaseWorkflowMixin(ABC):
         logger.debug("[WORKFLOW_FILES] Intermediate step (more work needed) - will only reference files")
         return False
 
-    def _embed_workflow_files(self, request: Any, arguments: dict[str, Any]) -> None:
+    async def _embed_workflow_files(self, request: Any, arguments: dict[str, Any]) -> None:
         """
         Embed full file content for final steps and expert analysis.
         Uses proper token budgeting like existing debug.py.
@@ -536,7 +536,7 @@ class BaseWorkflowMixin(ABC):
             continuation_id = self.get_request_continuation_id(request)
             remaining_tokens = arguments.get("_remaining_tokens")
 
-            file_content, processed_files = self._prepare_file_content_for_prompt(
+            file_content, processed_files = await self._prepare_file_content_for_prompt(
                 request_files,
                 continuation_id,
                 "Workflow files for analysis",
@@ -693,7 +693,7 @@ class BaseWorkflowMixin(ABC):
             self._update_consolidated_findings(step_data)
 
             # Handle file context appropriately based on workflow phase
-            self._handle_workflow_file_context(request, arguments)
+            await self._handle_workflow_file_context(request, arguments)
 
             # Build response with tool-specific customization
             response_data = self.build_base_response(request, continuation_id)

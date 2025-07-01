@@ -26,7 +26,7 @@ import sys
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Try to load environment variables from .env file if dotenv is available
 # This is optional - environment variables can still be passed directly
@@ -62,24 +62,15 @@ from config import (  # noqa: E402
     DEFAULT_MODEL,
     __version__,
 )
-from tools import (  # noqa: E402
-    AnalyzeTool,
-    ChallengeTool,
-    ChatTool,
-    CodeReviewTool,
-    ConsensusTool,
-    DebugIssueTool,
-    DocgenTool,
-    ListModelsTool,
-    PlannerTool,
-    PrecommitTool,
-    RefactorTool,
-    SecauditTool,
-    TestGenTool,
-    ThinkDeepTool,
-    TracerTool,
-    VersionTool,
+from services import (  # noqa: E402
+    ConversationManager,
+    FileOperationService,
+    ModelValidationService,
+    ProviderManager,
 )
+
+# Import factory for lazy tool loading instead of individual tools
+from tools.factory import get_tool_factory  # noqa: E402
 from tools.models import ToolOutput  # noqa: E402
 
 # Configure logging for server operations
@@ -186,101 +177,175 @@ def parse_disabled_tools_env() -> set[str]:
     return {t.strip().lower() for t in disabled_tools_env.split(",") if t.strip()}
 
 
-def validate_disabled_tools(disabled_tools: set[str], all_tools: dict[str, Any]) -> None:
+def validate_disabled_tools(disabled_tools: set[str], tools_interface) -> None:
     """
     Validate the disabled tools list and log appropriate warnings.
 
     Args:
         disabled_tools: Set of tool names requested to be disabled
-        all_tools: Dictionary of all available tool instances
+        tools_interface: Tools interface (dict-like or LazyToolDict)
     """
     essential_disabled = disabled_tools & ESSENTIAL_TOOLS
     if essential_disabled:
         logger.warning(f"Cannot disable essential tools: {sorted(essential_disabled)}")
-    unknown_tools = disabled_tools - set(all_tools.keys())
+
+    # Get available tools from the interface
+    if hasattr(tools_interface, "keys"):
+        available_tools = set(tools_interface.keys())
+    elif hasattr(tools_interface, "_factory"):
+        available_tools = set(tools_interface._factory.get_available_tools())
+    else:
+        available_tools = set(tools_interface.keys())
+
+    unknown_tools = disabled_tools - available_tools
     if unknown_tools:
         logger.warning(f"Unknown tools in DISABLED_TOOLS: {sorted(unknown_tools)}")
 
 
-def apply_tool_filter(all_tools: dict[str, Any], disabled_tools: set[str]) -> dict[str, Any]:
+def apply_tool_filter(tools_interface, disabled_tools: set[str]):
     """
-    Apply the disabled tools filter to create the final tools dictionary.
+    Apply the disabled tools filter to the tools interface.
 
     Args:
-        all_tools: Dictionary of all available tool instances
+        tools_interface: Tools interface (dict-like or LazyToolDict)
         disabled_tools: Set of tool names to disable
 
     Returns:
-        Dictionary containing only enabled tools
+        Modified tools interface with disabled tools filtered out
     """
-    enabled_tools = {}
-    for tool_name, tool_instance in all_tools.items():
-        if tool_name in ESSENTIAL_TOOLS or tool_name not in disabled_tools:
-            enabled_tools[tool_name] = tool_instance
-        else:
+    if hasattr(tools_interface, "set_disabled_tools"):
+        # LazyToolDict case - delegate filtering to the interface
+        effective_disabled = disabled_tools - ESSENTIAL_TOOLS
+        tools_interface.set_disabled_tools(effective_disabled)
+        for tool_name in effective_disabled:
             logger.debug(f"Tool '{tool_name}' disabled via DISABLED_TOOLS")
-    return enabled_tools
+        return tools_interface
+    else:
+        # Regular dict case - filter manually
+        enabled_tools = {}
+        for tool_name, tool_instance in tools_interface.items():
+            if tool_name in ESSENTIAL_TOOLS or tool_name not in disabled_tools:
+                enabled_tools[tool_name] = tool_instance
+            else:
+                logger.debug(f"Tool '{tool_name}' disabled via DISABLED_TOOLS")
+        return enabled_tools
 
 
-def log_tool_configuration(disabled_tools: set[str], enabled_tools: dict[str, Any]) -> None:
+def log_tool_configuration(disabled_tools: set[str], tools_interface) -> None:
     """
     Log the final tool configuration for visibility.
 
     Args:
         disabled_tools: Set of tool names that were requested to be disabled
-        enabled_tools: Dictionary of tools that remain enabled
+        tools_interface: Tools interface (dict-like or LazyToolDict)
     """
     if not disabled_tools:
         logger.info("All tools enabled (DISABLED_TOOLS not set)")
         return
+
     actual_disabled = disabled_tools - ESSENTIAL_TOOLS
     if actual_disabled:
         logger.debug(f"Disabled tools: {sorted(actual_disabled)}")
-        logger.info(f"Active tools: {sorted(enabled_tools.keys())}")
+
+        # Get active tools from the interface
+        if hasattr(tools_interface, "keys"):
+            active_tools = sorted(tools_interface.keys())
+        else:
+            active_tools = sorted(tools_interface.keys())
+
+        logger.info(f"Active tools: {active_tools}")
 
 
-def filter_disabled_tools(all_tools: dict[str, Any]) -> dict[str, Any]:
+def filter_disabled_tools(tools_interface):
     """
     Filter tools based on DISABLED_TOOLS environment variable.
 
     Args:
-        all_tools: Dictionary of all available tool instances
+        tools_interface: Tools interface (dict-like or LazyToolDict)
 
     Returns:
-        dict: Filtered dictionary containing only enabled tools
+        Modified tools interface with disabled tools filtered out
     """
     disabled_tools = parse_disabled_tools_env()
     if not disabled_tools:
-        log_tool_configuration(disabled_tools, all_tools)
-        return all_tools
-    validate_disabled_tools(disabled_tools, all_tools)
-    enabled_tools = apply_tool_filter(all_tools, disabled_tools)
-    log_tool_configuration(disabled_tools, enabled_tools)
-    return enabled_tools
+        log_tool_configuration(disabled_tools, tools_interface)
+        return tools_interface
+    validate_disabled_tools(disabled_tools, tools_interface)
+    filtered_interface = apply_tool_filter(tools_interface, disabled_tools)
+    log_tool_configuration(disabled_tools, filtered_interface)
+    return filtered_interface
 
 
-# Initialize the tool registry with all available AI-powered tools
+# Initialize the tool factory for lazy loading of AI-powered tools
 # Each tool provides specialized functionality for different development tasks
-# Tools are instantiated once and reused across requests (stateless design)
-TOOLS = {
-    "chat": ChatTool(),  # Interactive development chat and brainstorming
-    "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
-    "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
-    "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
-    "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
-    "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
-    "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
-    "secaudit": SecauditTool(),  # Comprehensive security audit with OWASP Top 10 and compliance coverage
-    "docgen": DocgenTool(),  # Step-by-step documentation generation with complexity analysis
-    "analyze": AnalyzeTool(),  # General-purpose file and code analysis
-    "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
-    "tracer": TracerTool(),  # Static call path prediction and control flow analysis
-    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
-    "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
-    "listmodels": ListModelsTool(),  # List all available AI models by provider
-    "version": VersionTool(),  # Display server version and system information
-}
+# Tools are loaded on-demand to reduce startup memory usage and initialization time
+tool_factory = get_tool_factory()
+
+
+# Create a wrapper that behaves like the old TOOLS dict but uses lazy loading
+class LazyToolDict:
+    """
+    Dictionary-like wrapper around ToolFactory that maintains backward compatibility
+    while enabling lazy loading. This allows existing code to work unchanged.
+    """
+
+    def __init__(self, factory):
+        self._factory = factory
+        self._disabled_tools = set()
+
+    def __getitem__(self, key):
+        if key in self._disabled_tools:
+            raise KeyError(f"Tool '{key}' is disabled")
+        tool = self._factory.get_tool(key)
+        if tool is None:
+            raise KeyError(f"Tool '{key}' not found")
+        return tool
+
+    def __contains__(self, key):
+        return key not in self._disabled_tools and key in self._factory
+
+    def __iter__(self):
+        for tool_name in self._factory.get_available_tools():
+            if tool_name not in self._disabled_tools:
+                yield tool_name
+
+    def keys(self):
+        return [name for name in self._factory.get_available_tools() if name not in self._disabled_tools]
+
+    def values(self):
+        for tool_name in self.keys():
+            tool = self._factory.get_tool(tool_name)
+            if tool:
+                yield tool
+
+    def items(self):
+        for tool_name in self.keys():
+            tool = self._factory.get_tool(tool_name)
+            if tool:
+                yield (tool_name, tool)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def set_disabled_tools(self, disabled_tools):
+        """Set the list of disabled tools."""
+        self._disabled_tools = set(disabled_tools)
+
+
+# Create the lazy TOOLS interface with backward compatibility
+TOOLS = LazyToolDict(tool_factory)
+
+# Apply tool filtering (maintain existing functionality)
 TOOLS = filter_disabled_tools(TOOLS)
+
+# Initialize service instances for request handler decomposition
+provider_manager = ProviderManager()
+conversation_manager = ConversationManager()
+file_operation_service = FileOperationService()
+model_validation_service = ModelValidationService(provider_manager)
 
 # Rich prompt templates for all tools
 PROMPT_TEMPLATES = {
@@ -353,6 +418,11 @@ PROMPT_TEMPLATES = {
         "name": "challenge",
         "description": "Challenge a statement critically without automatic agreement",
         "template": "Challenge this statement critically",
+    },
+    "cache_monitor": {
+        "name": "cache_monitor",
+        "description": "Monitor and manage cache system",
+        "template": "Check cache performance and health",
     },
     "listmodels": {
         "name": "listmodels",
@@ -638,221 +708,95 @@ async def handle_list_tools() -> list[Tool]:
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """
-    Handle incoming tool execution requests from MCP clients.
+    Handle incoming tool execution requests with service delegation.
 
-    This is the main request dispatcher that routes tool calls to their appropriate handlers.
-    It supports both AI-powered tools (from TOOLS registry) and utility tools (implemented as
-    static functions).
-
-    CONVERSATION LIFECYCLE MANAGEMENT:
-    This function serves as the central orchestrator for multi-turn AI-to-AI conversations:
-
-    1. THREAD RESUMPTION: When continuation_id is present, it reconstructs complete conversation
-       context from in-memory storage including conversation history and file references
-
-    2. CROSS-TOOL CONTINUATION: Enables seamless handoffs between different tools (analyze →
-       codereview → debug) while preserving full conversation context and file references
-
-    3. CONTEXT INJECTION: Reconstructed conversation history is embedded into tool prompts
-       using the dual prioritization strategy:
-       - Files: Newest-first prioritization (recent file versions take precedence)
-       - Turns: Newest-first collection for token efficiency, chronological presentation for LLM
-
-    4. FOLLOW-UP GENERATION: After tool execution, generates continuation offers for ongoing
-       AI-to-AI collaboration with natural language instructions
-
-    STATELESS TO STATEFUL BRIDGE:
-    The MCP protocol is inherently stateless, but this function bridges the gap by:
-    - Loading persistent conversation state from in-memory storage
-    - Reconstructing full multi-turn context for tool execution
-    - Enabling tools to access previous exchanges and file references
-    - Supporting conversation chains across different tool types
-
-    Args:
-        name: The name of the tool to execute (e.g., "analyze", "chat", "codereview")
-        arguments: Dictionary of arguments to pass to the tool, potentially including:
-                  - continuation_id: UUID for conversation thread resumption
-                  - files: File paths for analysis (subject to deduplication)
-                  - prompt: User request or follow-up question
-                  - model: Specific AI model to use (optional)
-
-    Returns:
-        List of TextContent objects containing:
-        - Tool's primary response with analysis/results
-        - Continuation offers for follow-up conversations (when applicable)
-        - Structured JSON responses with status and content
-
-    Raises:
-        ValueError: If continuation_id is invalid or conversation thread not found
-        Exception: For tool-specific errors or execution failures
-
-    Example Conversation Flow:
-        1. Claude calls analyze tool with files → creates new thread
-        2. Thread ID returned in continuation offer
-        3. Claude continues with codereview tool + continuation_id → full context preserved
-        4. Multiple tools can collaborate using same thread ID
+    This refactored handler uses focused service classes for better maintainability,
+    testability, and separation of concerns. The original complex logic has been
+    decomposed into specialized services:
+    - ConversationManager: Handles conversation context reconstruction
+    - ModelValidationService: Handles model resolution and validation
+    - FileOperationService: Handles file validation and operations
+    - ProviderManager: Handles provider resolution and caching
     """
+    # Basic logging and activity tracking
     logger.info(f"MCP tool call: {name}")
     logger.debug(f"MCP tool arguments: {list(arguments.keys())}")
 
-    # Log to activity file for monitoring
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(f"TOOL_CALL: {name} with {len(arguments)} arguments")
     except Exception:
         pass
 
-    # Handle thread context reconstruction if continuation_id is present
-    if "continuation_id" in arguments and arguments["continuation_id"]:
-        continuation_id = arguments["continuation_id"]
-        logger.debug(f"Resuming conversation thread: {continuation_id}")
-        logger.debug(
-            f"[CONVERSATION_DEBUG] Tool '{name}' resuming thread {continuation_id} with {len(arguments)} arguments"
-        )
-        logger.debug(f"[CONVERSATION_DEBUG] Original arguments keys: {list(arguments.keys())}")
+    # Perform periodic cache maintenance (non-blocking)
+    try:
+        from utils.cache_manager import get_cache_manager
 
-        # Log to activity file for monitoring
-        try:
-            mcp_activity_logger = logging.getLogger("mcp_activity")
-            mcp_activity_logger.info(f"CONVERSATION_RESUME: {name} resuming thread {continuation_id}")
-        except Exception:
-            pass
+        cache_manager = get_cache_manager()
+        if cache_manager.should_cleanup():
+            # Run maintenance in background to avoid blocking tool execution
+            import asyncio
 
-        arguments = await reconstruct_thread_context(arguments)
-        logger.debug(f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
-        if "_remaining_tokens" in arguments:
-            logger.debug(f"[CONVERSATION_DEBUG] Remaining token budget: {arguments['_remaining_tokens']:,}")
+            asyncio.create_task(_perform_cache_maintenance())
+    except Exception as e:
+        logger.debug(f"Cache maintenance check failed (non-critical): {e}")
 
-    # Route to AI-powered tools that require Gemini API calls
+    # Handle conversation continuation using ConversationManager
+    arguments = await conversation_manager.handle_continuation(arguments)
+
+    # Route to AI-powered tools
     if name in TOOLS:
         logger.info(f"Executing tool '{name}' with {len(arguments)} parameter(s)")
         tool = TOOLS[name]
 
-        # EARLY MODEL RESOLUTION AT MCP BOUNDARY
-        # Resolve model before passing to tool - this ensures consistent model handling
-        # NOTE: Consensus tool is exempt as it handles multiple models internally
-        from providers.registry import ModelProviderRegistry
-        from utils.file_utils import check_total_file_size
-        from utils.model_context import ModelContext
+        # Model validation and resolution using ModelValidationService
+        validation_error, resolved_model, model_option = await model_validation_service.resolve_and_validate_model(
+            arguments, name, tool, DEFAULT_MODEL
+        )
 
-        # Get model from arguments or use default
-        model_name = arguments.get("model") or DEFAULT_MODEL
-        logger.debug(f"Initial model for {name}: {model_name}")
+        if validation_error:
+            return [TextContent(type="text", text=ToolOutput(**validation_error).model_dump_json())]
 
-        # Parse model:option format if present
-        model_name, model_option = parse_model_option(model_name)
-        if model_option:
-            logger.debug(f"Parsed model format - model: '{model_name}', option: '{model_option}'")
-
-        # Consensus tool handles its own model configuration validation
-        # No special handling needed at server level
-
-        # Skip model resolution for tools that don't require models (e.g., planner)
-        if not tool.requires_model():
-            logger.debug(f"Tool {name} doesn't require model resolution - skipping model validation")
-            # Execute tool directly without model context
+        # Skip further processing for tools that don't require models
+        if not model_validation_service.requires_model_validation(tool):
             return await tool.execute(arguments)
 
-        # Handle auto mode at MCP boundary - resolve to specific model
-        if model_name.lower() == "auto":
-            # Get tool category to determine appropriate model
-            tool_category = tool.get_model_category()
-            resolved_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
-            logger.info(f"Auto mode resolved to {resolved_model} for {name} (category: {tool_category.value})")
-            model_name = resolved_model
-            # Update arguments with resolved model
-            arguments["model"] = model_name
+        # File validation using FileOperationService
+        file_validation_error = await file_operation_service.prepare_files_for_tool(arguments, resolved_model)
+        if file_validation_error:
+            logger.warning(f"File validation failed for {name} with model {resolved_model}")
+            return [TextContent(type="text", text=ToolOutput(**file_validation_error).model_dump_json())]
 
-        # Validate model availability at MCP boundary
-        provider = ModelProviderRegistry.get_provider_for_model(model_name)
-        if not provider:
-            # Get list of available models for error message
-            available_models = list(ModelProviderRegistry.get_available_models(respect_restrictions=True).keys())
-            tool_category = tool.get_model_category()
-            suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
-
-            error_message = (
-                f"Model '{model_name}' is not available with current API keys. "
-                f"Available models: {', '.join(available_models)}. "
-                f"Suggested model for {name}: '{suggested_model}' "
-                f"(category: {tool_category.value})"
-            )
-            error_output = ToolOutput(
-                status="error",
-                content=error_message,
-                content_type="text",
-                metadata={"tool_name": name, "requested_model": model_name},
-            )
-            return [TextContent(type="text", text=error_output.model_dump_json())]
-
-        # Create model context with resolved model and option
-        model_context = ModelContext(model_name, model_option)
-        arguments["_model_context"] = model_context
-        arguments["_resolved_model_name"] = model_name
-        logger.debug(
-            f"Model context created for {model_name} with {model_context.capabilities.context_window} token capacity"
-        )
-        if model_option:
-            logger.debug(f"Model option stored in context: '{model_option}'")
-
-        # EARLY FILE SIZE VALIDATION AT MCP BOUNDARY
-        # Check file sizes before tool execution using resolved model
-        if "files" in arguments and arguments["files"]:
-            logger.debug(f"Checking file sizes for {len(arguments['files'])} files with model {model_name}")
-            file_size_check = check_total_file_size(arguments["files"], model_name)
-            if file_size_check:
-                logger.warning(f"File size check failed for {name} with model {model_name}")
-                return [TextContent(type="text", text=ToolOutput(**file_size_check).model_dump_json())]
-
-        # Execute tool with pre-resolved model context
+        # Execute tool with validated context
         result = await tool.execute(arguments)
         logger.info(f"Tool '{name}' execution completed")
 
-        # Log completion to activity file
+        # Log completion
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
             mcp_activity_logger.info(f"TOOL_COMPLETED: {name}")
         except Exception:
             pass
+
         return result
 
-    # Handle unknown tool requests gracefully
+    # Handle unknown tools
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
 
-def parse_model_option(model_string: str) -> tuple[str, Optional[str]]:
+async def _perform_cache_maintenance():
     """
-    Parse model:option format into model name and option.
-
-    Handles different formats:
-    - OpenRouter models: preserve :free, :beta, :preview suffixes as part of model name
-    - Ollama/Custom models: split on : to extract tags like :latest
-    - Consensus stance: extract options like :for, :against
-
-    Args:
-        model_string: String that may contain "model:option" format
-
-    Returns:
-        tuple: (model_name, option) where option may be None
+    Perform cache maintenance in background to avoid blocking tool execution.
     """
-    if ":" in model_string and not model_string.startswith("http"):  # Avoid parsing URLs
-        # Check if this looks like an OpenRouter model (contains /)
-        if "/" in model_string and model_string.count(":") == 1:
-            # Could be openai/gpt-4:something - check what comes after colon
-            parts = model_string.split(":", 1)
-            suffix = parts[1].strip().lower()
+    try:
+        from utils.cache_manager import get_cache_manager
 
-            # Known OpenRouter suffixes to preserve
-            if suffix in ["free", "beta", "preview"]:
-                return model_string.strip(), None
-
-        # For other patterns (Ollama tags, consensus stances), split normally
-        parts = model_string.split(":", 1)
-        model_name = parts[0].strip()
-        model_option = parts[1].strip() if len(parts) > 1 else None
-        return model_name, model_option
-    return model_string.strip(), None
+        cache_manager = get_cache_manager()
+        cache_manager.perform_maintenance()
+        logger.debug("Cache maintenance completed successfully")
+    except Exception as e:
+        logger.warning(f"Cache maintenance failed: {e}")
 
 
 def get_follow_up_instructions(current_turn_count: int, max_turns: int = None) -> str:
@@ -1301,6 +1245,22 @@ async def main():
     """
     # Validate and configure providers based on available API keys
     configure_providers()
+
+    # Initialize caching infrastructure
+    try:
+        from utils.cache_manager import get_cache_manager
+
+        cache_manager = get_cache_manager()
+
+        # Warm caches with common data
+        cache_manager.warm_all_caches()
+
+        # Get initial cache stats
+        cache_stats = cache_manager.get_global_stats()
+        logger.info(f"Cache system initialized - Memory limit: {cache_stats['memory_limit_mb']}MB")
+
+    except Exception as e:
+        logger.warning(f"Cache initialization failed (non-critical): {e}")
 
     # Log startup message
     logger.info("Zen MCP Server starting up...")

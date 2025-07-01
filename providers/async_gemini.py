@@ -1,22 +1,32 @@
-"""Gemini model provider implementation."""
+"""Async Gemini model provider implementation."""
 
+import asyncio
 import base64
 import logging
 import os
-import time
 from typing import Optional
 
 from google import genai
 from google.genai import types
 
-from .base import ModelCapabilities, ModelProvider, ModelResponse, ProviderType, create_temperature_constraint
-from .connection_mixin import ConnectionPoolMixin
+from .async_base import AsyncModelProvider
+from .base import ModelCapabilities, ModelResponse, ProviderType, create_temperature_constraint
 
 logger = logging.getLogger(__name__)
 
 
-class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
-    """Google Gemini model provider implementation."""
+class AsyncGeminiModelProvider(AsyncModelProvider):
+    """Async Google Gemini model provider implementation."""
+
+    FRIENDLY_NAME = "Async Gemini"
+
+    # Thinking mode token allocation
+    THINKING_BUDGETS = {
+        "deep": 1.0,  # Use full budget for deep thinking
+        "moderate": 0.6,  # Use 60% of max thinking tokens
+        "light": 0.3,  # Use 30% of max thinking tokens
+        "off": 0.0,  # No thinking tokens
+    }
 
     # Model configurations using ModelCapabilities objects
     SUPPORTED_MODELS = {
@@ -42,7 +52,7 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
         "gemini-2.0-flash-lite": ModelCapabilities(
             provider=ProviderType.GOOGLE,
             model_name="gemini-2.0-flash-lite",
-            friendly_name="Gemin (Flash Lite 2.0)",
+            friendly_name="Gemini (Flash Lite 2.0)",
             context_window=1_048_576,  # 1M tokens
             max_output_tokens=65_536,
             supports_extended_thinking=False,  # Not supported per user request
@@ -50,12 +60,13 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
             supports_streaming=True,
             supports_function_calling=True,
             supports_json_mode=True,
-            supports_images=False,  # Does not support images
-            max_image_size_mb=0.0,  # No image support
+            supports_images=True,  # Vision capability
+            max_image_size_mb=20.0,  # Conservative 20MB limit for reliability
             supports_temperature=True,
             temperature_constraint=create_temperature_constraint("range"),
-            description="Gemini 2.0 Flash Lite (1M context) - Lightweight fast model, text-only",
-            aliases=["flashlite", "flash-lite"],
+            max_thinking_tokens=0,  # No thinking support
+            description="Gemini 2.0 Flash Lite (1M context) - Lightweight version of Flash 2.0, faster responses",
+            aliases=["flash-lite-2.0", "flash2-lite"],
         ),
         "gemini-2.5-flash": ModelCapabilities(
             provider=ProviderType.GOOGLE,
@@ -68,178 +79,202 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
             supports_streaming=True,
             supports_function_calling=True,
             supports_json_mode=True,
-            supports_images=True,  # Vision capability
-            max_image_size_mb=20.0,  # Conservative 20MB limit for reliability
+            supports_images=True,
+            max_image_size_mb=20.0,
             supports_temperature=True,
             temperature_constraint=create_temperature_constraint("range"),
-            max_thinking_tokens=24576,  # Flash 2.5 thinking budget limit
-            description="Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
-            aliases=["flash", "flash2.5"],
+            max_thinking_tokens=24576,  # 24K thinking tokens
+            description="Gemini 2.5 Flash (1M context) - Fast, efficient model with thinking capabilities",
+            aliases=["flash", "flash-2.5", "flashlite"],
         ),
         "gemini-2.5-pro": ModelCapabilities(
             provider=ProviderType.GOOGLE,
             model_name="gemini-2.5-pro",
             friendly_name="Gemini (Pro 2.5)",
-            context_window=1_048_576,  # 1M tokens
+            context_window=2_097_152,  # 2M tokens
             max_output_tokens=65_536,
             supports_extended_thinking=True,
             supports_system_prompts=True,
             supports_streaming=True,
             supports_function_calling=True,
             supports_json_mode=True,
-            supports_images=True,  # Vision capability
-            max_image_size_mb=32.0,  # Higher limit for Pro model
+            supports_images=True,
+            max_image_size_mb=20.0,
             supports_temperature=True,
             temperature_constraint=create_temperature_constraint("range"),
-            max_thinking_tokens=32768,  # Max thinking tokens for Pro model
-            description="Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
-            aliases=["pro", "gemini pro", "gemini-pro"],
+            max_thinking_tokens=65536,  # 64K thinking tokens for deeper reasoning
+            description="Gemini 2.5 Pro (2M context) - Advanced reasoning with extensive thinking capabilities",
+            aliases=["pro", "pro-2.5"],
         ),
     }
 
-    # Thinking mode configurations - percentages of model's max_thinking_tokens
-    # These percentages work across all models that support thinking
-    THINKING_BUDGETS = {
-        "minimal": 0.005,  # 0.5% of max - minimal thinking for fast responses
-        "low": 0.08,  # 8% of max - light reasoning tasks
-        "medium": 0.33,  # 33% of max - balanced reasoning (default)
-        "high": 0.67,  # 67% of max - complex analysis
-        "max": 1.0,  # 100% of max - full thinking budget
-    }
-
-    # Model-specific thinking token limits
-    MAX_THINKING_TOKENS = {
-        "gemini-2.0-flash": 24576,  # Same as 2.5 flash for consistency
-        "gemini-2.0-flash-lite": 0,  # No thinking support
-        "gemini-2.5-flash": 24576,  # Flash 2.5 thinking budget limit
-        "gemini-2.5-pro": 32768,  # Pro 2.5 thinking budget limit
-    }
-
     def __init__(self, api_key: str, **kwargs):
-        """Initialize Gemini provider with API key."""
+        """Initialize the async Gemini provider.
+
+        Args:
+            api_key: Google API key
+            **kwargs: Additional configuration options
+        """
         super().__init__(api_key, **kwargs)
-        self._client = None
-        self._token_counters = {}  # Cache for token counting
 
-    @property
-    def client(self):
-        """Lazy initialization of Gemini client."""
-        if self._client is None:
-            self._client = genai.Client(api_key=self.api_key)
-        return self._client
+        # Configure the Gemini client
+        genai.configure(api_key=api_key)
 
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        """Get capabilities for a specific Gemini model."""
-        # Resolve shorthand
-        resolved_name = self._resolve_model_name(model_name)
+        # Cache for model clients
+        self._model_clients = {}
+        self._client_lock = asyncio.Lock()
 
-        if resolved_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Unsupported Gemini model: {model_name}")
+    async def get_model_client(self, model_name: str):
+        """Get or create a model client for the specified model.
 
-        # Check if model is allowed by restrictions
-        from utils.model_restrictions import get_restriction_service
+        Args:
+            model_name: Name of the model
 
-        restriction_service = get_restriction_service()
-        # IMPORTANT: Parameter order is (provider_type, model_name, original_name)
-        # resolved_name is the canonical model name, model_name is the user input
-        if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
-            raise ValueError(f"Gemini model '{resolved_name}' is not allowed by restriction policy.")
+        Returns:
+            Configured Gemini model client
+        """
+        if model_name not in self._model_clients:
+            async with self._client_lock:
+                if model_name not in self._model_clients:
+                    self._model_clients[model_name] = genai.GenerativeModel(model_name)
+        return self._model_clients[model_name]
 
-        # Return the ModelCapabilities object directly from SUPPORTED_MODELS
-        return self.SUPPORTED_MODELS[resolved_name]
-
-    def generate_content(
+    async def generate_content_async(
         self,
         prompt: str,
         model_name: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_output_tokens: Optional[int] = None,
-        thinking_mode: str = "medium",
         images: Optional[list[str]] = None,
+        thinking_mode: str = "off",
         **kwargs,
     ) -> ModelResponse:
-        """Generate content using Gemini model."""
-        # Validate parameters
+        """Generate content using the Gemini API asynchronously.
+
+        Args:
+            prompt: User prompt to send to the model
+            model_name: Name of the model to use
+            system_prompt: Optional system prompt for model behavior
+            temperature: Sampling temperature
+            max_output_tokens: Maximum tokens to generate
+            images: Optional list of image paths/URLs
+            thinking_mode: Thinking mode for models that support it
+            **kwargs: Additional provider-specific parameters
+
+        Returns:
+            ModelResponse with generated content and metadata
+        """
+        # Validate model name
+        if not self.validate_model_name(model_name):
+            raise ValueError(f"Model '{model_name}' is not supported or allowed")
+
         resolved_name = self._resolve_model_name(model_name)
-        self.validate_parameters(model_name, temperature)
 
-        # Prepare content parts (text and potentially images)
-        parts = []
+        # Get effective temperature
+        effective_temperature = self.get_effective_temperature(resolved_name, temperature)
 
-        # Add system and user prompts as text
-        if system_prompt:
-            full_prompt = f"{system_prompt}\n\n{prompt}"
-        else:
-            full_prompt = prompt
+        # Validate parameters if temperature is supported
+        if effective_temperature is not None:
+            self.validate_parameters(resolved_name, effective_temperature)
 
-        parts.append({"text": full_prompt})
+        # Get model client
+        model = await self.get_model_client(resolved_name)
 
-        # Add images if provided and model supports vision
+        # Prepare content parts
+        content_parts = []
+
+        # Add text content
+        content_parts.append(prompt)
+
+        # Add images if provided and supported
         if images and self._supports_vision(resolved_name):
             for image_path in images:
                 try:
-                    image_part = self._process_image(image_path)
-                    if image_part:
-                        parts.append(image_part)
+                    image_content = await self._process_image_async(image_path)
+                    if image_content:
+                        content_parts.append(image_content)
                 except Exception as e:
                     logger.warning(f"Failed to process image {image_path}: {e}")
-                    # Continue with other images and text
                     continue
         elif images and not self._supports_vision(resolved_name):
             logger.warning(f"Model {resolved_name} does not support images, ignoring {len(images)} image(s)")
 
-        # Create contents structure
-        contents = [{"parts": parts}]
-
         # Prepare generation config
-        generation_config = types.GenerateContentConfig(
-            temperature=temperature,
-            candidate_count=1,
-        )
+        config = {}
 
-        # Add max output tokens if specified
+        if effective_temperature is not None:
+            config["temperature"] = effective_temperature
+
         if max_output_tokens:
-            generation_config.max_output_tokens = max_output_tokens
+            config["max_output_tokens"] = max_output_tokens
 
-        # Add thinking configuration for models that support it
-        capabilities = self.get_capabilities(model_name)
-        if capabilities.supports_extended_thinking and thinking_mode in self.THINKING_BUDGETS:
-            # Get model's max thinking tokens and calculate actual budget
-            model_config = self.SUPPORTED_MODELS.get(resolved_name)
-            if model_config and model_config.max_thinking_tokens > 0:
-                max_thinking_tokens = model_config.max_thinking_tokens
-                actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
-                generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
+        # Handle thinking mode for supported models
+        if self.supports_thinking_mode(resolved_name) and thinking_mode != "off":
+            thinking_budget = self.get_thinking_budget(resolved_name, thinking_mode)
+            if thinking_budget > 0:
+                config["response_schema"] = types.Schema(
+                    type=types.Type.OBJECT,
+                    properties={
+                        "thinking": types.Schema(
+                            type=types.Type.STRING,
+                            description=f"Your internal reasoning and analysis (max {thinking_budget} tokens)",
+                        ),
+                        "response": types.Schema(type=types.Type.STRING, description="Your final response to the user"),
+                    },
+                    required=["thinking", "response"],
+                )
+
+        generation_config = genai.GenerationConfig(**config) if config else None
+
+        # Prepare system instruction
+        system_instruction = system_prompt if system_prompt else None
+
+        # Create request with system instruction if provided
+        if system_instruction:
+            model_with_system = genai.GenerativeModel(model_name=resolved_name, system_instruction=system_instruction)
+            model_to_use = model_with_system
+        else:
+            model_to_use = model
 
         # Retry logic with progressive delays
-        max_retries = 4  # Total of 4 attempts
-        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
-
+        max_retries = 4
+        retry_delays = [1, 3, 5, 8]
         last_exception = None
 
         for attempt in range(max_retries):
             try:
-                # Generate content
-                response = self.client.models.generate_content(
-                    model=resolved_name,
-                    contents=contents,
-                    config=generation_config,
+                # Generate content asynchronously
+                response = await asyncio.to_thread(
+                    model_to_use.generate_content, content_parts, generation_config=generation_config
                 )
 
-                # Extract usage information if available
+                # Extract content
+                content = ""
+                if response.text:
+                    content = response.text
+                elif response.candidates and len(response.candidates) > 0:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, "content") and candidate.content:
+                        if hasattr(candidate.content, "parts") and candidate.content.parts:
+                            content = "".join(part.text for part in candidate.content.parts if hasattr(part, "text"))
+
+                # Extract usage information
                 usage = self._extract_usage(response)
 
                 return ModelResponse(
-                    content=response.text,
+                    content=content,
                     usage=usage,
-                    model_name=resolved_name,
-                    friendly_name="Gemini",
-                    provider=ProviderType.GOOGLE,
+                    model_name=model_name,
+                    friendly_name=self.FRIENDLY_NAME,
+                    provider=self.get_provider_type(),
                     metadata={
-                        "thinking_mode": thinking_mode if capabilities.supports_extended_thinking else None,
+                        "model": resolved_name,
                         "finish_reason": (
-                            getattr(response.candidates[0], "finish_reason", "STOP") if response.candidates else "STOP"
+                            getattr(response.candidates[0], "finish_reason", None) if response.candidates else None
+                        ),
+                        "safety_ratings": (
+                            getattr(response.candidates[0], "safety_ratings", []) if response.candidates else []
                         ),
                     },
                 )
@@ -247,7 +282,7 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
             except Exception as e:
                 last_exception = e
 
-                # Check if this is a retryable error using structured error codes
+                # Check if this is a retryable error
                 is_retryable = self._is_error_retryable(e)
 
                 # If this is the last attempt or not retryable, give up
@@ -261,12 +296,26 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
                 logger.warning(
                     f"Gemini API error for model {resolved_name}, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
                 )
-                time.sleep(delay)
+                await asyncio.sleep(delay)
 
         # If we get here, all retries failed
-        actual_attempts = attempt + 1  # Convert from 0-based index to human-readable count
+        actual_attempts = attempt + 1
         error_msg = f"Gemini API error for model {resolved_name} after {actual_attempts} attempt{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
         raise RuntimeError(error_msg) from last_exception
+
+    async def count_tokens_async(self, text: str, model_name: str) -> int:
+        """Count tokens for the given text asynchronously.
+
+        Args:
+            text: Text to count tokens for
+            model_name: Model name for tokenizer selection
+
+        Returns:
+            Estimated token count
+        """
+        # For now, use synchronous implementation
+        # Could be enhanced to use async Gemini token counting in the future
+        return self.count_tokens(text, model_name)
 
     def count_tokens(self, text: str, model_name: str) -> int:
         """Count tokens for the given text using Gemini's tokenizer."""
@@ -276,6 +325,25 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
         # TODO: Use actual Gemini tokenizer when available in SDK
         # Rough estimation: ~4 characters per token for English text
         return len(text) // 4
+
+    def get_capabilities(self, model_name: str) -> ModelCapabilities:
+        """Get capabilities for a specific model.
+
+        Args:
+            model_name: Name of the model to get capabilities for
+
+        Returns:
+            ModelCapabilities object for the specified model
+
+        Raises:
+            ValueError: If model is not supported
+        """
+        resolved_model = self._resolve_model_name(model_name)
+
+        if resolved_model not in self.SUPPORTED_MODELS:
+            raise ValueError(f"Unsupported model: {model_name}")
+
+        return self.SUPPORTED_MODELS[resolved_model]
 
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
@@ -293,8 +361,6 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()
-        # IMPORTANT: Parameter order is (provider_type, model_name, original_name)
-        # resolved_name is the canonical model name, model_name is the user input
         if not restriction_service.is_allowed(ProviderType.GOOGLE, resolved_name, model_name):
             logger.debug(f"Gemini model '{model_name}' -> '{resolved_name}' blocked by restrictions")
             return False
@@ -303,8 +369,11 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
-        capabilities = self.get_capabilities(model_name)
-        return capabilities.supports_extended_thinking
+        try:
+            capabilities = self.get_capabilities(model_name)
+            return capabilities.supports_extended_thinking
+        except ValueError:
+            return False
 
     def get_thinking_budget(self, model_name: str, thinking_mode: str) -> int:
         """Get actual thinking token budget for a model and thinking mode."""
@@ -328,7 +397,6 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
         usage = {}
 
         # Try to extract usage metadata from response
-        # Note: The actual structure depends on the SDK version and response format
         if hasattr(response, "usage_metadata"):
             metadata = response.usage_metadata
 
@@ -356,32 +424,23 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
 
     def _supports_vision(self, model_name: str) -> bool:
         """Check if the model supports vision (image processing)."""
-        # Gemini 2.5 models support vision
+        # Gemini models with vision support
         vision_models = {
             "gemini-2.5-flash",
             "gemini-2.5-pro",
             "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
             "gemini-1.5-pro",
             "gemini-1.5-flash",
         }
         return model_name in vision_models
 
     def _is_error_retryable(self, error: Exception) -> bool:
-        """Determine if an error should be retried based on structured error codes.
-
-        Uses Gemini API error structure instead of text pattern matching for reliability.
-
-        Args:
-            error: Exception from Gemini API call
-
-        Returns:
-            True if error should be retried, False otherwise
-        """
+        """Determine if an error should be retried."""
         error_str = str(error).lower()
 
-        # Check for 429 errors first - these need special handling
+        # Check for 429 errors first
         if "429" in error_str or "quota" in error_str or "resource_exhausted" in error_str:
-            # For Gemini, check for specific non-retryable error indicators
             # These typically indicate permanent failures or quota/size limits
             non_retryable_indicators = [
                 "quota exceeded",
@@ -394,15 +453,12 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
                 "resource_exhausted",
             ]
 
-            # Also check if this is a structured error from Gemini SDK
+            # Check for structured error details
             try:
-                # Try to access error details if available
                 if hasattr(error, "details") or hasattr(error, "reason"):
-                    # Gemini API errors may have structured details
                     error_details = getattr(error, "details", "") or getattr(error, "reason", "")
                     error_details_str = str(error_details).lower()
 
-                    # Check for non-retryable error codes/reasons
                     if any(indicator in error_details_str for indicator in non_retryable_indicators):
                         logger.debug(f"Non-retryable Gemini error: {error_details}")
                         return False
@@ -414,11 +470,11 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
                 logger.debug(f"Non-retryable Gemini error based on message: {error_str[:200]}...")
                 return False
 
-            # If it's a 429/quota error but doesn't match non-retryable patterns, it might be retryable rate limiting
+            # If it's a quota error but doesn't match non-retryable patterns, it might be retryable
             logger.debug(f"Retryable Gemini rate limiting error: {error_str[:100]}...")
             return True
 
-        # For non-429 errors, check if they're retryable
+        # Check for other retryable errors
         retryable_indicators = [
             "timeout",
             "connection",
@@ -438,8 +494,8 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
 
         return any(indicator in error_str for indicator in retryable_indicators)
 
-    def _process_image(self, image_path: str) -> Optional[dict]:
-        """Process an image for Gemini API."""
+    async def _process_image_async(self, image_path: str) -> Optional[dict]:
+        """Process an image for Gemini API asynchronously."""
         try:
             if image_path.startswith("data:image/"):
                 # Handle data URL: data:image/png;base64,iVBORw0...
@@ -447,16 +503,17 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
                 mime_type = header.split(";")[0].split(":")[1]
                 return {"inline_data": {"mime_type": mime_type, "data": data}}
             else:
-                # Handle file path
-                from utils.file_types import get_image_mime_type
-
+                # Handle file path - could be made async with aiofiles in the future
                 if not os.path.exists(image_path):
                     logger.warning(f"Image file not found: {image_path}")
                     return None
 
-                # Detect MIME type from file extension using centralized mappings
+                # Detect MIME type from file extension
+                from utils.file_types import get_image_mime_type
+
                 ext = os.path.splitext(image_path)[1].lower()
                 mime_type = get_image_mime_type(ext)
+                logger.debug(f"Processing image '{image_path}' with extension '{ext}' as MIME type '{mime_type}'")
 
                 # Read and encode the image
                 with open(image_path, "rb") as f:
@@ -467,25 +524,11 @@ class GeminiModelProvider(ModelProvider, ConnectionPoolMixin):
             logger.error(f"Error processing image {image_path}: {e}")
             return None
 
-    def close(self):
-        """Clean up resources including HTTP connections.
-
-        This method ensures proper cleanup when the provider is destroyed.
-        For Gemini, this primarily calls the mixin cleanup for consistency.
-        """
-        # Clean up the Gemini client
-        if hasattr(self, "_client") and self._client is not None:
-            try:
-                # Close the Gemini client if it has a close method
-                if hasattr(self._client, "close"):
-                    self._client.close()
-            except Exception as e:
-                logger.debug(f"Error closing Gemini client: {e}")
-            finally:
-                self._client = None
-
-        # Clean up any pooled HTTP clients (for future extensibility)
-        self.cleanup_http_clients()
+    async def aclose(self):
+        """Async cleanup of Gemini resources."""
+        # Clear model client cache
+        async with self._client_lock:
+            self._model_clients.clear()
 
         # Call parent cleanup
-        super().close()
+        await super().aclose()

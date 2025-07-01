@@ -1,7 +1,19 @@
 {
   "permissions": {
-    "allow": [
-    ],
+    "allow": [],
     "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.edits[].path' | xargs -I {} sh -c 'test -f {} && ruff format {}'"
+          }
+        ]
+      }
+    ]
   }
 }
