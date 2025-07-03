@@ -5,6 +5,7 @@ from .gemini import GeminiModelProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openai_provider import OpenAIModelProvider
 from .openrouter import OpenRouterProvider
+from .perplexity_provider import PerplexityProvider
 from .registry import ModelProviderRegistry
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "OpenAIModelProvider",
     "OpenAICompatibleProvider",
     "OpenRouterProvider",
+    "PerplexityProvider",
 ]

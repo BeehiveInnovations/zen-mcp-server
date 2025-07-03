@@ -145,6 +145,13 @@ MCP_PROMPT_SIZE_LIMIT = _calculate_mcp_prompt_limit()
 # Leave empty for default language (English)
 LOCALE = os.getenv("LOCALE", "")
 
+# Research Tool Configuration
+RESEARCH_DEFAULT_MODEL = os.getenv("RESEARCH_DEFAULT_MODEL", "sonar-pro")
+RESEARCH_DEFAULT_SEARCH_MODE = os.getenv("RESEARCH_DEFAULT_SEARCH_MODE", "medium")
+RESEARCH_DEFAULT_MAX_TOKENS = int(os.getenv("RESEARCH_DEFAULT_MAX_TOKENS", "2048"))
+RESEARCH_EXPORT_TO_MD = os.getenv("RESEARCH_EXPORT_TO_MD", "false").lower() == "true"
+RESEARCH_EXPORT_DIR = os.getenv("RESEARCH_EXPORT_DIR", "research_exports")
+
 # Threading configuration
 # Simple in-memory conversation threading for stateless MCP environment
 # Conversations persist only during the Claude session

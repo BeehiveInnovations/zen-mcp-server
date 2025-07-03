@@ -18,6 +18,7 @@ class ProviderType(Enum):
     OPENROUTER = "openrouter"
     CUSTOM = "custom"
     DIAL = "dial"
+    PERPLEXITY = "perplexity"
 
 
 class TemperatureConstraint(ABC):
