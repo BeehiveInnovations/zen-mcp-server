@@ -1015,6 +1015,8 @@ setup_env_file() {
         "OPENAI_API_KEY:your_openai_api_key_here"
         "XAI_API_KEY:your_xai_api_key_here"
         "DIAL_API_KEY:your_dial_api_key_here"
+        "VERTEX_PROJECT_ID:your_vertex_project_id_here"
+        "VERTEX_REGION:us-central1"
         "OPENROUTER_API_KEY:your_openrouter_api_key_here"
     )
     
@@ -1081,6 +1083,19 @@ validate_api_keys() {
         fi
     done
     
+    # Check Vertex AI configuration (both project ID and region must be set together)
+    local vertex_project_id="${VERTEX_PROJECT_ID:-}"
+    local vertex_region="${VERTEX_REGION:-us-central1}"
+    local vertex_project_placeholder="your_vertex_project_id_here"
+    
+    if [[ -n "$vertex_project_id" ]] && [[ "$vertex_project_id" != "$vertex_project_placeholder" ]]; then
+        print_success "Vertex AI configured (project: $vertex_project_id, region: $vertex_region)"
+        has_key=true
+    elif [[ -n "$vertex_region" ]] && [[ "$vertex_region" != "us-central1" ]]; then
+        print_warning "VERTEX_REGION set but VERTEX_PROJECT_ID not configured"
+        echo "  For Vertex AI, both VERTEX_PROJECT_ID and VERTEX_REGION must be set" >&2
+    fi
+    
     # Check custom API URL
     if [[ -n "${CUSTOM_API_URL:-}" ]]; then
         print_success "CUSTOM_API_URL configured: $CUSTOM_API_URL"
@@ -1095,6 +1110,8 @@ validate_api_keys() {
         echo "  OPENAI_API_KEY=your-actual-key" >&2
         echo "  XAI_API_KEY=your-actual-key" >&2
         echo "  DIAL_API_KEY=your-actual-key" >&2
+        echo "  VERTEX_PROJECT_ID=your-actual-project-id" >&2
+        echo "  VERTEX_REGION=us-central1 (both required for Vertex AI)" >&2
         echo "  OPENROUTER_API_KEY=your-actual-key" >&2
         echo "" >&2
         print_info "After adding your API keys, run ./run-server.sh again" >&2

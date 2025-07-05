@@ -96,6 +96,7 @@ class ListModelsTool(BaseTool):
             ProviderType.OPENAI: {"name": "OpenAI", "env_key": "OPENAI_API_KEY"},
             ProviderType.XAI: {"name": "X.AI (Grok)", "env_key": "XAI_API_KEY"},
             ProviderType.DIAL: {"name": "AI DIAL", "env_key": "DIAL_API_KEY"},
+            ProviderType.VERTEX_AI: {"name": "Google Vertex AI", "env_key": "VERTEX_PROJECT_ID"},
         }
 
         # Check each native provider type
@@ -149,7 +150,12 @@ class ListModelsTool(BaseTool):
                     output_lines.append("\n**Aliases**:")
                     output_lines.extend(sorted(aliases))  # Sort for consistent output
             else:
-                output_lines.append(f"**Status**: Not configured (set {info['env_key']})")
+                if provider_type == ProviderType.VERTEX_AI:
+                    output_lines.append(
+                        f"**Status**: Not configured (set {info['env_key']} and configure Google Cloud ADC)"
+                    )
+                else:
+                    output_lines.append(f"**Status**: Not configured (set {info['env_key']})")
 
             output_lines.append("")
 

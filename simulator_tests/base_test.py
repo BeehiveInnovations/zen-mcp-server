@@ -17,6 +17,12 @@ from .log_utils import LogUtils
 class BaseSimulatorTest:
     """Base class for all communication simulator tests"""
 
+    def __new__(cls, *args, **kwargs):
+        """Ensure logger is always present even if __init__ is skipped"""
+        obj = super().__new__(cls)
+        obj.logger = logging.getLogger(cls.__name__)
+        return obj
+
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
         self.test_files = {}
@@ -25,7 +31,9 @@ class BaseSimulatorTest:
         # Configure logging first
         log_level = logging.DEBUG if verbose else logging.INFO
         logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
-        self.logger = logging.getLogger(self.__class__.__name__)
+        # Logger already set in __new__, but ensure it's configured properly
+        if not hasattr(self, "logger"):
+            self.logger = logging.getLogger(self.__class__.__name__)
 
         self.python_path = self._get_python_path()
 
@@ -42,7 +50,6 @@ class BaseSimulatorTest:
         venv_python = os.path.join(current_dir, "venv", "bin", "python")
         if os.path.exists(venv_python):
             return venv_python
-
         # Try .zen_venv as fallback
         zen_venv_python = os.path.join(current_dir, ".zen_venv", "bin", "python")
         if os.path.exists(zen_venv_python):

@@ -390,6 +390,7 @@ def configure_providers():
     from providers.gemini import GeminiModelProvider
     from providers.openai_provider import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
+    from providers.vertex_ai import VertexAIProvider
     from providers.xai import XAIModelProvider
     from utils.model_restrictions import get_restriction_service
 
@@ -432,6 +433,14 @@ def configure_providers():
         has_native_apis = True
         logger.info("DIAL API key found - DIAL models available")
 
+    # Check for Vertex AI configuration
+    vertex_project_id = os.getenv("VERTEX_PROJECT_ID")
+    if vertex_project_id:
+        vertex_region = os.getenv("VERTEX_REGION", "us-central1")
+        valid_providers.append(f"Vertex AI (Project: {vertex_project_id})")
+        has_native_apis = True
+        logger.info(f"Vertex AI project found - Vertex AI Gemini models available in {vertex_region}")
+
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
     logger.debug(f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
@@ -473,6 +482,8 @@ def configure_providers():
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
         if dial_key and dial_key != "your_dial_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.DIAL, DIALModelProvider)
+        if vertex_project_id:
+            ModelProviderRegistry.register_provider(ProviderType.VERTEX_AI, VertexAIProvider)
 
     # 2. Custom provider second (for local/private models)
     if has_custom:
@@ -496,6 +507,7 @@ def configure_providers():
             "- OPENAI_API_KEY for OpenAI o3 model\n"
             "- XAI_API_KEY for X.AI GROK models\n"
             "- DIAL_API_KEY for DIAL models\n"
+            "- VERTEX_PROJECT_ID for Vertex AI Gemini models\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
             "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
         )
