@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/beehiveinnovations-zen-mcp-server-badge.png)](https://mseep.ai/app/beehiveinnovations-zen-mcp-server)
+
 # Zen MCP: Many Workflows. One Context.
 
 [zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
