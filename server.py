@@ -148,7 +148,8 @@ try:
         encoding="utf-8",
     )
     mcp_file_handler.setLevel(logging.INFO)
-    mcp_file_handler.setFormatter(LocalTimeFormatter("%(asctime)s - %(message)s"))
+    mcp_file_handler.setFormatter(
+        LocalTimeFormatter("%(asctime)s - %(message)s"))
     mcp_logger.addHandler(mcp_file_handler)
     mcp_logger.setLevel(logging.INFO)
     # Ensure MCP activity also goes to stderr
@@ -196,10 +197,12 @@ def validate_disabled_tools(disabled_tools: set[str], all_tools: dict[str, Any])
     """
     essential_disabled = disabled_tools & ESSENTIAL_TOOLS
     if essential_disabled:
-        logger.warning(f"Cannot disable essential tools: {sorted(essential_disabled)}")
+        logger.warning(
+            f"Cannot disable essential tools: {sorted(essential_disabled)}")
     unknown_tools = disabled_tools - set(all_tools.keys())
     if unknown_tools:
-        logger.warning(f"Unknown tools in DISABLED_TOOLS: {sorted(unknown_tools)}")
+        logger.warning(
+            f"Unknown tools in DISABLED_TOOLS: {sorted(unknown_tools)}")
 
 
 def apply_tool_filter(all_tools: dict[str, Any], disabled_tools: set[str]) -> dict[str, Any]:
@@ -264,19 +267,26 @@ def filter_disabled_tools(all_tools: dict[str, Any]) -> dict[str, Any]:
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
     "chat": ChatTool(),  # Interactive development chat and brainstorming
-    "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
+    # Step-by-step deep thinking workflow with expert analysis
+    "thinkdeep": ThinkDeepTool(),
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
-    "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
-    "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
+    # Step-by-step consensus workflow with multi-model analysis
+    "consensus": ConsensusTool(),
+    # Comprehensive step-by-step code review workflow with expert analysis
+    "codereview": CodeReviewTool(),
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
-    "secaudit": SecauditTool(),  # Comprehensive security audit with OWASP Top 10 and compliance coverage
+    # Comprehensive security audit with OWASP Top 10 and compliance coverage
+    "secaudit": SecauditTool(),
     "docgen": DocgenTool(),  # Step-by-step documentation generation with complexity analysis
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
-    "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
+    # Step-by-step refactoring analysis workflow with expert validation
+    "refactor": RefactorTool(),
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
-    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
-    "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
+    # Step-by-step test generation workflow with expert validation
+    "testgen": TestGenTool(),
+    # Critical challenge prompt wrapper to avoid automatic agreement
+    "challenge": ChallengeTool(),
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "version": VersionTool(),  # Display server version and system information
 }
@@ -379,7 +389,8 @@ def configure_providers():
     """
     # Log environment variable status for debugging
     logger.debug("Checking environment variables for API keys...")
-    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
+    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY",
+                         "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
     for key in api_keys_to_check:
         value = os.getenv(key)
         logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
@@ -407,7 +418,8 @@ def configure_providers():
 
     # Check for OpenAI API key
     openai_key = os.getenv("OPENAI_API_KEY")
-    logger.debug(f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
+    logger.debug(
+        f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
     if openai_key and openai_key != "your_openai_api_key_here":
         valid_providers.append("OpenAI (o3)")
         has_native_apis = True
@@ -434,11 +446,13 @@ def configure_providers():
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
-    logger.debug(f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
+    logger.debug(
+        f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
     if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
         valid_providers.append("OpenRouter")
         has_openrouter = True
-        logger.info("OpenRouter API key found - Multiple models available via OpenRouter")
+        logger.info(
+            "OpenRouter API key found - Multiple models available via OpenRouter")
     else:
         if not openrouter_key:
             logger.debug("OpenRouter API key not found in environment")
@@ -452,27 +466,34 @@ def configure_providers():
         # - Some providers (vLLM, LM Studio, enterprise APIs) require authentication
         # - Others (Ollama) work without authentication (empty key)
         # - DO NOT remove this variable - it's needed for provider factory function
-        custom_key = os.getenv("CUSTOM_API_KEY", "")  # Default to empty (Ollama doesn't need auth)
+        # Default to empty (Ollama doesn't need auth)
+        custom_key = os.getenv("CUSTOM_API_KEY", "")
         custom_model = os.getenv("CUSTOM_MODEL_NAME", "llama3.2")
         valid_providers.append(f"Custom API ({custom_url})")
         has_custom = True
-        logger.info(f"Custom API endpoint found: {custom_url} with model {custom_model}")
+        logger.info(
+            f"Custom API endpoint found: {custom_url} with model {custom_model}")
         if custom_key:
             logger.debug("Custom API key provided for authentication")
         else:
-            logger.debug("No custom API key provided (using unauthenticated access)")
+            logger.debug(
+                "No custom API key provided (using unauthenticated access)")
 
     # Register providers in priority order:
     # 1. Native APIs first (most direct and efficient)
     if has_native_apis:
         if gemini_key and gemini_key != "your_gemini_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+            ModelProviderRegistry.register_provider(
+                ProviderType.GOOGLE, GeminiModelProvider)
         if openai_key and openai_key != "your_openai_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+            ModelProviderRegistry.register_provider(
+                ProviderType.OPENAI, OpenAIModelProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
+            ModelProviderRegistry.register_provider(
+                ProviderType.XAI, XAIModelProvider)
         if dial_key and dial_key != "your_dial_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.DIAL, DIALModelProvider)
+            ModelProviderRegistry.register_provider(
+                ProviderType.DIAL, DIALModelProvider)
 
     # 2. Custom provider second (for local/private models)
     if has_custom:
@@ -480,13 +501,16 @@ def configure_providers():
         def custom_provider_factory(api_key=None):
             # api_key is CUSTOM_API_KEY (can be empty for Ollama), base_url from CUSTOM_API_URL
             base_url = os.getenv("CUSTOM_API_URL", "")
-            return CustomProvider(api_key=api_key or "", base_url=base_url)  # Use provided API key or empty string
+            # Use provided API key or empty string
+            return CustomProvider(api_key=api_key or "", base_url=base_url)
 
-        ModelProviderRegistry.register_provider(ProviderType.CUSTOM, custom_provider_factory)
+        ModelProviderRegistry.register_provider(
+            ProviderType.CUSTOM, custom_provider_factory)
 
     # 3. OpenRouter last (catch-all for everything else)
     if has_openrouter:
-        ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
+        ModelProviderRegistry.register_provider(
+            ProviderType.OPENROUTER, OpenRouterProvider)
 
     # Require at least one valid provider
     if not valid_providers:
@@ -547,14 +571,16 @@ def configure_providers():
 
         # Validate restrictions against known models
         provider_instances = {}
-        provider_types_to_validate = [ProviderType.GOOGLE, ProviderType.OPENAI, ProviderType.XAI, ProviderType.DIAL]
+        provider_types_to_validate = [
+            ProviderType.GOOGLE, ProviderType.OPENAI, ProviderType.XAI, ProviderType.DIAL]
         for provider_type in provider_types_to_validate:
             provider = ModelProviderRegistry.get_provider(provider_type)
             if provider:
                 provider_instances[provider_type] = provider
 
         if provider_instances:
-            restriction_service.validate_against_known_models(provider_instances)
+            restriction_service.validate_against_known_models(
+                provider_instances)
     else:
         logger.info("No model restrictions configured - all models allowed")
 
@@ -562,7 +588,8 @@ def configure_providers():
     from config import IS_AUTO_MODE
 
     if IS_AUTO_MODE:
-        available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+        available_models = ModelProviderRegistry.get_available_models(
+            respect_restrictions=True)
         if not available_models:
             logger.error(
                 "Auto mode is enabled but no models are available after applying restrictions. "
@@ -605,7 +632,8 @@ async def handle_list_tools() -> list[Tool]:
                 friendly_name = client_info.get("friendly_name", "Claude")
                 raw_name = client_info.get("name", "Unknown")
                 version = client_info.get("version", "Unknown")
-                mcp_activity_logger.info(f"MCP_CLIENT_INFO: {friendly_name} (raw={raw_name} v{version})")
+                mcp_activity_logger.info(
+                    f"MCP_CLIENT_INFO: {friendly_name} (raw={raw_name} v{version})")
             except Exception:
                 pass
     except Exception as e:
@@ -616,7 +644,8 @@ async def handle_list_tools() -> list[Tool]:
     for tool in TOOLS.values():
         # Get optional annotations from the tool
         annotations = tool.get_annotations()
-        tool_annotations = ToolAnnotations(**annotations) if annotations else None
+        tool_annotations = ToolAnnotations(
+            **annotations) if annotations else None
 
         tools.append(
             Tool(
@@ -629,7 +658,8 @@ async def handle_list_tools() -> list[Tool]:
 
     # Log cache efficiency info
     if os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here":
-        logger.debug("OpenRouter registry cache used efficiently across all tool schemas")
+        logger.debug(
+            "OpenRouter registry cache used efficiently across all tool schemas")
 
     logger.debug(f"Returning {len(tools)} tools to MCP client")
     return tools
@@ -698,7 +728,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     # Log to activity file for monitoring
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
-        mcp_activity_logger.info(f"TOOL_CALL: {name} with {len(arguments)} arguments")
+        mcp_activity_logger.info(
+            f"TOOL_CALL: {name} with {len(arguments)} arguments")
     except Exception:
         pass
 
@@ -709,23 +740,28 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         logger.debug(
             f"[CONVERSATION_DEBUG] Tool '{name}' resuming thread {continuation_id} with {len(arguments)} arguments"
         )
-        logger.debug(f"[CONVERSATION_DEBUG] Original arguments keys: {list(arguments.keys())}")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Original arguments keys: {list(arguments.keys())}")
 
         # Log to activity file for monitoring
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
-            mcp_activity_logger.info(f"CONVERSATION_RESUME: {name} resuming thread {continuation_id}")
+            mcp_activity_logger.info(
+                f"CONVERSATION_RESUME: {name} resuming thread {continuation_id}")
         except Exception:
             pass
 
         arguments = await reconstruct_thread_context(arguments)
-        logger.debug(f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
         if "_remaining_tokens" in arguments:
-            logger.debug(f"[CONVERSATION_DEBUG] Remaining token budget: {arguments['_remaining_tokens']:,}")
+            logger.debug(
+                f"[CONVERSATION_DEBUG] Remaining token budget: {arguments['_remaining_tokens']:,}")
 
     # Route to AI-powered tools that require Gemini API calls
     if name in TOOLS:
-        logger.info(f"Executing tool '{name}' with {len(arguments)} parameter(s)")
+        logger.info(
+            f"Executing tool '{name}' with {len(arguments)} parameter(s)")
         tool = TOOLS[name]
 
         # EARLY MODEL RESOLUTION AT MCP BOUNDARY
@@ -742,14 +778,16 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         # Parse model:option format if present
         model_name, model_option = parse_model_option(model_name)
         if model_option:
-            logger.debug(f"Parsed model format - model: '{model_name}', option: '{model_option}'")
+            logger.debug(
+                f"Parsed model format - model: '{model_name}', option: '{model_option}'")
 
         # Consensus tool handles its own model configuration validation
         # No special handling needed at server level
 
         # Skip model resolution for tools that don't require models (e.g., planner)
         if not tool.requires_model():
-            logger.debug(f"Tool {name} doesn't require model resolution - skipping model validation")
+            logger.debug(
+                f"Tool {name} doesn't require model resolution - skipping model validation")
             # Execute tool directly without model context
             return await tool.execute(arguments)
 
@@ -757,8 +795,10 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         if model_name.lower() == "auto":
             # Get tool category to determine appropriate model
             tool_category = tool.get_model_category()
-            resolved_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
-            logger.info(f"Auto mode resolved to {resolved_model} for {name} (category: {tool_category.value})")
+            resolved_model = ModelProviderRegistry.get_preferred_fallback_model(
+                tool_category)
+            logger.info(
+                f"Auto mode resolved to {resolved_model} for {name} (category: {tool_category.value})")
             model_name = resolved_model
             # Update arguments with resolved model
             arguments["model"] = model_name
@@ -767,9 +807,11 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         provider = ModelProviderRegistry.get_provider_for_model(model_name)
         if not provider:
             # Get list of available models for error message
-            available_models = list(ModelProviderRegistry.get_available_models(respect_restrictions=True).keys())
+            available_models = list(ModelProviderRegistry.get_available_models(
+                respect_restrictions=True).keys())
             tool_category = tool.get_model_category()
-            suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
+            suggested_model = ModelProviderRegistry.get_preferred_fallback_model(
+                tool_category)
 
             error_message = (
                 f"Model '{model_name}' is not available with current API keys. "
@@ -798,10 +840,13 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         # EARLY FILE SIZE VALIDATION AT MCP BOUNDARY
         # Check file sizes before tool execution using resolved model
         if "files" in arguments and arguments["files"]:
-            logger.debug(f"Checking file sizes for {len(arguments['files'])} files with model {model_name}")
-            file_size_check = check_total_file_size(arguments["files"], model_name)
+            logger.debug(
+                f"Checking file sizes for {len(arguments['files'])} files with model {model_name}")
+            file_size_check = check_total_file_size(
+                arguments["files"], model_name)
             if file_size_check:
-                logger.warning(f"File size check failed for {name} with model {model_name}")
+                logger.warning(
+                    f"File size check failed for {name} with model {model_name}")
                 return [TextContent(type="text", text=ToolOutput(**file_size_check).model_dump_json())]
 
         # Execute tool with pre-resolved model context
@@ -992,16 +1037,19 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     continuation_id = arguments["continuation_id"]
 
     # Get thread context from storage
-    logger.debug(f"[CONVERSATION_DEBUG] Looking up thread {continuation_id} in storage")
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Looking up thread {continuation_id} in storage")
     context = get_thread(continuation_id)
     if not context:
         logger.warning(f"Thread not found: {continuation_id}")
-        logger.debug(f"[CONVERSATION_DEBUG] Thread {continuation_id} not found in storage or expired")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Thread {continuation_id} not found in storage or expired")
 
         # Log to activity file for monitoring
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
-            mcp_activity_logger.info(f"CONVERSATION_ERROR: Thread {continuation_id} not found or expired")
+            mcp_activity_logger.info(
+                f"CONVERSATION_ERROR: Thread {continuation_id} not found or expired")
         except Exception:
             pass
 
@@ -1020,7 +1068,8 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     if user_prompt:
         # Capture files referenced in this turn
         user_files = arguments.get("files", [])
-        logger.debug(f"[CONVERSATION_DEBUG] Adding user turn to thread {continuation_id}")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Adding user turn to thread {continuation_id}")
         from utils.token_utils import estimate_tokens
 
         user_prompt_tokens = estimate_tokens(user_prompt)
@@ -1028,12 +1077,16 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
             f"[CONVERSATION_DEBUG] User prompt length: {len(user_prompt)} chars (~{user_prompt_tokens:,} tokens)"
         )
         logger.debug(f"[CONVERSATION_DEBUG] User files: {user_files}")
-        success = add_turn(continuation_id, "user", user_prompt, files=user_files)
+        success = add_turn(continuation_id, "user",
+                           user_prompt, files=user_files)
         if not success:
-            logger.warning(f"Failed to add user turn to thread {continuation_id}")
-            logger.debug("[CONVERSATION_DEBUG] Failed to add user turn - thread may be at turn limit or expired")
+            logger.warning(
+                f"Failed to add user turn to thread {continuation_id}")
+            logger.debug(
+                "[CONVERSATION_DEBUG] Failed to add user turn - thread may be at turn limit or expired")
         else:
-            logger.debug(f"[CONVERSATION_DEBUG] Successfully added user turn to thread {continuation_id}")
+            logger.debug(
+                f"[CONVERSATION_DEBUG] Successfully added user turn to thread {continuation_id}")
 
     # Create model context early to use for history building
     from utils.model_context import ModelContext
@@ -1045,29 +1098,38 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         for turn in reversed(context.turns):
             if turn.role == "assistant" and turn.model_name:
                 arguments["model"] = turn.model_name
-                logger.debug(f"[CONVERSATION_DEBUG] Using model from previous turn: {turn.model_name}")
+                logger.debug(
+                    f"[CONVERSATION_DEBUG] Using model from previous turn: {turn.model_name}")
                 break
 
     model_context = ModelContext.from_arguments(arguments)
 
     # Build conversation history with model-specific limits
-    logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")
-    logger.debug(f"[CONVERSATION_DEBUG] Thread has {len(context.turns)} turns, tool: {context.tool_name}")
-    logger.debug(f"[CONVERSATION_DEBUG] Using model: {model_context.model_name}")
-    conversation_history, conversation_tokens = build_conversation_history(context, model_context)
-    logger.debug(f"[CONVERSATION_DEBUG] Conversation history built: {conversation_tokens:,} tokens")
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Thread has {len(context.turns)} turns, tool: {context.tool_name}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Using model: {model_context.model_name}")
+    conversation_history, conversation_tokens = build_conversation_history(
+        context, model_context)
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Conversation history built: {conversation_tokens:,} tokens")
     logger.debug(
         f"[CONVERSATION_DEBUG] Conversation history length: {len(conversation_history)} chars (~{conversation_tokens:,} tokens)"
     )
 
     # Add dynamic follow-up instructions based on turn count
     follow_up_instructions = get_follow_up_instructions(len(context.turns))
-    logger.debug(f"[CONVERSATION_DEBUG] Follow-up instructions added for turn {len(context.turns)}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Follow-up instructions added for turn {len(context.turns)}")
 
     # All tools now use standardized 'prompt' field
     original_prompt = arguments.get("prompt", "")
-    logger.debug("[CONVERSATION_DEBUG] Extracting user input from 'prompt' field")
-    original_prompt_tokens = estimate_tokens(original_prompt) if original_prompt else 0
+    logger.debug(
+        "[CONVERSATION_DEBUG] Extracting user input from 'prompt' field")
+    original_prompt_tokens = estimate_tokens(
+        original_prompt) if original_prompt else 0
     logger.debug(
         f"[CONVERSATION_DEBUG] User input length: {len(original_prompt)} chars (~{original_prompt_tokens:,} tokens)"
     )
@@ -1087,8 +1149,10 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     enhanced_arguments["prompt"] = enhanced_prompt
     # Store the original user prompt separately for size validation
     enhanced_arguments["_original_user_prompt"] = original_prompt
-    logger.debug("[CONVERSATION_DEBUG] Storing enhanced prompt in 'prompt' field")
-    logger.debug("[CONVERSATION_DEBUG] Storing original user prompt in '_original_user_prompt' field")
+    logger.debug(
+        "[CONVERSATION_DEBUG] Storing enhanced prompt in 'prompt' field")
+    logger.debug(
+        "[CONVERSATION_DEBUG] Storing original user prompt in '_original_user_prompt' field")
 
     # Calculate remaining token budget based on current model
     # (model_context was already created above for history building)
@@ -1097,30 +1161,41 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     # Calculate remaining tokens for files/new content
     # History has already consumed some of the content budget
     remaining_tokens = token_allocation.content_tokens - conversation_tokens
-    enhanced_arguments["_remaining_tokens"] = max(0, remaining_tokens)  # Ensure non-negative
-    enhanced_arguments["_model_context"] = model_context  # Pass context for use in tools
+    enhanced_arguments["_remaining_tokens"] = max(
+        0, remaining_tokens)  # Ensure non-negative
+    # Pass context for use in tools
+    enhanced_arguments["_model_context"] = model_context
 
     logger.debug("[CONVERSATION_DEBUG] Token budget calculation:")
     logger.debug(f"[CONVERSATION_DEBUG]   Model: {model_context.model_name}")
-    logger.debug(f"[CONVERSATION_DEBUG]   Total capacity: {token_allocation.total_tokens:,}")
-    logger.debug(f"[CONVERSATION_DEBUG]   Content allocation: {token_allocation.content_tokens:,}")
-    logger.debug(f"[CONVERSATION_DEBUG]   Conversation tokens: {conversation_tokens:,}")
-    logger.debug(f"[CONVERSATION_DEBUG]   Remaining tokens: {remaining_tokens:,}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG]   Total capacity: {token_allocation.total_tokens:,}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG]   Content allocation: {token_allocation.content_tokens:,}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG]   Conversation tokens: {conversation_tokens:,}")
+    logger.debug(
+        f"[CONVERSATION_DEBUG]   Remaining tokens: {remaining_tokens:,}")
 
     # Merge original context parameters (files, etc.) with new request
     if context.initial_context:
-        logger.debug(f"[CONVERSATION_DEBUG] Merging initial context with {len(context.initial_context)} parameters")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Merging initial context with {len(context.initial_context)} parameters")
         for key, value in context.initial_context.items():
             if key not in enhanced_arguments and key not in ["temperature", "thinking_mode", "model"]:
                 enhanced_arguments[key] = value
-                logger.debug(f"[CONVERSATION_DEBUG] Merged initial context param: {key}")
+                logger.debug(
+                    f"[CONVERSATION_DEBUG] Merged initial context param: {key}")
 
-    logger.info(f"Reconstructed context for thread {continuation_id} (turn {len(context.turns)})")
-    logger.debug(f"[CONVERSATION_DEBUG] Final enhanced arguments keys: {list(enhanced_arguments.keys())}")
+    logger.info(
+        f"Reconstructed context for thread {continuation_id} (turn {len(context.turns)})")
+    logger.debug(
+        f"[CONVERSATION_DEBUG] Final enhanced arguments keys: {list(enhanced_arguments.keys())}")
 
     # Debug log files in the enhanced arguments for file tracking
     if "files" in enhanced_arguments:
-        logger.debug(f"[CONVERSATION_DEBUG] Final files in enhanced arguments: {enhanced_arguments['files']}")
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Final files in enhanced arguments: {enhanced_arguments['files']}")
 
     # Log to activity file for monitoring
     try:
@@ -1262,7 +1337,8 @@ async def handle_get_prompt(name: str, arguments: dict[str, Any] = None) -> GetP
     try:
         prompt_text = template.format(**prompt_args)
     except KeyError as e:
-        logger.warning(f"Missing template argument {e} for prompt {name}, using raw template")
+        logger.warning(
+            f"Missing template argument {e} for prompt {name}, using raw template")
         prompt_text = template  # Fallback to raw template
 
     # Generate tool call instruction
@@ -1286,6 +1362,20 @@ async def handle_get_prompt(name: str, arguments: dict[str, Any] = None) -> GetP
             )
         ],
     )
+
+
+@server.list_resources()
+async def handle_list_resources() -> list[dict]:
+    """Return available auxiliary resources (files, images, etc.) for MCP clients.
+
+    Current implementation returns an empty list to satisfy the MCP protocol
+    and prevent the client from waiting indefinitely for a response. This can
+    be extended in the future to expose downloadable reference docs or other
+    assets.
+    """
+    logger.debug(
+        "MCP client requested resource list – none available, returning []")
+    return []
 
 
 async def main():
@@ -1313,14 +1403,16 @@ async def main():
     from config import IS_AUTO_MODE
 
     if IS_AUTO_MODE:
-        logger.info("Model mode: AUTO (Claude will select the best model for each task)")
+        logger.info(
+            "Model mode: AUTO (Claude will select the best model for each task)")
     else:
         logger.info(f"Model mode: Fixed model '{DEFAULT_MODEL}'")
 
     # Import here to avoid circular imports
     from config import DEFAULT_THINKING_MODE_THINKDEEP
 
-    logger.info(f"Default thinking mode (ThinkDeep): {DEFAULT_THINKING_MODE_THINKDEEP}")
+    logger.info(
+        f"Default thinking mode (ThinkDeep): {DEFAULT_THINKING_MODE_THINKDEEP}")
 
     logger.info(f"Available tools: {list(TOOLS.keys())}")
     logger.info("Server ready - waiting for tool requests...")
