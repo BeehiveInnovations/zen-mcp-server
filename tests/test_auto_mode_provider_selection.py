@@ -320,7 +320,8 @@ class TestAutoModeProviderSelection:
                 ("pro", ProviderType.GOOGLE, "gemini-2.5-pro"),
                 ("mini", ProviderType.OPENAI, "o4-mini"),
                 ("o3mini", ProviderType.OPENAI, "o3-mini"),
-                ("grok", ProviderType.XAI, "grok-3"),
+                ("grok", ProviderType.XAI, "grok-4-0709"),
+                ("grok3", ProviderType.XAI, "grok-3"),
                 ("grokfast", ProviderType.XAI, "grok-3-fast"),
             ]
 
