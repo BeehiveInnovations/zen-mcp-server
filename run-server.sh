@@ -1059,7 +1059,54 @@ migrate_env_file() {
     echo "  (Backup saved as .env.backup_*)"
 }
 
-# Validate API keys
+# Check API keys and warn if missing (non-blocking)
+check_api_keys() {
+    local has_key=false
+    local api_keys=(
+        "GEMINI_API_KEY:your_gemini_api_key_here"
+        "OPENAI_API_KEY:your_openai_api_key_here"
+        "XAI_API_KEY:your_xai_api_key_here"
+        "DIAL_API_KEY:your_dial_api_key_here"
+        "OPENROUTER_API_KEY:your_openrouter_api_key_here"
+    )
+    
+    for key_pair in "${api_keys[@]}"; do
+        local key_name="${key_pair%%:*}"
+        local placeholder="${key_pair##*:}"
+        local key_value="${!key_name:-}"
+        
+        if [[ -n "$key_value" ]] && [[ "$key_value" != "$placeholder" ]]; then
+            print_success "$key_name configured"
+            has_key=true
+        fi
+    done
+    
+    # Check custom API URL
+    if [[ -n "${CUSTOM_API_URL:-}" ]]; then
+        print_success "CUSTOM_API_URL configured: $CUSTOM_API_URL"
+        has_key=true
+    fi
+    
+    if [[ "$has_key" == false ]]; then
+        print_warning "No API keys found in .env!"
+        echo ""
+        echo "The Python development environment will be set up, but you won't be able to use the MCP server until you add API keys."
+        echo ""
+        echo "To add API keys, edit .env and add at least one:"
+        echo "  GEMINI_API_KEY=your-actual-key"
+        echo "  OPENAI_API_KEY=your-actual-key"
+        echo "  XAI_API_KEY=your-actual-key"
+        echo "  DIAL_API_KEY=your-actual-key"
+        echo "  OPENROUTER_API_KEY=your-actual-key"
+        echo ""
+        print_info "You can continue with development setup and add API keys later."
+        echo ""
+    fi
+    
+    return 0  # Always return success to continue setup
+}
+
+# Validate API keys (legacy function for backwards compatibility)
 validate_api_keys() {
     local has_key=false
     local api_keys=(
@@ -1623,8 +1670,8 @@ main() {
         set +a
     fi
     
-    # Step 4: Validate API keys
-    validate_api_keys || exit 1
+    # Step 4: Check API keys (non-blocking - just warn if missing)
+    check_api_keys
     
     # Step 5: Setup Python environment (uv-first approach)
     local python_cmd
@@ -1652,7 +1699,7 @@ main() {
     echo "Logs will be written to: $script_dir/$LOG_DIR/$LOG_FILE"
     echo ""
     
-    # Step 11: Handle command line arguments
+    # Step 12: Handle command line arguments
     if [[ "$arg" == "-f" ]] || [[ "$arg" == "--follow" ]]; then
         follow_logs
     else
