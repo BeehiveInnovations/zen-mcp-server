@@ -148,6 +148,10 @@ class XAIModelProvider(OpenAICompatibleProvider):
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
-        # Grok-4 supports extended thinking/reasoning mode
-        resolved_name = self._resolve_model_name(model_name)
-        return resolved_name == "grok-4-0709"
+        # Check capabilities to determine thinking mode support
+        try:
+            capabilities = self.get_capabilities(model_name)
+            return capabilities.supports_extended_thinking
+        except ValueError:
+            # If the model is not supported, it doesn't support thinking mode.
+            return False
