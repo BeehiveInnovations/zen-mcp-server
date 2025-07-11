@@ -21,6 +21,24 @@ class XAIModelProvider(OpenAICompatibleProvider):
 
     # Model configurations using ModelCapabilities objects
     SUPPORTED_MODELS = {
+        "grok-4-0709": ModelCapabilities(
+            provider=ProviderType.XAI,
+            model_name="grok-4-0709",
+            friendly_name="X.AI (Grok 4)",
+            context_window=256_000,  # 256K tokens
+            max_output_tokens=256000,
+            supports_extended_thinking=True,  # Supports reasoning mode
+            supports_system_prompts=True,
+            supports_streaming=True,
+            supports_function_calling=True,
+            supports_json_mode=True,  # Supports structured outputs
+            supports_images=True,  # Supports vision/image analysis
+            max_image_size_mb=20.0,  # Assuming standard limit
+            supports_temperature=True,
+            temperature_constraint=create_temperature_constraint("range"),
+            description="GROK-4 (256K context) - Latest flagship model with reasoning, vision, and structured outputs",
+            aliases=["grok-4", "grok-4-latest", "grok4", "grok"],
+        ),
         "grok-3": ModelCapabilities(
             provider=ProviderType.XAI,
             model_name="grok-3",
@@ -37,7 +55,7 @@ class XAIModelProvider(OpenAICompatibleProvider):
             supports_temperature=True,
             temperature_constraint=create_temperature_constraint("range"),
             description="GROK-3 (131K context) - Advanced reasoning model from X.AI, excellent for complex analysis",
-            aliases=["grok", "grok3"],
+            aliases=["grok3"],
         ),
         "grok-3-fast": ModelCapabilities(
             provider=ProviderType.XAI,
@@ -130,6 +148,6 @@ class XAIModelProvider(OpenAICompatibleProvider):
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
-        # Currently GROK models do not support extended thinking
-        # This may change with future GROK model releases
-        return False
+        # Grok-4 supports extended thinking/reasoning mode
+        resolved_name = self._resolve_model_name(model_name)
+        return resolved_name == "grok-4-0709"
