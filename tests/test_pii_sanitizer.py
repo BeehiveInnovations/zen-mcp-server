@@ -3,7 +3,7 @@
 
 import unittest
 
-from tests.pii_sanitizer import PIIPattern, PIISanitizer
+from .pii_sanitizer import PIIPattern, PIISanitizer
 
 
 class TestPIISanitizer(unittest.TestCase):

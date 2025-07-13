@@ -256,10 +256,27 @@ class PIISanitizer:
         if "content" in sanitized:
             # Handle base64 encoded content specially
             if isinstance(sanitized["content"], dict) and sanitized["content"].get("encoding") == "base64":
-                # Don't decode/re-encode the actual response body
-                # but sanitize any metadata
                 if "data" in sanitized["content"]:
-                    # Keep the data as-is but sanitize other fields
+                    import base64
+
+                    try:
+                        # Decode, sanitize, and re-encode the actual response body
+                        decoded_bytes = base64.b64decode(sanitized["content"]["data"])
+                        # Attempt to decode as UTF-8 for sanitization. If it fails, it's likely binary.
+                        try:
+                            decoded_str = decoded_bytes.decode("utf-8")
+                            sanitized_str = self.sanitize_string(decoded_str)
+                            sanitized["content"]["data"] = base64.b64encode(sanitized_str.encode("utf-8")).decode(
+                                "utf-8"
+                            )
+                        except UnicodeDecodeError:
+                            # Content is not text, leave as is.
+                            pass
+                    except (base64.binascii.Error, TypeError):
+                        # Handle cases where data is not valid base64
+                        pass
+
+                    # Sanitize other metadata fields
                     for key, value in sanitized["content"].items():
                         if key != "data":
                             sanitized["content"][key] = self.sanitize_value(value)

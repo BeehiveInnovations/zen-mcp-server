@@ -14,7 +14,6 @@ Key Features:
 """
 
 import base64
-import copy
 import hashlib
 import json
 from pathlib import Path
@@ -199,36 +198,6 @@ class RecordingTransport(httpx.HTTPTransport):
         except json.JSONDecodeError:
             pass
         return content
-
-    def _sanitize_response_content(self, data: Any) -> Any:
-        """Sanitize response content to remove sensitive data."""
-        if not isinstance(data, dict):
-            return data
-
-        sanitized = copy.deepcopy(data)
-
-        # Sensitive fields to sanitize
-        sensitive_fields = {
-            "id": "resp_SANITIZED",
-            "created": 0,
-            "created_at": 0,
-            "system_fingerprint": "fp_SANITIZED",
-        }
-
-        def sanitize_dict(obj):
-            if isinstance(obj, dict):
-                for key, value in obj.items():
-                    if key in sensitive_fields:
-                        obj[key] = sensitive_fields[key]
-                    elif isinstance(value, (dict, list)):
-                        sanitize_dict(value)
-            elif isinstance(obj, list):
-                for item in obj:
-                    if isinstance(item, (dict, list)):
-                        sanitize_dict(item)
-
-        sanitize_dict(sanitized)
-        return sanitized
 
     def _save_cassette(self):
         """Save recorded interactions to cassette file."""
