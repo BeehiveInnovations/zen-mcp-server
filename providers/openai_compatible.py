@@ -220,10 +220,20 @@ class OpenAICompatibleProvider(ModelProvider):
 
                 # Create httpx client with minimal config to avoid proxy conflicts
                 # Note: proxies parameter was removed in httpx 0.28.0
-                http_client = httpx.Client(
-                    timeout=timeout_config,
-                    follow_redirects=True,
-                )
+                # Check for test transport injection
+                if hasattr(self, '_test_transport'):
+                    # Use custom transport for testing (HTTP recording/replay)
+                    http_client = httpx.Client(
+                        transport=self._test_transport,
+                        timeout=timeout_config,
+                        follow_redirects=True,
+                    )
+                else:
+                    # Normal production client
+                    http_client = httpx.Client(
+                        timeout=timeout_config,
+                        follow_redirects=True,
+                    )
 
                 # Keep client initialization minimal to avoid proxy parameter conflicts
                 client_kwargs = {
@@ -263,6 +273,65 @@ class OpenAICompatibleProvider(ModelProvider):
                     os.environ[var] = value
 
         return self._client
+
+    def _sanitize_for_logging(self, params: dict) -> dict:
+        """Sanitize sensitive data from parameters before logging.
+
+        Args:
+            params: Dictionary of API parameters
+
+        Returns:
+            dict: Sanitized copy of parameters safe for logging
+        """
+        import copy
+
+        sanitized = copy.deepcopy(params)
+
+        # Sanitize messages content
+        if "input" in sanitized:
+            for msg in sanitized.get("input", []):
+                if isinstance(msg, dict) and "content" in msg:
+                    for content_item in msg.get("content", []):
+                        if isinstance(content_item, dict) and "text" in content_item:
+                            # Truncate long text and add ellipsis
+                            text = content_item["text"]
+                            if len(text) > 100:
+                                content_item["text"] = text[:100] + "... [truncated]"
+
+        # Remove any API keys that might be in headers/auth
+        sanitized.pop("api_key", None)
+        sanitized.pop("authorization", None)
+
+        return sanitized
+
+    def _safe_extract_output_text(self, response) -> str:
+        """Safely extract output_text from o3-pro response with validation.
+
+        Args:
+            response: Response object from OpenAI SDK
+
+        Returns:
+            str: The output text content
+
+        Raises:
+            ValueError: If output_text is missing, None, or not a string
+        """
+        logging.debug(f"Response object type: {type(response)}")
+        logging.debug(f"Response attributes: {dir(response)}")
+        
+        if not hasattr(response, "output_text"):
+            raise ValueError(f"o3-pro response missing output_text field. Response type: {type(response).__name__}")
+
+        content = response.output_text
+        logging.debug(f"Extracted output_text: '{content}' (type: {type(content)})")
+        
+        if content is None:
+            raise ValueError("o3-pro returned None for output_text")
+
+        if not isinstance(content, str):
+            raise ValueError(f"o3-pro output_text is not a string. Got type: {type(content).__name__}")
+
+        return content
 
     def _generate_with_responses_endpoint(
         self,
@@ -311,28 +380,20 @@ class OpenAICompatibleProvider(ModelProvider):
         last_exception = None
 
         for attempt in range(max_retries):
-            try:  # Log the exact payload being sent for debugging
+            try:  # Log sanitized payload for debugging
                 import json
 
+                sanitized_params = self._sanitize_for_logging(completion_params)
                 logging.info(
-                    f"o3-pro API request payload: {json.dumps(completion_params, indent=2, ensure_ascii=False)}"
+                    f"o3-pro API request (sanitized): {json.dumps(sanitized_params, indent=2, ensure_ascii=False)}"
                 )
 
                 # Use OpenAI client's responses endpoint
                 response = self.client.responses.create(**completion_params)
 
-                # Extract content and usage from responses endpoint format
-                # The response format is different for responses endpoint
-                content = ""
-                if hasattr(response, "output") and response.output:
-                    if hasattr(response.output, "content") and response.output.content:
-                        # Look for output_text in content
-                        for content_item in response.output.content:
-                            if hasattr(content_item, "type") and content_item.type == "output_text":
-                                content = content_item.text
-                                break
-                    elif hasattr(response.output, "text"):
-                        content = response.output.text
+                # Extract content from responses endpoint format
+                # Use validation helper to safely extract output_text
+                content = self._safe_extract_output_text(response)
 
                 # Try to extract usage information
                 usage = None
