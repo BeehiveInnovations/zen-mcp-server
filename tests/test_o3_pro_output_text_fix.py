@@ -34,6 +34,11 @@ class TestO3ProOutputTextFix:
 
     def setup_method(self):
         """Set up the test by ensuring clean registry state."""
+        # Clear the restriction service singleton to ensure clean state
+        import utils.model_restrictions
+
+        utils.model_restrictions._restriction_service = None
+
         # Use the new public API for registry cleanup
         ModelProviderRegistry.reset_for_testing()
         # Provider registration is now handled by inject_transport helper
