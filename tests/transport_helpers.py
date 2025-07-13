@@ -22,11 +22,10 @@ def inject_transport(monkeypatch, cassette_path: str):
         transport = inject_transport(monkeypatch, "path/to/cassette.json")
     """
     # Ensure OpenAI provider is registered - always needed for transport injection
-    import os
     from providers.base import ProviderType
     from providers.openai_provider import OpenAIModelProvider
     from providers.registry import ModelProviderRegistry
-    
+
     # Always register OpenAI provider for transport tests (API key might be dummy)
     ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 

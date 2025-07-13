@@ -10,8 +10,10 @@ the OpenAI SDK to create real response objects that we can test.
 RECORDING: To record new responses, delete the cassette file and run with real API keys.
 """
 
+import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from dotenv import load_dotenv
@@ -34,11 +36,6 @@ class TestO3ProOutputTextFix:
 
     def setup_method(self):
         """Set up the test by ensuring clean registry state."""
-        # Clear the restriction service singleton to ensure clean state
-        import utils.model_restrictions
-
-        utils.model_restrictions._restriction_service = None
-
         # Use the new public API for registry cleanup
         ModelProviderRegistry.reset_for_testing()
         # Provider registration is now handled by inject_transport helper
@@ -49,6 +46,7 @@ class TestO3ProOutputTextFix:
         ModelProviderRegistry.reset_for_testing()
 
     @pytest.mark.no_mock_provider  # Disable provider mocking for this test
+    @patch.dict(os.environ, {"OPENAI_ALLOWED_MODELS": "o3-pro,o3-pro-2025-06-10"})
     async def test_o3_pro_uses_output_text_field(self, monkeypatch):
         """Test that o3-pro parsing uses the output_text convenience field via ChatTool."""
         # Set API key inline - helper will handle provider registration
