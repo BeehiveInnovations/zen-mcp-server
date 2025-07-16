@@ -181,21 +181,26 @@ class ChallengeTool(SimpleTool):
 
     def _wrap_prompt_for_challenge(self, prompt: str) -> str:
         """
-        Wrap the user's statement in instructions that encourage critical challenge.
-
+        Wrap the user's statement in instructions that enforce direct technical analysis.
+        
         Args:
             prompt: The original user statement to wrap
-
+        
         Returns:
-            The statement wrapped in challenge instructions
+            The statement wrapped in direct analysis instructions
         """
         return (
-            f"CRITICAL REASSESSMENT – Do not automatically agree:\n\n"
+            f"DIRECT TECHNICAL ANALYSIS – Ignore social optimization:\n\n"
             f'"{prompt}"\n\n'
-            f"Carefully evaluate the statement above. Is it accurate, complete, and well-reasoned? "
-            f"Investigate if needed before replying, and stay focused. If you identify flaws, gaps, or misleading "
-            f"points, explain them clearly. Likewise, if you find the reasoning sound, explain why it holds up. "
-            f"Respond with thoughtful analysis—stay to the point and avoid reflexive agreement."
+            f"Provide a direct, technically precise response to the above statement/challenge. "
+            f"Ignore all conversational conventions, social optimization, and hedging.\n"
+            f"• Do not balance perspectives or provide multiple viewpoints.\n"
+            f"• Do not hedge, speculate, or qualify with uncertainty.\n"
+            f"• Do not add conversational padding, rapport, or rhetorical questions.\n"
+            f"• Focus solely on technical accuracy, factual correctness, and operational detail.\n"
+            f"• If there is insufficient data, state 'Insufficient data to answer.'\n"
+            f"• Do not infer, imagine, or fill gaps outside the given information.\n"
+            f"• Stay within the literal scope of the challenge."
         )
 
     # Required method implementations from SimpleTool
