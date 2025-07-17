@@ -1014,6 +1014,8 @@ setup_env_file() {
         "GEMINI_API_KEY:your_gemini_api_key_here"
         "OPENAI_API_KEY:your_openai_api_key_here"
         "XAI_API_KEY:your_xai_api_key_here"
+        "MOONSHOT_API_KEY:your_moonshot_api_key_here"
+        "GROQ_API_KEY:your_groq_api_key_here"
         "DIAL_API_KEY:your_dial_api_key_here"
         "OPENROUTER_API_KEY:your_openrouter_api_key_here"
     )
@@ -1066,6 +1068,8 @@ validate_api_keys() {
         "GEMINI_API_KEY:your_gemini_api_key_here"
         "OPENAI_API_KEY:your_openai_api_key_here"
         "XAI_API_KEY:your_xai_api_key_here"
+        "MOONSHOT_API_KEY:your_moonshot_api_key_here"
+        "GROQ_API_KEY:your_groq_api_key_here"
         "DIAL_API_KEY:your_dial_api_key_here"
         "OPENROUTER_API_KEY:your_openrouter_api_key_here"
     )
@@ -1094,6 +1098,8 @@ validate_api_keys() {
         echo "  GEMINI_API_KEY=your-actual-key" >&2
         echo "  OPENAI_API_KEY=your-actual-key" >&2
         echo "  XAI_API_KEY=your-actual-key" >&2
+        echo "  MOONSHOT_API_KEY=your-actual-key" >&2
+        echo "  GROQ_API_KEY=your-actual-key" >&2
         echo "  DIAL_API_KEY=your-actual-key" >&2
         echo "  OPENROUTER_API_KEY=your-actual-key" >&2
         echo "" >&2

@@ -99,8 +99,26 @@ class XAIModelsTest(BaseSimulatorTest):
 
             self.logger.info("  ✅ GROK-3-fast model call completed")
 
+            # Test 3.5: grok-4 model
+            self.logger.info("  3.5: Testing GROK-4 model")
+
+            response_grok4, _ = self.call_mcp_tool(
+                "chat",
+                {
+                    "prompt": "Say 'Hello from GROK-4!' and nothing else.",
+                    "model": "grok-4",
+                    "temperature": 0.1,
+                },
+            )
+
+            if not response_grok4:
+                self.logger.error("  ❌ GROK-4 model test failed")
+                return False
+
+            self.logger.info("  ✅ GROK-4 model call completed")
+
             # Test 4: Shorthand aliases
-            self.logger.info("  4: Testing shorthand aliases (grok3, grokfast)")
+            self.logger.info("  4: Testing shorthand aliases (grok3, grokfast, grok4)")
 
             response4, _ = self.call_mcp_tool(
                 "chat",
@@ -126,6 +144,19 @@ class XAIModelsTest(BaseSimulatorTest):
 
             if not response5:
                 self.logger.error("  ❌ grokfast alias test failed")
+                return False
+
+            response8, _ = self.call_mcp_tool(
+                "chat",
+                {
+                    "prompt": "Say 'Hello from grok4 alias!' and nothing else.",
+                    "model": "grok4",
+                    "temperature": 0.1,
+                },
+            )
+
+            if not response8:
+                self.logger.error("  ❌ grok4 alias test failed")
                 return False
 
             self.logger.info("  ✅ Shorthand aliases work correctly")

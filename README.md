@@ -3,7 +3,7 @@
 [zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
 
 <div align="center">
-  <b>🤖 <a href="https://www.anthropic.com/claude-code">Claude</a> OR <a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> + [Gemini / OpenAI / Grok / OpenRouter / DIAL / Ollama / Any Model] = Your Ultimate AI Development Team</b>
+  <b>🤖 <a href="https://www.anthropic.com/claude-code">Claude</a> OR <a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> + [Gemini / OpenAI / Grok / Moonshot / Groq / OpenRouter / DIAL / Ollama / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -147,6 +147,9 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
 - **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
 - **X.AI**: Visit [X.AI Console](https://console.x.ai/) to get an API key for GROK model access.
+- **Moonshot**: Visit [Moonshot AI Platform](https://platform.moonshot.cn/) to get an API key for Kimi model access.
+- **Groq**: Visit [Groq Console](https://console.groq.com/) to get an API key for ultra-fast inference with Groq's LPU technology. Offers competitive speeds for Llama 3/3.1/3.3, Gemma 2, and other language models.
+  > **Note**: Some Groq models may have compatibility limitations. The `mistral-saba-24b` model requires terms acceptance at the Groq console before use. Text classification models like prompt guard models are not supported in conversational format.
 - **DIAL**: Visit [DIAL Platform](https://dialx.ai/) to get an API key for accessing multiple models through their unified API. DIAL is an open-source AI orchestration platform that provides vendor-agnostic access to models from major providers, open-source community, and self-hosted deployments. [API Documentation](https://dialx.ai/dial_api)
 
 **Option C: Custom API Endpoints (Local models like Ollama, vLLM)**
@@ -290,6 +293,9 @@ nano .env
 # The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
 # OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
+# XAI_API_KEY=your-xai-api-key-here        # For Grok models (including Grok-4)
+# MOONSHOT_API_KEY=your-moonshot-key-here  # For Moonshot Kimi models
+# GROQ_API_KEY=your-groq-api-key-here      # For Groq ultra-fast inference
 # OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/custom_models.md)
 # DIAL_API_KEY=your-dial-api-key-here      # For DIAL platform
 
@@ -682,11 +688,14 @@ Configure the Zen MCP Server through environment variables in your `.env` file. 
 DEFAULT_MODEL=auto
 GEMINI_API_KEY=your-gemini-key
 OPENAI_API_KEY=your-openai-key
+XAI_API_KEY=your-xai-key  # Optional: For Grok models (including Grok-4)
+MOONSHOT_API_KEY=your-moonshot-key  # Optional: For Moonshot Kimi models
+GROQ_API_KEY=your-groq-key  # Optional: For Groq ultra-fast inference
 DIAL_API_KEY=your-dial-key  # Optional: Access to multiple models via DIAL
 ```
 
 **Key Configuration Options:**
-- **API Keys**: Native APIs (Gemini, OpenAI, X.AI), OpenRouter, DIAL, or Custom endpoints (Ollama, vLLM)
+- **API Keys**: Native APIs (Gemini, OpenAI, X.AI, Moonshot), OpenRouter, DIAL, or Custom endpoints (Ollama, vLLM)
 - **Model Selection**: Auto mode or specific model defaults
 - **Usage Restrictions**: Control which models can be used for cost control
 - **Conversation Settings**: Timeout, turn limits, memory configuration
@@ -717,6 +726,8 @@ Built with the power of **Multi-Model AI** collaboration 🤝
 - [Claude Code](https://claude.ai/code) - Your AI coding assistant & orchestrator
 - [Gemini 2.5 Pro & 2.0 Flash](https://ai.google.dev/) - Extended thinking & fast analysis
 - [OpenAI O3](https://openai.com/) - Strong reasoning & general intelligence
+- [X.AI Grok-4](https://x.ai/) - Advanced reasoning with multimodal capabilities
+- [Moonshot Kimi](https://platform.moonshot.cn/) - High-context reasoning and thinking models
 
 ### Star History
 

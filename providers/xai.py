@@ -57,6 +57,25 @@ class XAIModelProvider(OpenAICompatibleProvider):
             description="GROK-3 Fast (131K context) - Higher performance variant, faster processing but more expensive",
             aliases=["grok3fast", "grokfast", "grok3-fast"],
         ),
+        "grok-4": ModelCapabilities(
+            provider=ProviderType.XAI,
+            model_name="grok-4",
+            friendly_name="X.AI (Grok 4)",
+            context_window=256_000,  # 256K tokens (API version)
+            max_output_tokens=256000,
+            supports_extended_thinking=True,  # Advanced reasoning capabilities
+            supports_system_prompts=True,
+            supports_streaming=True,
+            supports_function_calling=True,
+            supports_json_mode=True,  # Grok 4 supports JSON mode
+            supports_images=True,  # Multimodal capabilities
+            max_image_size_mb=20.0,
+            supports_temperature=True,
+            temperature_constraint=create_temperature_constraint("range"),
+            description="GROK-4 (256K context) - Latest generation model with enhanced reasoning, multimodal capabilities, and 100x more training data than Grok 2",
+            aliases=["grok4"],
+            max_thinking_tokens=32768,  # Extended reasoning support
+        ),
     }
 
     def __init__(self, api_key: str, **kwargs):
@@ -130,6 +149,8 @@ class XAIModelProvider(OpenAICompatibleProvider):
 
     def supports_thinking_mode(self, model_name: str) -> bool:
         """Check if the model supports extended thinking mode."""
-        # Currently GROK models do not support extended thinking
-        # This may change with future GROK model releases
-        return False
+        try:
+            capabilities = self.get_capabilities(model_name)
+            return capabilities.supports_extended_thinking
+        except ValueError:
+            return False

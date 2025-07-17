@@ -379,7 +379,14 @@ def configure_providers():
     """
     # Log environment variable status for debugging
     logger.debug("Checking environment variables for API keys...")
-    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
+    api_keys_to_check = [
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "GEMINI_API_KEY",
+        "XAI_API_KEY",
+        "MOONSHOT_API_KEY",
+        "CUSTOM_API_URL",
+    ]
     for key in api_keys_to_check:
         value = os.getenv(key)
         logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
@@ -388,6 +395,8 @@ def configure_providers():
     from providers.custom import CustomProvider
     from providers.dial import DIALModelProvider
     from providers.gemini import GeminiModelProvider
+    from providers.groq import GroqProvider
+    from providers.moonshot import MoonshotProvider
     from providers.openai_provider import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
     from providers.xai import XAIModelProvider
@@ -424,6 +433,20 @@ def configure_providers():
         valid_providers.append("X.AI (GROK)")
         has_native_apis = True
         logger.info("X.AI API key found - GROK models available")
+
+    # Check for Moonshot API key
+    moonshot_key = os.getenv("MOONSHOT_API_KEY")
+    if moonshot_key and moonshot_key != "your_moonshot_api_key_here":
+        valid_providers.append("Moonshot (Kimi)")
+        has_native_apis = True
+        logger.info("Moonshot API key found - Kimi models available")
+
+    # Check for Groq API key
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key and groq_key != "your_groq_api_key_here":
+        valid_providers.append("Groq (Ultra-fast)")
+        has_native_apis = True
+        logger.info("Groq API key found - Ultra-fast inference models available")
 
     # Check for DIAL API key
     dial_key = os.getenv("DIAL_API_KEY")
@@ -471,6 +494,10 @@ def configure_providers():
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
+        if moonshot_key and moonshot_key != "your_moonshot_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.MOONSHOT, MoonshotProvider)
+        if groq_key and groq_key != "your_groq_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.GROQ, GroqProvider)
         if dial_key and dial_key != "your_dial_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.DIAL, DIALModelProvider)
 
@@ -495,6 +522,7 @@ def configure_providers():
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI o3 model\n"
             "- XAI_API_KEY for X.AI GROK models\n"
+            "- MOONSHOT_API_KEY for Moonshot Kimi models\n"
             "- DIAL_API_KEY for DIAL models\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
             "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
