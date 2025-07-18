@@ -1,5 +1,5 @@
 mcp>=1.0.0
-google-genai>=1.19.0
+google-generativeai>=0.8.0
 openai>=1.55.2  # Minimum version for httpx 0.28.0 compatibility
 pydantic>=2.0.0
 python-dotenv>=1.0.0

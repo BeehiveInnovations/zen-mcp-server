@@ -863,7 +863,7 @@ install_dependencies() {
     local deps_needed=false
     
     # First verify pip is available (always check, even for uv environments)
-    if ! $python_cmd -m pip --version &>/dev/null 2>&1; then
+    if ! "$python_cmd" -m pip --version &>/dev/null 2>&1; then
         print_error "pip is not available in the Python environment"
         echo ""
         echo "This indicates an incomplete Python installation."
