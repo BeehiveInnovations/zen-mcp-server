@@ -229,12 +229,36 @@ class GeminiModelProvider(ModelProvider):
 
         for attempt in range(max_retries):
             try:
+                # Log the request payload for debugging
+                import json
+
+                payload = {
+                    "model": resolved_name,
+                    "contents": contents,
+                    "config": (
+                        generation_config.__dict__ if hasattr(generation_config, "__dict__") else str(generation_config)
+                    ),
+                }
+                logging.info(
+                    f"Gemini API request payload: {json.dumps(payload, indent=2, ensure_ascii=False, default=str)}"
+                )
+
                 # Generate content
                 response = self.client.models.generate_content(
                     model=resolved_name,
                     contents=contents,
                     config=generation_config,
                 )
+
+                # Log the full response for debugging
+                try:
+                    response_dict = response.__dict__ if hasattr(response, "__dict__") else str(response)
+                    logging.info(
+                        f"Gemini API response: {json.dumps(response_dict, indent=2, ensure_ascii=False, default=str)}"
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to log Gemini response: {e}")
+                    logging.info(f"Gemini API response (string): {str(response)}")
 
                 # Extract usage information if available
                 usage = self._extract_usage(response)

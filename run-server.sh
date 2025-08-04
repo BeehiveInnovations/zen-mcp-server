@@ -1109,12 +1109,37 @@ validate_api_keys() {
 # Claude Integration Functions
 # ----------------------------------------------------------------------------
 
+# Helper function to run claude commands - handles both direct commands and aliases
+run_claude_cmd() {
+    local cmd="$*"
+    
+    # Try direct command first
+    if command -v claude &> /dev/null; then
+        claude $cmd
+        return $?
+    fi
+    
+    # Try with interactive shell (for aliases)
+    if bash -i -c "claude $cmd" 2>/dev/null; then
+        return $?
+    fi
+    
+    # Try direct path if exists
+    if [[ -f ~/.claude/local/claude ]]; then
+        ~/.claude/local/claude $cmd
+        return $?
+    fi
+    
+    return 1
+}
+
 # Check if MCP is added to Claude CLI and verify it's correct
 check_claude_cli_integration() {
     local python_cmd="$1"
     local server_path="$2"
     
-    if ! command -v claude &> /dev/null; then
+    # Check if claude command/alias is available
+    if ! (command -v claude &> /dev/null || [[ -f ~/.claude/local/claude ]] || bash -i -c 'type claude' &> /dev/null); then
         echo ""
         print_warning "Claude CLI not found"
         echo ""
@@ -1134,15 +1159,15 @@ check_claude_cli_integration() {
     fi
     
     # Check if zen is registered
-    local mcp_list=$(claude mcp list 2>/dev/null)
+    local mcp_list=$(run_claude_cmd "mcp list" 2>/dev/null)
     if echo "$mcp_list" | grep -q "zen"; then
         # Check if it's using the old Docker command
         if echo "$mcp_list" | grep -E "zen.*docker|zen.*compose" &>/dev/null; then
             print_warning "Found old Docker-based Zen registration, updating..."
-            claude mcp remove zen -s user 2>/dev/null || true
+            run_claude_cmd "mcp remove zen -s user" 2>/dev/null || true
             
             # Re-add with correct Python command
-            if claude mcp add zen -s user -- "$python_cmd" "$server_path" 2>/dev/null; then
+            if run_claude_cmd "mcp add zen -s user -- $python_cmd $server_path" 2>/dev/null; then
                 print_success "Updated Zen to become a standalone script"
                 return 0
             else
@@ -1159,9 +1184,9 @@ check_claude_cli_integration() {
                 return 0
             else
                 print_warning "Zen registered with different path, updating..."
-                claude mcp remove zen -s user 2>/dev/null || true
+                run_claude_cmd "mcp remove zen -s user" 2>/dev/null || true
                 
-                if claude mcp add zen -s user -- "$python_cmd" "$server_path" 2>/dev/null; then
+                if run_claude_cmd "mcp add zen -s user -- $python_cmd $server_path" 2>/dev/null; then
                     print_success "Updated Zen with current path"
                     return 0
                 else
@@ -1185,7 +1210,7 @@ check_claude_cli_integration() {
         fi
         
         print_info "Registering Zen with Claude Code..."
-        if claude mcp add zen -s user -- "$python_cmd" "$server_path" 2>/dev/null; then
+        if run_claude_cmd "mcp add zen -s user -- $python_cmd $server_path" 2>/dev/null; then
             print_success "Successfully added Zen to Claude Code"
             return 0
         else

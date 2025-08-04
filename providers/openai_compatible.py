@@ -2,6 +2,7 @@
 
 import base64
 import ipaddress
+import json
 import logging
 import os
 import time
@@ -294,7 +295,7 @@ class OpenAICompatibleProvider(ModelProvider):
             "input": input_messages,
             "store": True,
         }
-        
+
         # Add reasoning effort only for O3/O4 models that support it
         if any(pattern in model_name for pattern in ["o3", "o4"]):
             completion_params["reasoning"] = {"effort": "medium"}
@@ -324,6 +325,16 @@ class OpenAICompatibleProvider(ModelProvider):
 
                 # Use OpenAI client's responses endpoint
                 response = self.client.responses.create(**completion_params)
+
+                # Log the full response for debugging
+                try:
+                    response_dict = response.model_dump() if hasattr(response, "model_dump") else response.__dict__
+                    logging.info(
+                        f"Responses endpoint API response: {json.dumps(response_dict, indent=2, ensure_ascii=False, default=str)}"
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to log response: {e}")
+                    logging.info(f"Responses endpoint API response (string): {str(response)}")
 
                 # Extract content and usage from responses endpoint format
                 # The response format has output as a list of objects with different types
@@ -514,8 +525,23 @@ class OpenAICompatibleProvider(ModelProvider):
 
         for attempt in range(max_retries):
             try:
+                # Log the request payload for debugging
+                logging.info(
+                    f"Chat completions API request payload: {json.dumps(completion_params, indent=2, ensure_ascii=False)}"
+                )
+
                 # Generate completion
                 response = self.client.chat.completions.create(**completion_params)
+
+                # Log the full response for debugging
+                try:
+                    response_dict = response.model_dump() if hasattr(response, "model_dump") else response.__dict__
+                    logging.info(
+                        f"Chat completions API response: {json.dumps(response_dict, indent=2, ensure_ascii=False, default=str)}"
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to log response: {e}")
+                    logging.info(f"Chat completions API response (string): {str(response)}")
 
                 # Extract content and usage
                 content = response.choices[0].message.content

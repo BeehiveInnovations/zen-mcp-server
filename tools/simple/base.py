@@ -241,7 +241,6 @@ class SimpleTool(BaseTool):
         except AttributeError:
             return True
 
-
     def get_request_as_dict(self, request) -> dict:
         """Convert request to dictionary. Override for custom serialization."""
         try:
@@ -706,13 +705,14 @@ class SimpleTool(BaseTool):
         if use_websearch:
             # Check if model supports native websearch - if so, don't add Claude-style instructions
             from providers.registry import ModelProviderRegistry
+
             try:
                 provider = ModelProviderRegistry.get_provider_for_model(self.model_name)
                 capabilities = provider.get_capabilities(self.model_name)
                 model_supports_native = capabilities.supports_native_websearch
-            except:
+            except Exception:
                 model_supports_native = False
-                
+
             # Only add Claude-style instructions if model doesn't support native websearch
             if not model_supports_native:
                 websearch_instruction = self.get_websearch_instruction(use_websearch, self.get_websearch_guidance())

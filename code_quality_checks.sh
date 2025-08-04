@@ -67,16 +67,16 @@ echo "📋 Step 1: Running Linting and Formatting Checks"
 echo "--------------------------------------------------"
 
 echo "🔧 Running ruff linting with auto-fix..."
-$RUFF check --fix --exclude test_simulation_files
+$RUFF check --fix --exclude=".zen_venv" --exclude="test_simulation_files"
 
 echo "🎨 Running black code formatting..."
-$BLACK . --exclude="test_simulation_files/"
+$BLACK . --extend-exclude="\.zen_venv" --exclude="test_simulation_files/"
 
 echo "📦 Running import sorting with isort..."
 $ISORT . --skip-glob=".zen_venv/*" --skip-glob="test_simulation_files/*"
 
 echo "✅ Verifying all linting passes..."
-$RUFF check --exclude test_simulation_files
+$RUFF check --exclude=".zen_venv" --exclude="test_simulation_files"
 
 echo "✅ Step 1 Complete: All linting and formatting checks passed!"
 echo ""

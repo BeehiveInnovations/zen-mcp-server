@@ -295,7 +295,7 @@ class TestOpenAIProvider:
     def test_all_models_support_native_websearch(self):
         """Test that all OpenAI models support native websearch."""
         provider = OpenAIModelProvider("test-key")
-        
+
         # All OpenAI models should support native websearch
         for model_name in ["o3", "o3-mini", "o3-pro-2025-06-10", "o4-mini", "gpt-4.1-2025-04-14"]:
             capabilities = provider.get_capabilities(model_name)
@@ -327,23 +327,20 @@ class TestOpenAIProvider:
 
         # Generate content with native_websearch=True for regular model (not o3-pro)
         result = provider.generate_content(
-            prompt="What is the latest news about AI?", 
-            model_name="o3",
-            native_websearch=True,
-            temperature=1.0
+            prompt="What is the latest news about AI?", model_name="o3", native_websearch=True, temperature=1.0
         )
 
         # Verify responses.create was called (due to native_websearch=True)
         mock_client.responses.create.assert_called_once()
         call_args = mock_client.responses.create.call_args[1]
-        
+
         # Verify model name
         assert call_args["model"] == "o3"
-        
+
         # Verify web search tool was added
         assert "tools" in call_args
         assert call_args["tools"] == [{"type": "web_search_preview"}]
-        
+
         # Verify input format for responses endpoint
         assert "input" in call_args
         assert call_args["input"][0]["role"] == "user"
@@ -377,19 +374,16 @@ class TestOpenAIProvider:
 
         # Generate content with native_websearch=False
         result = provider.generate_content(
-            prompt="What is 2+2?", 
-            model_name="gpt-4.1-2025-04-14",
-            native_websearch=False,
-            temperature=0.7
+            prompt="What is 2+2?", model_name="gpt-4.1-2025-04-14", native_websearch=False, temperature=0.7
         )
 
         # Verify chat.completions.create was called (native_websearch=False)
         mock_client.chat.completions.create.assert_called_once()
         call_kwargs = mock_client.chat.completions.create.call_args[1]
-        
+
         # Verify no web search tools were added
         assert "tools" not in call_kwargs or call_kwargs.get("tools") is None
-        
+
         # Verify standard chat format
         assert call_kwargs["model"] == "gpt-4.1-2025-04-14"
         assert call_kwargs["messages"][0]["role"] == "user"
@@ -425,19 +419,19 @@ class TestOpenAIProvider:
 
         # Generate content with o3-pro and native_websearch=True
         result = provider.generate_content(
-            prompt="Research the latest developments in quantum computing", 
+            prompt="Research the latest developments in quantum computing",
             model_name="o3-pro",
             native_websearch=True,
-            temperature=1.0
+            temperature=1.0,
         )
 
         # Verify responses.create was called
         mock_client.responses.create.assert_called_once()
         call_args = mock_client.responses.create.call_args[1]
-        
+
         # Verify model name resolved correctly
         assert call_args["model"] == "o3-pro-2025-06-10"
-        
+
         # Verify web search tool was added
         assert "tools" in call_args
         assert call_args["tools"] == [{"type": "web_search_preview"}]
