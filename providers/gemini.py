@@ -33,6 +33,7 @@ class GeminiModelProvider(ModelProvider):
             supports_images=True,  # Vision capability
             max_image_size_mb=20.0,  # Conservative 20MB limit for reliability
             supports_temperature=True,
+            supports_native_websearch=True,  # Gemini 2.0 Flash supports grounding
             temperature_constraint=create_temperature_constraint("range"),
             max_thinking_tokens=24576,  # Same as 2.5 flash for consistency
             description="Gemini 2.0 Flash (1M context) - Latest fast model with experimental thinking, supports audio/video input",
@@ -52,6 +53,7 @@ class GeminiModelProvider(ModelProvider):
             supports_images=False,  # Does not support images
             max_image_size_mb=0.0,  # No image support
             supports_temperature=True,
+            supports_native_websearch=False,  # Lite models don't support grounding
             temperature_constraint=create_temperature_constraint("range"),
             description="Gemini 2.0 Flash Lite (1M context) - Lightweight fast model, text-only",
             aliases=["flashlite", "flash-lite"],
@@ -70,6 +72,7 @@ class GeminiModelProvider(ModelProvider):
             supports_images=True,  # Vision capability
             max_image_size_mb=20.0,  # Conservative 20MB limit for reliability
             supports_temperature=True,
+            supports_native_websearch=True,  # Gemini 2.5 Flash supports grounding
             temperature_constraint=create_temperature_constraint("range"),
             max_thinking_tokens=24576,  # Flash 2.5 thinking budget limit
             description="Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
@@ -89,6 +92,7 @@ class GeminiModelProvider(ModelProvider):
             supports_images=True,  # Vision capability
             max_image_size_mb=32.0,  # Higher limit for Pro model
             supports_temperature=True,
+            supports_native_websearch=True,  # Gemini 2.5 Pro supports grounding
             temperature_constraint=create_temperature_constraint("range"),
             max_thinking_tokens=32768,  # Max thinking tokens for Pro model
             description="Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
@@ -210,6 +214,12 @@ class GeminiModelProvider(ModelProvider):
                 max_thinking_tokens = model_config.max_thinking_tokens
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
+
+        # Add grounding tool when use_websearch=True and model supports native websearch
+        use_websearch = kwargs.get("use_websearch", True)
+        if use_websearch and capabilities.supports_native_websearch:
+            grounding_tool = types.Tool(google_search=types.GoogleSearch())
+            generation_config.tools = [grounding_tool]
 
         # Retry logic with progressive delays
         max_retries = 4  # Total of 4 attempts

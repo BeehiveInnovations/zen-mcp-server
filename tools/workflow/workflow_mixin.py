@@ -263,6 +263,11 @@ class BaseWorkflowMixin(ABC):
         except AttributeError:
             return True
 
+    def get_request_native_websearch(self, request) -> bool:
+        """Get native_websearch from request. Override for custom native websearch handling."""
+        # native_websearch parameter no longer exists - websearch routing is now automatic
+        return False
+
     def get_expert_analysis_instruction(self) -> str:
         """
         Get the instruction to append after the expert context.

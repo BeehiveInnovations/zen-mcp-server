@@ -291,3 +291,158 @@ class TestOpenAIProvider:
         # Verify the response
         assert result.content == "Test response"
         assert result.model_name == "o3-mini"
+
+    def test_all_models_support_native_websearch(self):
+        """Test that all OpenAI models support native websearch."""
+        provider = OpenAIModelProvider("test-key")
+        
+        # All OpenAI models should support native websearch
+        for model_name in ["o3", "o3-mini", "o3-pro-2025-06-10", "o4-mini", "gpt-4.1-2025-04-14"]:
+            capabilities = provider.get_capabilities(model_name)
+            assert capabilities.supports_native_websearch is True, f"Model {model_name} should support native websearch"
+
+    @patch("providers.openai_compatible.OpenAI")
+    def test_native_websearch_routes_to_responses_endpoint(self, mock_openai_class):
+        """Test that native_websearch=True routes all models to responses endpoint."""
+        # Set up mock for OpenAI client responses endpoint
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.output = MagicMock()
+        mock_response.output.content = [MagicMock()]
+        mock_response.output.content[0].type = "output_text"
+        mock_response.output.content[0].text = "Search result content"
+        mock_response.model = "o3"
+        mock_response.id = "test-id"
+        mock_response.created_at = 1234567890
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 15
+        mock_response.usage.completion_tokens = 25
+        mock_response.usage.total_tokens = 40
+
+        mock_client.responses.create.return_value = mock_response
+
+        provider = OpenAIModelProvider("test-key")
+
+        # Generate content with native_websearch=True for regular model (not o3-pro)
+        result = provider.generate_content(
+            prompt="What is the latest news about AI?", 
+            model_name="o3",
+            native_websearch=True,
+            temperature=1.0
+        )
+
+        # Verify responses.create was called (due to native_websearch=True)
+        mock_client.responses.create.assert_called_once()
+        call_args = mock_client.responses.create.call_args[1]
+        
+        # Verify model name
+        assert call_args["model"] == "o3"
+        
+        # Verify web search tool was added
+        assert "tools" in call_args
+        assert call_args["tools"] == [{"type": "web_search_preview"}]
+        
+        # Verify input format for responses endpoint
+        assert "input" in call_args
+        assert call_args["input"][0]["role"] == "user"
+        assert "What is the latest news about AI?" in call_args["input"][0]["content"][0]["text"]
+
+        # Verify the response
+        assert result.content == "Search result content"
+        assert result.model_name == "o3"
+        assert result.metadata["endpoint"] == "responses"
+
+    @patch("providers.openai_compatible.OpenAI")
+    def test_native_websearch_false_uses_chat_completions(self, mock_openai_class):
+        """Test that native_websearch=False uses regular chat completions endpoint."""
+        # Set up mock
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Regular response"
+        mock_response.choices[0].finish_reason = "stop"
+        mock_response.model = "gpt-4.1-2025-04-14"
+        mock_response.id = "test-id"
+        mock_response.created = 1234567890
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 5
+        mock_response.usage.total_tokens = 15
+        mock_client.chat.completions.create.return_value = mock_response
+
+        provider = OpenAIModelProvider("test-key")
+
+        # Generate content with native_websearch=False
+        result = provider.generate_content(
+            prompt="What is 2+2?", 
+            model_name="gpt-4.1-2025-04-14",
+            native_websearch=False,
+            temperature=0.7
+        )
+
+        # Verify chat.completions.create was called (native_websearch=False)
+        mock_client.chat.completions.create.assert_called_once()
+        call_kwargs = mock_client.chat.completions.create.call_args[1]
+        
+        # Verify no web search tools were added
+        assert "tools" not in call_kwargs or call_kwargs.get("tools") is None
+        
+        # Verify standard chat format
+        assert call_kwargs["model"] == "gpt-4.1-2025-04-14"
+        assert call_kwargs["messages"][0]["role"] == "user"
+        assert call_kwargs["messages"][0]["content"] == "What is 2+2?"
+
+        # Verify the response
+        assert result.content == "Regular response"
+        assert result.model_name == "gpt-4.1-2025-04-14"
+
+    @patch("providers.openai_compatible.OpenAI")
+    def test_o3_pro_with_native_websearch_includes_tools(self, mock_openai_class):
+        """Test that o3-pro with native_websearch=True includes web search tools."""
+        # Set up mock for OpenAI client responses endpoint
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.output = MagicMock()
+        mock_response.output.content = [MagicMock()]
+        mock_response.output.content[0].type = "output_text"
+        mock_response.output.content[0].text = "O3-pro search result"
+        mock_response.model = "o3-pro-2025-06-10"
+        mock_response.id = "test-id"
+        mock_response.created_at = 1234567890
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 20
+        mock_response.usage.completion_tokens = 30
+        mock_response.usage.total_tokens = 50
+
+        mock_client.responses.create.return_value = mock_response
+
+        provider = OpenAIModelProvider("test-key")
+
+        # Generate content with o3-pro and native_websearch=True
+        result = provider.generate_content(
+            prompt="Research the latest developments in quantum computing", 
+            model_name="o3-pro",
+            native_websearch=True,
+            temperature=1.0
+        )
+
+        # Verify responses.create was called
+        mock_client.responses.create.assert_called_once()
+        call_args = mock_client.responses.create.call_args[1]
+        
+        # Verify model name resolved correctly
+        assert call_args["model"] == "o3-pro-2025-06-10"
+        
+        # Verify web search tool was added
+        assert "tools" in call_args
+        assert call_args["tools"] == [{"type": "web_search_preview"}]
+
+        # Verify the response
+        assert result.content == "O3-pro search result"
+        assert result.model_name == "o3-pro-2025-06-10"
+        assert result.metadata["endpoint"] == "responses"

@@ -185,6 +185,183 @@ class TestChatRequestModel:
         assert hasattr(request, "continuation_id")
         assert hasattr(request, "images")  # From base model too
 
+    def test_native_websearch_field_inheritance(self):
+        """Test that ChatRequest inherits native_websearch field from base model."""
+        request = ChatRequest(prompt="Test")
+        
+        # Should have native_websearch field from ToolRequest
+        assert hasattr(request, "native_websearch")
+        assert request.native_websearch is False  # Default value
+
+
+class TestChatNativeWebsearch:
+    """Test suite for Chat tool native websearch functionality"""
+
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.tool = ChatTool()
+
+    def test_native_websearch_mutual_exclusivity_validation(self):
+        """Test that ChatRequest validates mutual exclusivity of websearch parameters."""
+        from pydantic import ValidationError
+        
+        # Both True should raise validation error
+        with pytest.raises(ValidationError, match="native_websearch and use_websearch cannot both be True"):
+            ChatRequest(
+                prompt="Test prompt",
+                native_websearch=True,
+                use_websearch=True
+            )
+        
+        # native_websearch=True, use_websearch=False should be valid
+        request1 = ChatRequest(
+            prompt="Test prompt",
+            native_websearch=True,
+            use_websearch=False
+        )
+        assert request1.native_websearch is True
+        assert request1.use_websearch is False
+        
+        # native_websearch=False, use_websearch=True should be valid
+        request2 = ChatRequest(
+            prompt="Test prompt",
+            native_websearch=False,
+            use_websearch=True
+        )
+        assert request2.native_websearch is False
+        assert request2.use_websearch is True
+
+    def test_native_websearch_schema_inclusion(self):
+        """Test that chat tool schema includes native_websearch field."""
+        schema = self.tool.get_input_schema()
+        
+        # Should have native_websearch in properties
+        assert "native_websearch" in schema["properties"]
+        
+        # Check the field definition
+        native_websearch_field = schema["properties"]["native_websearch"]
+        assert native_websearch_field["type"] == "boolean"
+        assert native_websearch_field["default"] is False
+        assert "mutually exclusive" in native_websearch_field["description"].lower()
+
+    def test_get_request_native_websearch(self):
+        """Test that ChatTool can extract native_websearch from requests."""
+        # Test with native_websearch=True
+        request_true = ChatRequest(
+            prompt="Test prompt",
+            native_websearch=True,
+            use_websearch=False
+        )
+        assert self.tool.get_request_native_websearch(request_true) is True
+        
+        # Test with native_websearch=False
+        request_false = ChatRequest(
+            prompt="Test prompt",
+            native_websearch=False
+        )
+        assert self.tool.get_request_native_websearch(request_false) is False
+        
+        # Test default value
+        request_default = ChatRequest(prompt="Test prompt")
+        assert self.tool.get_request_native_websearch(request_default) is False
+
+    @pytest.mark.asyncio
+    async def test_native_websearch_prompt_preparation(self):
+        """Test that prompt preparation handles native websearch correctly."""
+        # Test with native_websearch=True (should skip Claude-style instructions)
+        request_native = ChatRequest(
+            prompt="Test prompt", 
+            files=[], 
+            native_websearch=True,
+            use_websearch=False
+        )
+
+        with patch.object(self.tool, "get_system_prompt", return_value="System prompt"):
+            with patch.object(self.tool, "handle_prompt_file_with_fallback", return_value="Test prompt"):
+                with patch.object(self.tool, "_prepare_file_content_for_prompt", return_value=("", [])):
+                    with patch.object(self.tool, "_validate_token_limit"):
+                        with patch.object(self.tool, "get_websearch_instruction", return_value="") as mock_websearch:
+                            prompt = await self.tool.prepare_prompt(request_native)
+
+                            # Verify get_websearch_instruction was called with native_websearch=True
+                            mock_websearch.assert_called_once()
+                            args = mock_websearch.call_args[0]
+                            kwargs = mock_websearch.call_args[1] if mock_websearch.call_args[1] else {}
+                            
+                            # Should be called with native_websearch=True
+                            if len(args) >= 3:
+                                assert args[2] is True  # Third argument is native_websearch
+                            elif 'native_websearch' in kwargs:
+                                assert kwargs['native_websearch'] is True
+
+                            assert "Test prompt" in prompt
+                            assert "System prompt" in prompt
+
+    @pytest.mark.asyncio  
+    async def test_regular_websearch_prompt_preparation(self):
+        """Test that prompt preparation handles regular websearch correctly."""
+        # Test with use_websearch=True (should include Claude-style instructions)
+        request_regular = ChatRequest(
+            prompt="Test prompt", 
+            files=[], 
+            use_websearch=True,
+            native_websearch=False
+        )
+
+        with patch.object(self.tool, "get_system_prompt", return_value="System prompt"):
+            with patch.object(self.tool, "handle_prompt_file_with_fallback", return_value="Test prompt"):
+                with patch.object(self.tool, "_prepare_file_content_for_prompt", return_value=("", [])):
+                    with patch.object(self.tool, "_validate_token_limit"):
+                        with patch.object(self.tool, "get_websearch_instruction", return_value="Search guidance") as mock_websearch:
+                            prompt = await self.tool.prepare_prompt(request_regular)
+
+                            # Verify get_websearch_instruction was called with native_websearch=False
+                            mock_websearch.assert_called_once()
+                            args = mock_websearch.call_args[0]
+                            kwargs = mock_websearch.call_args[1] if mock_websearch.call_args[1] else {}
+                            
+                            # Should be called with native_websearch=False
+                            if len(args) >= 3:
+                                assert args[2] is False  # Third argument is native_websearch
+                            elif 'native_websearch' in kwargs:
+                                assert kwargs['native_websearch'] is False
+
+                            assert "Test prompt" in prompt
+                            assert "System prompt" in prompt
+
+    def test_native_websearch_default_values(self):
+        """Test that native websearch has correct default values."""
+        # Default ChatRequest should have native_websearch=False, use_websearch=True  
+        request = ChatRequest(prompt="Test")
+        assert request.native_websearch is False
+        assert request.use_websearch is True  # Default from base model
+        
+        # This should be a valid combination
+        assert self.tool.get_request_native_websearch(request) is False
+        assert self.tool.get_request_use_websearch(request) is True
+
+    def test_native_websearch_with_model_selection(self):
+        """Test native websearch with different model selections."""
+        # Test with OpenAI model (should support native websearch)
+        request_openai = ChatRequest(
+            prompt="Test prompt",
+            model="o3",
+            native_websearch=True,
+            use_websearch=False
+        )
+        assert request_openai.native_websearch is True
+        assert request_openai.model == "o3"
+        
+        # Test with Gemini model (should support native websearch)
+        request_gemini = ChatRequest(
+            prompt="Test prompt", 
+            model="gemini-2.5-flash",
+            native_websearch=True,
+            use_websearch=False
+        )
+        assert request_gemini.native_websearch is True
+        assert request_gemini.model == "gemini-2.5-flash"
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

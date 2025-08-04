@@ -1034,9 +1034,21 @@ class BaseTool(ABC):
         )
         return result, actually_processed_files
 
+    def get_request_use_websearch(self, request) -> bool:
+        """
+        Get the use_websearch parameter from request, with fallback handling.
+
+        Args:
+            request: The validated request object
+
+        Returns:
+            bool: Whether traditional websearch is enabled
+        """
+        return getattr(request, "use_websearch", True)
+
     def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
         """
-        Generate standardized web search instruction based on the use_websearch parameter.
+        Generate standardized web search instruction based on websearch parameters.
 
         Args:
             use_websearch: Whether web search is enabled

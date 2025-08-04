@@ -154,6 +154,9 @@ class ModelCapabilities:
     # Custom model flag (for models that only work with custom endpoints)
     is_custom: bool = False  # Whether this model requires custom API endpoints
 
+    # Native websearch capability (for models that support built-in web search)
+    supports_native_websearch: bool = False  # Whether model supports native web search through provider APIs
+
     # Temperature constraint object - preferred way to define temperature limits
     temperature_constraint: TemperatureConstraint = field(
         default_factory=lambda: RangeTemperatureConstraint(0.0, 2.0, 0.7)

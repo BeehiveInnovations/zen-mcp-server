@@ -272,7 +272,7 @@ class OpenAICompatibleProvider(ModelProvider):
         max_output_tokens: Optional[int] = None,
         **kwargs,
     ) -> ModelResponse:
-        """Generate content using the /v1/responses endpoint for o3-pro via OpenAI library."""
+        """Generate content using the /v1/responses endpoint via OpenAI library."""
         # Convert messages to the correct format for responses endpoint
         input_messages = []
 
@@ -281,8 +281,6 @@ class OpenAICompatibleProvider(ModelProvider):
             content = message.get("content", "")
 
             if role == "system":
-                # For o3-pro, system messages should be handled carefully to avoid policy violations
-                # Instead of prefixing with "System:", we'll include the system content naturally
                 input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
             elif role == "user":
                 input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
@@ -294,13 +292,19 @@ class OpenAICompatibleProvider(ModelProvider):
         completion_params = {
             "model": model_name,
             "input": input_messages,
-            "reasoning": {"effort": "medium"},  # Use nested object for responses endpoint
             "store": True,
         }
+        
+        # Add reasoning effort only for O3/O4 models that support it
+        if any(pattern in model_name for pattern in ["o3", "o4"]):
+            completion_params["reasoning"] = {"effort": "medium"}
 
         # Add max tokens if specified (using max_completion_tokens for responses endpoint)
         if max_output_tokens:
             completion_params["max_completion_tokens"] = max_output_tokens
+
+        # Always add web search tool since this endpoint is only called when websearch is needed
+        completion_params["tools"] = [{"type": "web_search_preview"}]
 
         # For responses endpoint, we only add parameters that are explicitly supported
         # Remove unsupported chat completion parameters that may cause API errors
@@ -315,24 +319,28 @@ class OpenAICompatibleProvider(ModelProvider):
                 import json
 
                 logging.info(
-                    f"o3-pro API request payload: {json.dumps(completion_params, indent=2, ensure_ascii=False)}"
+                    f"Responses endpoint API request payload: {json.dumps(completion_params, indent=2, ensure_ascii=False)}"
                 )
 
                 # Use OpenAI client's responses endpoint
                 response = self.client.responses.create(**completion_params)
 
                 # Extract content and usage from responses endpoint format
-                # The response format is different for responses endpoint
+                # The response format has output as a list of objects with different types
                 content = ""
                 if hasattr(response, "output") and response.output:
-                    if hasattr(response.output, "content") and response.output.content:
-                        # Look for output_text in content
-                        for content_item in response.output.content:
-                            if hasattr(content_item, "type") and content_item.type == "output_text":
-                                content = content_item.text
-                                break
-                    elif hasattr(response.output, "text"):
-                        content = response.output.text
+                    # response.output is a list containing objects like:
+                    # [{"type": "web_search_call", ...}, {"type": "message", "content": [...]}]
+                    for output_item in response.output:
+                        if hasattr(output_item, "type") and output_item.type == "message":
+                            # Found message object, extract content from it
+                            if hasattr(output_item, "content") and output_item.content:
+                                # content is an array containing objects like {"type": "output_text", "text": "..."}
+                                for content_item in output_item.content:
+                                    if hasattr(content_item, "type") and content_item.type == "output_text":
+                                        content = content_item.text
+                                        break
+                                break  # Found the message, no need to continue
 
                 # Try to extract usage information
                 usage = None
@@ -371,7 +379,7 @@ class OpenAICompatibleProvider(ModelProvider):
                 if is_retryable and attempt < max_retries - 1:
                     delay = retry_delays[attempt]
                     logging.warning(
-                        f"Retryable error for o3-pro responses endpoint, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
+                        f"Retryable error for responses endpoint, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
                     )
                     time.sleep(delay)
                 else:
@@ -379,7 +387,7 @@ class OpenAICompatibleProvider(ModelProvider):
 
         # If we get here, all retries failed
         actual_attempts = attempt + 1  # Convert from 0-based index to human-readable count
-        error_msg = f"o3-pro responses endpoint error after {actual_attempts} attempt{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
+        error_msg = f"responses endpoint error after {actual_attempts} attempt{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
         logging.error(error_msg)
         raise RuntimeError(error_msg) from last_exception
 
@@ -480,17 +488,23 @@ class OpenAICompatibleProvider(ModelProvider):
                     continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
 
-        # Check if this is o3-pro and needs the responses endpoint
-        if resolved_model == "o3-pro-2025-06-10":
-            # This model requires the /v1/responses endpoint
-            # If it fails, we should not fall back to chat/completions
-            return self._generate_with_responses_endpoint(
-                model_name=resolved_model,
-                messages=messages,
-                temperature=temperature,
-                max_output_tokens=max_output_tokens,
-                **kwargs,
-            )
+        # For OpenAI models, check if the model supports native websearch
+        # If it does, automatically use native websearch when use_websearch is True
+        try:
+            capabilities = self.get_capabilities(resolved_model)
+            if capabilities.supports_native_websearch and kwargs.get("use_websearch", True):
+                # Model supports native websearch and use_websearch is True
+                # Route to responses endpoint
+                return self._generate_with_responses_endpoint(
+                    model_name=resolved_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_output_tokens=max_output_tokens,
+                    **kwargs,
+                )
+        except Exception:
+            # If we can't get capabilities, fall back to traditional chat completion
+            pass
 
         # Retry logic with progressive delays
         max_retries = 4  # Total of 4 attempts

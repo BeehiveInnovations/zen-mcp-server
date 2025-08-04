@@ -33,6 +33,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_images=True,  # O3 models support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=False,  # O3 models don't accept temperature parameter
+            supports_native_websearch=True,  # O3 supports responses endpoint with web_search_preview
             temperature_constraint=create_temperature_constraint("fixed"),
             description="Strong reasoning (200K context) - Logical problems, code generation, systematic analysis",
             aliases=[],
@@ -51,6 +52,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_images=True,  # O3 models support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=False,  # O3 models don't accept temperature parameter
+            supports_native_websearch=True,  # O3 supports responses endpoint with web_search_preview
             temperature_constraint=create_temperature_constraint("fixed"),
             description="Fast O3 variant (200K context) - Balanced performance/speed, moderate complexity",
             aliases=["o3mini", "o3-mini"],
@@ -69,6 +71,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_images=True,  # O3 models support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=False,  # O3 models don't accept temperature parameter
+            supports_native_websearch=True,  # O3 supports responses endpoint with web_search_preview
             temperature_constraint=create_temperature_constraint("fixed"),
             description="Professional-grade reasoning (200K context) - EXTREMELY EXPENSIVE: Only for the most complex problems requiring universe-scale complexity analysis OR when the user explicitly asks for this model. Use sparingly for critical architectural decisions or exceptionally complex debugging that other models cannot handle.",
             aliases=["o3-pro"],
@@ -87,6 +90,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_images=True,  # O4 models support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=False,  # O4 models don't accept temperature parameter
+            supports_native_websearch=True,  # O4 supports responses endpoint with web_search_preview
             temperature_constraint=create_temperature_constraint("fixed"),
             description="Latest reasoning model (200K context) - Optimized for shorter contexts, rapid reasoning",
             aliases=["mini", "o4mini", "o4-mini"],
@@ -105,6 +109,7 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
             supports_images=True,  # GPT-4.1 supports vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=True,  # Regular models accept temperature parameter
+            supports_native_websearch=True,  # GPT-4.1 supports responses endpoint with web_search_preview
             temperature_constraint=create_temperature_constraint("range"),
             description="GPT-4.1 (1M context) - Advanced reasoning model with large context window",
             aliases=["gpt4.1"],

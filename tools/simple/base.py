@@ -241,6 +241,7 @@ class SimpleTool(BaseTool):
         except AttributeError:
             return True
 
+
     def get_request_as_dict(self, request) -> dict:
         """Convert request to dictionary. Override for custom serialization."""
         try:
@@ -435,6 +436,7 @@ class SimpleTool(BaseTool):
                 system_prompt=system_prompt,
                 temperature=temperature,
                 thinking_mode=thinking_mode if provider.supports_thinking_mode(self._current_model_name) else None,
+                use_websearch=self.get_request_use_websearch(request),
                 images=images if images else None,
             )
 
@@ -698,11 +700,22 @@ class SimpleTool(BaseTool):
         # Check token limits
         self._validate_token_limit(user_content, "Content")
 
-        # Add web search instruction if enabled
+        # Add web search instruction if enabled and model doesn't support native websearch
         websearch_instruction = ""
         use_websearch = self.get_request_use_websearch(request)
         if use_websearch:
-            websearch_instruction = self.get_websearch_instruction(use_websearch, self.get_websearch_guidance())
+            # Check if model supports native websearch - if so, don't add Claude-style instructions
+            from providers.registry import ModelProviderRegistry
+            try:
+                provider = ModelProviderRegistry.get_provider_for_model(self.model_name)
+                capabilities = provider.get_capabilities(self.model_name)
+                model_supports_native = capabilities.supports_native_websearch
+            except:
+                model_supports_native = False
+                
+            # Only add Claude-style instructions if model doesn't support native websearch
+            if not model_supports_native:
+                websearch_instruction = self.get_websearch_instruction(use_websearch, self.get_websearch_guidance())
 
         # Combine system prompt with user content
         full_prompt = f"""{system_prompt}{websearch_instruction}

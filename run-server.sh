@@ -872,7 +872,7 @@ install_dependencies() {
     fi
     
     # Check required packages
-    local packages=("mcp" "google.generativeai" "openai" "pydantic" "dotenv")
+    local packages=("mcp" "google" "openai" "pydantic" "dotenv")
     for package in "${packages[@]}"; do
         local import_name=${package%%.*}  # Get first part before dot
         if ! check_package "$python_cmd" "$import_name"; then
