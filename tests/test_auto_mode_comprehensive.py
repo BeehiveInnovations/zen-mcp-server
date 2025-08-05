@@ -328,6 +328,8 @@ class TestAutoModeComprehensive:
                         "flashlite",
                         "flash-lite",
                         "flash2.5",
+                        "flash-lite2.5",
+                        "flashlite2.5",
                         "gemini pro",
                         "gemini-pro",
                     ]

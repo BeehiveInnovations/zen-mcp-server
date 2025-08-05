@@ -328,8 +328,19 @@ class ModelProviderRegistry:
                 # Find the flash model (handles full names)
                 # Prefer 2.5 over 2.0 for backward compatibility
                 flash_models = [m for m in gemini_models if "flash" in m]
-                # Sort to ensure 2.5 comes before 2.0
-                flash_models_sorted = sorted(flash_models, reverse=True)
+
+                # Sort with preference: standard flash over lite, 2.5 over 2.0
+                def flash_model_priority(model):
+                    # Higher priority (lower number) for standard flash
+                    priority = 0 if "lite" not in model else 1
+                    # Within same type, prefer 2.5 over 2.0
+                    if "2.5" in model:
+                        priority += 0
+                    elif "2.0" in model:
+                        priority += 2
+                    return priority
+
+                flash_models_sorted = sorted(flash_models, key=flash_model_priority)
                 return flash_models_sorted[0]
             elif gemini_available and gemini_models:
                 # Fall back to any available Gemini model
@@ -358,7 +369,19 @@ class ModelProviderRegistry:
         elif gemini_available and any("flash" in m for m in gemini_models):
             # Prefer 2.5 over 2.0 for backward compatibility
             flash_models = [m for m in gemini_models if "flash" in m]
-            flash_models_sorted = sorted(flash_models, reverse=True)
+
+            # Sort with preference: standard flash over lite, 2.5 over 2.0
+            def flash_model_priority(model):
+                # Higher priority (lower number) for standard flash
+                priority = 0 if "lite" not in model else 1
+                # Within same type, prefer 2.5 over 2.0
+                if "2.5" in model:
+                    priority += 0
+                elif "2.0" in model:
+                    priority += 2
+                return priority
+
+            flash_models_sorted = sorted(flash_models, key=flash_model_priority)
             return flash_models_sorted[0]
         elif gemini_available and gemini_models:
             return gemini_models[0]

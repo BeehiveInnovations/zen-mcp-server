@@ -29,10 +29,10 @@ echo ""
 echo "🔍 Checking development dependencies..."
 DEV_DEPS_NEEDED=false
 
-# Check each dev dependency
+# Check each dev dependency using the determined Python command
 for tool in ruff black isort pytest; do
-    # Check if tool exists in venv or in PATH
-    if [[ -f ".zen_venv/bin/$tool" ]] || command -v $tool &> /dev/null; then
+    # Check if tool exists in venv or can be imported as module
+    if [[ -f ".zen_venv/bin/$tool" ]] || $PYTHON_CMD -c "import $tool" &> /dev/null; then
         continue
     else
         DEV_DEPS_NEEDED=true

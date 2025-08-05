@@ -58,6 +58,26 @@ class GeminiModelProvider(ModelProvider):
             description="Gemini 2.0 Flash Lite (1M context) - Lightweight fast model, text-only",
             aliases=["flashlite", "flash-lite"],
         ),
+        "gemini-2.5-flash-lite": ModelCapabilities(
+            provider=ProviderType.GOOGLE,
+            model_name="gemini-2.5-flash-lite",
+            friendly_name="Gemin (Flash Lite 2.5)",
+            context_window=1_048_576,  # 1M tokens
+            max_output_tokens=65_536,
+            supports_extended_thinking=True,
+            supports_system_prompts=True,
+            supports_streaming=True,
+            supports_function_calling=True,
+            supports_json_mode=True,
+            supports_images=True,  # Vision capability
+            max_image_size_mb=20.0,  # Conservative 20MB limit for reliability
+            supports_temperature=True,
+            supports_native_websearch=True,  # Gemini 2.5 Flash supports grounding
+            temperature_constraint=create_temperature_constraint("range"),
+            max_thinking_tokens=24576,  # Flash 2.5 thinking budget limit
+            description="Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
+            aliases=["flashlite2.5", "flash-lite2.5"],
+        ),
         "gemini-2.5-flash": ModelCapabilities(
             provider=ProviderType.GOOGLE,
             model_name="gemini-2.5-flash",
