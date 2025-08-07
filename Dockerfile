@@ -1,5 +1,5 @@
 # ===========================================
-# STAGE 1: Build dependencies
+# STAGE 1: Build dependencies with UV
 # ===========================================
 FROM python:3.11-slim AS builder
 
@@ -15,13 +15,18 @@ WORKDIR /app
 # Copy requirements files
 COPY requirements.txt ./
 
-# Create virtual environment and install dependencies
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Install UV (Ultra Fast Python Package Installer)
+RUN curl -sSf https://astral.sh/uv/install.sh | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+# Create virtual environment and install dependencies using UV
+RUN python -m venv /opt/venv
+ENV VIRTUAL_ENV="/opt/venv"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install Python dependencies with UV (faster than pip)
+RUN uv pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    uv pip install --no-cache-dir -r requirements.txt
 
 # ===========================================
 # STAGE 2: Runtime image

@@ -1,0 +1,5 @@
+server:
+  address: ":8080"
+  read_timeout: 10
+  write_timeout: 30
+  idle_timeout: 120

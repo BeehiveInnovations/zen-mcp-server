@@ -48,6 +48,7 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
 
 ## Quick Navigation
 
+- [Development Guide](docs/development.md) - Setting up the development environment
 - **Getting Started**
   - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes
   - [Available Tools](#available-tools) - Overview of all tools

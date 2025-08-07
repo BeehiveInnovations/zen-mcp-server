@@ -1,4 +1,7 @@
+version: '3.8'
+
 services:
+  # Production service (default)
   zen-mcp:
     build:
       context: .
@@ -6,6 +9,7 @@ services:
       target: runtime
     image: zen-mcp-server:latest
     container_name: zen-mcp-server
+    restart: unless-stopped
     
     # Container labels for traceability
     labels:
@@ -48,25 +52,92 @@ services:
       - PYTHONPATH=/app
       - TZ=${TZ:-UTC}
     
-    # Volumes for persistent data
-    volumes:
-      - ./logs:/app/logs
-      - zen-mcp-config:/app/conf
-      - /etc/localtime:/etc/localtime:ro
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
     
-    # Network configuration
-    networks:
-      - zen-network
+    # Ports
+    ports:
+      - "8000:8000"
     
     # Resource limits
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '0.5'
+          cpus: '2'
+          memory: 2G
         reservations:
-          memory: 256M
-          cpus: '0.25'
+          cpus: '0.5'
+          memory: 1G
+
+  # Development service (with volume mounts and development tools)
+  zen-mcp-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime  # Will be updated to 'dev' once we add it to Dockerfile
+    container_name: zen-mcp-dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - LOG_LEVEL=DEBUG
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONFAULTHANDLER=1
+      
+      # Pass through all the same environment variables as production
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-auto}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      - DIAL_API_KEY=${DIAL_API_KEY}
+      - DIAL_API_HOST=${DIAL_API_HOST}
+      - DIAL_API_VERSION=${DIAL_API_VERSION}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - CUSTOM_API_URL=${CUSTOM_API_URL}
+      - CUSTOM_API_KEY=${CUSTOM_API_KEY}
+      - CUSTOM_MODEL_NAME=${CUSTOM_MODEL_NAME}
+    
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
+      - ./logs:/app/logs
+      - ./data:/app/data
+    
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Debug port
+    
+    command: >
+      sh -c "uv pip install --upgrade pip && 
+             uv pip install -r requirements-dev.txt && 
+             python -m debugpy --listen 0.0.0.0:5678 -m uvicorn server:app --reload --host 0.0.0.0 --port 8000"
+    
+    # Development-specific settings
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    
+    # Lower resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Network configuration
+    networks:
+      - zen-network
     
     # Health check
     healthcheck:

@@ -1,0 +1,117 @@
+---
+title: "Error Handling"
+description: "Comprehensive guide to error handling in Zen MCP Go backend"
+---
+
+import { Callout } from 'nextra/components';
+
+# Error Handling System
+
+<Callout type="info" emoji="ℹ️">
+  The error handling system provides a consistent way to handle and report errors across the application.
+</Callout>
+
+## Overview
+
+The error handling system is built around several key components:
+
+1. **Custom Error Types**: Structured error types for different error scenarios
+2. **Middleware**: Centralized error handling and recovery
+3. **HTTP Responses**: Consistent error response format
+
+## Error Types
+
+### AppError
+
+The primary error type used throughout the application:
+
+```go
+type AppError struct {
+    Code     ErrorCode   `json:"code"`
+    Message  string      `json:"message"`
+    Details  interface{} `json:"details,omitempty"`
+    Internal error       `json:"-"`
+}
+```
+
+### Standard Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `invalid_input` | 400 | Request validation failed |
+| `unauthorized` | 401 | Authentication required |
+| `forbidden` | 403 | Insufficient permissions |
+| `not_found` | 404 | Resource not found |
+| `internal_error` | 500 | Server error |
+| `service_unavailable` | 503 | Service temporarily unavailable |
+
+## Middleware
+
+### Error Recovery
+
+Handles panics and converts them to 500 errors:
+
+```go
+func Recovery(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        defer func() {
+            if r := recover(); r != nil {
+                // Convert panic to error response
+                err := errors.FromPanic(r)
+                errors.WriteErrorResponse(w, errors.ErrInternal)
+            }
+        }()
+        next.ServeHTTP(w, r)
+    })
+}
+```
+
+## Best Practices
+
+### Creating Errors
+
+```go
+// Simple error
+err := errors.NewError(errors.ErrInvalidInput, "Invalid user input")
+
+// Error with details
+err := errors.ErrorWithDetails(
+    errors.ErrValidationFailed,
+    "Validation failed",
+    map[string]string{"email": "must be valid"},
+)
+```
+
+### Error Responses
+
+Example error response:
+
+```json
+{
+  "error": {
+    "code": "invalid_input",
+    "message": "Validation failed",
+    "details": {
+      "email": "must be a valid email address"
+    }
+  }
+}
+```
+
+## Testing
+
+When testing error cases:
+
+```go
+func TestErrorHandling(t *testing.T) {
+    t.Run("returns 400 for validation errors", func(t *testing.T) {
+        req := httptest.NewRequest("POST", "/api/users", nil)
+        rr := httptest.NewRecorder()
+        
+        handler := ErrorHandler(createUserHandler)
+        handler.ServeHTTP(rr, req)
+        
+        assert.Equal(t, http.StatusBadRequest, rr.Code)
+    })
+}
+```

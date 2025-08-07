@@ -1,0 +1,63 @@
+---
+title: "Zen MCP Go Backend"
+description: "Documentation for the Zen MCP Go backend implementation"
+---
+
+import { Callout } from 'nextra/components';
+import { Cards, Card } from 'nextra-theme-docs';
+
+# Zen MCP Go Backend
+
+<Callout type="info" emoji="ℹ️">
+  This is the documentation for the Go implementation of the Zen Model Context Protocol (MCP) server.
+</Callout>
+
+## Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/WesHacixo/zen-mcp-server.git
+cd zen-mcp-go
+
+# Build and run
+go build -o bin/server ./cmd/server
+./bin/server
+```
+
+## Documentation Sections
+
+<Cards>
+  <Card
+    title="Architecture"
+    href="/architecture/overview"
+    children="Learn about the system architecture and design decisions"
+  />
+  <Card
+    title="API Reference"
+    href="/api/endpoints"
+    children="Comprehensive API documentation"
+  />
+  <Card
+    title="Guides"
+    href="/guides/getting-started"
+    children="Step-by-step guides for common tasks"
+  />
+  <Card
+    title="Error Handling"
+    href="/architecture/error-handling"
+    children="Understanding the error handling system"
+  />
+</Cards>
+
+## Features
+
+- **Robust Error Handling**: Comprehensive error types and middleware
+- **High Performance**: Optimized for low-latency operations
+- **Observability**: Built-in metrics and tracing
+- **Security**: Secure by default with validation and sanitization
+
+## Quick Links
+
+- [GitHub Repository](https://github.com/WesHacixo/zen-mcp-server)
+- [API Documentation](/api/endpoints)
+- [Contribution Guidelines](https://github.com/WesHacixo/zen-mcp-server/CONTRIBUTING.md)

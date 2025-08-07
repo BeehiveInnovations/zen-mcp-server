@@ -21,13 +21,17 @@ if [[ ! -f .env ]]; then
     fi
 fi
 
+# Install UV if not already installed
+echo -e "${GREEN}Ensuring UV is installed...${NC}"
+pip install uv
+
 # Build the Docker image
-echo -e "${GREEN}Building Docker image...${NC}"
+echo -e "${GREEN}Building Docker image with UV...${NC}"
 docker-compose build --no-cache
 
 # Verify the build
 if docker images | grep -q "zen-mcp-server"; then
-    echo -e "${GREEN}✓ Docker image built successfully${NC}"
+    echo -e "${GREEN}✓ Docker image built successfully with UV${NC}"
     echo -e "${GREEN}Image details:${NC}"
     docker images | grep zen-mcp-server
 else

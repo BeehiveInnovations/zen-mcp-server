@@ -35,8 +35,20 @@ if (!(Test-Path ".env")) {
     }
 }
 
+# Install UV if not already installed
+Write-ColorText "Ensuring UV is installed..." -Color Green
+try {
+    pip install uv
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install UV"
+    }
+} catch {
+    Write-ColorText "Error: Failed to install UV" -Color Red
+    exit 1
+}
+
 # Build the Docker image
-Write-ColorText "Building Docker image..." -Color Green
+Write-ColorText "Building Docker image with UV..." -Color Green
 try {
     docker-compose build --no-cache
     if ($LASTEXITCODE -ne 0) {
