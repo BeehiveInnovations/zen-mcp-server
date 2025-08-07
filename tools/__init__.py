@@ -10,6 +10,7 @@ from .consensus import ConsensusTool
 from .debug import DebugIssueTool
 from .listmodels import ListModelsTool
 from .planner import PlannerTool
+from .testguard import RequirementsTool
 from .secaudit import SecauditTool
 from .thinkdeep import ThinkDeepTool
 from .tracer import TracerTool
@@ -31,6 +32,7 @@ __all__ = [
     "ListModelsTool",
     "PlannerTool",
     "ChallengeTool",
+    "RequirementsTool",
     "SecauditTool",
     "TracerTool",
     "VersionTool",

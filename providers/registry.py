@@ -280,7 +280,12 @@ class ModelProviderRegistry:
 
         if tool_category == ToolModelCategory.EXTENDED_REASONING:
             # Prefer thinking-capable models for deep reasoning tools
-            if openai_available and "o3" in openai_models:
+            # Priority: gemini-2.5-pro > o3 > other models
+            if gemini_available and any("2.5-pro" in m for m in gemini_models):
+                return next(m for m in gemini_models if "2.5-pro" in m)
+            elif openrouter_available and any("gemini-2.5-pro" in m for m in openrouter_models):
+                return next(m for m in openrouter_models if "gemini-2.5-pro" in m)
+            elif openai_available and "o3" in openai_models:
                 return "o3"  # O3 for deep reasoning
             elif openai_available and openai_models:
                 # Fall back to any available OpenAI model
@@ -344,19 +349,41 @@ class ModelProviderRegistry:
                 # Default to flash
                 return "gemini-2.5-flash"
 
-        # BALANCED or no category specified - use existing balanced logic
-        if openai_available and "o4-mini" in openai_models:
-            return "o4-mini"  # Latest balanced performance/cost
+        # BALANCED or no category specified - prioritize high-quality models
+        # Priority order: gemini-2.5-pro > o3 > gpt-4.1 > other high-end models
+        
+        # First choice: Gemini 2.5 Pro (native or via OpenRouter)
+        if gemini_available and any("2.5-pro" in m for m in gemini_models):
+            return next(m for m in gemini_models if "2.5-pro" in m)
+        elif openrouter_available and any("gemini-2.5-pro" in m for m in openrouter_models):
+            return next(m for m in openrouter_models if "gemini-2.5-pro" in m)
+        
+        # Second choice: OpenAI o3 (full reasoning model)
+        elif openai_available and "o3" in openai_models:
+            return "o3"
+            
+        # Third choice: GPT-4.1 (via OpenAI or OpenRouter)
+        elif openai_available and any("gpt-4.1" in m or "4.1" in m for m in openai_models):
+            return next(m for m in openai_models if "gpt-4.1" in m or "4.1" in m)
+        elif openrouter_available and any("gpt-4.1" in m for m in openrouter_models):
+            return next(m for m in openrouter_models if "gpt-4.1" in m)
+            
+        # Fallback to other high-quality models
+        elif gemini_available and any("pro" in m for m in gemini_models):
+            # Any other pro model (like 1.5-pro)
+            return next(m for m in gemini_models if "pro" in m)
+        elif openai_available and "o4-mini" in openai_models:
+            return "o4-mini"  # Efficient but capable
         elif openai_available and "o3-mini" in openai_models:
-            return "o3-mini"  # Second choice
+            return "o3-mini"  # Good reasoning capabilities
         elif openai_available and openai_models:
             return openai_models[0]
         elif xai_available and "grok-3" in xai_models:
-            return "grok-3"  # GROK-3 as balanced choice
+            return "grok-3"  # High-quality alternative
         elif xai_available and xai_models:
             return xai_models[0]
         elif gemini_available and any("flash" in m for m in gemini_models):
-            # Prefer 2.5 over 2.0 for backward compatibility
+            # Gemini flash as reasonable fallback
             flash_models = [m for m in gemini_models if "flash" in m]
             flash_models_sorted = sorted(flash_models, reverse=True)
             return flash_models_sorted[0]
@@ -365,15 +392,13 @@ class ModelProviderRegistry:
         elif openrouter_available:
             return openrouter_models[0]
         elif custom_available:
-            # Fallback to custom models when available
             return custom_models[0]
         else:
             # No models available due to restrictions - check if any providers exist
             if not available_models:
-                # This might happen if all models are restricted
                 logging.warning("No models available due to restrictions")
             # Return a reasonable default for backward compatibility
-            return "gemini-2.5-flash"
+            return "gemini-2.5-pro"  # Default to pro instead of flash
 
     @classmethod
     def _find_extended_thinking_model(cls) -> Optional[str]:

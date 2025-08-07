@@ -70,6 +70,7 @@ from tools import (  # noqa: E402
     DebugIssueTool,
     ListModelsTool,
     PlannerTool,
+    RequirementsTool,
     SecauditTool,
     ThinkDeepTool,
     TracerTool,
@@ -267,6 +268,7 @@ TOOLS = {
     "analyze": AnalyzeTool(),  # General-purpose file and code analysis
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
     "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
+    "testguard": RequirementsTool(),  # Test methodology guardian to prevent test manipulation
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "version": VersionTool(),  # Display server version and system information
     # Archived tools (handled by Claude subagents):
@@ -733,6 +735,16 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
             model_name = resolved_model
             # Update arguments with resolved model
             arguments["model"] = model_name
+
+        # Special case: testguard tool only allows high-quality models
+        if name == "testguard":
+            allowed_models = ["google/gemini-2.5-pro", "gpt-4.1-2025-04-14"]
+            if model_name not in allowed_models:
+                # Default to gemini-2.5-pro if an unsupported model is specified
+                forced_model = "google/gemini-2.5-pro"
+                logger.info(f"Overriding model for testguard: {model_name} → {forced_model} (only high-quality models allowed)")
+                model_name = forced_model
+                arguments["model"] = model_name
 
         # Validate model availability at MCP boundary
         provider = ModelProviderRegistry.get_provider_for_model(model_name)
