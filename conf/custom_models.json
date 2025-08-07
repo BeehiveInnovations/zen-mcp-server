@@ -242,6 +242,56 @@
       "description": "GPT-4.1 (1M context) - Advanced reasoning model with large context window"
     },
     {
+      "model_name": "openai/gpt-4.1",
+      "aliases": ["gpt-4.1-openrouter", "openrouter-gpt41"],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "supports_temperature": true,
+      "description": "OpenAI GPT-4.1 via OpenRouter - Advanced reasoning model with large context window"
+    },
+    {
+      "model_name": "openai/gpt-4.1-mini",
+      "aliases": ["gpt-4.1-mini", "gpt41-mini", "openrouter-gpt41-mini"],
+      "context_window": 200000,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "supports_temperature": true,
+      "description": "OpenAI GPT-4.1-mini via OpenRouter - Efficient variant of GPT-4.1"
+    },
+    {
+      "model_name": "google/gemini-2.5-flash-lite-preview-06-17",
+      "aliases": ["flash-lite", "gemini-flash-lite", "flash-lite-preview"],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": true,
+      "max_image_size_mb": 10.0,
+      "description": "Google Gemini 2.5 Flash Lite Preview via OpenRouter - Lightweight variant"
+    },
+    {
+      "model_name": "deepseek/deepseek-chat-v3-0324:free",
+      "aliases": ["deepseek-v3", "deepseek-free", "deepseek-chat-v3"],
+      "context_window": 128000,
+      "max_output_tokens": 32768,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "max_image_size_mb": 0.0,
+      "description": "DeepSeek-V3 via OpenRouter - Free tier with 128K context (text-only)"
+    },
+    {
       "model_name": "llama3.2",
       "aliases": ["local-llama", "local", "llama3.2", "ollama-llama"],
       "context_window": 128000,
