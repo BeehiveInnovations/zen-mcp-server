@@ -18,8 +18,10 @@ type Config struct {
 // LoadConfig loads the configuration from a file
 func LoadConfig() (*Config, error) {
 	viper.SetConfigName("config")
-	viper.AddConfigPath("./config")
+	// Add search paths for running from root and from cmd/server (for tests)
+	viper.AddConfigPath("config")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("../../config")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 

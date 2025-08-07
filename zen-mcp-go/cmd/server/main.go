@@ -2,23 +2,27 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"zen-mcp-go/internal/api"
 	"zen-mcp-go/internal/config"
 	"zen-mcp-go/internal/middleware"
 )
 
 func main() {
+    // Setup structured logging
+    log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatal().Err(err).Msg("Failed to load configuration")
 	}
 
 	// Create a new router with middleware
@@ -45,7 +49,7 @@ func main() {
 
 	// Start the server in a goroutine
 	go func() {
-		log.Printf("Starting Zen MCP Go server on %s...", cfg.Server.Address)
+		log.Info().Msgf("Starting Zen MCP Go server on %s...", cfg.Server.Address)
 		serverErrors <- srv.ListenAndServe()
 	}()
 
@@ -56,10 +60,12 @@ func main() {
 	// Block until we receive a signal or an error from the server
 	select {
 	case err := <-serverErrors:
-		log.Printf("Server error: %v\n", err)
+        if err != http.ErrServerClosed {
+		    log.Error().Err(err).Msg("Server error")
+        }
 
 	case sig := <-osSignals:
-		log.Printf("Received %v signal. Shutting down...\n", sig)
+		log.Info().Msgf("Received %v signal. Shutting down...", sig)
 
 		// Create a context with a timeout for graceful shutdown
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -67,13 +73,13 @@ func main() {
 
 		// Attempt graceful shutdown
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("Graceful shutdown failed: %v\n", err)
+			log.Error().Err(err).Msg("Graceful shutdown failed")
 			err = srv.Close() // Force close if graceful shutdown fails
 			if err != nil {
-				log.Fatalf("Could not stop server: %v\n", err)
+				log.Fatal().Err(err).Msg("Could not stop server")
 			}
 		}
 
-		log.Println("Server stopped gracefully")
+		log.Info().Msg("Server stopped gracefully")
 	}
 }
