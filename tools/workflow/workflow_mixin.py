@@ -818,8 +818,9 @@ class BaseWorkflowMixin(ABC):
         Default implementation provides generic response.
         """
         work_summary = self.prepare_work_summary()
+        continuation_id = self.get_request_continuation_id(request)
 
-        return {
+        response_data = {
             "status": self.get_completion_status(),
             f"complete_{self.get_name()}": {
                 "initial_request": self.get_initial_request(request.step),
@@ -838,6 +839,11 @@ class BaseWorkflowMixin(ABC):
                 "reason": self.get_skip_reason(),
             },
         }
+
+        if continuation_id:
+            response_data["continuation_id"] = continuation_id
+
+        return response_data
 
     # ================================================================================
     # Inheritance Hook Methods - Replace hasattr/getattr Anti-patterns
