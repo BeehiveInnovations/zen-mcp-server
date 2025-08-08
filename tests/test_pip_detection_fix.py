@@ -7,7 +7,6 @@ and don't break existing functionality.
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -78,60 +77,27 @@ class TestPipDetectionFix:
             assert python_exe.is_file(), "Python should be a file"
             assert pip_exe.is_file(), "Pip should be a file"
 
-    @patch("subprocess.run")
-    def test_improved_pip_detection_logic(self, mock_run):
-        """Test the improved pip detection logic we plan to implement.
+    def test_enhanced_diagnostic_messages_included(self):
+        """Test that our enhanced diagnostic messages are included in the script.
 
-        Our fix should:
-        1. Use consistent Python executable paths
-        2. Try multiple detection methods
-        3. Provide better error diagnostics
+        Verify that the script contains the enhanced error diagnostics we added.
         """
-        # Mock successful pip detection
-        mock_run.return_value = MagicMock()
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "pip 23.0.1"
+        content = Path("./run-server.sh").read_text()
 
-        # Test that improved detection works with various scenarios
-        test_cases = [
-            # (python_path, expected_success, description)
-            (".zen_venv/bin/python", True, "Relative path should work"),
-            ("/full/path/.zen_venv/bin/python", True, "Absolute path should work"),
-            ("/usr/bin/python3", True, "System python should work if pip available"),
-        ]
-
-        for python_path, expected_success, _description in test_cases:
-            # This test defines what our fix should achieve
-            # The actual implementation will make these pass
-            subprocess.run([python_path, "-m", "pip", "--version"], capture_output=True)
-
-            if expected_success:
-                # After our fix, all these should succeed
-                pass  # Will be uncommented after fix implementation
-                # assert result.returncode == 0, f"Failed: {description}"
-
-    def test_pip_detection_error_diagnostics(self):
-        """Test that our fix provides better error diagnostics.
-
-        When pip detection fails, users should get helpful information
-        to debug the issue instead of generic error messages.
-        """
-        # This test defines what improved error messages should look like
-        expected_diagnostic_info = [
+        # Check that enhanced diagnostic information is present in the script
+        expected_diagnostic_patterns = [
+            "Enhanced diagnostic information for debugging",
+            "Diagnostic information:",
             "Python executable:",
             "Python executable exists:",
             "Python executable permissions:",
             "Virtual environment path:",
             "Virtual environment exists:",
-            "pip module:",
+            "Final diagnostic information:",
         ]
 
-        # After our fix, error messages should include these diagnostic details
-        # This helps users understand what went wrong
-        for _info in expected_diagnostic_info:
-            # Test will verify our improved error handling includes this info
-            assert True  # Placeholder for actual diagnostic testing
-
+        for pattern in expected_diagnostic_patterns:
+            assert pattern in content, f"Enhanced diagnostic pattern '{pattern}' should be in script"
 
 
 if __name__ == "__main__":
