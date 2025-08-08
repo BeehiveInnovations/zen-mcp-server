@@ -165,7 +165,7 @@ class DebugIssueTool(WorkflowTool):
 
     def get_description(self) -> str:
         return (
-            "DEBUG & ROOT CAUSE ANALYSIS - Systematic self-investigation followed by expert analysis. "
+            "DEBUG & ROOT CAUSE ANALYSIS - Use this tool to perform any kind of debugging, bug hunting, or issue tracking. "
             "This tool guides you through a step-by-step investigation process where you:\n\n"
             "1. Start with step 1: describe the issue to investigate\n"
             "2. STOP and investigate using appropriate tools\n"
