@@ -663,12 +663,12 @@ class BaseWorkflowMixin(ABC):
                 self._current_model_name = None
                 self._model_context = None
 
+            # Handle continuation
+            continuation_id = request.continuation_id
+
             # Adjust total steps if needed
             if request.step_number > request.total_steps:
                 request.total_steps = request.step_number
-
-            # Handle continuation
-            continuation_id = request.continuation_id
 
             # Create thread for first step
             if not continuation_id and request.step_number == 1:
@@ -818,8 +818,9 @@ class BaseWorkflowMixin(ABC):
         Default implementation provides generic response.
         """
         work_summary = self.prepare_work_summary()
+        continuation_id = self.get_request_continuation_id(request)
 
-        return {
+        response_data = {
             "status": self.get_completion_status(),
             f"complete_{self.get_name()}": {
                 "initial_request": self.get_initial_request(request.step),
@@ -838,6 +839,11 @@ class BaseWorkflowMixin(ABC):
                 "reason": self.get_skip_reason(),
             },
         }
+
+        if continuation_id:
+            response_data["continuation_id"] = continuation_id
+
+        return response_data
 
     # ================================================================================
     # Inheritance Hook Methods - Replace hasattr/getattr Anti-patterns
