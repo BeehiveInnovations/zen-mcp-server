@@ -496,8 +496,8 @@ class PlannerTool(WorkflowTool):
         tool_name = self.get_name()
         status_mapping = {
             f"{tool_name}_in_progress": "planning_in_progress",
-            f"pause_for_{tool_name}": f"pause_for_planning",
-            f"{tool_name}_required": f"planning_required",
+            f"pause_for_{tool_name}": "pause_for_planning",
+            f"{tool_name}_required": "planning_required",
             f"{tool_name}_complete": "planning_complete",
         }
 
