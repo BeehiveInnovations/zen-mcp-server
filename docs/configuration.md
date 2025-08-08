@@ -18,7 +18,6 @@ OPENAI_API_KEY=your-openai-key
 ### Required Configuration
 
 **Workspace Root:**
-```env
 
 ### API Keys (At least one required)
 
@@ -68,14 +67,14 @@ DEFAULT_MODEL=auto  # Claude picks best model for each task (recommended)
 ```
 
 **Available Models:**
-- **`auto`**: Claude automatically selects the optimal model
-- **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
-- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses  
-- **`o3`**: Strong logical reasoning (200K context)
-- **`o3-mini`**: Balanced speed/quality (200K context)
-- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
-- **`grok`**: GROK-3 advanced reasoning (131K context)
-- **Custom models**: via OpenRouter or local APIs
+- `auto`: Claude automatically selects the optimal model
+- `pro` (Gemini 2.5 Pro): Extended thinking, deep analysis
+- `flash` (Gemini 2.0 Flash): Ultra-fast responses  
+- `o3`: Strong logical reasoning (200K context)
+- `o3-mini`: Balanced speed/quality (200K context)
+- `o4-mini`: Latest reasoning model, optimized for shorter contexts
+- `grok`: GROK-3 advanced reasoning (131K context)
+- Custom models: via OpenRouter or local APIs
 
 ### Thinking Mode Configuration
 
@@ -115,63 +114,55 @@ OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 
 **Supported Model Names:**
 
-**OpenAI Models:**
-- `o3` (200K context, high reasoning)
-- `o3-mini` (200K context, balanced)
-- `o4-mini` (200K context, latest balanced)
-- `mini` (shorthand for o4-mini)
+- OpenAI Models: `o3`, `o3-mini`, `o4-mini`, `mini`
+- Gemini Models: `gemini-2.5-flash`, `gemini-2.5-pro`, `flash`, `pro`
+- X.AI GROK Models: `grok-3`, `grok-3-fast`, `grok`, `grok3`, `grokfast`
 
-**Gemini Models:**
-- `gemini-2.5-flash` (1M context, fast)
-- `gemini-2.5-pro` (1M context, powerful)
-- `flash` (shorthand for Flash model)
-- `pro` (shorthand for Pro model)
+### Provider Priority
 
-**X.AI GROK Models:**
-- `grok-3` (131K context, advanced reasoning)
-- `grok-3-fast` (131K context, higher performance)
-- `grok` (shorthand for grok-3)
-- `grok3` (shorthand for grok-3)
-- `grokfast` (shorthand for grok-3-fast)
+When multiple providers are configured, the server chooses providers in this priority order:
+1. Native APIs (Google/Gemini, OpenAI, X.AI, DIAL)
+2. Custom endpoints (local/self-hosted) via `CUSTOM_API_URL`
+3. OpenRouter (catch-all unified API)
 
-**Example Configurations:**
+This mirrors the runtime logic in `providers/registry.py#get_provider_for_model()` and `server.configure_providers()`. Prefer native APIs for direct access; use custom for local models; rely on OpenRouter as the general fallback.
+
+### General Settings
+
+**DISABLED_TOOLS**
+- Comma-separated list of tool names to disable at startup. Essential tools (`version`, `listmodels`) cannot be disabled.
 ```env
-# Cost control - only cheap models
-OPENAI_ALLOWED_MODELS=o4-mini
-GOOGLE_ALLOWED_MODELS=flash
-
-# Single model standardization
-OPENAI_ALLOWED_MODELS=o4-mini
-GOOGLE_ALLOWED_MODELS=pro
-
-# Balanced selection
-GOOGLE_ALLOWED_MODELS=flash,pro
-XAI_ALLOWED_MODELS=grok,grok-3-fast
+# Examples
+DISABLED_TOOLS=                 # All tools enabled (default)
+DISABLED_TOOLS=debug,tracer    # Disable specific tools
+DISABLED_TOOLS=planner,consensus
 ```
 
-### Advanced Configuration
-
-**Custom Model Configuration:**
+**LOCALE**
+- When set, tools will respond in the specified language while maintaining analysis quality. Use IETF tags.
 ```env
-# Override default location of custom_models.json
-CUSTOM_MODELS_CONFIG_PATH=/path/to/your/custom_models.json
+# Examples
+LOCALE=fr-FR
+LOCALE=ja-JP
+LOCALE=
 ```
 
-**Conversation Settings:**
-```env
-# How long AI-to-AI conversation threads persist in memory (hours)
-# Conversations are auto-purged when claude closes its MCP connection or 
-# when a session is quit / re-launched 
-CONVERSATION_TIMEOUT_HOURS=5
+### MCP Transport and Large Prompts
 
-# Maximum conversation turns (each exchange = 2 turns)
-MAX_CONVERSATION_TURNS=20
+The MCP protocol has a combined request+response token limit configured via Claude’s `MAX_MCP_OUTPUT_TOKENS`. The server computes a character-based input limit `MCP_PROMPT_SIZE_LIMIT` (≈ 60% of total tokens × ~4 chars/token) for user input crossing the MCP boundary.
+
+- What is limited: user input text (e.g., request.prompt, prompt.txt), not internal system prompts or file embeddings.
+- If user input exceeds `MCP_PROMPT_SIZE_LIMIT`, the server instructs you to save it as `prompt.txt` and resend it as a file. Internally, tools can still send very large contexts to external models (e.g., 1M tokens for Gemini).
+
+```env
+# Optional override: if Claude exposes a different limit
+MAX_MCP_OUTPUT_TOKENS=25000
 ```
 
-**Logging Configuration:**
+### Logging Configuration
 ```env
 # Logging level: DEBUG, INFO, WARNING, ERROR
-LOG_LEVEL=DEBUG  # Default: shows detailed operational messages
+LOG_LEVEL=DEBUG  # Default: detailed operational messages
 ```
 
 ## Configuration Examples
@@ -218,27 +209,8 @@ OPENROUTER_ALLOWED_MODELS=opus,sonnet,gpt-4
 LOG_LEVEL=INFO
 ```
 
-## Important Notes
-
-**Local Networking:**
-- Use standard localhost URLs for local models
-- The server runs as a native Python process
-
-**API Key Priority:**
-- Native APIs take priority over OpenRouter when both are configured
-- Avoid configuring both native and OpenRouter for the same models
-
-**Model Restrictions:**
-- Apply to all usage including auto mode
-- Empty/unset = all models allowed
-- Invalid model names are warned about at startup
-
-**Configuration Changes:**
-- Restart the server with `./run-server.sh` after changing `.env`
-- Configuration is loaded once at startup
-
 ## Related Documentation
 
-- **[Advanced Usage Guide](advanced-usage.md)** - Advanced model usage patterns, thinking modes, and power user workflows
-- **[Context Revival Guide](context-revival.md)** - Conversation persistence and context revival across sessions
-- **[AI-to-AI Collaboration Guide](ai-collaboration.md)** - Multi-model coordination and conversation threading
+- **Advanced Usage Guide** - Advanced model usage patterns, thinking modes, and power user workflows
+- **Context Revival Guide** - Conversation persistence and context revival across sessions
+- **AI-to-AI Collaboration Guide** - Multi-model coordination and conversation threading
