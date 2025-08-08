@@ -39,6 +39,7 @@ extend-exclude = '''
   | \.mypy_cache
   | \.tox
   | \.venv
+  | \.zen_venv
   | venv
   | _build
   | buck-out
