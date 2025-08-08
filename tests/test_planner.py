@@ -226,7 +226,7 @@ class TestPlannerTool:
         parsed_response = json.loads(response_text)
 
         # Check final step structure
-        assert parsed_response["status"] == "planner_complete"
+        assert parsed_response["status"] == "planning_complete"
         assert parsed_response["step_number"] == 10
         assert parsed_response["planning_complete"] is True
         assert "plan_summary" in parsed_response
@@ -329,7 +329,7 @@ class TestPlannerTool:
         # Total steps should be adjusted to match current step
         assert parsed_response["total_steps"] == 8
         assert parsed_response["step_number"] == 8
-        assert parsed_response["status"] == "pause_for_planner"
+        assert parsed_response["status"] == "pause_for_planning"
 
     @pytest.mark.asyncio
     async def test_execute_error_handling(self):
@@ -457,6 +457,6 @@ class TestPlannerToolIntegration:
         assert parsed_response["total_steps"] == 3
         assert parsed_response["continuation_id"] == "test-simple-uuid"
         # For simple plans (< 5 steps), expect normal flow without deep thinking pause
-        assert parsed_response["status"] == "pause_for_planner"
+        assert parsed_response["status"] == "pause_for_planning"
         assert "thinking_required" not in parsed_response
         assert "Continue with step 2" in parsed_response["next_steps"]

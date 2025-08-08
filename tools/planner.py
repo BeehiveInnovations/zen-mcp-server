@@ -495,10 +495,10 @@ class PlannerTool(WorkflowTool):
         # Convert generic status names to planner-specific ones
         tool_name = self.get_name()
         status_mapping = {
-            f"{tool_name}_in_progress": "planning_success",
-            f"pause_for_{tool_name}": f"pause_for_{tool_name}",  # Keep the full tool name for workflow consistency
-            f"{tool_name}_required": f"{tool_name}_required",  # Keep the full tool name for workflow consistency
-            f"{tool_name}_complete": f"{tool_name}_complete",  # Keep the full tool name for workflow consistency
+            f"{tool_name}_in_progress": "planning_in_progress",
+            f"pause_for_{tool_name}": "pause_for_planning",
+            f"{tool_name}_required": "planning_required",
+            f"{tool_name}_complete": "planning_complete",
         }
 
         if response_data["status"] in status_mapping:

@@ -2,9 +2,11 @@
 
 import base64
 import logging
-import os
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
 
 from google import genai
 from google.genai import types
@@ -19,6 +21,25 @@ class GeminiModelProvider(ModelProvider):
 
     # Model configurations using ModelCapabilities objects
     SUPPORTED_MODELS = {
+        "gemini-2.5-pro": ModelCapabilities(
+            provider=ProviderType.GOOGLE,
+            model_name="gemini-2.5-pro",
+            friendly_name="Gemini (Pro 2.5)",
+            context_window=1_048_576,  # 1M tokens
+            max_output_tokens=65_536,
+            supports_extended_thinking=True,
+            supports_system_prompts=True,
+            supports_streaming=True,
+            supports_function_calling=True,
+            supports_json_mode=True,
+            supports_images=True,  # Vision capability
+            max_image_size_mb=32.0,  # Higher limit for Pro model
+            supports_temperature=True,
+            temperature_constraint=create_temperature_constraint("range"),
+            max_thinking_tokens=32768,  # Max thinking tokens for Pro model
+            description="Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
+            aliases=["pro", "gemini pro", "gemini-pro"],
+        ),
         "gemini-2.0-flash": ModelCapabilities(
             provider=ProviderType.GOOGLE,
             model_name="gemini-2.0-flash",
@@ -74,25 +95,6 @@ class GeminiModelProvider(ModelProvider):
             max_thinking_tokens=24576,  # Flash 2.5 thinking budget limit
             description="Ultra-fast (1M context) - Quick analysis, simple queries, rapid iterations",
             aliases=["flash", "flash2.5"],
-        ),
-        "gemini-2.5-pro": ModelCapabilities(
-            provider=ProviderType.GOOGLE,
-            model_name="gemini-2.5-pro",
-            friendly_name="Gemini (Pro 2.5)",
-            context_window=1_048_576,  # 1M tokens
-            max_output_tokens=65_536,
-            supports_extended_thinking=True,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=True,
-            supports_json_mode=True,
-            supports_images=True,  # Vision capability
-            max_image_size_mb=32.0,  # Higher limit for Pro model
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            max_thinking_tokens=32768,  # Max thinking tokens for Pro model
-            description="Deep reasoning + thinking mode (1M context) - Complex problems, architecture, deep analysis",
-            aliases=["pro", "gemini pro", "gemini-pro"],
         ),
     }
 
@@ -152,7 +154,7 @@ class GeminiModelProvider(ModelProvider):
         prompt: str,
         model_name: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_output_tokens: Optional[int] = None,
         thinking_mode: str = "medium",
         images: Optional[list[str]] = None,
@@ -440,28 +442,86 @@ class GeminiModelProvider(ModelProvider):
     def _process_image(self, image_path: str) -> Optional[dict]:
         """Process an image for Gemini API."""
         try:
-            if image_path.startswith("data:image/"):
-                # Handle data URL: data:image/png;base64,iVBORw0...
-                header, data = image_path.split(",", 1)
-                mime_type = header.split(";")[0].split(":")[1]
+            # Use base class validation
+            image_bytes, mime_type = self.validate_image(image_path)
+
+            # For data URLs, extract the base64 data directly
+            if image_path.startswith("data:"):
+                # Extract base64 data from data URL
+                _, data = image_path.split(",", 1)
                 return {"inline_data": {"mime_type": mime_type, "data": data}}
             else:
-                # Handle file path
-                from utils.file_types import get_image_mime_type
-
-                if not os.path.exists(image_path):
-                    logger.warning(f"Image file not found: {image_path}")
-                    return None
-
-                # Detect MIME type from file extension using centralized mappings
-                ext = os.path.splitext(image_path)[1].lower()
-                mime_type = get_image_mime_type(ext)
-
-                # Read and encode the image
-                with open(image_path, "rb") as f:
-                    image_data = base64.b64encode(f.read()).decode()
-
+                # For file paths, encode the bytes
+                image_data = base64.b64encode(image_bytes).decode()
                 return {"inline_data": {"mime_type": mime_type, "data": image_data}}
+
+        except ValueError as e:
+            logger.warning(str(e))
+            return None
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return None
+
+    def get_preferred_model(self, category: "ToolModelCategory", allowed_models: list[str]) -> Optional[str]:
+        """Get Gemini's preferred model for a given category from allowed models.
+
+        Args:
+            category: The tool category requiring a model
+            allowed_models: Pre-filtered list of models allowed by restrictions
+
+        Returns:
+            Preferred model name or None
+        """
+        from tools.models import ToolModelCategory
+
+        if not allowed_models:
+            return None
+
+        # Helper to find best model from candidates
+        def find_best(candidates: list[str]) -> Optional[str]:
+            """Return best model from candidates (sorted for consistency)."""
+            return sorted(candidates, reverse=True)[0] if candidates else None
+
+        if category == ToolModelCategory.EXTENDED_REASONING:
+            # For extended reasoning, prefer models with thinking support
+            # First try Pro models that support thinking
+            pro_thinking = [
+                m
+                for m in allowed_models
+                if "pro" in m and m in self.SUPPORTED_MODELS and self.SUPPORTED_MODELS[m].supports_extended_thinking
+            ]
+            if pro_thinking:
+                return find_best(pro_thinking)
+
+            # Then any model that supports thinking
+            any_thinking = [
+                m
+                for m in allowed_models
+                if m in self.SUPPORTED_MODELS and self.SUPPORTED_MODELS[m].supports_extended_thinking
+            ]
+            if any_thinking:
+                return find_best(any_thinking)
+
+            # Finally, just prefer Pro models even without thinking
+            pro_models = [m for m in allowed_models if "pro" in m]
+            if pro_models:
+                return find_best(pro_models)
+
+        elif category == ToolModelCategory.FAST_RESPONSE:
+            # Prefer Flash models for speed
+            flash_models = [m for m in allowed_models if "flash" in m]
+            if flash_models:
+                return find_best(flash_models)
+
+        # Default for BALANCED or as fallback
+        # Prefer Flash for balanced use, then Pro, then anything
+        flash_models = [m for m in allowed_models if "flash" in m]
+        if flash_models:
+            return find_best(flash_models)
+
+        pro_models = [m for m in allowed_models if "pro" in m]
+        if pro_models:
+            return find_best(pro_models)
+
+        # Ultimate fallback to best available model
+        return find_best(allowed_models)
