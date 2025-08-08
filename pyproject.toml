@@ -2,7 +2,7 @@
 name = "zen-mcp-server"
 version = "0.1.0"
 description = "AI-powered MCP server with multiple model providers"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
     "google-genai>=1.19.0",
@@ -84,5 +84,5 @@ ignore = [
 "tests/conftest.py" = ["E402"]  # Module level imports not at top of file - needed for test setup
 
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=80", "wheel", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"

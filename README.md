@@ -245,7 +245,89 @@ Edit `~/.gemini/settings.json` and add:
 - **Instant availability** - Ready to use immediately
 
 
-**Option B: Traditional Clone and Set Up**
+**Option B: Install as nix flake**
+
+**Prerequisites**: Install Nix with [Determinate Systems installer](https://github.com/DeterminateSystems/nix-installer) (enables flakes automatically)
+
+```bash
+nix profile install github:BeehiveInnovations/zen-mcp-server
+
+# To update later:
+nix profile upgrade '.*zen-mcp-server.*'
+```
+
+<details>
+<summary>Claude Desktop Configuration</summary>
+
+Add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "zen": {
+      "command": "zen-mcp-server",
+      "env": {
+        "PATH": "/home/yourusername/.nix-profile/bin",  # Linux: /home/yourusername, macOS: /Users/yourusername
+        "OPENAI_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Claude Code CLI Configuration</summary>
+
+Create a `.mcp.json` file in your project root for [project-scoped configuration](https://docs.anthropic.com/en/docs/claude-code/mcp#project-scope):
+
+```json
+{
+  "mcpServers": {
+    "zen": {
+      "command": "zen-mcp-server",
+      "env": {
+        "PATH": "/home/yourusername/.nix-profile/bin",  # Linux: /home/yourusername, macOS: /Users/yourusername
+        "OPENAI_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Gemini CLI Configuration</summary>
+
+Edit `~/.gemini/settings.json` and add:
+
+```json
+{
+  "mcpServers": {
+    "zen": {
+      "command": "zen-mcp-server",
+      "env": {
+        "PATH": "/home/yourusername/.nix-profile/bin",  # Linux: /home/yourusername, macOS: /Users/yourusername
+        "OPENAI_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+**Note**: While Zen MCP Server connects successfully to Gemini CLI, tool invocation is not working correctly yet. See [Gemini CLI Setup](docs/gemini-setup.md) for updates.
+
+</details>
+
+**What this does:**
+- **Reproducible builds** - Same environment every time
+- **Isolated dependencies** - No conflicts with system packages
+- **Zero Python setup** - Nix handles everything
+- **Instant availability** - Ready to use immediately
+
+**Option C: Traditional Clone and Set Up**
 
 ```bash
 # Clone to your preferred location
