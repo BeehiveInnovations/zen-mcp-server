@@ -37,11 +37,12 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for consensus workflow
 CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS = {
     "step": (
-        "Describe your current consensus analysis step. In step 1, provide your own neutral, balanced analysis "
-        "of the proposal/idea/plan after thinking carefully about all aspects. Consider technical feasibility, "
-        "user value, implementation complexity, and alternatives. In subsequent steps (2+), you will receive "
-        "individual model responses to synthesize. CRITICAL: Be thorough and balanced in your initial assessment, "
-        "considering both benefits and risks, opportunities and challenges."
+        "In step 1: Provide the EXACT question or proposal that ALL models will evaluate. This should be phrased as a clear "
+        "question or problem statement, NOT as 'I will analyze...' or 'Let me examine...'. For example: 'Should we build a "
+        "search component in SwiftUI for use in an AppKit app?' or 'Evaluate the proposal to migrate our database from MySQL "
+        "to PostgreSQL'. This exact text will be sent to all models for their independent evaluation. "
+        "In subsequent steps (2+): This field is for internal tracking only - you can provide notes about the model response "
+        "you just received. This will NOT be sent to other models (they all receive the original proposal from step 1)."
     ),
     "step_number": (
         "The index of the current step in the consensus workflow, beginning at 1. Step 1 is your analysis, "
@@ -54,8 +55,11 @@ CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS = {
     ),
     "next_step_required": ("Set to true if more models need to be consulted. False when ready for final synthesis."),
     "findings": (
-        "In step 1, provide your comprehensive analysis of the proposal. In steps 2+, summarize the key points "
-        "from the model response received, noting agreements and disagreements with previous analyses."
+        "In step 1: Provide YOUR OWN comprehensive analysis of the proposal/question. This is where you share your "
+        "independent evaluation, considering technical feasibility, risks, benefits, and alternatives. This analysis "
+        "is NOT sent to other models - it's recorded for the final synthesis. "
+        "In steps 2+: Summarize the key points from the model response received, noting agreements and disagreements "
+        "with previous analyses."
     ),
     "relevant_files": (
         "Files that are relevant to the consensus analysis. Include files that help understand the proposal, "
@@ -161,6 +165,7 @@ class ConsensusTool(WorkflowTool):
     def __init__(self):
         super().__init__()
         self.initial_prompt: str | None = None
+        self.original_proposal: str | None = None  # Store the original proposal separately
         self.models_to_consult: list[dict] = []
         self.accumulated_responses: list[dict] = []
         self._current_arguments: dict[str, Any] = {}
@@ -394,7 +399,7 @@ of the evidence, even when it strongly points in one direction.""",
 
         # Prepare final synthesis data
         response_data["complete_consensus"] = {
-            "initial_prompt": self.initial_prompt,
+            "initial_prompt": self.original_proposal if self.original_proposal else self.initial_prompt,
             "models_consulted": [m["model"] + ":" + m.get("stance", "neutral") for m in self.accumulated_responses],
             "total_responses": len(self.accumulated_responses),
             "consensus_confidence": "high",  # Consensus complete
@@ -445,7 +450,9 @@ of the evidence, even when it strongly points in one direction.""",
 
         # On first step, store the models to consult
         if request.step_number == 1:
-            self.initial_prompt = request.step
+            # Store the original proposal from step 1 - this is what all models should see
+            self.original_proposal = request.step
+            self.initial_prompt = request.step  # Keep for backward compatibility
             self.models_to_consult = request.models or []
             self.accumulated_responses = []
             # Set total steps: len(models) (each step includes consultation + response)
@@ -488,7 +495,7 @@ of the evidence, even when it strongly points in one direction.""",
                     response_data["status"] = "consensus_workflow_complete"
                     response_data["consensus_complete"] = True
                     response_data["complete_consensus"] = {
-                        "initial_prompt": self.initial_prompt,
+                        "initial_prompt": self.original_proposal if self.original_proposal else self.initial_prompt,
                         "models_consulted": [
                             f"{m['model']}:{m.get('stance', 'neutral')}" for m in self.accumulated_responses
                         ],
@@ -539,7 +546,9 @@ of the evidence, even when it strongly points in one direction.""",
             # Prepare the prompt with any relevant files
             # Use continuation_id=None for blinded consensus - each model should only see
             # original prompt + files, not conversation history or other model responses
-            prompt = self.initial_prompt
+            # CRITICAL: Use the original proposal from step 1, NOT what's in request.step for steps 2+!
+            # Steps 2+ contain summaries/notes that must NEVER be sent to other models
+            prompt = self.original_proposal if self.original_proposal else self.initial_prompt
             if request.relevant_files:
                 file_content, _ = self._prepare_file_content_for_prompt(
                     request.relevant_files,
@@ -761,7 +770,8 @@ of the evidence, even when it strongly points in one direction.""",
 
     def store_initial_issue(self, step_description: str):
         """Store initial prompt for model consultations."""
-        self.initial_prompt = step_description
+        self.original_proposal = step_description
+        self.initial_prompt = step_description  # Keep for backward compatibility
 
     # Required abstract methods from BaseTool
     def get_request_model(self):

@@ -100,7 +100,7 @@ class TestAutoModelPlannerFix:
         import json
 
         response_data = json.loads(result[0].text)
-        assert response_data["status"] == "planner_complete"
+        assert response_data["status"] == "planning_complete"
         assert response_data["step_number"] == 1
 
     @patch("config.DEFAULT_MODEL", "auto")
@@ -172,7 +172,7 @@ class TestAutoModelPlannerFix:
         import json
 
         response1 = json.loads(result1[0].text)
-        assert response1["status"] == "pause_for_planner"
+        assert response1["status"] == "pause_for_planning"
         assert response1["next_step_required"] is True
         assert "continuation_id" in response1
 
@@ -190,7 +190,7 @@ class TestAutoModelPlannerFix:
         assert len(result2) > 0
 
         response2 = json.loads(result2[0].text)
-        assert response2["status"] == "pause_for_planner"
+        assert response2["status"] == "pause_for_planning"
         assert response2["step_number"] == 2
 
     def test_other_tools_still_require_models(self):

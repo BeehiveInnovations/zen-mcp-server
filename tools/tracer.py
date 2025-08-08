@@ -535,9 +535,9 @@ class TracerTool(WorkflowTool):
         tool_name = self.get_name()
         status_mapping = {
             f"{tool_name}_in_progress": "tracing_in_progress",
-            f"pause_for_{tool_name}": f"pause_for_tracing",
-            f"{tool_name}_required": f"tracing_required",
-            f"{tool_name}_complete": f"tracing_complete",
+            f"pause_for_{tool_name}": "pause_for_tracing",
+            f"{tool_name}_required": "tracing_required",
+            f"{tool_name}_complete": "tracing_complete",
         }
 
         if response_data["status"] in status_mapping:
