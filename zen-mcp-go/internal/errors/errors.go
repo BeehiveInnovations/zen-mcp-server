@@ -17,8 +17,8 @@ const (
 	ErrRequestTimeout ErrorCode = "request_timeout"
 
 	// Server errors (5xx)
-	ErrInternal      ErrorCode = "internal_error"
-	ErrNotImplemented ErrorCode = "not_implemented"
+	ErrInternal           ErrorCode = "internal_error"
+	ErrNotImplemented     ErrorCode = "not_implemented"
 	ErrServiceUnavailable ErrorCode = "service_unavailable"
 )
 
@@ -114,7 +114,7 @@ func WriteErrorResponse(w http.ResponseWriter, err error) {
 		},
 	}
 
-	json.NewEncoder(w).Encode(errResponse)
+	_ = json.NewEncoder(w).Encode(errResponse)
 }
 
 // Helper to check if error is of specific type
