@@ -46,7 +46,6 @@ class TestXAIProvider:
 
         # Test valid models
         assert provider.validate_model_name("grok-4") is True
-        assert provider.validate_model_name("grok-4-latest") is True
         assert provider.validate_model_name("grok4") is True
         assert provider.validate_model_name("grok-3") is True
         assert provider.validate_model_name("grok-3-fast") is True
@@ -114,7 +113,7 @@ class TestXAIProvider:
         # Test temperature range
         assert capabilities.temperature_constraint.min_temp == 0.0
         assert capabilities.temperature_constraint.max_temp == 2.0
-        assert capabilities.temperature_constraint.default_temp == 0.7
+        assert capabilities.temperature_constraint.default_temp == 0.3
 
     def test_get_capabilities_grok3_fast(self):
         """Test getting model capabilities for GROK-3 Fast."""
@@ -279,7 +278,6 @@ class TestXAIProvider:
         # Check aliases are correctly structured
         assert "grok" in grok4_config.aliases
         assert "grok-4" in grok4_config.aliases
-        assert "grok-4-latest" in grok4_config.aliases
         assert "grok4" in grok4_config.aliases
 
         grok3_config = provider.SUPPORTED_MODELS["grok-3"]
