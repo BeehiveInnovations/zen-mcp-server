@@ -40,11 +40,11 @@ class TestPipDetectionFix:
         """
         # Test that the get_venv_python_path function now returns absolute paths
         content = Path("./run-server.sh").read_text()
-        
+
         # Check that get_venv_python_path includes our absolute path conversion logic
         assert "abs_venv_path" in content, "get_venv_python_path should use absolute paths"
-        assert "cd \"$(dirname" in content, "Should convert to absolute path"
-        
+        assert 'cd "$(dirname' in content, "Should convert to absolute path"
+
         # Test successful completion - our fix should make the script more robust
         result = subprocess.run(["bash", "-n", "./run-server.sh"], capture_output=True, text=True)
         assert result.returncode == 0, "Script should have valid syntax after our fix"
