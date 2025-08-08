@@ -133,48 +133,6 @@ class TestPipDetectionFix:
             assert True  # Placeholder for actual diagnostic testing
 
 
-class TestPipDetectionPlatformCompatibility:
-    """Test pip detection works across different platforms."""
-
-    def test_linux_pip_detection(self):
-        """Test pip detection on Linux systems."""
-        # Test Linux-specific scenarios
-        pass
-
-    def test_windows_git_bash_pip_detection(self):
-        """Test pip detection on Windows with Git Bash."""
-        # Test Windows Git Bash scenarios mentioned in issue comments
-        pass
-
-    def test_wsl_pip_detection(self):
-        """Test pip detection on Windows Subsystem for Linux."""
-        # Test WSL scenarios
-        pass
-
-    def test_macos_pip_detection(self):
-        """Test pip detection on macOS."""
-        # Test macOS scenarios
-        pass
-
-
-class TestPipDetectionRegression:
-    """Test that our fix doesn't break existing functionality."""
-
-    def test_existing_working_setups_still_work(self):
-        """Test that environments that currently work continue to work."""
-        # Ensure our fix doesn't regress existing working configurations
-        pass
-
-    def test_uv_first_approach_unaffected(self):
-        """Test that uv-first approach continues to work correctly."""
-        # The script prefers uv over system Python - ensure this still works
-        pass
-
-    def test_python_version_detection_unaffected(self):
-        """Test that Python version detection logic isn't broken."""
-        # Ensure our pip fix doesn't interfere with Python detection
-        pass
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
