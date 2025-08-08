@@ -22,6 +22,7 @@
   - `docs/troubleshooting.md`
   - `docs/logging.md`
   - `docs/locale-configuration.md`
+  - `ROADMAP.md`
 - Providers & Models
   - `docs/adding_providers.md`
   - `docs/custom_models.md`
