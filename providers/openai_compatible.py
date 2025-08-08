@@ -1,6 +1,5 @@
 """Base class for OpenAI-compatible API providers."""
 
-import base64
 import copy
 import ipaddress
 import logging

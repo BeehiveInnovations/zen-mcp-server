@@ -1,5 +1,6 @@
 """Base model provider interface and data classes."""
 
+import base64
 import binascii
 import logging
 import os
