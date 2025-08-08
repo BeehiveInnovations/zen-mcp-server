@@ -90,6 +90,12 @@ rm -rf .zen_venv
 ./run-server.sh
 ```
 
+**No apt or limited system permissions (containers, CI, minimal distros)**
+- Avoid system-wide `pip install` (PEP 668 errors).
+- Prefer:
+  - `./run-server.sh` (uses uv if available; creates isolated venv automatically)
+  - Or Quickstart via `uvx` as shown in `README.md` (no global installs)
+
 **Permission Issues**
 ```bash
 # Ensure script is executable
