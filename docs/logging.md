@@ -67,3 +67,12 @@ Logs use a standardized format with timestamps:
 - Activity logs show only tool-related events for cleaner output
 - Main server logs include all operational details
 - Logs persist across server restarts
+
+- Main log: `logs/mcp_server.log`
+  - Rotation: 20MB per file, keeps 10 backups (≈200MB total)
+- Activity log: `logs/mcp_activity.log`
+  - Rotation: 20MB per file, keeps 5 backups (≈100MB total)
+
+Notes:
+- Logs are written to files because MCP stdio can interfere with stderr during tool execution.
+- Use `./run-server.sh -f` or `tail -f` to follow logs.

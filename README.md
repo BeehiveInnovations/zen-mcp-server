@@ -53,6 +53,9 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
   - [Quickstart](#quickstart-5-minutes) - Get running in 5 minutes
   - [Available Tools](#available-tools) - Overview of all tools
   - [AI-to-AI Conversations](#ai-to-ai-conversation-threading) - Multi-turn conversations
+- **Architecture**
+  - [Quick Reference](docs/README_ARCH.md)
+  - [Deep Dive](docs/architecture.md)
 
 - **Tools Reference**
   - [`chat`](#1-chat---general-development-chat--collaborative-thinking) - Collaborative thinking

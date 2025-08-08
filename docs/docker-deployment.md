@@ -1,3 +1,23 @@
+# Docker Deployment
+
+## Architecture Summary
+- Service: `zen-mcp` (see `docker-compose.yml`)
+- Image: built from multi-stage `Dockerfile` (builder → runtime), Python 3.11-slim base
+- Runtime user: non-root `zenuser`
+- Healthcheck: `python /usr/local/bin/healthcheck.py` with 30s interval (script under `docker/scripts/healthcheck.py`)
+- Volumes:
+  - `./logs:/app/logs` (host log persistence)
+  - `zen-mcp-config:/app/conf` (named volume for config)
+  - `/etc/localtime:/etc/localtime:ro` (time sync)
+- Network: `zen-network` (bridge, optional subnet)
+- Resource hints: limits/reservations for CPU/memory
+- Security: read-only rootfs, tmpfs mounts for `/tmp` and `/app/tmp`, `no-new-privileges`
+- Entrypoint: `CMD ["python", "server.py"]` (MCP over stdio; no inbound ports exposed)
+- Environment mapping: forwards provider keys, `DEFAULT_MODEL`, `LOG_LEVEL`, `DEFAULT_THINKING_MODE_THINKDEEP`, `DISABLED_TOOLS`, `MAX_MCP_OUTPUT_TOKENS`
+
+> Note: This container does not expose HTTP ports. It is intended to be launched and used via MCP by a client process (e.g., Claude) or as a managed background service.
+
+
 # Docker Deployment Guide
 
 This guide covers deploying Zen MCP Server using Docker and Docker Compose for production environments.

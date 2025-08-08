@@ -359,7 +359,7 @@ The Zen MCP server supports vision-capable models for analyzing images, diagrams
 
 ## Working with Large Prompts
 
-The MCP protocol has a combined request+response limit of approximately 25K tokens. This server intelligently works around this limitation by automatically handling large prompts as files:
+The MCP protocol has a combined request+response limit (configured by Claude via `MAX_MCP_OUTPUT_TOKENS`). The server derives `MCP_PROMPT_SIZE_LIMIT` (≈ 60% of total tokens × ~4 chars/token) to cap user input crossing the MCP boundary. It works around this limitation by automatically handling large prompts as files:
 
 **How it works:**
 1. When you send a prompt larger than the configured limit (default: 50K characters ~10-12K tokens), the server detects this
@@ -431,22 +431,15 @@ Web search is enabled by default, allowing models to request Claude perform sear
 
 ## System Prompts
 
-The server uses carefully crafted system prompts to give each tool specialized expertise:
+The server uses carefully crafted system prompts to give each tool specialized expertise.
 
 ### Prompt Architecture
-- **Centralized Prompts**: All system prompts are defined in `prompts/tool_prompts.py`
-- **Tool Integration**: Each tool inherits from `BaseTool` and implements `get_system_prompt()`
-- **Prompt Flow**: `User Request → Tool Selection → System Prompt + Context → Gemini Response`
-
-### Specialized Expertise
-Each tool has a unique system prompt that defines its role and approach:
-- **`thinkdeep`**: Acts as a senior development partner, challenging assumptions and finding edge cases
-- **`codereview`**: Expert code reviewer with security/performance focus, uses severity levels
-- **`debug`**: Systematic debugger providing root cause analysis and prevention strategies
-- **`analyze`**: Code analyst focusing on architecture, patterns, and actionable insights
+- Centralized prompts live in `systemprompts/` and are exported via `systemprompts/__init__.py`.
+- Tool integration: Each tool (in `tools/`) implements `get_system_prompt()` and returns the appropriate constant from `systemprompts`.
+- Prompt Flow: User Request → Tool Selection → System Prompt + Context → Model Response
 
 ### Customization
 To modify tool behavior, you can:
-1. Edit prompts in `prompts/tool_prompts.py` for global changes
+1. Edit prompts in `systemprompts/` for global changes
 2. Override `get_system_prompt()` in a tool class for tool-specific changes
 3. Use the `temperature` parameter to adjust response style (0.2 for focused, 0.7 for creative)
