@@ -1,0 +1,38 @@
+---
+default_stages: [pre-commit, pre-push]
+repos:
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.8
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+# Configuration for specific tools
+default_language_version:
+  python: python3
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    \.git/|
+    \.venv/|
+    venv/|
+    \.zen_venv/|
+    __pycache__/|
+    \.pytest_cache/|
+    logs/|
+    dist/|
+    build/|
+    test_simulation_files/
+  )
