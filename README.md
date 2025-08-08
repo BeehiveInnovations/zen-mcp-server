@@ -70,7 +70,7 @@ Because these AI models [clearly aren't when they get chatty →](docs/ai_banter
   - [`tracer`](#11-tracer---static-code-analysis-prompt-generator) - Call-flow mapping and dependency tracing
   - [`testgen`](#12-testgen---comprehensive-test-generation) - Test generation with edge cases
   - [`secaudit`](#13-secaudit---comprehensive-security-audit) - Security audit with OWASP analysis
-  - [`docgen`](#14/docgen---comprehensive-documentation-generation) - Documentation generation with complexity analysis
+  - [`docgen`](#14-docgen---comprehensive-documentation-generation) - Documentation generation with complexity analysis
 
 - **Advanced Usage**
   - [Advanced Features](#advanced-features) - AI-to-AI conversations, large prompts, web search
