@@ -12,7 +12,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from unittest.mock import Mock
 
 import pytest
@@ -217,27 +217,27 @@ def mock_provider_factory():
     """Factory fixture for creating mock providers with various configurations."""
     from providers.base import ModelProvider, ProviderType
     from tests.mock_helpers import MinimalTestProvider
-    
+
     created_providers = []
-    
+
     def _create_provider(
         provider_type: ProviderType = ProviderType.GOOGLE,
         api_key: str = "test-key",
-        models: Optional[List[str]] = None,
-        **kwargs
+        models: Optional[list[str]] = None,
+        **kwargs,
     ) -> ModelProvider:
         """Create a mock provider with specified configuration."""
         provider = MinimalTestProvider(api_key=api_key, **kwargs)
         provider._provider_type = provider_type
-        
+
         if models:
             provider._supported_models = models
-        
+
         created_providers.append(provider)
         return provider
-    
+
     yield _create_provider
-    
+
     # Cleanup if needed
     created_providers.clear()
 
@@ -246,13 +246,13 @@ def mock_provider_factory():
 def mock_response_factory():
     """Factory fixture for creating mock API responses."""
     from providers.base import ProviderType
-    
+
     def _create_response(
         content: str = "Mock response content",
-        usage: Optional[Dict[str, int]] = None,
+        usage: Optional[dict[str, int]] = None,
         model_name: str = "test-model",
         provider: ProviderType = ProviderType.GOOGLE,
-        **kwargs
+        **kwargs,
     ) -> Mock:
         """Create a mock API response with specified attributes."""
         response = Mock()
@@ -260,19 +260,19 @@ def mock_response_factory():
         response.usage = usage or {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150}
         response.model_name = model_name
         response.provider = provider
-        
+
         # Add any additional attributes
         for key, value in kwargs.items():
             setattr(response, key, value)
-        
+
         return response
-    
+
     return _create_response
 
 
 class MockHelpers:
     """Centralized mock helper utilities."""
-    
+
     @staticmethod
     def create_mock_model_capabilities(
         model_name: str = "test-model",
@@ -281,7 +281,7 @@ class MockHelpers:
         supports_images: bool = True,
         supports_tools: bool = True,
         max_output_tokens: int = 4000,
-        **kwargs
+        **kwargs,
     ) -> Mock:
         """Create mock model capabilities."""
         capabilities = Mock()
@@ -291,24 +291,24 @@ class MockHelpers:
         capabilities.supports_images = supports_images
         capabilities.supports_tools = supports_tools
         capabilities.max_output_tokens = max_output_tokens
-        
+
         for key, value in kwargs.items():
             setattr(capabilities, key, value)
-        
+
         return capabilities
-    
+
     @staticmethod
     def assert_model_response_format(response: Any) -> None:
         """Assert that a response has the expected model response format."""
-        assert hasattr(response, 'content')
-        assert hasattr(response, 'usage')
-        assert hasattr(response, 'model_name')
-        assert hasattr(response, 'provider')
-        
+        assert hasattr(response, "content")
+        assert hasattr(response, "usage")
+        assert hasattr(response, "model_name")
+        assert hasattr(response, "provider")
+
         # Check usage format
         usage = response.usage
         assert isinstance(usage, dict)
-        assert 'input_tokens' in usage or 'output_tokens' in usage
+        assert "input_tokens" in usage or "output_tokens" in usage
 
 
 @pytest.fixture
@@ -318,11 +318,11 @@ def mock_helpers():
 
 
 # Helper functions for common test patterns
-def parametrize_models(models: List[str]):
+def parametrize_models(models: list[str]):
     """Create parametrize decorator for testing multiple models."""
     return pytest.mark.parametrize("model_name", models)
 
 
-def parametrize_providers(providers: List[ProviderType]):
+def parametrize_providers(providers: list[ProviderType]):
     """Create parametrize decorator for testing multiple providers."""
     return pytest.mark.parametrize("provider_type", providers)

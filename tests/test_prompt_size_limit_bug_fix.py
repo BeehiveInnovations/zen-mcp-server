@@ -110,6 +110,9 @@ class TestPromptSizeLimitBugFix:
             def get_request_model(self, request) -> str:
                 return "flash"
 
+            def get_request_model_names(self) -> list[str]:
+                return []
+
             def get_system_prompt(self) -> str:
                 return "Test system prompt"
 

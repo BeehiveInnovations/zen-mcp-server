@@ -788,6 +788,7 @@ of the evidence, even when it strongly points in one direction.""",
         # Consensus doesn't use a single model field - it uses models array
         # Return a descriptive name for metadata purposes
         return "multi-model-consensus"
+
     # Required abstract methods from BaseTool
     def get_request_model(self):
         """Return the consensus workflow-specific request model."""

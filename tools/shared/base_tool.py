@@ -560,7 +560,7 @@ class BaseTool(ABC):
         models, it returns a descriptive placeholder name.
 
         Args:
-            request: The request object (not used in default implementation)
+            request: The request object (used to extract model for dynamic tools)
 
         Returns:
             str: Single model name or placeholder for multi-model tools
@@ -568,7 +568,14 @@ class BaseTool(ABC):
         names = self.get_request_model_names()
         if len(names) > 1:
             return f"multi-model-{self.get_name()}"
-        return names[0] if names else "unknown"
+        elif len(names) == 1:
+            return names[0]
+        else:
+            # For tools with no predefined models, try to get from request
+            try:
+                return request.model
+            except AttributeError:
+                return "unknown"
 
     def validate_file_paths(self, request) -> Optional[str]:
         """
