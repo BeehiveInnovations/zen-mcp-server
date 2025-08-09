@@ -172,13 +172,6 @@ class SimpleTool(BaseTool):
         # Return empty list to indicate dynamic model selection
         return []
 
-    def get_request_model_name(self, request) -> Optional[str]:
-        """Get model name from request. Override for custom model name handling."""
-        try:
-            return request.model
-        except AttributeError:
-            return None
-
     def get_request_images(self, request) -> list:
         """Get images from request. Override for custom image handling."""
         try:
@@ -312,12 +305,22 @@ class SimpleTool(BaseTool):
                 )
                 return [TextContent(type="text", text=error_output.model_dump_json())]
 
-            # Handle model resolution like old base.py
-            model_name = self.get_request_model_name(request)
-            if not model_name:
-                from config import DEFAULT_MODEL
+            # Handle model resolution - SimpleTool gets model from request
+            model_names = self.get_request_model_names()
+            if model_names:
+                # Use predefined model if available
+                model_name = model_names[0]
+            else:
+                # Dynamic model selection from request
+                try:
+                    model_name = request.model
+                except AttributeError:
+                    model_name = None
 
-                model_name = DEFAULT_MODEL
+                if not model_name:
+                    from config import DEFAULT_MODEL
+
+                    model_name = DEFAULT_MODEL
 
             # Store the current model name for later use
             self._current_model_name = model_name

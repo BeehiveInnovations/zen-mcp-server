@@ -551,32 +551,6 @@ class BaseTool(ABC):
         """
         pass
 
-    def get_request_model_name(self, request) -> str:
-        """
-        Legacy method - use get_request_model_names() instead.
-
-        This method is kept for backward compatibility but delegates to
-        the new get_request_model_names() method. For tools using multiple
-        models, it returns a descriptive placeholder name.
-
-        Args:
-            request: The request object (used to extract model for dynamic tools)
-
-        Returns:
-            str: Single model name or placeholder for multi-model tools
-        """
-        names = self.get_request_model_names()
-        if len(names) > 1:
-            return f"multi-model-{self.get_name()}"
-        elif len(names) == 1:
-            return names[0]
-        else:
-            # For tools with no predefined models, try to get from request
-            try:
-                return request.model
-            except AttributeError:
-                return "unknown"
-
     def validate_file_paths(self, request) -> Optional[str]:
         """
         Validate that all file paths in the request are absolute.

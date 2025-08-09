@@ -535,7 +535,16 @@ class BaseWorkflowMixin(ABC):
                     # Create fallback model context (preserves existing test behavior)
                     from utils.model_context import ModelContext
 
-                    model_name = self.get_request_model_name(request)
+                    model_names = self.get_request_model_names()
+                    if model_names:
+                        model_name = model_names[0]  # Use first predefined model
+                    else:
+                        # Dynamic model selection from request
+                        try:
+                            model_name = request.model
+                        except AttributeError:
+                            model_name = "unknown"
+
                     self._model_context = ModelContext(model_name)
                     self._current_model_name = model_name
 
@@ -1159,7 +1168,15 @@ class BaseWorkflowMixin(ABC):
             else:
                 # Fallback - try to get model info from request
                 request = self.get_workflow_request_model()(**arguments)
-                model_name = self.get_request_model_name(request)
+                model_names = self.get_request_model_names()
+                if model_names:
+                    model_name = model_names[0]  # Use first predefined model
+                else:
+                    # Dynamic model selection from request
+                    try:
+                        model_name = request.model
+                    except AttributeError:
+                        model_name = "unknown"
 
                 # Basic metadata without provider info
                 metadata = {
@@ -1440,7 +1457,16 @@ class BaseWorkflowMixin(ABC):
                 except Exception as e:
                     logger.error(f"Failed to resolve model context for expert analysis: {e}")
                     # Use request model as fallback (preserves existing test behavior)
-                    model_name = self.get_request_model_name(request)
+                    model_names = self.get_request_model_names()
+                    if model_names:
+                        model_name = model_names[0]  # Use first predefined model
+                    else:
+                        # Dynamic model selection from request
+                        try:
+                            model_name = request.model
+                        except AttributeError:
+                            model_name = "unknown"
+
                     from utils.model_context import ModelContext
 
                     model_context = ModelContext(model_name)

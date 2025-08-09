@@ -522,13 +522,12 @@ of the evidence, even when it strongly points in one direction.""",
                 response_data["accumulated_responses"] = self.accumulated_responses
 
                 # Add metadata (since we're bypassing the base class metadata addition)
-                model_name = self.get_request_model_name(request)
-                provider = self.get_model_provider(model_name)
+                model_names = self.get_request_model_names()
                 response_data["metadata"] = {
                     "tool_name": self.get_name(),
-                    "model_name": model_name,
-                    "model_used": model_name,
-                    "provider_used": provider.get_provider_type().value,
+                    "model_names": model_names,
+                    "model_used": f"consensus-{len(model_names)}-models",
+                    "provider_used": "consensus",
                 }
 
                 return [TextContent(type="text", text=json.dumps(response_data, indent=2, ensure_ascii=False))]
@@ -776,18 +775,6 @@ of the evidence, even when it strongly points in one direction.""",
     def get_request_model_names(self) -> list[str]:
         """Returns list of all models used for consensus."""
         return [model.name for model in self.models]
-
-    def get_request_model_name(self, request: Any) -> str:
-        """
-        Get model name from request.
-
-        For consensus tool, this returns a placeholder since consensus uses
-        multiple models via the 'models' field rather than a single 'model' field.
-        This is only used for metadata purposes, not for actual model consultation.
-        """
-        # Consensus doesn't use a single model field - it uses models array
-        # Return a descriptive name for metadata purposes
-        return "multi-model-consensus"
 
     # Required abstract methods from BaseTool
     def get_request_model(self):
