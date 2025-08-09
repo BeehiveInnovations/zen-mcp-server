@@ -21,7 +21,7 @@ class TestChatGPTAuth:
             account_id="account_456",
             refresh_token="refresh_789",
             id_token="id_abc",
-            last_refresh="2025-01-01T00:00:00Z"
+            last_refresh="2025-01-01T00:00:00Z",
         )
         assert auth.is_valid() is True
 
@@ -32,7 +32,7 @@ class TestChatGPTAuth:
             account_id="account_456",
             refresh_token="refresh_789",
             id_token="id_abc",
-            last_refresh="2025-01-01T00:00:00Z"
+            last_refresh="2025-01-01T00:00:00Z",
         )
         assert auth.is_valid() is False
 
@@ -43,7 +43,7 @@ class TestChatGPTAuth:
             account_id="",
             refresh_token="refresh_789",
             id_token="id_abc",
-            last_refresh="2025-01-01T00:00:00Z"
+            last_refresh="2025-01-01T00:00:00Z",
         )
         assert auth.is_valid() is False
 
@@ -53,7 +53,7 @@ class TestGetChatGPTAuth:
 
     def test_auth_file_not_exists(self):
         """Test when auth file doesn't exist."""
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             result = get_chatgpt_auth()
             assert result is None
 
@@ -64,15 +64,15 @@ class TestGetChatGPTAuth:
                 "access_token": "access_123",
                 "account_id": "account_456",
                 "refresh_token": "refresh_789",
-                "id_token": "id_abc"
+                "id_token": "id_abc",
             },
-            "last_refresh": "2025-01-01T00:00:00Z"
+            "last_refresh": "2025-01-01T00:00:00Z",
         }
-        
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(auth_data))):
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(auth_data))):
                 result = get_chatgpt_auth()
-                
+
                 assert result is not None
                 assert result.access_token == "access_123"
                 assert result.account_id == "account_456"
@@ -83,26 +83,26 @@ class TestGetChatGPTAuth:
     def test_auth_file_missing_tokens(self):
         """Test with auth file missing tokens section."""
         auth_data = {"last_refresh": "2025-01-01T00:00:00Z"}
-        
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(auth_data))):
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(auth_data))):
                 result = get_chatgpt_auth()
-                
+
                 assert result is not None
                 assert result.access_token == ""
                 assert result.account_id == ""
 
     def test_auth_file_invalid_json(self):
         """Test with invalid JSON in auth file."""
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data="invalid json")):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data="invalid json")):
                 result = get_chatgpt_auth()
                 assert result is None
 
     def test_auth_file_read_error(self):
         """Test with file read error."""
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', side_effect=IOError("Read error")):
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", side_effect=IOError("Read error")):
                 result = get_chatgpt_auth()
                 assert result is None
 
@@ -148,7 +148,7 @@ class TestGetValidChatGPTAuth:
     @patch.dict(os.environ, {"OPENAI_CHATGPT_LOGIN_MODE": "true"})
     def test_mode_enabled_no_auth_file(self):
         """Test when mode is enabled but no auth file."""
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             result = get_valid_chatgpt_auth()
             assert result is None
 
@@ -160,15 +160,15 @@ class TestGetValidChatGPTAuth:
                 "access_token": "access_123",
                 "account_id": "account_456",
                 "refresh_token": "refresh_789",
-                "id_token": "id_abc"
+                "id_token": "id_abc",
             },
-            "last_refresh": "2025-01-01T00:00:00Z"
+            "last_refresh": "2025-01-01T00:00:00Z",
         }
-        
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(auth_data))):
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(auth_data))):
                 result = get_valid_chatgpt_auth()
-                
+
                 assert result is not None
                 assert result.access_token == "access_123"
                 assert result.account_id == "account_456"
@@ -181,13 +181,13 @@ class TestGetValidChatGPTAuth:
                 "access_token": "",  # Empty access token
                 "account_id": "account_456",
                 "refresh_token": "refresh_789",
-                "id_token": "id_abc"
+                "id_token": "id_abc",
             },
-            "last_refresh": "2025-01-01T00:00:00Z"
+            "last_refresh": "2025-01-01T00:00:00Z",
         }
-        
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(auth_data))):
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(auth_data))):
                 result = get_valid_chatgpt_auth()
                 assert result is None
 
@@ -202,25 +202,25 @@ class TestIntegration:
             codex_dir = Path(temp_dir) / ".codex"
             codex_dir.mkdir()
             auth_file = codex_dir / "auth.json"
-            
+
             auth_data = {
                 "tokens": {
                     "access_token": "real_access_token",
                     "account_id": "real_account_id",
                     "refresh_token": "real_refresh_token",
-                    "id_token": "real_id_token"
+                    "id_token": "real_id_token",
                 },
-                "last_refresh": "2025-01-01T12:00:00Z"
+                "last_refresh": "2025-01-01T12:00:00Z",
             }
-            
-            with open(auth_file, 'w') as f:
+
+            with open(auth_file, "w") as f:
                 json.dump(auth_data, f)
-            
+
             # Mock Path.home() to return our temp directory
-            with patch('pathlib.Path.home', return_value=Path(temp_dir)):
+            with patch("pathlib.Path.home", return_value=Path(temp_dir)):
                 with patch.dict(os.environ, {"OPENAI_CHATGPT_LOGIN_MODE": "true"}):
                     result = get_valid_chatgpt_auth()
-                    
+
                     assert result is not None
                     assert result.access_token == "real_access_token"
                     assert result.account_id == "real_account_id"

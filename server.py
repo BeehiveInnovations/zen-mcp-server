@@ -407,15 +407,15 @@ def configure_providers():
 
     # Check for OpenAI authentication (ChatGPT login mode takes priority)
     from utils.chatgpt_auth import get_valid_chatgpt_auth
-    
+
     openai_auth_available = False
-    
+
     # Check ChatGPT login mode first
     chatgpt_auth = get_valid_chatgpt_auth()
     if chatgpt_auth:
         openai_auth_available = True
         logger.info("ChatGPT authentication found - OpenAI models available")
-    
+
     # Fallback to API key if ChatGPT mode not available
     if not openai_auth_available:
         openai_key = os.getenv("OPENAI_API_KEY")
@@ -428,7 +428,7 @@ def configure_providers():
                 logger.debug("OpenAI API key not found in environment")
             else:
                 logger.debug("OpenAI API key is placeholder value")
-    
+
     if openai_auth_available:
         valid_providers.append("OpenAI")
         has_native_apis = True
@@ -488,6 +488,7 @@ def configure_providers():
                 # Use ChatGPT access token
                 def openai_chatgpt_factory(api_key=None):
                     return OpenAIModelProvider(chatgpt_auth.access_token)
+
                 ModelProviderRegistry.register_provider(ProviderType.OPENAI, openai_chatgpt_factory)
             else:
                 # Use standard API key
