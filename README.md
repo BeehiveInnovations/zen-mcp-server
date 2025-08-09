@@ -92,7 +92,8 @@ Claude is brilliant, but sometimes you need:
 - **Expert debugging** - O3 for logical issues, Gemini for architectural problems ([`debug`](#6-debug---expert-debugging-assistant))
 - **Extended context windows beyond Claude's limits** - Delegate analysis to Gemini (1M tokens) or O3 (200K tokens) for entire codebases, large datasets, or comprehensive documentation
 - **Model-specific strengths** - Extended thinking with Gemini Pro, fast iteration with Flash, strong reasoning with O3, local privacy with Ollama
-- **Local model support** - Run models like Llama 3.2 locally via Ollama, vLLM, or LM Studio for privacy and cost control
+- **Local model support** - Run models like Llama 3.2 locally via Ollama, vLLM, or LM Studio for privacy and cost control  
+- **Flexible authentication** - Use OpenAI API keys OR your existing ChatGPT Pro subscription tokens
 - **Dynamic collaboration** - Models can request additional context and follow-up replies from Claude mid-analysis
 - **Smart file handling** - Automatically expands directories, manages token limits based on model capacity
 - **Vision support** - Analyze images, diagrams, screenshots, and visual content with vision-capable models
@@ -145,7 +146,7 @@ The final implementation resulted in a 26% improvement in JSON parsing performan
 
 **Option B: Native APIs**
 - **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey) and generate an API key. For best results with Gemini 2.5 Pro, use a paid API key as the free tier has limited access to the latest models.
-- **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3 model access.
+- **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to get an API key for O3, GPT-5 model access. **Alternative**: Enable `OPENAI_CHATGPT_LOGIN_MODE=true` to use your existing ChatGPT Pro subscription tokens instead of an API key.
 - **X.AI**: Visit [X.AI Console](https://console.x.ai/) to get an API key for GROK model access.
 - **DIAL**: Visit [DIAL Platform](https://dialx.ai/) to get an API key for accessing multiple models through their unified API. DIAL is an open-source AI orchestration platform that provides vendor-agnostic access to models from major providers, open-source community, and self-hosted deployments. [API Documentation](https://dialx.ai/dial_api)
 
@@ -289,10 +290,16 @@ nano .env
 
 # The file will contain, at least one should be set:
 # GEMINI_API_KEY=your-gemini-api-key-here  # For Gemini models
-# OPENAI_API_KEY=your-openai-api-key-here  # For O3 model
+# OPENAI_API_KEY=your-openai-api-key-here  # For OpenAI models (O3, GPT-5, etc.)
 # XAI_API_KEY=your-xai-api-key-here        # For Grok models
 # OPENROUTER_API_KEY=your-openrouter-key  # For OpenRouter (see docs/custom_models.md)
 # DIAL_API_KEY=your-dial-api-key-here      # For DIAL platform
+
+# Alternative to OpenAI API key - Use ChatGPT Pro subscription tokens:
+# OPENAI_CHATGPT_LOGIN_MODE=true           # Enable ChatGPT Pro token authentication
+# When enabled, uses tokens from ~/.codex/auth.json instead of OPENAI_API_KEY
+# Requires: ChatGPT Pro subscription with Codex access
+# Priority: ChatGPT tokens > OPENAI_API_KEY > disabled
 
 # For DIAL (optional configuration):
 # DIAL_API_HOST=https://core.dialx.ai      # Default DIAL host (optional)
