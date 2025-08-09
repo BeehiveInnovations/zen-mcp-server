@@ -6,8 +6,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 
 class TestChatGPTFunctional:
     """Functional tests for the complete ChatGPT authentication flow."""

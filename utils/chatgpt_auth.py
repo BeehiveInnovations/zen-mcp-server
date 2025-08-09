@@ -2,8 +2,8 @@
 
 import json
 import os
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 
@@ -29,7 +29,7 @@ def get_chatgpt_auth() -> Optional[ChatGPTAuth]:
         if not auth_file.exists():
             return None
 
-        with open(auth_file, "r") as f:
+        with open(auth_file) as f:
             data = json.load(f)
 
         tokens = data.get("tokens", {})

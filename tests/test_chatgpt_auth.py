@@ -4,11 +4,9 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
-import pytest
-
-from utils.chatgpt_auth import ChatGPTAuth, get_chatgpt_auth, is_chatgpt_mode_enabled, get_valid_chatgpt_auth
+from utils.chatgpt_auth import ChatGPTAuth, get_chatgpt_auth, get_valid_chatgpt_auth, is_chatgpt_mode_enabled
 
 
 class TestChatGPTAuth:
@@ -102,7 +100,7 @@ class TestGetChatGPTAuth:
     def test_auth_file_read_error(self):
         """Test with file read error."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", side_effect=IOError("Read error")):
+            with patch("builtins.open", side_effect=OSError("Read error")):
                 result = get_chatgpt_auth()
                 assert result is None
 

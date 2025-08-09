@@ -1,12 +1,10 @@
 """Tests for ChatGPT integration in server configuration."""
 
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-import pytest
-
-from utils.chatgpt_auth import ChatGPTAuth
 from providers.openai_provider import OpenAIModelProvider
+from utils.chatgpt_auth import ChatGPTAuth
 
 
 class TestServerChatGPTIntegration:
@@ -27,8 +25,8 @@ class TestServerChatGPTIntegration:
         mock_get_valid_auth.return_value = mock_auth
 
         # Import configure_providers to test the logic
-        from server import configure_providers
         from providers.registry import ModelProviderRegistry
+        from server import configure_providers
 
         # Reset registry
         ModelProviderRegistry._instance = None
@@ -57,8 +55,8 @@ class TestServerChatGPTIntegration:
         # Mock no ChatGPT auth available
         mock_get_valid_auth.return_value = None
 
-        from server import configure_providers
         from providers.registry import ModelProviderRegistry
+        from server import configure_providers
 
         # Reset registry
         ModelProviderRegistry._instance = None
