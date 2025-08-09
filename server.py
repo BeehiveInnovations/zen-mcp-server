@@ -405,18 +405,33 @@ def configure_providers():
         has_native_apis = True
         logger.info("Gemini API key found - Gemini models available")
 
-    # Check for OpenAI API key
-    openai_key = os.getenv("OPENAI_API_KEY")
-    logger.debug(f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
-    if openai_key and openai_key != "your_openai_api_key_here":
+    # Check for OpenAI authentication (ChatGPT login mode takes priority)
+    from utils.chatgpt_auth import get_valid_chatgpt_auth
+    
+    openai_auth_available = False
+    
+    # Check ChatGPT login mode first
+    chatgpt_auth = get_valid_chatgpt_auth()
+    if chatgpt_auth:
+        openai_auth_available = True
+        logger.info("ChatGPT authentication found - OpenAI models available")
+    
+    # Fallback to API key if ChatGPT mode not available
+    if not openai_auth_available:
+        openai_key = os.getenv("OPENAI_API_KEY")
+        logger.debug(f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
+        if openai_key and openai_key != "your_openai_api_key_here":
+            openai_auth_available = True
+            logger.info("OpenAI API key found")
+        else:
+            if not openai_key:
+                logger.debug("OpenAI API key not found in environment")
+            else:
+                logger.debug("OpenAI API key is placeholder value")
+    
+    if openai_auth_available:
         valid_providers.append("OpenAI")
         has_native_apis = True
-        logger.info("OpenAI API key found")
-    else:
-        if not openai_key:
-            logger.debug("OpenAI API key not found in environment")
-        else:
-            logger.debug("OpenAI API key is placeholder value")
 
     # Check for X.AI API key
     xai_key = os.getenv("XAI_API_KEY")
@@ -467,8 +482,16 @@ def configure_providers():
     if has_native_apis:
         if gemini_key and gemini_key != "your_gemini_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-        if openai_key and openai_key != "your_openai_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+        if openai_auth_available:
+            # Use ChatGPT tokens if available
+            if chatgpt_auth:
+                # Use ChatGPT access token
+                def openai_chatgpt_factory(api_key=None):
+                    return OpenAIModelProvider(chatgpt_auth.access_token)
+                ModelProviderRegistry.register_provider(ProviderType.OPENAI, openai_chatgpt_factory)
+            else:
+                # Use standard API key
+                ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
         if dial_key and dial_key != "your_dial_api_key_here":

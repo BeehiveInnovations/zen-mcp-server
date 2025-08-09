@@ -83,7 +83,7 @@ For best results, use Claude Code with:
 **1. Get API Keys** (choose one or more):
 - **[OpenRouter](https://openrouter.ai/)** - Access multiple models with one API
 - **[Gemini](https://makersuite.google.com/app/apikey)** - Google's latest models
-- **[OpenAI](https://platform.openai.com/api-keys)** - O3, GPT-5 series
+- **[OpenAI](https://platform.openai.com/api-keys)** - O3, GPT-5 series. **Alternative**: Enable `OPENAI_CHATGPT_LOGIN_MODE=true` to use your existing ChatGPT Pro subscription tokens instead of an API key
 - **[X.AI](https://console.x.ai/)** - Grok models
 - **[DIAL](https://dialx.ai/)** - Vendor-agnostic model access
 - **[Ollama](https://ollama.ai/)** - Local models (free)

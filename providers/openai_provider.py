@@ -170,8 +170,24 @@ class OpenAIModelProvider(OpenAICompatibleProvider):
 
     def __init__(self, api_key: str, **kwargs):
         """Initialize OpenAI provider with API key."""
-        # Set default OpenAI base URL, allow override for regions/custom endpoints
-        kwargs.setdefault("base_url", "https://api.openai.com/v1")
+        from utils.chatgpt_auth import get_valid_chatgpt_auth
+        
+        # Check if using ChatGPT mode
+        chatgpt_auth = get_valid_chatgpt_auth()
+        if chatgpt_auth and api_key == chatgpt_auth.access_token:
+            # Use ChatGPT backend API
+            kwargs.setdefault("base_url", "https://chatgpt.com/backend-api/codex/")
+            # Set ChatGPT-specific headers as DEFAULT_HEADERS
+            self.DEFAULT_HEADERS = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {chatgpt_auth.access_token}',
+                'originator': 'codex_cli_rs',
+                'chatgpt-account-id': chatgpt_auth.account_id
+            }
+        else:
+            # Standard OpenAI API
+            kwargs.setdefault("base_url", "https://api.openai.com/v1")
+        
         super().__init__(api_key, **kwargs)
 
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
