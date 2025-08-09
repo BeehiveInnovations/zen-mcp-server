@@ -538,6 +538,38 @@ class BaseTool(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_request_model_names(self) -> list[str]:
+        """
+        Returns list of model names used by this tool.
+
+        For single-model tools, this returns a list with one model name.
+        For multi-model tools (like ConsensusTool), this returns all models used.
+
+        Returns:
+            list[str]: List of model names used by this tool
+        """
+        pass
+
+    def get_request_model_name(self, request) -> str:
+        """
+        Legacy method - use get_request_model_names() instead.
+
+        This method is kept for backward compatibility but delegates to
+        the new get_request_model_names() method. For tools using multiple
+        models, it returns a descriptive placeholder name.
+
+        Args:
+            request: The request object (not used in default implementation)
+
+        Returns:
+            str: Single model name or placeholder for multi-model tools
+        """
+        names = self.get_request_model_names()
+        if len(names) > 1:
+            return f"multi-model-{self.get_name()}"
+        return names[0] if names else "unknown"
+
     def validate_file_paths(self, request) -> Optional[str]:
         """
         Validate that all file paths in the request are absolute.

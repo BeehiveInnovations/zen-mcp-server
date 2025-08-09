@@ -166,6 +166,12 @@ class SimpleTool(BaseTool):
 
     # Hook methods for safe attribute access without hasattr/getattr
 
+    def get_request_model_names(self) -> list[str]:
+        """Returns list of model names used by this tool."""
+        # Simple tools get their model from the request at runtime
+        # Return empty list to indicate dynamic model selection
+        return []
+
     def get_request_model_name(self, request) -> Optional[str]:
         """Get model name from request. Override for custom model name handling."""
         try:

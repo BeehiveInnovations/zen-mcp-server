@@ -50,6 +50,9 @@ class TestAutoModelPlannerFix:
 
                 return ToolRequest
 
+            def get_request_model_names(self) -> list[str]:
+                return []
+
             async def prepare_prompt(self, request):
                 return "Mock prompt"
 

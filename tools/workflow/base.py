@@ -157,6 +157,11 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
         """
         return WorkflowRequest
 
+    def get_request_model_names(self) -> list[str]:
+        """Returns list of model names used by this tool."""
+        # Workflow tools typically use one model from request
+        return []
+
     # Implement the abstract method from BaseWorkflowMixin
     def get_work_steps(self, request) -> list[str]:
         """

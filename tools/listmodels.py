@@ -61,6 +61,10 @@ class ListModelsTool(BaseTool):
         """Return the Pydantic model for request validation."""
         return ToolRequest
 
+    def get_request_model_names(self) -> list[str]:
+        """Returns empty list as utility tools don't use models."""
+        return []
+
     def requires_model(self) -> bool:
         return False
 

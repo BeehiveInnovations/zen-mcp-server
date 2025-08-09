@@ -773,6 +773,21 @@ of the evidence, even when it strongly points in one direction.""",
         self.original_proposal = step_description
         self.initial_prompt = step_description  # Keep for backward compatibility
 
+    def get_request_model_names(self) -> list[str]:
+        """Returns list of all models used for consensus."""
+        return [model.name for model in self.models]
+
+    def get_request_model_name(self, request: Any) -> str:
+        """
+        Get model name from request.
+
+        For consensus tool, this returns a placeholder since consensus uses
+        multiple models via the 'models' field rather than a single 'model' field.
+        This is only used for metadata purposes, not for actual model consultation.
+        """
+        # Consensus doesn't use a single model field - it uses models array
+        # Return a descriptive name for metadata purposes
+        return "multi-model-consensus"
     # Required abstract methods from BaseTool
     def get_request_model(self):
         """Return the consensus workflow-specific request model."""

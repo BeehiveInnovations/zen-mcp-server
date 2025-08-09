@@ -271,6 +271,9 @@ class TestAutoMode:
             def get_request_model(self):
                 return None
 
+            def get_request_model_names(self) -> list[str]:
+                return []
+
             async def prepare_prompt(self, request):
                 return ""
 
