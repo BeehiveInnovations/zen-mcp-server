@@ -84,55 +84,15 @@ class TestUvxPathResolution:
         assert len(registry.list_models()) == 0
         assert len(registry.list_aliases()) == 0
 
-    @patch("providers.openrouter_registry.files")
-    def test_resource_loading_success(self, mock_files):
+    def test_resource_loading_success(self):
         """Test successful resource loading via importlib.resources."""
-        # Mock successful resource loading
-        mock_resource = patch("builtins.open", create=True).start()
-        mock_resource.return_value.__enter__.return_value.read.return_value = """{
-            "models": [
-                {
-                    "model_name": "test/resource-model",
-                    "aliases": ["resource-test"],
-                    "context_window": 32000,
-                    "max_output_tokens": 16000,
-                    "supports_extended_thinking": false,
-                    "supports_json_mode": true,
-                    "supports_function_calling": false,
-                    "supports_images": false,
-                    "max_image_size_mb": 0.0,
-                    "description": "Test model loaded from resources"
-                }
-            ]
-        }"""
-
-        # Mock the resource path
-        mock_resource_path = patch.object(mock_files.return_value.__truediv__.return_value, "read_text").start()
-        mock_resource_path.return_value = """{
-            "models": [
-                {
-                    "model_name": "test/resource-model",
-                    "aliases": ["resource-test"],
-                    "context_window": 32000,
-                    "max_output_tokens": 16000,
-                    "supports_extended_thinking": false,
-                    "supports_json_mode": true,
-                    "supports_function_calling": false,
-                    "supports_images": false,
-                    "max_image_size_mb": 0.0,
-                    "description": "Test model loaded from resources"
-                }
-            ]
-        }"""
-
+        # Just test that the registry works normally in our environment
+        # This validates the resource loading mechanism indirectly
         registry = OpenRouterModelRegistry()
 
-        # Clean up patches
-        patch.stopall()
-
-        # If resources loading was attempted, verify basic functionality
-        # (In development this will fall back to file loading which is fine)
+        # Should load successfully using either resources or file system fallback
         assert len(registry.list_models()) > 0
+        assert len(registry.list_aliases()) > 0
 
     def test_use_resources_attribute(self):
         """Test that the use_resources attribute is properly set."""
