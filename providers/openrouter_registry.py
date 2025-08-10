@@ -37,9 +37,23 @@ class OpenRouterModelRegistry:
                 # Environment variable path
                 self.config_path = Path(env_path)
             else:
-                # Default to conf/custom_models.json - use relative path from this file
-                # This works in development environment
-                self.config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
+                # Try multiple potential locations for the config file
+                potential_paths = [
+                    Path(__file__).parent.parent / "conf" / "custom_models.json",  # Development
+                    Path("conf/custom_models.json"),  # uvx working directory
+                    Path.cwd() / "conf" / "custom_models.json",  # Current working directory
+                ]
+
+                # Find first existing path
+                self.config_path = None
+                for path in potential_paths:
+                    if path.exists():
+                        self.config_path = path
+                        break
+
+                # If none found, default to the first one for error reporting
+                if self.config_path is None:
+                    self.config_path = potential_paths[0]
 
         # Load configuration
         self.reload()
