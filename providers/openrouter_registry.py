@@ -45,8 +45,8 @@ class OpenRouterModelRegistry:
                 self.use_resources = False
 
                 try:
-                    resource_traversable = importlib.resources.files('conf').joinpath('custom_models.json')
-                    if hasattr(resource_traversable, 'read_text'):
+                    resource_traversable = importlib.resources.files("conf").joinpath("custom_models.json")
+                    if hasattr(resource_traversable, "read_text"):
                         self.use_resources = True
                     else:
                         raise AttributeError("read_text not available")
@@ -127,7 +127,7 @@ class OpenRouterModelRegistry:
             if self.use_resources:
                 # Use importlib.resources for packaged environments
                 try:
-                    resource_path = importlib.resources.files('conf').joinpath('custom_models.json')
+                    resource_path = importlib.resources.files("conf").joinpath("custom_models.json")
                     if hasattr(resource_path, "read_text"):
                         # Python 3.9+
                         config_text = resource_path.read_text(encoding="utf-8")
