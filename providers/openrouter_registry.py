@@ -1,10 +1,12 @@
 """OpenRouter model registry for managing model configurations and aliases."""
 
+import importlib.resources
 import logging
 import os
 from pathlib import Path
 from typing import Optional
 
+# Import handled via importlib.resources.files() calls directly
 from utils.file_utils import read_json_file
 
 from .base import (
@@ -26,7 +28,8 @@ class OpenRouterModelRegistry:
         self.alias_map: dict[str, str] = {}  # alias -> model_name
         self.model_map: dict[str, ModelCapabilities] = {}  # model_name -> config
 
-        # Determine config path
+        # Determine config path and loading strategy
+        self.use_resources = False
         if config_path:
             # Direct config_path parameter
             self.config_path = Path(config_path)
@@ -37,9 +40,33 @@ class OpenRouterModelRegistry:
                 # Environment variable path
                 self.config_path = Path(env_path)
             else:
-                # Default to conf/custom_models.json - use relative path from this file
-                # This works in development environment
-                self.config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
+                # Try importlib.resources for robust packaging support
+                self.config_path = None
+                self.use_resources = False
+
+                try:
+                    resource_traversable = importlib.resources.files("conf").joinpath("custom_models.json")
+                    if hasattr(resource_traversable, "read_text"):
+                        self.use_resources = True
+                    else:
+                        raise AttributeError("read_text not available")
+                except Exception:
+                    pass
+
+                if not self.use_resources:
+                    # Fallback to file system paths
+                    potential_paths = [
+                        Path(__file__).parent.parent / "conf" / "custom_models.json",
+                        Path.cwd() / "conf" / "custom_models.json",
+                    ]
+
+                    for path in potential_paths:
+                        if path.exists():
+                            self.config_path = path
+                            break
+
+                    if self.config_path is None:
+                        self.config_path = potential_paths[0]
 
         # Load configuration
         self.reload()
@@ -91,20 +118,44 @@ class OpenRouterModelRegistry:
             self.model_map = {}
 
     def _read_config(self) -> list[ModelCapabilities]:
-        """Read configuration from file.
+        """Read configuration from file or package resources.
 
         Returns:
             List of model configurations
         """
-        if not self.config_path.exists():
-            logging.warning(f"OpenRouter model config not found at {self.config_path}")
-            return []
-
         try:
-            # Use centralized JSON reading utility
-            data = read_json_file(str(self.config_path))
+            if self.use_resources:
+                # Use importlib.resources for packaged environments
+                try:
+                    resource_path = importlib.resources.files("conf").joinpath("custom_models.json")
+                    if hasattr(resource_path, "read_text"):
+                        # Python 3.9+
+                        config_text = resource_path.read_text(encoding="utf-8")
+                    else:
+                        # Python 3.8 fallback
+                        with resource_path.open("r", encoding="utf-8") as f:
+                            config_text = f.read()
+
+                    import json
+
+                    data = json.loads(config_text)
+                    logging.debug("Loaded OpenRouter config from package resources")
+                except Exception as e:
+                    logging.warning(f"Failed to load config from resources: {e}")
+                    return []
+            else:
+                # Use file path loading
+                if not self.config_path.exists():
+                    logging.warning(f"OpenRouter model config not found at {self.config_path}")
+                    return []
+
+                # Use centralized JSON reading utility
+                data = read_json_file(str(self.config_path))
+                logging.debug(f"Loaded OpenRouter config from file: {self.config_path}")
+
             if data is None:
-                raise ValueError(f"Could not read or parse JSON from {self.config_path}")
+                location = "resources" if self.use_resources else str(self.config_path)
+                raise ValueError(f"Could not read or parse JSON from {location}")
 
             # Parse models
             configs = []
@@ -137,7 +188,8 @@ class OpenRouterModelRegistry:
             # Re-raise ValueError for specific config errors
             raise
         except Exception as e:
-            raise ValueError(f"Error reading config from {self.config_path}: {e}")
+            location = "resources" if self.use_resources else str(self.config_path)
+            raise ValueError(f"Error reading config from {location}: {e}")
 
     def _build_maps(self, configs: list[ModelCapabilities]) -> None:
         """Build alias and model maps from configurations.
