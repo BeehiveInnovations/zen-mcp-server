@@ -371,7 +371,7 @@ class OpenAICompatibleProvider(ModelProvider):
 
         # For responses endpoint, we only add parameters that are explicitly supported
         # Remove unsupported chat completion parameters that may cause API errors
-        
+
         # Extract extra_headers from kwargs for responses endpoint
         extra_headers = kwargs.get("extra_headers", {})
         if extra_headers:
@@ -537,7 +537,7 @@ class OpenAICompatibleProvider(ModelProvider):
 
         # Extract extra_headers from kwargs before adding other parameters
         extra_headers = kwargs.pop("extra_headers", {})
-        
+
         # Add any additional OpenAI-specific parameters
         # Use capabilities to filter parameters for reasoning models
         for key, value in kwargs.items():
@@ -546,7 +546,7 @@ class OpenAICompatibleProvider(ModelProvider):
                 if not supports_temperature and key in ["top_p", "frequency_penalty", "presence_penalty"]:
                     continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
-        
+
         # Add extra_headers to completion_params if provided
         if extra_headers:
             completion_params["extra_headers"] = extra_headers
