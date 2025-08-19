@@ -152,6 +152,21 @@
       "supports_json_mode": true,
       "temperature_constraint": "range",
       "description": "Mistral Large via Portkey Gateway - European AI model"
+    },
+    {
+      "model_name": "claude-sonnet-4",
+      "aliases": ["sonnet4", "claude4"],
+      "context_window": 200000,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": true,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "supports_json_mode": false,
+      "temperature_constraint": "range",
+      "description": "Claude Sonnet 4 via Portkey Gateway - Latest generation Claude model"
     }
   ]
 }
