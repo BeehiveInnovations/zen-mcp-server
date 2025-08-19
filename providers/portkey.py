@@ -103,17 +103,7 @@ class PortkeyProvider(OpenAICompatibleProvider):
         if model_name.lower() in self.model_configs:
             return self.model_configs[model_name.lower()]
 
-        # Try explicit provider_route from model registry
-        from providers.portkey_registry import PORTKEY_MODEL_REGISTRY
-        for model_info in PORTKEY_MODEL_REGISTRY.get("models", []):
-            # Check if model name matches or is in aliases
-            if (model_name.lower() == model_info["model_name"].lower() or 
-                model_name.lower() in [alias.lower() for alias in model_info.get("aliases", [])]):
-                provider_route = model_info.get("provider_route")
-                if provider_route:
-                    return self.model_configs.get(provider_route)
-        
-        # Fallback to provider-based matching (legacy logic)
+        # Try provider-based matching
         model_lower = model_name.lower()
         if any(x in model_lower for x in ["gpt", "openai"]):
             return self.model_configs.get("openai") or self.model_configs.get("gpt")
