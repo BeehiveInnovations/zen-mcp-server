@@ -29,6 +29,11 @@ class PortkeyProvider(OpenAICompatibleProvider):
         "x-portkey-api-key": os.getenv("PORTKEY_API_KEY"),
         # x-portkey-config will be set dynamically based on model
     }
+    
+    @classmethod
+    def _get_clean_headers(cls) -> dict:
+        """Get headers with None values filtered out."""
+        return {k: v for k, v in cls.DEFAULT_HEADERS.items() if v is not None}
 
     # Model registry for managing configurations and aliases
     _registry: Optional[PortkeyModelRegistry] = None
@@ -109,6 +114,29 @@ class PortkeyProvider(OpenAICompatibleProvider):
             return self.model_configs.get('llama') or self.model_configs.get('meta')
         elif any(x in model_lower for x in ['mistral']):
             return self.model_configs.get('mistral')
+            
+        return None
+    
+    def _get_provider_for_model(self, model_name: str) -> Optional[str]:
+        """Get provider name for x-portkey-provider header as fallback.
+        
+        Args:
+            model_name: Model name to get provider for
+            
+        Returns:
+            Provider name if determinable, None otherwise
+        """
+        model_lower = model_name.lower()
+        if any(x in model_lower for x in ['gpt', 'openai']):
+            return 'openai'
+        elif any(x in model_lower for x in ['claude', 'anthropic']):
+            return 'anthropic'
+        elif any(x in model_lower for x in ['gemini', 'google']):
+            return 'google'
+        elif any(x in model_lower for x in ['llama', 'meta']):
+            return 'meta-llama'
+        elif any(x in model_lower for x in ['mistral']):
+            return 'mistralai'
             
         return None
 
@@ -244,15 +272,34 @@ class PortkeyProvider(OpenAICompatibleProvider):
         config_id = self._get_config_for_model(resolved_model)
         
         # Set up headers for this request
-        headers = dict(self.DEFAULT_HEADERS)
-        if config_id:
-            headers["x-portkey-config"] = config_id
-            logging.debug(f"Using Portkey config '{config_id}' for model '{resolved_model}'")
-        elif self.virtual_key:
+        headers = self._get_clean_headers()
+        logging.debug(f"Model configs available: {list(self.model_configs.keys())}")
+        logging.debug(f"Looking for config for model: {resolved_model}")
+        logging.debug(f"Found config_id: {config_id}")
+        
+        if self.virtual_key:
             headers["x-portkey-virtual-key"] = self.virtual_key
             logging.debug(f"Using Portkey virtual key for model '{resolved_model}'")
+        elif config_id:
+            headers["x-portkey-config"] = config_id
+            logging.debug(f"Using Portkey config '{config_id}' for model '{resolved_model}'")
         else:
-            raise ValueError("Neither Portkey config nor virtual key available for routing")
+            # Fallback: Use x-portkey-provider header (requires Portkey virtual key setup)
+            provider_name = self._get_provider_for_model(resolved_model)
+            if provider_name:
+                headers["x-portkey-provider"] = provider_name
+                logging.debug(f"Using Portkey provider '{provider_name}' for model '{resolved_model}'")
+                logging.warning(f"No Portkey config or virtual key found for model '{resolved_model}'. "
+                               f"Using x-portkey-provider='{provider_name}' header. "
+                               f"This requires a Portkey virtual key to be configured for routing.")
+            else:
+                raise ValueError(
+                    f"No Portkey routing method available for model '{resolved_model}'. "
+                    f"Please configure one of: "
+                    f"1) PORTKEY_CONFIG_OPENAI/CLAUDE/GEMINI environment variables, "
+                    f"2) PORTKEY_VIRTUAL_KEY for unified routing, or "
+                    f"3) Ensure model provider mapping is supported."
+                )
 
         # Disable streaming by default for MCP compatibility
         if "stream" not in kwargs:
@@ -262,6 +309,10 @@ class PortkeyProvider(OpenAICompatibleProvider):
         if "extra_headers" not in kwargs:
             kwargs["extra_headers"] = {}
         kwargs["extra_headers"].update(headers)
+        
+        # Debug: Log final headers (excluding sensitive values)
+        debug_headers = {k: "***" if "key" in k.lower() else v for k, v in kwargs["extra_headers"].items()}
+        logging.debug(f"Final Portkey headers: {debug_headers}")
 
         # Call parent method with resolved model name
         return super().generate_content(

@@ -96,6 +96,7 @@ class ListModelsTool(BaseTool):
             ProviderType.OPENAI: {"name": "OpenAI", "env_key": "OPENAI_API_KEY"},
             ProviderType.XAI: {"name": "X.AI (Grok)", "env_key": "XAI_API_KEY"},
             ProviderType.DIAL: {"name": "AI DIAL", "env_key": "DIAL_API_KEY"},
+            ProviderType.PORTKEY: {"name": "Portkey AI Gateway", "env_key": "PORTKEY_API_KEY"},
         }
 
         # Check each native provider type
