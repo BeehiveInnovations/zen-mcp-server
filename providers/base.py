@@ -23,6 +23,7 @@ class ProviderType(Enum):
     GOOGLE = "google"
     OPENAI = "openai"
     XAI = "xai"
+    PORTKEY = "portkey"
     OPENROUTER = "openrouter"
     CUSTOM = "custom"
     DIAL = "dial"
