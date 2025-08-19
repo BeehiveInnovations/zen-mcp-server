@@ -54,7 +54,6 @@ from mcp.types import (  # noqa: E402
     ServerCapabilities,
     TextContent,
     Tool,
-    ToolAnnotations,
     ToolsCapability,
 )
 
@@ -379,7 +378,14 @@ def configure_providers():
     """
     # Log environment variable status for debugging
     logger.debug("Checking environment variables for API keys...")
-    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "PORTKEY_API_KEY", "CUSTOM_API_URL"]
+    api_keys_to_check = [
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "GEMINI_API_KEY",
+        "XAI_API_KEY",
+        "PORTKEY_API_KEY",
+        "CUSTOM_API_URL",
+    ]
     for key in api_keys_to_check:
         value = os.getenv(key)
         logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
@@ -439,13 +445,17 @@ def configure_providers():
     portkey_virtual_key = os.getenv("PORTKEY_VIRTUAL_KEY")
     # Check for config-based routing (PORTKEY_CONFIG_* variables)
     portkey_configs = [k for k in os.environ.keys() if k.startswith("PORTKEY_CONFIG_")]
-    logger.debug(f"Portkey key check: api_key={'[PRESENT]' if portkey_key else '[MISSING]'}, virtual_key={'[PRESENT]' if portkey_virtual_key else '[MISSING]'}, configs={len(portkey_configs)}")
-    
+    logger.debug(
+        f"Portkey key check: api_key={'[PRESENT]' if portkey_key else '[MISSING]'}, virtual_key={'[PRESENT]' if portkey_virtual_key else '[MISSING]'}, configs={len(portkey_configs)}"
+    )
+
     if portkey_key and portkey_key != "your_portkey_api_key_here" and (portkey_virtual_key or portkey_configs):
         valid_providers.append("Portkey")
         has_portkey = True
         routing_method = "configs" if portkey_configs else "virtual key"
-        logger.info(f"Portkey API key found - Multiple models available via Portkey AI Gateway (routing: {routing_method})")
+        logger.info(
+            f"Portkey API key found - Multiple models available via Portkey AI Gateway (routing: {routing_method})"
+        )
     else:
         if not portkey_key:
             logger.debug("Portkey API key not found in environment")
@@ -650,14 +660,13 @@ async def handle_list_tools() -> list[Tool]:
     for tool in TOOLS.values():
         # Get optional annotations from the tool
         annotations = tool.get_annotations()
-        tool_annotations = ToolAnnotations(**annotations) if annotations else None
 
         tools.append(
             Tool(
                 name=tool.name,
                 description=tool.description,
                 inputSchema=tool.get_input_schema(),
-                annotations=tool_annotations,
+                **({"annotations": annotations} if annotations else {}),
             )
         )
 

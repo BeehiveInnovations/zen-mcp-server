@@ -29,7 +29,7 @@ class PortkeyProvider(OpenAICompatibleProvider):
         "x-portkey-api-key": os.getenv("PORTKEY_API_KEY"),
         # x-portkey-config will be set dynamically based on model
     }
-    
+
     @classmethod
     def _get_clean_headers(cls) -> dict:
         """Get headers with None values filtered out."""
@@ -50,7 +50,7 @@ class PortkeyProvider(OpenAICompatibleProvider):
 
         # Store config mappings for model routing
         self.model_configs = self._load_model_configs()
-        
+
         # Optional: Fall back to virtual key if configs not available
         self.virtual_key = kwargs.get("virtual_key") or os.getenv("PORTKEY_VIRTUAL_KEY")
 
@@ -64,80 +64,81 @@ class PortkeyProvider(OpenAICompatibleProvider):
 
     def _load_model_configs(self) -> dict[str, str]:
         """Load model-to-config mappings from environment variables.
-        
+
         Expected format:
         PORTKEY_CONFIG_GPT4=pc-gpt4-config-id
         PORTKEY_CONFIG_CLAUDE=pc-claude-config-id
         PORTKEY_CONFIG_GEMINI=pc-gemini-config-id
-        
+
         Returns:
             Dictionary mapping model names to config IDs
         """
         import os
+
         configs = {}
-        
+
         # Look for PORTKEY_CONFIG_* environment variables
         for key, value in os.environ.items():
             if key.startswith("PORTKEY_CONFIG_"):
                 model_key = key.replace("PORTKEY_CONFIG_", "").lower()
                 configs[model_key] = value
-        
+
         if configs:
             logging.info(f"Portkey model configs loaded: {list(configs.keys())}")
         else:
             logging.debug("No Portkey model configs found. Using virtual key fallback.")
-            
+
         return configs
-    
+
     def _get_config_for_model(self, model_name: str) -> Optional[str]:
         """Get Portkey config ID for a model.
-        
+
         Args:
             model_name: Model name to get config for
-            
+
         Returns:
             Config ID if found, None otherwise
         """
         # Try exact model name match
         if model_name.lower() in self.model_configs:
             return self.model_configs[model_name.lower()]
-            
+
         # Try provider-based matching
         model_lower = model_name.lower()
-        if any(x in model_lower for x in ['gpt', 'openai']):
-            return self.model_configs.get('openai') or self.model_configs.get('gpt')
-        elif any(x in model_lower for x in ['claude', 'anthropic']):
-            return self.model_configs.get('claude') or self.model_configs.get('anthropic')  
-        elif any(x in model_lower for x in ['gemini', 'google']):
-            return self.model_configs.get('gemini') or self.model_configs.get('google')
-        elif any(x in model_lower for x in ['llama', 'meta']):
-            return self.model_configs.get('llama') or self.model_configs.get('meta')
-        elif any(x in model_lower for x in ['mistral']):
-            return self.model_configs.get('mistral')
-            
+        if any(x in model_lower for x in ["gpt", "openai"]):
+            return self.model_configs.get("openai") or self.model_configs.get("gpt")
+        elif any(x in model_lower for x in ["claude", "anthropic"]):
+            return self.model_configs.get("claude") or self.model_configs.get("anthropic")
+        elif any(x in model_lower for x in ["gemini", "google"]):
+            return self.model_configs.get("gemini") or self.model_configs.get("google")
+        elif any(x in model_lower for x in ["llama", "meta"]):
+            return self.model_configs.get("llama") or self.model_configs.get("meta")
+        elif any(x in model_lower for x in ["mistral"]):
+            return self.model_configs.get("mistral")
+
         return None
-    
+
     def _get_provider_for_model(self, model_name: str) -> Optional[str]:
         """Get provider name for x-portkey-provider header as fallback.
-        
+
         Args:
             model_name: Model name to get provider for
-            
+
         Returns:
             Provider name if determinable, None otherwise
         """
         model_lower = model_name.lower()
-        if any(x in model_lower for x in ['gpt', 'openai']):
-            return 'openai'
-        elif any(x in model_lower for x in ['claude', 'anthropic']):
-            return 'anthropic'
-        elif any(x in model_lower for x in ['gemini', 'google']):
-            return 'google'
-        elif any(x in model_lower for x in ['llama', 'meta']):
-            return 'meta-llama'
-        elif any(x in model_lower for x in ['mistral']):
-            return 'mistralai'
-            
+        if any(x in model_lower for x in ["gpt", "openai"]):
+            return "openai"
+        elif any(x in model_lower for x in ["claude", "anthropic"]):
+            return "anthropic"
+        elif any(x in model_lower for x in ["gemini", "google"]):
+            return "google"
+        elif any(x in model_lower for x in ["llama", "meta"]):
+            return "meta-llama"
+        elif any(x in model_lower for x in ["mistral"]):
+            return "mistralai"
+
         return None
 
     def _resolve_model_name(self, model_name: str) -> str:
@@ -270,13 +271,13 @@ class PortkeyProvider(OpenAICompatibleProvider):
 
         # Get config for dynamic routing
         config_id = self._get_config_for_model(resolved_model)
-        
+
         # Set up headers for this request
         headers = self._get_clean_headers()
         logging.debug(f"Model configs available: {list(self.model_configs.keys())}")
         logging.debug(f"Looking for config for model: {resolved_model}")
         logging.debug(f"Found config_id: {config_id}")
-        
+
         if self.virtual_key:
             headers["x-portkey-virtual-key"] = self.virtual_key
             logging.debug(f"Using Portkey virtual key for model '{resolved_model}'")
@@ -289,9 +290,11 @@ class PortkeyProvider(OpenAICompatibleProvider):
             if provider_name:
                 headers["x-portkey-provider"] = provider_name
                 logging.debug(f"Using Portkey provider '{provider_name}' for model '{resolved_model}'")
-                logging.warning(f"No Portkey config or virtual key found for model '{resolved_model}'. "
-                               f"Using x-portkey-provider='{provider_name}' header. "
-                               f"This requires a Portkey virtual key to be configured for routing.")
+                logging.warning(
+                    f"No Portkey config or virtual key found for model '{resolved_model}'. "
+                    f"Using x-portkey-provider='{provider_name}' header. "
+                    f"This requires a Portkey virtual key to be configured for routing."
+                )
             else:
                 raise ValueError(
                     f"No Portkey routing method available for model '{resolved_model}'. "
@@ -309,7 +312,7 @@ class PortkeyProvider(OpenAICompatibleProvider):
         if "extra_headers" not in kwargs:
             kwargs["extra_headers"] = {}
         kwargs["extra_headers"].update(headers)
-        
+
         # Debug: Log final headers (excluding sensitive values)
         debug_headers = {k: "***" if "key" in k.lower() else v for k, v in kwargs["extra_headers"].items()}
         logging.debug(f"Final Portkey headers: {debug_headers}")
