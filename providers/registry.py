@@ -23,6 +23,7 @@ class ModelProviderRegistry:
         ProviderType.XAI,  # Direct X.AI GROK access
         ProviderType.DIAL,  # DIAL unified API access
         ProviderType.CUSTOM,  # Local/self-hosted models
+        ProviderType.PORTKEY,  # Portkey AI Gateway
         ProviderType.OPENROUTER,  # Catch-all for cloud models
     ]
 
@@ -233,6 +234,7 @@ class ModelProviderRegistry:
             ProviderType.GOOGLE: "GEMINI_API_KEY",
             ProviderType.OPENAI: "OPENAI_API_KEY",
             ProviderType.XAI: "XAI_API_KEY",
+            ProviderType.PORTKEY: "PORTKEY_API_KEY",
             ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
             ProviderType.CUSTOM: "CUSTOM_API_KEY",  # Can be empty for providers that don't need auth
             ProviderType.DIAL: "DIAL_API_KEY",
