@@ -9,6 +9,7 @@
       "Aliases are case-insensitive and should be unique across all models",
       "context_window is the model's total context window size in tokens (input + output)",
       "Set supports_* flags based on the underlying model's capabilities",
+      "provider_route field explicitly maps models to Portkey configs (recommended for reliability)",
       "Models route through Portkey's gateway based on your virtual key configuration",
       "Virtual keys determine which underlying AI provider is used (OpenAI, Anthropic, etc.)"
     ],
@@ -21,6 +22,7 @@
     {
       "model_name": "gpt-4",
       "aliases": ["gpt4", "openai"],
+      "provider_route": "openai",
       "context_window": 128000,
       "max_output_tokens": 4096,
       "supports_extended_thinking": false,
@@ -36,6 +38,7 @@
     {
       "model_name": "gpt-3.5-turbo",
       "aliases": ["gpt35", "turbo"],
+      "provider_route": "openai",
       "context_window": 16385,
       "max_output_tokens": 4096,
       "supports_extended_thinking": false,
@@ -51,6 +54,7 @@
     {
       "model_name": "claude-3-5-sonnet-20241022",
       "aliases": ["claude", "sonnet", "anthropic"],
+      "provider_route": "anthropic",
       "context_window": 200000,
       "max_output_tokens": 8192,
       "supports_extended_thinking": false,
@@ -66,6 +70,7 @@
     {
       "model_name": "claude-3-haiku-20240307",
       "aliases": ["haiku", "claude-fast"],
+      "provider_route": "anthropic",
       "context_window": 200000,
       "max_output_tokens": 4096,
       "supports_extended_thinking": false,
@@ -81,6 +86,7 @@
     {
       "model_name": "gemini-1.5-pro",
       "aliases": ["gemini", "google"],
+      "provider_route": "google",
       "context_window": 2097152,
       "max_output_tokens": 8192,
       "supports_extended_thinking": false,
@@ -96,6 +102,7 @@
     {
       "model_name": "gemini-1.5-flash",
       "aliases": ["flash", "gemini-fast"],
+      "provider_route": "google",
       "context_window": 1048576,
       "max_output_tokens": 8192,
       "supports_extended_thinking": false,
