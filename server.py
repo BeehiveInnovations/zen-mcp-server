@@ -379,7 +379,7 @@ def configure_providers():
     """
     # Log environment variable status for debugging
     logger.debug("Checking environment variables for API keys...")
-    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
+    api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "PORTKEY_API_KEY", "CUSTOM_API_URL"]
     for key in api_keys_to_check:
         value = os.getenv(key)
         logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
@@ -390,12 +390,14 @@ def configure_providers():
     from providers.gemini import GeminiModelProvider
     from providers.openai_provider import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
+    from providers.portkey import PortkeyProvider
     from providers.xai import XAIModelProvider
     from utils.model_restrictions import get_restriction_service
 
     valid_providers = []
     has_native_apis = False
     has_openrouter = False
+    has_portkey = False
     has_custom = False
 
     # Check for Gemini API key
@@ -431,6 +433,26 @@ def configure_providers():
         valid_providers.append("DIAL")
         has_native_apis = True
         logger.info("DIAL API key found - DIAL models available")
+
+    # Check for Portkey API key
+    portkey_key = os.getenv("PORTKEY_API_KEY")
+    portkey_virtual_key = os.getenv("PORTKEY_VIRTUAL_KEY")
+    # Check for config-based routing (PORTKEY_CONFIG_* variables)
+    portkey_configs = [k for k in os.environ.keys() if k.startswith("PORTKEY_CONFIG_")]
+    logger.debug(f"Portkey key check: api_key={'[PRESENT]' if portkey_key else '[MISSING]'}, virtual_key={'[PRESENT]' if portkey_virtual_key else '[MISSING]'}, configs={len(portkey_configs)}")
+    
+    if portkey_key and portkey_key != "your_portkey_api_key_here" and (portkey_virtual_key or portkey_configs):
+        valid_providers.append("Portkey")
+        has_portkey = True
+        routing_method = "configs" if portkey_configs else "virtual key"
+        logger.info(f"Portkey API key found - Multiple models available via Portkey AI Gateway (routing: {routing_method})")
+    else:
+        if not portkey_key:
+            logger.debug("Portkey API key not found in environment")
+        elif not portkey_virtual_key and not portkey_configs:
+            logger.debug("Neither Portkey virtual key nor configs found in environment")
+        else:
+            logger.debug("Portkey API key is placeholder value")
 
     # Check for OpenRouter API key
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
@@ -484,7 +506,16 @@ def configure_providers():
 
         ModelProviderRegistry.register_provider(ProviderType.CUSTOM, custom_provider_factory)
 
-    # 3. OpenRouter last (catch-all for everything else)
+    # 3. Gateway providers (Portkey, OpenRouter)
+    if has_portkey:
+        # Factory function that creates PortkeyProvider with config support
+        def portkey_provider_factory(api_key=None):
+            virtual_key = os.getenv("PORTKEY_VIRTUAL_KEY")
+            return PortkeyProvider(api_key=api_key or "", virtual_key=virtual_key)
+
+        ModelProviderRegistry.register_provider(ProviderType.PORTKEY, portkey_provider_factory)
+
+    # 4. OpenRouter last (catch-all for everything else)
     if has_openrouter:
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
@@ -496,6 +527,7 @@ def configure_providers():
             "- OPENAI_API_KEY for OpenAI models\n"
             "- XAI_API_KEY for X.AI GROK models\n"
             "- DIAL_API_KEY for DIAL models\n"
+            "- PORTKEY_API_KEY + PORTKEY_VIRTUAL_KEY for Portkey AI Gateway\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
             "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
         )
@@ -508,6 +540,8 @@ def configure_providers():
         priority_info.append("Native APIs (Gemini, OpenAI)")
     if has_custom:
         priority_info.append("Custom endpoints")
+    if has_portkey:
+        priority_info.append("Portkey AI Gateway")
     if has_openrouter:
         priority_info.append("OpenRouter (catch-all)")
 
