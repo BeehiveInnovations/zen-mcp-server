@@ -1,0 +1,37 @@
+{
+	"mcpServers": {
+        "灵妙工具箱": {
+          "type": "sse",
+          "url": "https://ydy.mcp.lingmiaoai.com/sse"
+        },
+        "交互式反馈": {
+          "command": "mcp-feedback-enhanced",
+          "args": [],
+          "env": {
+            "MCP_DESKTOP_MODE": "false",
+            "FEEDBACK_API_SERVER": "https://mcp.lingmiaoai.com",
+            "FEEDBACK_API_KEY": "sk-a7ff076e-a69f-46bf-aea4-8307891e5a6d"
+          }
+        },
+        "Playwright": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "@playwright/mcp@latest"
+          ]
+        },
+        "code-search": {
+          "type": "stdio",
+          "command": "serena",
+          "args": [
+            "start-mcp-server",
+            "--context",
+            "ide-assistant",
+            "--project",
+            ".",
+            "--enable-web-dashboard",
+            "true"
+          ]
+        }
+      }
+  }

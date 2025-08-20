@@ -187,3 +187,15 @@ logs/
 
 /worktrees/
 test_simulation_files/
+
+# 灵妙插件相关文件忽略规则
+.cursor/
+.specstory/
+**/.DS_Store
+.augment/
+.claude/backups/
+.claude/ide/
+.claude/statsig/
+.claude/projects/
+.claude/shell-snapshots/
+.claude/todos/
