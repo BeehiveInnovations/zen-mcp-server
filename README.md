@@ -3,7 +3,7 @@
 [zen_web.webm](https://github.com/user-attachments/assets/851e3911-7f06-47c0-a4ab-a2601236697c)
 
 <div align="center">
-  <b>🤖 <a href="https://www.anthropic.com/claude-code">Claude Code</a> OR <a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> + [Gemini / OpenAI / Grok / OpenRouter / DIAL / Ollama / Anthropic / Any Model] = Your Ultimate AI Development Team</b>
+  <b>🤖 <a href="https://www.anthropic.com/claude-code">Claude Code</a> OR <a href="https://github.com/google-gemini/gemini-cli">Gemini CLI</a> + [Gemini / OpenAI / Grok / Portkey / OpenRouter / DIAL / Ollama / Anthropic / Any Model] = Your Ultimate AI Development Team</b>
 </div>
 
 <br/>
@@ -24,6 +24,7 @@ Use Claude Code with **Opus 4.1** (for all the agentic work) + **Gemini 2.5 Pro*
 
 **1. Get API Keys** (choose one or more):
 - **[OpenRouter](https://openrouter.ai/)** - Access multiple models with one API
+- **[Portkey](https://portkey.ai/)** - Enterprise AI Gateway with observability & routing
 - **[Gemini](https://makersuite.google.com/app/apikey)** - Google's latest models
 - **[OpenAI](https://platform.openai.com/api-keys)** - O3, GPT-5 series
 - **[X.AI](https://console.x.ai/)** - Grok models
