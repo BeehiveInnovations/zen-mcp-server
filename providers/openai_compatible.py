@@ -11,6 +11,9 @@ from urllib.parse import urlparse
 
 from openai import OpenAI
 
+# Module-level logger for OpenAI-compatible providers
+logger = logging.getLogger(__name__)
+
 from .base import (
     ModelCapabilities,
     ModelProvider,
@@ -41,8 +44,26 @@ class OpenAICompatibleProvider(ModelProvider):
         """
         super().__init__(api_key, **kwargs)
         self._client = None
-        self.base_url = base_url
-        self.organization = kwargs.get("organization")
+
+        # Allow environment overrides so we can target proxies like ChatMock
+        # Prefer env vars over any provided base_url argument.
+        env_base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
+        if env_base_url and base_url and base_url != env_base_url:
+            logger.warning(
+                "[ZEN DEBUG] Overriding provided base_url=%r with env=%r",
+                base_url,
+                env_base_url,
+            )
+        self.base_url = env_base_url or base_url
+        logger.warning(
+            "[ZEN DEBUG] OPENAI_BASE_URL env=%r effective=%r",
+            env_base_url,
+            self.base_url,
+        )
+
+        # Organization can also be provided via env for official API usage
+        self.organization = kwargs.get("organization") or os.getenv("OPENAI_ORG")
+
         self.allowed_models = self._parse_allowed_models()
 
         # Configure timeouts - especially important for custom/local endpoints
@@ -51,6 +72,10 @@ class OpenAICompatibleProvider(ModelProvider):
         # Validate base URL for security
         if self.base_url:
             self._validate_base_url()
+
+        # Confirm base URL validation and localhost detection
+        if self.base_url:
+            logger.debug(f"[ZEN DEBUG] Base URL validated OK: {self.base_url!r}; is_localhost={self._is_localhost_url()}")
 
         # Warn if using external URL without authentication
         if self.base_url and not self._is_localhost_url() and not api_key:
@@ -146,6 +171,7 @@ class OpenAICompatibleProvider(ModelProvider):
         try:
             parsed = urlparse(self.base_url)
             hostname = parsed.hostname
+            logger.debug(f"[ZEN DEBUG] Evaluating hostname for localhost/private detection: {hostname!r}")
 
             # Check for common localhost patterns
             if hostname in ["localhost", "127.0.0.1", "::1"]:
@@ -198,7 +224,6 @@ class OpenAICompatibleProvider(ModelProvider):
         """Lazy initialization of OpenAI client with security checks and timeout configuration."""
         if self._client is None:
             import os
-
             import httpx
 
             # Temporarily disable proxy environment variables to prevent httpx from detecting them
@@ -217,6 +242,9 @@ class OpenAICompatibleProvider(ModelProvider):
                     if hasattr(self, "timeout_config") and self.timeout_config
                     else httpx.Timeout(30.0)
                 )
+
+                # Keep client initialization minimal to avoid proxy parameter conflicts
+                logger.debug(f"[ZEN DEBUG] httpx timeout configured: {timeout_config}")
 
                 # Create httpx client with minimal config to avoid proxy conflicts
                 # Note: proxies parameter was removed in httpx 0.28.0
@@ -251,7 +279,12 @@ class OpenAICompatibleProvider(ModelProvider):
                 if self.DEFAULT_HEADERS:
                     client_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
 
-                logging.debug(f"OpenAI client initialized with custom httpx client and timeout: {timeout_config}")
+                logger.warning(
+                    "[ZEN DEBUG] Initializing OpenAI client: base_url=%r, organization=%r, has_http_client=%s",
+                    client_kwargs.get("base_url"),
+                    client_kwargs.get("organization"),
+                    bool(client_kwargs.get("http_client")),
+                )
 
                 # Create OpenAI client with custom httpx client
                 self._client = OpenAI(**client_kwargs)
@@ -539,6 +572,14 @@ class OpenAICompatibleProvider(ModelProvider):
                     continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
 
+        # Debug: log sanitized request skeleton (no secrets / truncated)
+        try:
+            import json as _json
+            _san = self._sanitize_for_logging(completion_params)
+            logger.info("[ZEN DEBUG] OpenAI Compatible request (sanitized): %s", _json.dumps(_san, ensure_ascii=False)[:2000])
+        except Exception as _e:
+            logger.debug(f"[ZEN DEBUG] Failed to log sanitized params: {_e}")
+
         # Check if this is o3-pro and needs the responses endpoint
         if resolved_model == "o3-pro":
             # This model requires the /v1/responses endpoint
@@ -561,6 +602,13 @@ class OpenAICompatibleProvider(ModelProvider):
         for attempt in range(max_retries):
             actual_attempts = attempt + 1  # Convert from 0-based index to human-readable count
             try:
+                logger.warning(
+                    "[ZEN DEBUG] chat.completions.create attempt=%d endpoint=%s model=%s supports_temperature=%s",
+                    actual_attempts,
+                    (self.base_url or "https://api.openai.com/v1"),
+                    resolved_model,
+                    supports_temperature,
+                )
                 # Generate completion
                 response = self.client.chat.completions.create(**completion_params)
 
@@ -587,6 +635,7 @@ class OpenAICompatibleProvider(ModelProvider):
 
                 # Check if this is a retryable error using structured error codes
                 is_retryable = self._is_error_retryable(e)
+                logger.error("[ZEN DEBUG] OpenAI Compatible error on attempt %d: %s (retryable=%s)", actual_attempts, e, is_retryable)
 
                 # If this is the last attempt or not retryable, give up
                 if attempt == max_retries - 1 or not is_retryable:
