@@ -25,7 +25,7 @@ jobs:
       github.event.action == 'synchronize' ||
       github.event.action == 'reopened' ||
       contains(github.event.pull_request.labels.*.name, 'docker-build')
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,15 +82,15 @@ jobs:
           header: docker-build
           message: |
             ## 🐳 Docker Build Complete
-            
+
             **PR**: #${{ github.event.number }} | **Commit**: `${{ github.sha }}`
-            
+
             ```
             ${{ steps.meta.outputs.tags }}
             ```
-            
+
             **Test:** `docker pull ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}`
-            
+
             **Claude config:**
             ```json
             {
@@ -103,7 +103,7 @@ jobs:
               }
             }
             ```
-            
+
             💡 Add `docker-build` label to manually trigger builds
 
 

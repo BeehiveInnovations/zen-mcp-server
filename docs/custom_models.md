@@ -58,7 +58,7 @@ The server uses `conf/custom_models.json` to map convenient aliases to both Open
 |-------|-------------------|------|
 | `local-llama`, `local` | `llama3.2` | Requires `CUSTOM_API_URL` configured |
 
-View the full list in [`conf/custom_models.json`](conf/custom_models.json). 
+View the full list in [`conf/custom_models.json`](conf/custom_models.json).
 
 **Note:** While you can use any OpenRouter model by its full name, models not in the config file will use generic capabilities (32K context window, no extended thinking, etc.) which may not match the model's actual capabilities. For best results, add new models to the config file with their proper specifications.
 
@@ -77,7 +77,7 @@ View the full list in [`conf/custom_models.json`](conf/custom_models.json).
 OPENROUTER_API_KEY=your-openrouter-api-key
 ```
 
-> **Note:** Control which models can be used directly in your OpenRouter dashboard at [openrouter.ai](https://openrouter.ai/). 
+> **Note:** Control which models can be used directly in your OpenRouter dashboard at [openrouter.ai](https://openrouter.ai/).
 > This gives you centralized control over model access and spending limits.
 
 That's it! The setup script handles all necessary configuration automatically.
@@ -174,7 +174,7 @@ CUSTOM_MODEL_NAME=your-loaded-model
 "Use meta-llama/Llama-2-7b-chat-hf via zen to analyze"
 ```
 
-**For OpenRouter:** Check current model pricing at [openrouter.ai/models](https://openrouter.ai/models).  
+**For OpenRouter:** Check current model pricing at [openrouter.ai/models](https://openrouter.ai/models).
 **For Local models:** Context window and capabilities are defined in `conf/custom_models.json`.
 
 ## Model Provider Selection
@@ -187,7 +187,7 @@ The system automatically routes models to the appropriate provider:
 
 **Provider Priority Order:**
 1. Native APIs (Google, OpenAI) - if API keys are available
-2. Custom endpoints - for models marked with `is_custom: true`  
+2. Custom endpoints - for models marked with `is_custom: true`
 3. OpenRouter - catch-all for cloud models
 
 This ensures clean separation between local and cloud models while maintaining flexibility for unknown models.

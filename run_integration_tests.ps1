@@ -79,7 +79,7 @@ $activateScript = if ($IsWindows -or $env:OS -eq "Windows_NT") {
 
 if (Test-Path $venvPath) {
     Write-Emoji "✅" "Virtual environment found" -Color Green
-    
+
     # Activate virtual environment (for PowerShell on Windows)
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
         if (Test-Path "$venvPath\Scripts\Activate.ps1") {
@@ -109,27 +109,27 @@ function Test-ApiKey {
     param(
         [string]$KeyName
     )
-    
+
     # Check environment variable
     $envValue = [Environment]::GetEnvironmentVariable($KeyName)
     if (![string]::IsNullOrWhiteSpace($envValue)) {
         return $true
     }
-    
+
     # Check .env file
     if (Test-Path ".env") {
         $envContent = Get-Content ".env" -ErrorAction SilentlyContinue
         $found = $envContent | Where-Object { $_ -match "^$KeyName\s*=" -and $_ -notmatch "^$KeyName\s*=\s*$" }
         return $found.Count -gt 0
     }
-    
+
     return $false
 }
 
 # Check API keys
 $apiKeys = @(
     "GEMINI_API_KEY",
-    "OPENAI_API_KEY", 
+    "OPENAI_API_KEY",
     "XAI_API_KEY",
     "OPENROUTER_API_KEY",
     "CUSTOM_API_URL"
@@ -169,18 +169,18 @@ Write-ColorText "------------------------------" -Color Cyan
 try {
     # Build pytest command
     $pytestArgs = @("tests/", "-v", "-m", "integration", "--tb=short")
-    
+
     if ($VerboseOutput) {
         $pytestArgs += "--verbose"
     }
-    
+
     # Run pytest
     python -m pytest @pytestArgs
-    
+
     if ($LASTEXITCODE -ne 0) {
         throw "Integration tests failed"
     }
-    
+
     Write-Host ""
     Write-Emoji "✅" "Integration tests completed!" -Color Green
 } catch {
@@ -195,14 +195,14 @@ if ($WithSimulator) {
     Write-Host ""
     Write-Emoji "🤖" "Running simulator tests..." -Color Cyan
     Write-ColorText "----------------------------" -Color Cyan
-    
+
     try {
         if ($VerboseOutput) {
             python communication_simulator_test.py --verbose
         } else {
             python communication_simulator_test.py
         }
-        
+
         if ($LASTEXITCODE -ne 0) {
             Write-Host ""
             Write-Emoji "❌" "Simulator tests failed!" -Color Red

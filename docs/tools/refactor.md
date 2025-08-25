@@ -38,10 +38,10 @@ The refactor tool excels with models that have large context windows like Gemini
 "Using zen's refactor decompose the all_in_one_sync_code.swift into maintainable extensions"
 ```
 
-💡**Example of a powerful prompt** to get the best out of both Claude + Flash's 1M Context: 
+💡**Example of a powerful prompt** to get the best out of both Claude + Flash's 1M Context:
 ```
 "First, think about how the authentication module works, find related classes and find
- any code smells, then using zen's refactor ask flash to confirm your findings but ask 
+ any code smells, then using zen's refactor ask flash to confirm your findings but ask
  it to find additional code smells and any other quick-wins and then fix these issues"
 ```
 
@@ -141,7 +141,7 @@ This results in Claude first performing its own expert analysis, encouraging it 
 
 **Top-Down Analysis:**
 1. **File Level**: Identify oversized files that need splitting
-2. **Class Level**: Find classes with too many responsibilities  
+2. **Class Level**: Find classes with too many responsibilities
 3. **Function Level**: Locate functions that are too complex or long
 4. **Code Quality**: Address smells, modernization, and organization
 
@@ -197,5 +197,5 @@ Analyzes multiple files together to understand:
 
 - **Use `refactor`** for: Structural improvements, decomposition, modernization, code organization
 - **Use `codereview`** for: Finding bugs and security issues with immediate fixes
-- **Use `analyze`** for: Understanding code without making change recommendations  
+- **Use `analyze`** for: Understanding code without making change recommendations
 - **Use `debug`** for: Solving specific runtime issues rather than structural problems

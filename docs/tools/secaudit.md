@@ -2,11 +2,11 @@
 
 **Systematic OWASP-based security assessment with compliance evaluation through workflow-driven investigation**
 
-The `secaudit` tool provides comprehensive security auditing capabilities with systematic OWASP Top 10 assessment, compliance framework evaluation, 
-and threat modeling. This workflow tool guides Claude through methodical security investigation steps with forced pauses between each step to ensure 
+The `secaudit` tool provides comprehensive security auditing capabilities with systematic OWASP Top 10 assessment, compliance framework evaluation,
+and threat modeling. This workflow tool guides Claude through methodical security investigation steps with forced pauses between each step to ensure
 thorough vulnerability assessment, security pattern analysis, and compliance verification before providing expert analysis.
 
-**Important**: AI models may not identify all security vulnerabilities. Always perform additional manual security reviews, 
+**Important**: AI models may not identify all security vulnerabilities. Always perform additional manual security reviews,
 penetration testing, and verification.
 
 ## How the Workflow Works
@@ -41,7 +41,7 @@ Perform a secaudit with o3 on this e-commerce web application focusing on paymen
 ```
 
 ```
-Use secaudit to conduct a comprehensive security audit of the authentication system, threat level high, focus on enterprise 
+Use secaudit to conduct a comprehensive security audit of the authentication system, threat level high, focus on enterprise
 security patterns and HIPAA compliance
 ```
 
@@ -50,9 +50,9 @@ security patterns and HIPAA compliance
 **You can run parallel security audits for different application components:**
 
 ```
-Start separate sub-tasks, in one start a secaudit for critical payment processing components focusing on PCI DSS with gemini pro, 
-and in the other for user management focusing on OWASP authentication vulnerabilities with o4-mini, then combine into a unified 
-security remediation plan using planner 
+Start separate sub-tasks, in one start a secaudit for critical payment processing components focusing on PCI DSS with gemini pro,
+and in the other for user management focusing on OWASP authentication vulnerabilities with o4-mini, then combine into a unified
+security remediation plan using planner
 ```
 
 ## Key Features
@@ -165,31 +165,31 @@ Systematic assessment includes:
 
 **Comprehensive E-commerce Security Audit:**
 ```
-"Conduct a comprehensive secaudit with gemini pro for our Node.js e-commerce platform, threat level high, 
+"Conduct a comprehensive secaudit with gemini pro for our Node.js e-commerce platform, threat level high,
 compliance requirements PCI DSS and SOC2, focus on payment processing security"
 ```
 
 **Authentication System Security Review:**
 ```
-"Use o3 to perform secaudit on authentication microservice, focus on authentication, 
+"Use o3 to perform secaudit on authentication microservice, focus on authentication,
 threat level critical, check for OWASP A07 and multi-factor authentication implementation"
 ```
 
 **API Security Assessment:**
 ```
-"Secaudit our REST API gateway with gemini pro, audit focus api_security, 
+"Secaudit our REST API gateway with gemini pro, audit focus api_security,
 compliance requirements GDPR, threat level medium"
 ```
 
 **Infrastructure Security Review:**
 ```
-"Perform secaudit on Kubernetes deployment manifests with o3, focus infrastructure, 
+"Perform secaudit on Kubernetes deployment manifests with o3, focus infrastructure,
 threat level high, include container security and network policies"
 ```
 
 **Quick Security Scan:**
 ```
-"Fast secaudit of user registration flow with flash, focus authentication, 
+"Fast secaudit of user registration flow with flash, focus authentication,
 severity filter critical and high only"
 ```
 

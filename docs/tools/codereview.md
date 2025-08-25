@@ -35,7 +35,7 @@ This tool particularly benefits from Gemini Pro or Flash models due to their 1M 
 
 ```
 Perform a codereview with gemini pro and review auth.py for security issues and potential vulnerabilities.
-I need an actionable plan but break it down into smaller quick-wins that we can implement and test rapidly 
+I need an actionable plan but break it down into smaller quick-wins that we can implement and test rapidly
 ```
 
 ## Pro Tip: Multiple Parallel Reviews
@@ -44,7 +44,7 @@ I need an actionable plan but break it down into smaller quick-wins that we can 
 
 ```
 Start separate sub-tasks for codereview one with o3 finding critical issues and one with flash finding low priority issues
-and quick-wins and give me the final single combined review highlighting only the critical issues 
+and quick-wins and give me the final single combined review highlighting only the critical issues
 ```
 
 The above prompt will simultaneously run two separate `codereview` tools with two separate models and combine the output into a single summary for you to consume.
@@ -117,7 +117,7 @@ The above prompt will simultaneously run two separate `codereview` tools with tw
 Issues are categorized and prioritized:
 
 - **🔴 CRITICAL**: Security vulnerabilities, crashes, data corruption
-- **🟠 HIGH**: Logic errors, performance issues, reliability problems  
+- **🟠 HIGH**: Logic errors, performance issues, reliability problems
 - **🟡 MEDIUM**: Code smells, maintainability issues, minor bugs
 - **🟢 LOW**: Style issues, documentation, minor improvements
 

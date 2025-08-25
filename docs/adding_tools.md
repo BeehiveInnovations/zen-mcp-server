@@ -12,7 +12,7 @@ Zen supports two tool architectures:
 - **Benefits**: Clean, lightweight, easy to implement
 - **Base class**: `SimpleTool` (`tools/simple/base.py`)
 
-### Multi-step Workflow Tools  
+### Multi-step Workflow Tools
 - **Pattern**: Step-by-step investigation with Claude pausing between steps to investigate
 - **Use cases**: Complex analysis, debugging, code review, security audits
 - **Benefits**: Systematic investigation, expert analysis integration, better results for complex tasks
@@ -32,46 +32,46 @@ from pydantic import Field
 class ChatTool(SimpleTool):
     def get_name(self) -> str:
         return "chat"
-    
+
     def get_description(self) -> str:
         return "GENERAL CHAT & COLLABORATIVE THINKING..."
-    
+
     def get_tool_fields(self) -> dict:
         return {
             "prompt": {
-                "type": "string", 
+                "type": "string",
                 "description": "Your question or idea..."
             },
             "files": SimpleTool.FILES_FIELD  # Reuse common field
         }
-    
+
     def get_required_fields(self) -> list[str]:
         return ["prompt"]
-    
+
     async def prepare_prompt(self, request) -> str:
         return self.prepare_chat_style_prompt(request)
 ```
 
 ### Workflow Tool Example
 
-```python  
+```python
 from tools.workflow.base import WorkflowTool
 
 class DebugTool(WorkflowTool):
     def get_name(self) -> str:
         return "debug"
-    
+
     def get_description(self) -> str:
         return "DEBUG & ROOT CAUSE ANALYSIS - Step-by-step investigation..."
-    
+
     def get_required_actions(self, step_number, confidence, findings, total_steps):
         if step_number == 1:
             return ["Search for code related to issue", "Examine relevant files"]
         return ["Trace execution flow", "Verify hypothesis with code evidence"]
-    
+
     def should_call_expert_analysis(self, consolidated_findings):
         return len(consolidated_findings.relevant_files) > 0
-    
+
     def prepare_expert_analysis_context(self, consolidated_findings):
         return f"Investigation findings: {consolidated_findings.findings}"
 ```
@@ -79,18 +79,18 @@ class DebugTool(WorkflowTool):
 ## Key Implementation Points
 
 ### Simple Tools
-- Inherit from `SimpleTool` 
+- Inherit from `SimpleTool`
 - Implement: `get_name()`, `get_description()`, `get_tool_fields()`, `prepare_prompt()`
 - Override: `get_required_fields()`, `format_response()` (optional)
 
-### Workflow Tools  
+### Workflow Tools
 - Inherit from `WorkflowTool`
 - Implement: `get_name()`, `get_description()`, `get_required_actions()`, `should_call_expert_analysis()`, `prepare_expert_analysis_context()`
 - Override: `get_tool_fields()` (optional)
 
 ### Registration
 1. Create system prompt in `systemprompts/`
-2. Import in `server.py` 
+2. Import in `server.py`
 3. Add to `TOOLS` dictionary
 
 ## Testing Your Tool
@@ -106,7 +106,7 @@ def test_your_tool_validation(self):
         "prompt": "Test the tool functionality",
         "model": "flash"
     })
-    
+
     # Validate response structure and content
     self.assertIn("status", response)
     self.assertEqual(response["status"], "success")
@@ -114,7 +114,7 @@ def test_your_tool_validation(self):
 
 **Why simulator tests matter:**
 - Test actual MCP communication with Claude
-- Validate real AI model interactions  
+- Validate real AI model interactions
 - Catch integration issues unit tests miss
 - Ensure proper conversation threading
 - Verify file handling and deduplication
@@ -134,4 +134,3 @@ python communication_simulator_test.py --quick
 - **Workflow Tool**: `tools/debug.py` - Multi-step investigation with expert analysis
 
 **Recommendation**: Start with existing tools as templates and explore the base classes to understand available hooks and methods.
-
