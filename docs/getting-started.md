@@ -31,6 +31,10 @@ You need at least one API key. Choose based on your needs:
 - Visit [OpenAI Platform](https://platform.openai.com/api-keys)
 - Generate an API key for O3, GPT-5 access
 
+**DeepSeek:**
+- Visit [DeepSeek Platform](https://platform.deepseek.com/)
+- Generate an API key for DeepSeek models
+
 **X.AI (Grok):**
 - Visit [X.AI Console](https://console.x.ai/)
 - Generate an API key for Grok models
@@ -199,8 +203,10 @@ nano .env
 Add your API keys (at least one required):
 ```env
 # Choose your providers (at least one required)
-GEMINI_API_KEY=your-gemini-api-key-here      # For Gemini models  
+GEMINI_API_KEY=your-gemini-api-key-here      # For Gemini models
 OPENAI_API_KEY=your-openai-api-key-here      # For O3, GPT-5
+DEEPSEEK_API_KEY=your-deepseek-api-key-here  # For DeepSeek models
+# DEEPSEEK_BASE_URL=https://api.deepseek.com   # Optional: custom API endpoint
 XAI_API_KEY=your-xai-api-key-here            # For Grok models
 OPENROUTER_API_KEY=your-openrouter-key       # For multiple models
 
@@ -349,6 +355,8 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 DEFAULT_MODEL=auto
 GEMINI_API_KEY=your-key
 OPENAI_API_KEY=your-key
+DEEPSEEK_API_KEY=your-key
+# DEEPSEEK_BASE_URL=https://api.deepseek.com
 GOOGLE_ALLOWED_MODELS=flash,pro
 OPENAI_ALLOWED_MODELS=o4-mini,o3-mini
 ```
@@ -360,11 +368,13 @@ GEMINI_API_KEY=your-key
 GOOGLE_ALLOWED_MODELS=flash
 ```
 
-### High-Performance Setup  
+### High-Performance Setup
 ```env
 DEFAULT_MODEL=auto
 GEMINI_API_KEY=your-key
 OPENAI_API_KEY=your-key
+DEEPSEEK_API_KEY=your-key
+# DEEPSEEK_BASE_URL=https://api.deepseek.com
 GOOGLE_ALLOWED_MODELS=pro
 OPENAI_ALLOWED_MODELS=o3
 ```

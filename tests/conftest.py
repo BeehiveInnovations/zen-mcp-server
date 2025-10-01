@@ -35,6 +35,7 @@ if sys.platform == "win32":
 # Register providers for all tests
 from providers import ModelProviderRegistry  # noqa: E402
 from providers.base import ProviderType  # noqa: E402
+from providers.deepseek import DeepSeekModelProvider  # noqa: E402
 from providers.gemini import GeminiModelProvider  # noqa: E402
 from providers.openai_provider import OpenAIModelProvider  # noqa: E402
 from providers.xai import XAIModelProvider  # noqa: E402
@@ -43,6 +44,7 @@ from providers.xai import XAIModelProvider  # noqa: E402
 ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
+ModelProviderRegistry.register_provider(ProviderType.DEEPSEEK, DeepSeekModelProvider)
 
 # Register CUSTOM provider if CUSTOM_API_URL is available (for integration tests)
 # But only if we're actually running integration tests, not unit tests
@@ -72,7 +74,7 @@ def project_path(tmp_path):
 
 def _set_dummy_keys_if_missing():
     """Set dummy API keys only when they are completely absent."""
-    for var in ("GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY"):
+    for var in ("GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "DEEPSEEK_API_KEY"):
         if not os.environ.get(var):
             os.environ[var] = "dummy-key-for-tests"
 
@@ -119,6 +121,8 @@ def mock_provider_availability(request, monkeypatch):
         ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
     if ProviderType.XAI not in registry._providers:
         ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
+    if ProviderType.DEEPSEEK not in registry._providers:
+        ModelProviderRegistry.register_provider(ProviderType.DEEPSEEK, DeepSeekModelProvider)
 
     # Ensure CUSTOM provider is registered if needed for integration tests
     if (

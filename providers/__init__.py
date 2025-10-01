@@ -1,6 +1,7 @@
 """Model provider abstractions for supporting multiple AI providers."""
 
 from .base import ModelCapabilities, ModelProvider, ModelResponse
+from .deepseek import DeepSeekModelProvider
 from .gemini import GeminiModelProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openai_provider import OpenAIModelProvider
@@ -15,5 +16,6 @@ __all__ = [
     "GeminiModelProvider",
     "OpenAIModelProvider",
     "OpenAICompatibleProvider",
+    "DeepSeekModelProvider",
     "OpenRouterProvider",
 ]

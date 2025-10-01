@@ -11,6 +11,9 @@ This guide covers all configuration options for the Zen MCP Server. The server i
 DEFAULT_MODEL=auto
 GEMINI_API_KEY=your-gemini-key
 OPENAI_API_KEY=your-openai-key
+DEEPSEEK_API_KEY=your-deepseek-key
+# Optional: override DeepSeek API base URL
+# DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
 ## Complete Configuration Reference
@@ -30,9 +33,15 @@ OPENAI_API_KEY=your-openai-key
 GEMINI_API_KEY=your_gemini_api_key_here
 # Get from: https://makersuite.google.com/app/apikey
 
-# OpenAI API  
+# OpenAI API
 OPENAI_API_KEY=your_openai_api_key_here
 # Get from: https://platform.openai.com/api-keys
+
+# DeepSeek API
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+# Get from: https://platform.deepseek.com/
+# Optional: override API base URL
+# DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 # X.AI GROK API
 XAI_API_KEY=your_xai_api_key_here
@@ -127,6 +136,10 @@ OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 - `gemini-2.5-pro` (1M context, powerful)
 - `flash` (shorthand for Flash model)
 - `pro` (shorthand for Pro model)
+
+**DeepSeek Models:**
+- `deepseek-chat` (128K context, chat)
+- `deepseek-reasoner` (128K context, reasoning with thinking tokens)
 
 **X.AI GROK Models:**
 - `grok-4-latest` (256K context, latest flagship model with reasoning, vision, and structured outputs)
