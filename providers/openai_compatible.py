@@ -359,7 +359,7 @@ class OpenAICompatibleProvider(ModelProvider):
         max_output_tokens: Optional[int] = None,
         **kwargs,
     ) -> ModelResponse:
-        """Generate content using the /v1/responses endpoint for o3-pro via OpenAI library."""
+        """Generate content using the /v1/responses endpoint for OpenAI models that require it."""
         # Convert messages to the correct format for responses endpoint
         input_messages = []
 
@@ -368,8 +368,8 @@ class OpenAICompatibleProvider(ModelProvider):
             content = message.get("content", "")
 
             if role == "system":
-                # For o3-pro, system messages should be handled carefully to avoid policy violations
-                # Instead of prefixing with "System:", we'll include the system content naturally
+                # For models using responses endpoint, system messages should be handled carefully
+                # Include the system content as a user message to avoid policy violations
                 input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
             elif role == "user":
                 input_messages.append({"role": "user", "content": [{"type": "input_text", "text": content}]})
@@ -404,7 +404,7 @@ class OpenAICompatibleProvider(ModelProvider):
 
                 sanitized_params = self._sanitize_for_logging(completion_params)
                 logging.info(
-                    f"o3-pro API request (sanitized): {json.dumps(sanitized_params, indent=2, ensure_ascii=False)}"
+                    f"{model_name} API request (sanitized): {json.dumps(sanitized_params, indent=2, ensure_ascii=False)}"
                 )
 
                 # Use OpenAI client's responses endpoint
@@ -416,17 +416,21 @@ class OpenAICompatibleProvider(ModelProvider):
 
                 # Try to extract usage information
                 usage = None
-                if hasattr(response, "usage"):
-                    usage = self._extract_usage(response)
-                elif hasattr(response, "input_tokens") and hasattr(response, "output_tokens"):
-                    # Safely extract token counts with None handling
-                    input_tokens = getattr(response, "input_tokens", 0) or 0
-                    output_tokens = getattr(response, "output_tokens", 0) or 0
+                if hasattr(response, "usage") and response.usage:
+                    # For responses endpoint, usage object has different structure
+                    input_tokens = getattr(response.usage, "input_tokens", 0) or 0
+                    output_tokens = getattr(response.usage, "output_tokens", 0) or 0
+                    total_tokens = getattr(response.usage, "total_tokens", 0) or 0
                     usage = {
                         "input_tokens": input_tokens,
                         "output_tokens": output_tokens,
-                        "total_tokens": input_tokens + output_tokens,
+                        "total_tokens": total_tokens or (input_tokens + output_tokens),
                     }
+
+                    if hasattr(response.usage, "output_tokens_details"):
+                        output_details = response.usage.output_tokens_details
+                        if hasattr(output_details, "reasoning_tokens"):
+                            usage["reasoning_tokens"] = getattr(output_details, "reasoning_tokens", 0) or 0
 
                 return ModelResponse(
                     content=content,
@@ -451,14 +455,15 @@ class OpenAICompatibleProvider(ModelProvider):
                 if is_retryable and attempt < max_retries - 1:
                     delay = retry_delays[attempt]
                     logging.warning(
-                        f"Retryable error for o3-pro responses endpoint, attempt {actual_attempts}/{max_retries}: {str(e)}. Retrying in {delay}s..."
+                        f"Retryable error for {model_name} responses endpoint, attempt {attempt + 1}/{max_retries}: {str(e)}. Retrying in {delay}s..."
                     )
                     time.sleep(delay)
                 else:
                     break
 
         # If we get here, all retries failed
-        error_msg = f"o3-pro responses endpoint error after {actual_attempts} attempt{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
+        actual_attempts = attempt + 1  # Convert from 0-based index to human-readable count
+        error_msg = f"{model_name} responses endpoint error after {actual_attempts} attempt{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
         logging.error(error_msg)
         raise RuntimeError(error_msg) from last_exception
 
@@ -571,9 +576,9 @@ class OpenAICompatibleProvider(ModelProvider):
                     continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
 
-        # Check if this is o3-pro and needs the responses endpoint
-        if resolved_model == "o3-pro":
-            # This model requires the /v1/responses endpoint
+        # Check if this is a model that requires the responses endpoint
+        if resolved_model in {"o3-pro", "o3-pro-2025-06-10", "codex-mini-latest"}:
+            # These models require the /v1/responses endpoint
             # If it fails, we should not fall back to chat/completions
             return self._generate_with_responses_endpoint(
                 model_name=resolved_model,
