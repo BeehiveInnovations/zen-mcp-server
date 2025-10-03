@@ -30,9 +30,16 @@ OPENAI_API_KEY=your-openai-key
 GEMINI_API_KEY=your_gemini_api_key_here
 # Get from: https://makersuite.google.com/app/apikey
 
-# OpenAI API  
+# OpenAI API
 OPENAI_API_KEY=your_openai_api_key_here
 # Get from: https://platform.openai.com/api-keys
+
+# Azure OpenAI API (Responses API - supports GPT-5 and GPT-5-Codex)
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+# Get from: https://portal.azure.com/ (Keys and Endpoint section)
 
 # X.AI GROK API
 XAI_API_KEY=your_xai_api_key_here
@@ -59,6 +66,57 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 - Use standard localhost URLs since the server runs natively
 - Example: `http://localhost:11434/v1` for Ollama
 
+### Azure OpenAI Configuration
+
+Azure OpenAI integration uses the **Responses API** exclusively, supporting both GPT-5 and GPT-5-Codex models with enterprise-grade features.
+
+**Setup Steps:**
+
+1. **Create Azure OpenAI Resource:**
+   - Navigate to [Azure Portal](https://portal.azure.com/)
+   - Create or select an Azure OpenAI resource
+   - Deploy a GPT-5 or GPT-5-Codex model
+
+2. **Get Credentials:**
+   - Go to your Azure OpenAI resource
+   - Navigate to "Keys and Endpoint" section
+   - Copy the API key and endpoint URL
+
+3. **Configure Environment Variables:**
+   ```env
+   # Required for Azure OpenAI
+   AZURE_OPENAI_API_KEY=your_api_key_from_azure
+   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+   AZURE_OPENAI_API_VERSION=2025-04-01-preview
+   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+   ```
+
+**Supported Models:**
+- **`gpt-5`** - Intelligence score 16, 400K context window, 128K max output tokens
+- **`gpt-5-codex`** - Intelligence score 17, specialized for code generation and analysis
+
+**Key Features:**
+- **Responses API Implementation** - Uses Azure's Responses API (not Chat Completions API)
+- **Extended Thinking Support** - Full support for extended reasoning capabilities
+- **Deployment-Based Routing** - Routes requests through deployment names rather than model names
+- **Large Context Windows** - 400K token context, 128K token output capacity
+- **Temperature Constraint** - Temperature is fixed at 1.0 (cannot be adjusted)
+
+**Important Notes:**
+- Azure OpenAI requires all 4 environment variables to be configured
+- The deployment name must match your Azure deployment (not the model name directly)
+- Temperature is always set to 1.0 and cannot be modified
+- Uses deployment-based routing: requests go to your specific deployment endpoint
+
+**Example Configuration:**
+```env
+# Example Azure OpenAI setup for GPT-5-Codex
+AZURE_OPENAI_API_KEY=abc123def456ghi789jkl012mno345pqr
+AZURE_OPENAI_ENDPOINT=https://my-company-openai.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=my-gpt5-codex-deployment
+```
+
 ### Model Configuration
 
 **Default Model Selection:**
@@ -67,27 +125,18 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 DEFAULT_MODEL=auto  # Claude picks best model for each task (recommended)
 ```
 
-- **Available Models:** The canonical capability data for native providers lives in JSON manifests under `conf/`:
-  - `conf/openai_models.json` – OpenAI catalogue (can be overridden with `OPENAI_MODELS_CONFIG_PATH`)
-  - `conf/gemini_models.json` – Gemini catalogue (`GEMINI_MODELS_CONFIG_PATH`)
-  - `conf/xai_models.json` – X.AI / GROK catalogue (`XAI_MODELS_CONFIG_PATH`)
-  - `conf/openrouter_models.json` – OpenRouter catalogue (`OPENROUTER_MODELS_CONFIG_PATH`)
-  - `conf/dial_models.json` – DIAL aggregation catalogue (`DIAL_MODELS_CONFIG_PATH`)
-  - `conf/custom_models.json` – Custom/OpenAI-compatible endpoints (`CUSTOM_MODELS_CONFIG_PATH`)
-
-  Each JSON file documents the allowed fields via its `_README` block and controls model aliases, capability limits, and feature flags. Edit these files (or point the matching `*_MODELS_CONFIG_PATH` variable to your own copy) when you want to adjust context windows, enable JSON mode, or expose additional aliases without touching Python code.
-
-  The shipped defaults cover:
-
-  | Provider | Canonical Models | Notable Aliases |
-  |----------|-----------------|-----------------|
-  | OpenAI | `gpt-5`, `gpt-5-pro`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5-codex`, `gpt-4.1`, `o3`, `o3-mini`, `o3-pro`, `o4-mini` | `gpt5`, `gpt5pro`, `mini`, `nano`, `codex`, `o3mini`, `o3pro`, `o4mini` |
-  | Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` | `pro`, `gemini-pro`, `flash`, `flash-2.0`, `flashlite` |
-  | X.AI | `grok-4`, `grok-3`, `grok-3-fast` | `grok`, `grok4`, `grok3`, `grok3fast`, `grokfast` |
-  | OpenRouter | See `conf/openrouter_models.json` for the continually evolving catalogue | e.g., `opus`, `sonnet`, `flash`, `pro`, `mistral` |
-  | Custom | User-managed entries such as `llama3.2` | Define your own aliases per entry |
-
-  > **Tip:** Copy the JSON file you need, customise it, and point the corresponding `*_MODELS_CONFIG_PATH` environment variable to your version. This lets you enable or disable capabilities (JSON mode, function calling, temperature support) without editing Python.
+**Available Models:**
+- **`auto`**: Claude automatically selects the optimal model
+- **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
+- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
+- **`o3`**: Strong logical reasoning (200K context)
+- **`o3-mini`**: Balanced speed/quality (200K context)
+- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
+- **`gpt-5`**: Azure OpenAI GPT-5 via Responses API (400K context, 128K output)
+- **`gpt-5-codex`**: Azure OpenAI GPT-5-Codex specialized for code (400K context, 128K output)
+- **`grok-3`**: GROK-3 advanced reasoning (131K context)
+- **`grok-4-latest`**: GROK-4 latest flagship model (256K context)
+- **Custom models**: via OpenRouter or local APIs
 
 ### Thinking Mode Configuration
 
@@ -119,17 +168,34 @@ OPENAI_ALLOWED_MODELS=o3-mini,o4-mini,mini
 GOOGLE_ALLOWED_MODELS=flash,pro
 
 # X.AI GROK model restrictions
-XAI_ALLOWED_MODELS=grok-3,grok-3-fast,grok-4
+XAI_ALLOWED_MODELS=grok-3,grok-3-fast,grok-4-latest
 
 # OpenRouter model restrictions (affects models via custom provider)
 OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 ```
 
-**Supported Model Names:** The names/aliases listed in the JSON manifests above are the authoritative source. Keep in mind:
+**Supported Model Names:**
 
-- Aliases are case-insensitive and defined per entry (for example, `mini` maps to `gpt-5-mini` by default, while `flash` maps to `gemini-2.5-flash`).
-- When you override the manifest files you can add or remove aliases as needed; restriction policies (`*_ALLOWED_MODELS`) automatically pick up those changes.
-- Models omitted from a manifest fall back to generic capability detection (where supported) and may have limited feature metadata.
+**OpenAI Models:**
+- `o3` (200K context, high reasoning)
+- `o3-mini` (200K context, balanced)
+- `o4-mini` (200K context, latest balanced)
+- `mini` (shorthand for o4-mini)
+
+**Gemini Models:**
+- `gemini-2.5-flash` (1M context, fast)
+- `gemini-2.5-pro` (1M context, powerful)
+- `flash` (shorthand for Flash model)
+- `pro` (shorthand for Pro model)
+
+**X.AI GROK Models:**
+- `grok-4-latest` (256K context, latest flagship model with reasoning, vision, and structured outputs)
+- `grok-3` (131K context, advanced reasoning)
+- `grok-3-fast` (131K context, higher performance)
+- `grok` (shorthand for grok-4-latest)
+- `grok4` (shorthand for grok-4-latest)
+- `grok3` (shorthand for grok-3)
+- `grokfast` (shorthand for grok-3-fast)
 
 **Example Configurations:**
 ```env
@@ -148,15 +214,10 @@ XAI_ALLOWED_MODELS=grok,grok-3-fast
 
 ### Advanced Configuration
 
-**Custom Model Configuration & Manifest Overrides:**
+**Custom Model Configuration:**
 ```env
-# Override default location of built-in catalogues
-OPENAI_MODELS_CONFIG_PATH=/path/to/openai_models.json
-GEMINI_MODELS_CONFIG_PATH=/path/to/gemini_models.json
-XAI_MODELS_CONFIG_PATH=/path/to/xai_models.json
-OPENROUTER_MODELS_CONFIG_PATH=/path/to/openrouter_models.json
-DIAL_MODELS_CONFIG_PATH=/path/to/dial_models.json
-CUSTOM_MODELS_CONFIG_PATH=/path/to/custom_models.json
+# Override default location of custom_models.json
+CUSTOM_MODELS_CONFIG_PATH=/path/to/your/custom_models.json
 ```
 
 **Conversation Settings:**
@@ -187,6 +248,18 @@ OPENAI_API_KEY=your-openai-key
 XAI_API_KEY=your-xai-key
 LOG_LEVEL=DEBUG
 CONVERSATION_TIMEOUT_HOURS=1
+```
+
+### Azure OpenAI Setup
+```env
+# Azure OpenAI with GPT-5-Codex
+DEFAULT_MODEL=auto
+AZURE_OPENAI_API_KEY=your-azure-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+LOG_LEVEL=INFO
+CONVERSATION_TIMEOUT_HOURS=3
 ```
 
 ### Production Setup
