@@ -412,6 +412,7 @@ def configure_providers():
         value = os.getenv(key)
         logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
     from providers import ModelProviderRegistry
+    from providers.azure_openai import AzureOpenAIModelProvider
     from providers.custom import CustomProvider
     from providers.dial import DIALModelProvider
     from providers.gemini import GeminiModelProvider
@@ -452,6 +453,17 @@ def configure_providers():
         valid_providers.append("X.AI (GROK)")
         has_native_apis = True
         logger.info("X.AI API key found - GROK models available")
+
+    # Check for Azure OpenAI API key
+    azure_key = os.getenv("AZURE_OPENAI_API_KEY")
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+    if azure_key and azure_endpoint and azure_deployment:
+        if (azure_key != "your_azure_api_key_here" and
+            azure_endpoint != "your_azure_endpoint_here"):
+            valid_providers.append("Azure OpenAI")
+            has_native_apis = True
+            logger.info(f"Azure OpenAI found - deployment: {azure_deployment}")
 
     # Check for DIAL API key
     dial_key = os.getenv("DIAL_API_KEY")
@@ -497,6 +509,9 @@ def configure_providers():
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
         if openai_key and openai_key != "your_openai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+        if azure_key and azure_endpoint and azure_deployment:
+            if azure_key != "your_azure_api_key_here":
+                ModelProviderRegistry.register_provider(ProviderType.AZURE, AzureOpenAIModelProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
         if dial_key and dial_key != "your_dial_api_key_here":
@@ -522,6 +537,7 @@ def configure_providers():
             "At least one API configuration is required. Please set either:\n"
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI models\n"
+            "- AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_DEPLOYMENT_NAME for Azure OpenAI models\n"
             "- XAI_API_KEY for X.AI GROK models\n"
             "- DIAL_API_KEY for DIAL models\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"

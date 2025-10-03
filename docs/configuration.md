@@ -30,9 +30,16 @@ OPENAI_API_KEY=your-openai-key
 GEMINI_API_KEY=your_gemini_api_key_here
 # Get from: https://makersuite.google.com/app/apikey
 
-# OpenAI API  
+# OpenAI API
 OPENAI_API_KEY=your_openai_api_key_here
 # Get from: https://platform.openai.com/api-keys
+
+# Azure OpenAI API (Responses API - supports GPT-5 and GPT-5-Codex)
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+# Get from: https://portal.azure.com/ (Keys and Endpoint section)
 
 # X.AI GROK API
 XAI_API_KEY=your_xai_api_key_here
@@ -59,6 +66,57 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 - Use standard localhost URLs since the server runs natively
 - Example: `http://localhost:11434/v1` for Ollama
 
+### Azure OpenAI Configuration
+
+Azure OpenAI integration uses the **Responses API** exclusively, supporting both GPT-5 and GPT-5-Codex models with enterprise-grade features.
+
+**Setup Steps:**
+
+1. **Create Azure OpenAI Resource:**
+   - Navigate to [Azure Portal](https://portal.azure.com/)
+   - Create or select an Azure OpenAI resource
+   - Deploy a GPT-5 or GPT-5-Codex model
+
+2. **Get Credentials:**
+   - Go to your Azure OpenAI resource
+   - Navigate to "Keys and Endpoint" section
+   - Copy the API key and endpoint URL
+
+3. **Configure Environment Variables:**
+   ```env
+   # Required for Azure OpenAI
+   AZURE_OPENAI_API_KEY=your_api_key_from_azure
+   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+   AZURE_OPENAI_API_VERSION=2025-04-01-preview
+   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+   ```
+
+**Supported Models:**
+- **`gpt-5`** - Intelligence score 16, 400K context window, 128K max output tokens
+- **`gpt-5-codex`** - Intelligence score 17, specialized for code generation and analysis
+
+**Key Features:**
+- **Responses API Implementation** - Uses Azure's Responses API (not Chat Completions API)
+- **Extended Thinking Support** - Full support for extended reasoning capabilities
+- **Deployment-Based Routing** - Routes requests through deployment names rather than model names
+- **Large Context Windows** - 400K token context, 128K token output capacity
+- **Temperature Constraint** - Temperature is fixed at 1.0 (cannot be adjusted)
+
+**Important Notes:**
+- Azure OpenAI requires all 4 environment variables to be configured
+- The deployment name must match your Azure deployment (not the model name directly)
+- Temperature is always set to 1.0 and cannot be modified
+- Uses deployment-based routing: requests go to your specific deployment endpoint
+
+**Example Configuration:**
+```env
+# Example Azure OpenAI setup for GPT-5-Codex
+AZURE_OPENAI_API_KEY=abc123def456ghi789jkl012mno345pqr
+AZURE_OPENAI_ENDPOINT=https://my-company-openai.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=my-gpt5-codex-deployment
+```
+
 ### Model Configuration
 
 **Default Model Selection:**
@@ -70,10 +128,12 @@ DEFAULT_MODEL=auto  # Claude picks best model for each task (recommended)
 **Available Models:**
 - **`auto`**: Claude automatically selects the optimal model
 - **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
-- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses  
+- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
 - **`o3`**: Strong logical reasoning (200K context)
 - **`o3-mini`**: Balanced speed/quality (200K context)
 - **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
+- **`gpt-5`**: Azure OpenAI GPT-5 via Responses API (400K context, 128K output)
+- **`gpt-5-codex`**: Azure OpenAI GPT-5-Codex specialized for code (400K context, 128K output)
 - **`grok-3`**: GROK-3 advanced reasoning (131K context)
 - **`grok-4-latest`**: GROK-4 latest flagship model (256K context)
 - **Custom models**: via OpenRouter or local APIs
@@ -188,6 +248,18 @@ OPENAI_API_KEY=your-openai-key
 XAI_API_KEY=your-xai-key
 LOG_LEVEL=DEBUG
 CONVERSATION_TIMEOUT_HOURS=1
+```
+
+### Azure OpenAI Setup
+```env
+# Azure OpenAI with GPT-5-Codex
+DEFAULT_MODEL=auto
+AZURE_OPENAI_API_KEY=your-azure-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+LOG_LEVEL=INFO
+CONVERSATION_TIMEOUT_HOURS=3
 ```
 
 ### Production Setup

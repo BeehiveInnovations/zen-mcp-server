@@ -37,6 +37,7 @@ class ModelProviderRegistry:
     PROVIDER_PRIORITY_ORDER = [
         ProviderType.GOOGLE,  # Direct Gemini access
         ProviderType.OPENAI,  # Direct OpenAI access
+        ProviderType.AZURE,  # Azure OpenAI access
         ProviderType.XAI,  # Direct X.AI GROK access
         ProviderType.DIAL,  # DIAL unified API access
         ProviderType.CUSTOM,  # Local/self-hosted models
@@ -122,6 +123,24 @@ class ModelProviderRegistry:
                 provider_kwargs["base_url"] = gemini_base_url
                 logging.info(f"Initialized Gemini provider with custom endpoint: {gemini_base_url}")
             provider = provider_class(**provider_kwargs)
+        elif provider_type == ProviderType.AZURE:
+            # For Azure OpenAI, check required configuration
+            if not api_key:
+                return None
+            azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+            azure_version = os.getenv("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
+            deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+
+            if not azure_endpoint or not deployment_name:
+                logging.warning("Azure OpenAI requires AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT_NAME")
+                return None
+
+            provider = provider_class(
+                api_key=api_key,
+                azure_endpoint=azure_endpoint,
+                api_version=azure_version,
+                deployment_name=deployment_name,
+            )
         else:
             if not api_key:
                 return None
@@ -265,6 +284,7 @@ class ModelProviderRegistry:
             ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
             ProviderType.CUSTOM: "CUSTOM_API_KEY",  # Can be empty for providers that don't need auth
             ProviderType.DIAL: "DIAL_API_KEY",
+            ProviderType.AZURE: "AZURE_OPENAI_API_KEY",
         }
 
         env_var = key_mapping.get(provider_type)
