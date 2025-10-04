@@ -615,10 +615,10 @@ ls -la tests/cassettes/azure_*.yaml
 
 ### Project Documentation
 
-- Main README: `E:\zen-mcp-server\README.md`
-- Development Guide: `E:\zen-mcp-server\CLAUDE.md`
-- Integration Tests: `E:\zen-mcp-server\tests\test_azure_openai_integration.py`
-- Provider Implementation: `E:\zen-mcp-server\providers\azure_openai_provider.py`
+- Main README: `README.md`
+- Development Guide: `CLAUDE.md`
+- Integration Tests: `tests/test_azure_openai_integration.py`
+- Provider Implementation: `providers/azure_openai.py`
 
 ### Getting Help
 
