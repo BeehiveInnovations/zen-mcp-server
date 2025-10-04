@@ -70,7 +70,7 @@ class AzureOpenAIProvider(ModelProvider):
             supports_images=True,  # GPT-5 supports vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("fixed"),
+            temperature_constraint=TemperatureConstraint.create("range"),
             description="Azure GPT-5 (400K context, 128K output) - Advanced reasoning model with extended thinking",
             aliases=["gpt5", "azure-gpt5", "azure-gpt-5"],
         ),
@@ -88,9 +88,9 @@ class AzureOpenAIProvider(ModelProvider):
             supports_json_mode=True,
             supports_images=False,  # Codex is code-focused
             max_image_size_mb=0.0,
-            supports_temperature=True,
+            supports_temperature=False,  # Requires fixed temperature=1.0
             temperature_constraint=TemperatureConstraint.create("fixed"),
-            description="Azure GPT-5 Codex (400K context, 128K output) - Elite code generation with deep reasoning",
+            description="Azure GPT-5 Codex (400K context, 128K output) - Elite code generation with deep reasoning (temperature=1.0 required)",
             aliases=["gpt5-codex", "gpt5codex", "codex", "azure-codex", "azure-gpt5-codex"],
         ),
         "gpt-5-mini": ModelCapabilities(
@@ -108,7 +108,7 @@ class AzureOpenAIProvider(ModelProvider):
             supports_images=True,  # GPT-5 variants support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("fixed"),
+            temperature_constraint=TemperatureConstraint.create("range"),
             description="Azure GPT-5-Mini - Faster, cost-effective variant",
             aliases=["gpt5-mini", "gpt5mini", "mini", "azure-mini"],
         ),
@@ -127,7 +127,7 @@ class AzureOpenAIProvider(ModelProvider):
             supports_images=True,  # GPT-5 variants support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("fixed"),
+            temperature_constraint=TemperatureConstraint.create("range"),
             description="Azure GPT-5-Nano - Fastest, most cost-effective",
             aliases=["gpt5-nano", "gpt5nano", "nano", "azure-nano"],
         ),
@@ -145,9 +145,9 @@ class AzureOpenAIProvider(ModelProvider):
             supports_json_mode=True,
             supports_images=False,  # O3 is reasoning-focused, not vision
             max_image_size_mb=0.0,
-            supports_temperature=True,
+            supports_temperature=False,  # Reasoning model requires fixed temperature=1.0
             temperature_constraint=TemperatureConstraint.create("fixed"),
-            description="Azure O3-Mini - Strong reasoning model",
+            description="Azure O3-Mini - Strong reasoning model (temperature=1.0 required)",
             aliases=["o3mini", "azure-o3-mini"],
         ),
         "gpt-4.1": ModelCapabilities(
@@ -165,7 +165,7 @@ class AzureOpenAIProvider(ModelProvider):
             supports_images=True,  # GPT-4.1 supports vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
             supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("fixed"),
+            temperature_constraint=TemperatureConstraint.create("range"),
             description="Azure GPT-4.1 - Extended context window",
             aliases=["gpt4.1", "azure-gpt4.1"],
         ),
