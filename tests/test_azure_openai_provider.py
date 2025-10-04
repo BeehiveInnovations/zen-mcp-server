@@ -161,7 +161,9 @@ class TestAzureOpenAIProvider:
         assert capabilities.supports_images is True
         assert capabilities.max_image_size_mb == 20.0
         assert capabilities.supports_temperature is True
-        assert capabilities.temperature_constraint.value == 1.0
+        # GPT-5 uses RangeTemperatureConstraint (not fixed)
+        assert capabilities.temperature_constraint.min_temp == 0.0
+        assert capabilities.temperature_constraint.max_temp == 2.0
 
     def test_get_capabilities_gpt5_codex(self):
         """Test getting model capabilities for GPT-5 Codex."""
@@ -187,7 +189,9 @@ class TestAzureOpenAIProvider:
         assert capabilities.supports_json_mode is True
         assert capabilities.supports_images is False
         assert capabilities.max_image_size_mb == 0.0
-        assert capabilities.supports_temperature is True
+        # GPT-5-Codex requires fixed temperature=1.0
+        assert capabilities.supports_temperature is False
+        assert capabilities.temperature_constraint.value == 1.0
 
     def test_get_capabilities_with_alias(self):
         """Test getting model capabilities with alias resolves correctly."""
