@@ -2,6 +2,10 @@
 
 <!-- version list -->
 
+## v1.0.0 (2025-10-04)
+
+- Initial Release
+
 ## v5.21.0 (2025-10-03)
 
 ### Chores
