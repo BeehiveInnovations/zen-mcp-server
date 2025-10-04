@@ -258,6 +258,35 @@ of the evidence, even when it strongly points in one direction.""",
             },
         }
 
+        # Provide guidance on available models similar to single-model tools
+        model_description = (
+            "When the user names a model, you MUST use that exact value or report the "
+            "provider error—never swap in another option. Use the `listmodels` tool for the full roster."
+        )
+
+        summaries, total, restricted = self._get_ranked_model_summaries()
+        remainder = max(0, total - len(summaries))
+        if summaries:
+            label = "Allowed models" if restricted else "Top models"
+            top_line = "; ".join(summaries)
+            if remainder > 0:
+                top_line = f"{label}: {top_line}; +{remainder} more via `listmodels`."
+            else:
+                top_line = f"{label}: {top_line}."
+            model_description = f"{model_description} {top_line}"
+        else:
+            model_description = (
+                f"{model_description} No models detected—configure provider credentials or use the `listmodels` tool "
+                "to inspect availability."
+            )
+
+        restriction_note = self._get_restriction_note()
+        if restriction_note and (remainder > 0 or not summaries):
+            model_description = f"{model_description} {restriction_note}."
+
+        existing_models_desc = consensus_field_overrides["models"]["description"]
+        consensus_field_overrides["models"]["description"] = f"{existing_models_desc} {model_description}"
+
         # Define excluded fields for consensus workflow
         excluded_workflow_fields = [
             "files_checked",  # Not used in consensus workflow

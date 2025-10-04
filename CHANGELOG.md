@@ -2,6 +2,58 @@
 
 <!-- version list -->
 
+## v5.21.0 (2025-10-03)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`ddb20a6`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/ddb20a6cdb8cdeee27c0aacb0b9c794283b5774c))
+
+
+## v5.20.1 (2025-10-03)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`03addcf`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/03addcfa2d3aed5086fe4c94e8b9ae56229a93ae))
+
+
+## v5.20.0 (2025-10-03)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`539bc72`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/539bc72f1ca2a2cadcccad02de1fd5fc22cd0415))
+
+
+## v5.19.0 (2025-10-03)
+
+### Bug Fixes
+
+- Add GPT-5-Codex to Responses API routing and simplify comments
+  ([`82b021d`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/82b021d75acc791e68c7afb35f6492f68cf02bec))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`8e32ef3`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/8e32ef33e3ce7ab2a9d7eb5c90fe5b93b12d5c26))
+
+### Documentation
+
+- Bumped defaults
+  ([`95d98a9`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/95d98a9bc0a5bafadccb9f6d1e4eda97a0dd2ce7))
+
+### Features
+
+- Add GPT-5-Codex support with Responses API integration
+  ([`f265342`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/f2653427ca829368e7145325d20a98df3ee6d6b4))
+
+### Testing
+
+- Cross tool memory recall, testing continuation via cassette recording
+  ([`88493bd`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/88493bd357c6a12477c3160813100dae1bc46493))
+
+
 ## v5.18.3 (2025-10-03)
 
 ### Bug Fixes

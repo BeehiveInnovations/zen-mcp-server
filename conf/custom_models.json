@@ -36,7 +36,11 @@
     },
     "example_custom_model": {
       "model_name": "my-local-model",
-      "aliases": ["shortname", "nickname", "abbrev"],
+      "aliases": [
+        "shortname",
+        "nickname",
+        "abbrev"
+      ],
       "context_window": 128000,
       "max_output_tokens": 32768,
       "supports_extended_thinking": false,
@@ -70,7 +74,10 @@
     },
     {
       "model_name": "anthropic/claude-opus-4.1",
-      "aliases": ["opus", "claude-opus"],
+      "aliases": [
+        "opus",
+        "claude-opus"
+      ],
       "context_window": 200000,
       "max_output_tokens": 64000,
       "supports_extended_thinking": false,
@@ -83,7 +90,9 @@
     },
     {
       "model_name": "anthropic/claude-sonnet-4.1",
-      "aliases": ["sonnet4.1"],
+      "aliases": [
+        "sonnet4.1"
+      ],
       "context_window": 200000,
       "max_output_tokens": 64000,
       "supports_extended_thinking": false,
@@ -96,7 +105,9 @@
     },
     {
       "model_name": "anthropic/claude-3.5-haiku",
-      "aliases": ["haiku"],
+      "aliases": [
+        "haiku"
+      ],
       "context_window": 200000,
       "max_output_tokens": 64000,
       "supports_extended_thinking": false,
@@ -109,7 +120,12 @@
     },
     {
       "model_name": "google/gemini-2.5-pro",
-      "aliases": ["pro","gemini-pro", "gemini", "pro-openrouter"],
+      "aliases": [
+        "pro",
+        "gemini-pro",
+        "gemini",
+        "pro-openrouter"
+      ],
       "context_window": 1048576,
       "max_output_tokens": 65536,
       "supports_extended_thinking": true,
@@ -122,7 +138,10 @@
     },
     {
       "model_name": "google/gemini-2.5-flash",
-      "aliases": ["flash","gemini-flash"],
+      "aliases": [
+        "flash",
+        "gemini-flash"
+      ],
       "context_window": 1048576,
       "max_output_tokens": 65536,
       "supports_extended_thinking": true,
@@ -135,7 +154,10 @@
     },
     {
       "model_name": "mistralai/mistral-large-2411",
-      "aliases": ["mistral-large", "mistral"],
+      "aliases": [
+        "mistral-large",
+        "mistral"
+      ],
       "context_window": 128000,
       "max_output_tokens": 32000,
       "supports_extended_thinking": false,
@@ -148,7 +170,13 @@
     },
     {
       "model_name": "meta-llama/llama-3-70b",
-      "aliases": ["llama", "llama3", "llama3-70b", "llama-70b", "llama3-openrouter"],
+      "aliases": [
+        "llama",
+        "llama3",
+        "llama3-70b",
+        "llama-70b",
+        "llama3-openrouter"
+      ],
       "context_window": 8192,
       "max_output_tokens": 8192,
       "supports_extended_thinking": false,
@@ -161,7 +189,12 @@
     },
     {
       "model_name": "deepseek/deepseek-r1-0528",
-      "aliases": ["deepseek-r1", "deepseek", "r1", "deepseek-thinking"],
+      "aliases": [
+        "deepseek-r1",
+        "deepseek",
+        "r1",
+        "deepseek-thinking"
+      ],
       "context_window": 65536,
       "max_output_tokens": 32768,
       "supports_extended_thinking": true,
@@ -174,7 +207,11 @@
     },
     {
       "model_name": "perplexity/llama-3-sonar-large-32k-online",
-      "aliases": ["perplexity", "sonar", "perplexity-online"],
+      "aliases": [
+        "perplexity",
+        "sonar",
+        "perplexity-online"
+      ],
       "context_window": 32768,
       "max_output_tokens": 32768,
       "supports_extended_thinking": false,
@@ -187,7 +224,9 @@
     },
     {
       "model_name": "openai/o3",
-      "aliases": ["o3"],
+      "aliases": [
+        "o3"
+      ],
       "context_window": 200000,
       "max_output_tokens": 100000,
       "supports_extended_thinking": false,
@@ -202,7 +241,10 @@
     },
     {
       "model_name": "openai/o3-mini",
-      "aliases": ["o3-mini", "o3mini"],
+      "aliases": [
+        "o3-mini",
+        "o3mini"
+      ],
       "context_window": 200000,
       "max_output_tokens": 100000,
       "supports_extended_thinking": false,
@@ -217,7 +259,10 @@
     },
     {
       "model_name": "openai/o3-mini-high",
-      "aliases": ["o3-mini-high", "o3mini-high"],
+      "aliases": [
+        "o3-mini-high",
+        "o3mini-high"
+      ],
       "context_window": 200000,
       "max_output_tokens": 100000,
       "supports_extended_thinking": false,
@@ -232,7 +277,9 @@
     },
     {
       "model_name": "openai/o3-pro",
-      "aliases": ["o3pro"],
+      "aliases": [
+        "o3pro"
+      ],
       "context_window": 200000,
       "max_output_tokens": 100000,
       "supports_extended_thinking": false,
@@ -247,7 +294,10 @@
     },
     {
       "model_name": "openai/o4-mini",
-      "aliases": ["o4-mini", "o4mini"],
+      "aliases": [
+        "o4-mini",
+        "o4mini"
+      ],
       "context_window": 200000,
       "max_output_tokens": 100000,
       "supports_extended_thinking": false,
@@ -262,7 +312,9 @@
     },
     {
       "model_name": "openai/gpt-5",
-      "aliases": ["gpt5"],
+      "aliases": [
+        "gpt5"
+      ],
       "context_window": 400000,
       "max_output_tokens": 128000,
       "supports_extended_thinking": true,
@@ -276,38 +328,62 @@
       "intelligence_score": 16
     },
     {
-      "model_name": "openai/gpt-5-mini",
-      "aliases": ["gpt5mini"],
+      "model_name": "openai/gpt-5-codex",
+      "aliases": [
+        "codex",
+        "gpt5codex"
+      ],
       "context_window": 400000,
       "max_output_tokens": 128000,
-      "supports_extended_thinking": true,
+      "supports_extended_thinking": false,
       "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "max_image_size_mb": 0.0,
+      "is_custom": false,
+      "description": "GPT-5-Codex is a specialized version of GPT-5 optimized for software engineering and coding workflows",
+      "intelligence_score": 17
+    },
+    {
+      "model_name": "openai/gpt-5-mini",
+      "aliases": [
+        "gpt5mini"
+      ],
+      "context_window": 400000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "max_image_size_mb": 0.0,
       "supports_temperature": true,
       "temperature_constraint": "fixed",
       "description": "GPT-5-mini (400K context, 128K output) - Efficient variant with reasoning support",
-      "intelligence_score": 15
+      "intelligence_score": 10
     },
     {
       "model_name": "openai/gpt-5-nano",
-      "aliases": ["gpt5nano"],
+      "aliases": [
+        "gpt5nano"
+      ],
       "context_window": 400000,
       "max_output_tokens": 128000,
-      "supports_extended_thinking": true,
+      "supports_extended_thinking": false,
       "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "max_image_size_mb": 0.0,
       "supports_temperature": true,
       "temperature_constraint": "fixed",
       "description": "GPT-5 nano (400K context, 128K output) - Fastest, cheapest version of GPT-5 for summarization and classification tasks",
-      "intelligence_score": 13
+      "intelligence_score": 8
     },
     {
       "model_name": "llama3.2",
-      "aliases": ["local-llama", "ollama-llama"],
+      "aliases": [
+        "local-llama",
+        "ollama-llama"
+      ],
       "context_window": 128000,
       "max_output_tokens": 64000,
       "supports_extended_thinking": false,

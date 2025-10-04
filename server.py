@@ -1084,9 +1084,12 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     # Create model context early to use for history building
     from utils.model_context import ModelContext
 
+    tool = TOOLS.get(context.tool_name)
+    requires_model = tool.requires_model() if tool else True
+
     # Check if we should use the model from the previous conversation turn
     model_from_args = arguments.get("model")
-    if not model_from_args and context.turns:
+    if requires_model and not model_from_args and context.turns:
         # Find the last assistant turn to get the model used
         for turn in reversed(context.turns):
             if turn.role == "assistant" and turn.model_name:
@@ -1094,7 +1097,99 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
                 logger.debug(f"[CONVERSATION_DEBUG] Using model from previous turn: {turn.model_name}")
                 break
 
-    model_context = ModelContext.from_arguments(arguments)
+    # Resolve an effective model for context reconstruction when DEFAULT_MODEL=auto
+    model_context = arguments.get("_model_context")
+
+    if requires_model:
+        if model_context is None:
+            try:
+                model_context = ModelContext.from_arguments(arguments)
+                arguments.setdefault("_resolved_model_name", model_context.model_name)
+            except ValueError as exc:
+                from providers.registry import ModelProviderRegistry
+
+                fallback_model = None
+                if tool is not None:
+                    try:
+                        fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
+                    except Exception as fallback_exc:  # pragma: no cover - defensive log
+                        logger.debug(
+                            f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
+                        )
+
+                if fallback_model is None:
+                    available_models = ModelProviderRegistry.get_available_model_names()
+                    if available_models:
+                        fallback_model = available_models[0]
+
+                if fallback_model is None:
+                    raise
+
+                logger.debug(
+                    f"[CONVERSATION_DEBUG] Falling back to model '{fallback_model}' for context reconstruction after error: {exc}"
+                )
+                model_context = ModelContext(fallback_model)
+                arguments["_model_context"] = model_context
+                arguments["_resolved_model_name"] = fallback_model
+
+        from providers.registry import ModelProviderRegistry
+
+        provider = ModelProviderRegistry.get_provider_for_model(model_context.model_name)
+        if provider is None:
+            fallback_model = None
+            if tool is not None:
+                try:
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
+                except Exception as fallback_exc:  # pragma: no cover - defensive log
+                    logger.debug(
+                        f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
+                    )
+
+            if fallback_model is None:
+                available_models = ModelProviderRegistry.get_available_model_names()
+                if available_models:
+                    fallback_model = available_models[0]
+
+            if fallback_model is None:
+                raise ValueError(
+                    f"Conversation continuation failed: model '{model_context.model_name}' is not available with current API keys."
+                )
+
+            logger.debug(
+                f"[CONVERSATION_DEBUG] Model '{model_context.model_name}' unavailable; swapping to '{fallback_model}' for context reconstruction"
+            )
+            model_context = ModelContext(fallback_model)
+            arguments["_model_context"] = model_context
+            arguments["_resolved_model_name"] = fallback_model
+    else:
+        if model_context is None:
+            from providers.registry import ModelProviderRegistry
+
+            fallback_model = None
+            if tool is not None:
+                try:
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
+                except Exception as fallback_exc:  # pragma: no cover - defensive log
+                    logger.debug(
+                        f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
+                    )
+
+            if fallback_model is None:
+                available_models = ModelProviderRegistry.get_available_model_names()
+                if available_models:
+                    fallback_model = available_models[0]
+
+            if fallback_model is None:
+                raise ValueError(
+                    "Conversation continuation failed: no available models detected for context reconstruction."
+                )
+
+            logger.debug(
+                f"[CONVERSATION_DEBUG] Using fallback model '{fallback_model}' for context reconstruction of tool without model requirement"
+            )
+            model_context = ModelContext(fallback_model)
+            arguments["_model_context"] = model_context
+            arguments["_resolved_model_name"] = fallback_model
 
     # Build conversation history with model-specific limits
     logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")
