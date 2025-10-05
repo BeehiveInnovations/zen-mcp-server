@@ -2,7 +2,7 @@
 name = "zen-mcp-server"
 version = "7.1.0"
 description = "AI-powered MCP server with multiple model providers"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
     "google-genai>=1.19.0",
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["tools*", "providers*", "systemprompts*", "utils*", "conf*"]
+include = ["tools*", "providers*", "systemprompts*", "utils*", "conf*", "clink*"]
 
 [tool.setuptools]
 py-modules = ["server", "config"]
@@ -28,7 +28,7 @@ zen-mcp-server = "server:run"
 
 [tool.black]
 line-length = 120
-target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
+target-version = ['py310', 'py311', 'py312', 'py313']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -59,7 +59,7 @@ line_length = 120
 skip_glob = ["venv/*", ".venv/*", ".zen_venv/*"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
