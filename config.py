@@ -8,15 +8,15 @@ constants used throughout the application.
 Configuration values can be overridden by environment variables where appropriate.
 """
 
-from utils.env import get_env
+import os
 
 # Version and metadata
 # These values are used in server responses and for tracking releases
 # IMPORTANT: This is the single source of truth for version and author info
 # Semantic versioning: MAJOR.MINOR.PATCH
-__version__ = "7.8.1"
+__version__ = "1.0.0"
 # Last update date in ISO format
-__updated__ = "2025-10-07"
+__updated__ = "2025-10-04"
 # Primary maintainer
 __author__ = "Fahad Gilani"
 
@@ -25,13 +25,12 @@ __author__ = "Fahad Gilani"
 # This should be a stable, high-performance model suitable for code analysis
 # Can be overridden by setting DEFAULT_MODEL environment variable
 # Special value "auto" means Claude should pick the best model for each task
-DEFAULT_MODEL = get_env("DEFAULT_MODEL", "auto") or "auto"
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "auto")
 
 # Auto mode detection - when DEFAULT_MODEL is "auto", Claude picks the model
 IS_AUTO_MODE = DEFAULT_MODEL.lower() == "auto"
 
-# Each provider (gemini.py, openai.py, xai.py, dial.py, openrouter.py, custom.py, azure_openai.py)
-# defines its own MODEL_CAPABILITIES
+# Each provider (gemini.py, openai_provider.py, xai.py) defines its own MODEL_CAPABILITIES
 # with detailed descriptions. Tools use ModelProviderRegistry.get_available_model_names()
 # to get models only from enabled providers (those with valid API keys).
 #
@@ -62,7 +61,7 @@ TEMPERATURE_CREATIVE = 0.7  # For architecture, deep thinking
 # Thinking Mode Defaults
 # DEFAULT_THINKING_MODE_THINKDEEP: Default thinking depth for extended reasoning tool
 # Higher modes use more computational budget but provide deeper analysis
-DEFAULT_THINKING_MODE_THINKDEEP = get_env("DEFAULT_THINKING_MODE_THINKDEEP", "high") or "high"
+DEFAULT_THINKING_MODE_THINKDEEP = os.getenv("DEFAULT_THINKING_MODE_THINKDEEP", "high")
 
 # Consensus Tool Defaults
 # Consensus timeout and rate limiting settings
@@ -118,7 +117,7 @@ def _calculate_mcp_prompt_limit() -> int:
         Maximum character count for user input prompts
     """
     # Check for Claude's MAX_MCP_OUTPUT_TOKENS environment variable
-    max_tokens_str = get_env("MAX_MCP_OUTPUT_TOKENS")
+    max_tokens_str = os.getenv("MAX_MCP_OUTPUT_TOKENS")
 
     if max_tokens_str:
         try:
@@ -144,7 +143,7 @@ MCP_PROMPT_SIZE_LIMIT = _calculate_mcp_prompt_limit()
 # Examples: "fr-FR", "en-US", "zh-CN", "zh-TW", "ja-JP", "ko-KR", "es-ES",
 # "de-DE", "it-IT", "pt-PT"
 # Leave empty for default language (English)
-LOCALE = get_env("LOCALE", "") or ""
+LOCALE = os.getenv("LOCALE", "")
 
 # Threading configuration
 # Simple in-memory conversation threading for stateless MCP environment

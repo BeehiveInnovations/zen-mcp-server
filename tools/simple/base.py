@@ -427,14 +427,23 @@ class SimpleTool(BaseTool):
             supports_thinking = capabilities.supports_extended_thinking
 
             # Generate content with provider abstraction
-            model_response = provider.generate_content(
-                prompt=prompt,
-                model_name=self._current_model_name,
-                system_prompt=system_prompt,
-                temperature=temperature,
-                thinking_mode=thinking_mode if supports_thinking else None,
-                images=images if images else None,
-            )
+            if capabilities.supports_temperature:
+                model_response = provider.generate_content(
+                    prompt=prompt,
+                    model_name=self._current_model_name,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    thinking_mode=thinking_mode if supports_thinking else None,
+                    images=images if images else None,
+                )
+            else:
+                model_response = provider.generate_content(
+                    prompt=prompt,
+                    model_name=self._current_model_name,
+                    system_prompt=system_prompt,
+                    thinking_mode=thinking_mode if supports_thinking else None,
+                    images=images if images else None,
+                )
 
             logger.info(f"Received response from {provider.get_provider_type().value} API for {self.get_name()}")
 
@@ -484,14 +493,23 @@ class SimpleTool(BaseTool):
                         retry_prompt = f"{original_prompt}\n\nIMPORTANT: Please provide a substantive response. If you cannot respond to the above request, please explain why and suggest alternatives."
 
                         try:
-                            retry_response = provider.generate_content(
-                                prompt=retry_prompt,
-                                model_name=self._current_model_name,
-                                system_prompt=system_prompt,
-                                temperature=temperature,
-                                thinking_mode=thinking_mode if supports_thinking else None,
-                                images=images if images else None,
-                            )
+                            if capabilities.supports_temperature:
+                                retry_response = provider.generate_content(
+                                    prompt=retry_prompt,
+                                    model_name=self._current_model_name,
+                                    system_prompt=system_prompt,
+                                    temperature=temperature,
+                                    thinking_mode=thinking_mode if supports_thinking else None,
+                                    images=images if images else None,
+                                )
+                            else:
+                                retry_response = provider.generate_content(
+                                    prompt=retry_prompt,
+                                    model_name=self._current_model_name,
+                                    system_prompt=system_prompt,
+                                    thinking_mode=thinking_mode if supports_thinking else None,
+                                    images=images if images else None,
+                                )
 
                             if retry_response.content:
                                 # Successful retry - use the retry response

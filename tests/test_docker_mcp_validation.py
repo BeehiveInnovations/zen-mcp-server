@@ -29,7 +29,7 @@ class TestDockerMCPValidation:
         """Test Dockerfile existence and validity"""
         assert self.dockerfile_path.exists(), "Missing Dockerfile"
 
-        content = self.dockerfile_path.read_text()
+        content = self.dockerfile_path.read_text(encoding="utf-8")
         assert "FROM python:" in content, "Python base required"
         assert "server.py" in content, "server.py must be copied"
 
@@ -63,7 +63,7 @@ class TestDockerMCPValidation:
         if not self.dockerfile_path.exists():
             pytest.skip("Dockerfile not found")
 
-        content = self.dockerfile_path.read_text()
+        content = self.dockerfile_path.read_text(encoding="utf-8")
 
         # Check non-root user
         has_user_config = "USER " in content or "useradd" in content or "adduser" in content

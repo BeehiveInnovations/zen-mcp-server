@@ -41,7 +41,8 @@ Regardless of your default configuration, you can specify models per request:
 | **`o3-mini`** | OpenAI | 200K tokens | Balanced speed/quality | Moderate complexity tasks |
 | **`o4-mini`** | OpenAI | 200K tokens | Latest reasoning model | Optimized for shorter contexts |
 | **`gpt4.1`** | OpenAI | 1M tokens | Latest GPT-4 with extended context | Large codebase analysis, comprehensive reviews |
-| **`gpt5`** (GPT-5) | OpenAI | 400K tokens | Advanced model with reasoning support | Complex problems requiring advanced reasoning |
+| **`gpt-5`** | Azure OpenAI | 400K tokens | Advanced reasoning model with vision support (Responses API only, temp=1.0) | Complex analysis, architectural design, image understanding |
+| **`gpt-5-codex`** | Azure OpenAI | 400K tokens | Elite code generation, no vision (Responses API only, temp=1.0) | Code generation, refactoring, technical documentation |
 | **`gpt5-mini`** (GPT-5 Mini) | OpenAI | 400K tokens | Efficient variant with reasoning | Balanced performance and capability |
 | **`gpt5-nano`** (GPT-5 Nano) | OpenAI | 400K tokens | Fastest, cheapest GPT-5 variant | Summarization and classification tasks |
 | **`grok-4`** | X.AI | 256K tokens | Latest flagship Grok model with reasoning, vision | Complex analysis, reasoning tasks |
@@ -61,8 +62,11 @@ cloud models (expensive/powerful) AND local models (free/private) in the same co
   - **Flash Lite 2.0**: Text-only lightweight model (no thinking support)
 - **O3/O4 Models**: Excellent reasoning, systematic analysis, 200K context
 - **GPT-4.1**: Extended context window (1M tokens), general capabilities
-- **GPT-5 Series**: Advanced reasoning models, 400K context
-  - **GPT-5**: Full-featured with reasoning support and vision
+- **Azure GPT-5 Series**: Advanced reasoning models via Responses API, 400K context, 128K output
+  - **GPT-5**: Full reasoning with vision support (temperature fixed at 1.0, min 16 output tokens)
+  - **GPT-5-Codex**: Elite code generation without vision (temperature fixed at 1.0, min 16 output tokens)
+  - Note: Both use Azure's Responses API exclusively, Chat Completions API not implemented
+- **GPT-5 Variants** (if available via OpenAI directly):
   - **GPT-5 Mini**: Balanced efficiency and capability
   - **GPT-5 Nano**: Optimized for fast, low-cost tasks
 - **Grok-4**: Extended thinking support, vision capabilities, 256K context

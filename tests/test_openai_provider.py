@@ -128,7 +128,7 @@ class TestOpenAIProvider:
         assert capabilities.supports_system_prompts is True
         assert capabilities.supports_streaming is False
         assert capabilities.supports_function_calling is True
-        assert capabilities.supports_temperature is True
+        assert capabilities.supports_temperature is False
 
     def test_get_capabilities_gpt5_mini(self):
         """Test getting model capabilities for GPT-5-mini."""
@@ -144,7 +144,7 @@ class TestOpenAIProvider:
         assert capabilities.supports_system_prompts is True
         assert capabilities.supports_streaming is False
         assert capabilities.supports_function_calling is True
-        assert capabilities.supports_temperature is True
+        assert capabilities.supports_temperature is False
 
     @patch("providers.openai_compatible.OpenAI")
     def test_generate_content_resolves_alias_before_api_call(self, mock_openai_class):

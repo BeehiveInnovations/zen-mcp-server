@@ -3,12 +3,12 @@
 import copy
 import ipaddress
 import logging
+import os
 from typing import Optional
 from urllib.parse import urlparse
 
 from openai import OpenAI
 
-from utils.env import get_env, suppress_env_vars
 from utils.image_utils import validate_image
 
 from .base import ModelProvider
@@ -39,7 +39,6 @@ class OpenAICompatibleProvider(ModelProvider):
             base_url: Base URL for the API endpoint
             **kwargs: Additional configuration options including timeout
         """
-        self._allowed_alias_cache: dict[str, str] = {}
         super().__init__(api_key, **kwargs)
         self._client = None
         self.base_url = base_url
@@ -75,33 +74,9 @@ class OpenAICompatibleProvider(ModelProvider):
             canonical = canonical_name.lower()
 
             if requested not in self.allowed_models and canonical not in self.allowed_models:
-                allowed = False
-                for allowed_entry in list(self.allowed_models):
-                    normalized_resolved = self._allowed_alias_cache.get(allowed_entry)
-                    if normalized_resolved is None:
-                        try:
-                            resolved_name = self._resolve_model_name(allowed_entry)
-                        except Exception:
-                            continue
-
-                        if not resolved_name:
-                            continue
-
-                        normalized_resolved = resolved_name.lower()
-                        self._allowed_alias_cache[allowed_entry] = normalized_resolved
-
-                    if normalized_resolved == canonical:
-                        # Canonical match discovered via alias resolution – mark as allowed and
-                        # memoise the canonical entry for future lookups.
-                        allowed = True
-                        self._allowed_alias_cache[canonical] = canonical
-                        self.allowed_models.add(canonical)
-                        break
-
-                if not allowed:
-                    raise ValueError(
-                        f"Model '{requested_name}' is not allowed by restriction policy. Allowed models: {sorted(self.allowed_models)}"
-                    )
+                raise ValueError(
+                    f"Model '{requested_name}' is not allowed by restriction policy. Allowed models: {sorted(self.allowed_models)}"
+                )
 
     def _parse_allowed_models(self) -> Optional[set[str]]:
         """Parse allowed models from environment variable.
@@ -112,14 +87,13 @@ class OpenAICompatibleProvider(ModelProvider):
         # Get provider-specific allowed models
         provider_type = self.get_provider_type().value.upper()
         env_var = f"{provider_type}_ALLOWED_MODELS"
-        models_str = get_env(env_var, "") or ""
+        models_str = os.getenv(env_var, "")
 
         if models_str:
             # Parse and normalize to lowercase for case-insensitive comparison
             models = {m.strip().lower() for m in models_str.split(",") if m.strip()}
             if models:
                 logging.info(f"Configured allowed models for {self.FRIENDLY_NAME}: {sorted(models)}")
-                self._allowed_alias_cache = {}
                 return models
 
         # Log info if no allow-list configured for proxy providers
@@ -165,25 +139,10 @@ class OpenAICompatibleProvider(ModelProvider):
             logging.info(f"Using extended timeouts for custom endpoint: {self.base_url}")
 
         # Allow override via kwargs or environment variables in future, for now...
-        connect_timeout = kwargs.get("connect_timeout")
-        if connect_timeout is None:
-            connect_timeout_raw = get_env("CUSTOM_CONNECT_TIMEOUT")
-            connect_timeout = float(connect_timeout_raw) if connect_timeout_raw is not None else float(default_connect)
-
-        read_timeout = kwargs.get("read_timeout")
-        if read_timeout is None:
-            read_timeout_raw = get_env("CUSTOM_READ_TIMEOUT")
-            read_timeout = float(read_timeout_raw) if read_timeout_raw is not None else float(default_read)
-
-        write_timeout = kwargs.get("write_timeout")
-        if write_timeout is None:
-            write_timeout_raw = get_env("CUSTOM_WRITE_TIMEOUT")
-            write_timeout = float(write_timeout_raw) if write_timeout_raw is not None else float(default_write)
-
-        pool_timeout = kwargs.get("pool_timeout")
-        if pool_timeout is None:
-            pool_timeout_raw = get_env("CUSTOM_POOL_TIMEOUT")
-            pool_timeout = float(pool_timeout_raw) if pool_timeout_raw is not None else float(default_pool)
+        connect_timeout = kwargs.get("connect_timeout", float(os.getenv("CUSTOM_CONNECT_TIMEOUT", default_connect)))
+        read_timeout = kwargs.get("read_timeout", float(os.getenv("CUSTOM_READ_TIMEOUT", default_read)))
+        write_timeout = kwargs.get("write_timeout", float(os.getenv("CUSTOM_WRITE_TIMEOUT", default_write)))
+        pool_timeout = kwargs.get("pool_timeout", float(os.getenv("CUSTOM_POOL_TIMEOUT", default_pool)))
 
         timeout = httpx.Timeout(connect=connect_timeout, read=read_timeout, write=write_timeout, pool=pool_timeout)
 
@@ -257,74 +216,80 @@ class OpenAICompatibleProvider(ModelProvider):
     def client(self):
         """Lazy initialization of OpenAI client with security checks and timeout configuration."""
         if self._client is None:
+            import os
+
             import httpx
 
+            # Temporarily disable proxy environment variables to prevent httpx from detecting them
+            original_env = {}
             proxy_env_vars = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]
 
-            with suppress_env_vars(*proxy_env_vars):
+            for var in proxy_env_vars:
+                if var in os.environ:
+                    original_env[var] = os.environ[var]
+                    del os.environ[var]
+
+            try:
+                # Create a custom httpx client that explicitly avoids proxy parameters
+                timeout_config = (
+                    self.timeout_config
+                    if hasattr(self, "timeout_config") and self.timeout_config
+                    else httpx.Timeout(30.0)
+                )
+
+                # Create httpx client with minimal config to avoid proxy conflicts
+                # Note: proxies parameter was removed in httpx 0.28.0
+                # Check for test transport injection
+                if hasattr(self, "_test_transport"):
+                    # Use custom transport for testing (HTTP recording/replay)
+                    http_client = httpx.Client(
+                        transport=self._test_transport,
+                        timeout=timeout_config,
+                        follow_redirects=True,
+                    )
+                else:
+                    # Normal production client
+                    http_client = httpx.Client(
+                        timeout=timeout_config,
+                        follow_redirects=True,
+                    )
+
+                # Keep client initialization minimal to avoid proxy parameter conflicts
+                client_kwargs = {
+                    "api_key": self.api_key,
+                    "http_client": http_client,
+                }
+
+                if self.base_url:
+                    client_kwargs["base_url"] = self.base_url
+
+                if self.organization:
+                    client_kwargs["organization"] = self.organization
+
+                # Add default headers if any
+                if self.DEFAULT_HEADERS:
+                    client_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
+
+                logging.debug(f"OpenAI client initialized with custom httpx client and timeout: {timeout_config}")
+
+                # Create OpenAI client with custom httpx client
+                self._client = OpenAI(**client_kwargs)
+
+            except Exception as e:
+                # If all else fails, try absolute minimal client without custom httpx
+                logging.warning(f"Failed to create client with custom httpx, falling back to minimal config: {e}")
                 try:
-                    # Create a custom httpx client that explicitly avoids proxy parameters
-                    timeout_config = (
-                        self.timeout_config
-                        if hasattr(self, "timeout_config") and self.timeout_config
-                        else httpx.Timeout(30.0)
-                    )
-
-                    # Create httpx client with minimal config to avoid proxy conflicts
-                    # Note: proxies parameter was removed in httpx 0.28.0
-                    # Check for test transport injection
-                    if hasattr(self, "_test_transport"):
-                        # Use custom transport for testing (HTTP recording/replay)
-                        http_client = httpx.Client(
-                            transport=self._test_transport,
-                            timeout=timeout_config,
-                            follow_redirects=True,
-                        )
-                    else:
-                        # Normal production client
-                        http_client = httpx.Client(
-                            timeout=timeout_config,
-                            follow_redirects=True,
-                        )
-
-                    # Keep client initialization minimal to avoid proxy parameter conflicts
-                    client_kwargs = {
-                        "api_key": self.api_key,
-                        "http_client": http_client,
-                    }
-
+                    minimal_kwargs = {"api_key": self.api_key}
                     if self.base_url:
-                        client_kwargs["base_url"] = self.base_url
-
-                    if self.organization:
-                        client_kwargs["organization"] = self.organization
-
-                    # Add default headers if any
-                    if self.DEFAULT_HEADERS:
-                        client_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
-
-                    logging.debug(
-                        "OpenAI client initialized with custom httpx client and timeout: %s",
-                        timeout_config,
-                    )
-
-                    # Create OpenAI client with custom httpx client
-                    self._client = OpenAI(**client_kwargs)
-
-                except Exception as e:
-                    # If all else fails, try absolute minimal client without custom httpx
-                    logging.warning(
-                        "Failed to create client with custom httpx, falling back to minimal config: %s",
-                        e,
-                    )
-                    try:
-                        minimal_kwargs = {"api_key": self.api_key}
-                        if self.base_url:
-                            minimal_kwargs["base_url"] = self.base_url
-                        self._client = OpenAI(**minimal_kwargs)
-                    except Exception as fallback_error:
-                        logging.error("Even minimal OpenAI client creation failed: %s", fallback_error)
-                        raise
+                        minimal_kwargs["base_url"] = self.base_url
+                    self._client = OpenAI(**minimal_kwargs)
+                except Exception as fallback_error:
+                    logging.error(f"Even minimal OpenAI client creation failed: {fallback_error}")
+                    raise
+            finally:
+                # Restore original proxy environment variables
+                for var, value in original_env.items():
+                    os.environ[var] = value
 
         return self._client
 
@@ -391,10 +356,9 @@ class OpenAICompatibleProvider(ModelProvider):
         messages: list,
         temperature: float,
         max_output_tokens: Optional[int] = None,
-        capabilities: Optional[ModelCapabilities] = None,
         **kwargs,
     ) -> ModelResponse:
-        """Generate content using the /v1/responses endpoint for reasoning models."""
+        """Generate content using the /v1/responses endpoint for o3-pro via OpenAI library."""
         # Convert messages to the correct format for responses endpoint
         input_messages = []
 
@@ -413,20 +377,20 @@ class OpenAICompatibleProvider(ModelProvider):
 
         # Prepare completion parameters for responses endpoint
         # Based on OpenAI documentation, use nested reasoning object for responses endpoint
-        effort = "medium"
-        if capabilities and capabilities.default_reasoning_effort:
-            effort = capabilities.default_reasoning_effort
-
         completion_params = {
             "model": model_name,
             "input": input_messages,
-            "reasoning": {"effort": effort},
+            "reasoning": {"effort": "medium"},  # Use nested object for responses endpoint
             "store": True,
         }
 
         # Add max tokens if specified (using max_completion_tokens for responses endpoint)
         if max_output_tokens:
             completion_params["max_completion_tokens"] = max_output_tokens
+
+        # Do NOT send temperature for GPT-5 family or other reasoning models.
+        # The Responses API rejects sampling params on these models; omit entirely.
+        # (If future non-reasoning models are routed here, they may accept temperature.)
 
         # For responses endpoint, we only add parameters that are explicitly supported
         # Remove unsupported chat completion parameters that may cause API errors
@@ -480,11 +444,11 @@ class OpenAICompatibleProvider(ModelProvider):
                 operation=_attempt,
                 max_attempts=max_retries,
                 delays=retry_delays,
-                log_prefix="responses endpoint",
+                log_prefix="o3-pro responses endpoint",
             )
         except Exception as exc:
             attempts = max(attempt_counter["value"], 1)
-            error_msg = f"responses endpoint error after {attempts} attempt{'s' if attempts > 1 else ''}: {exc}"
+            error_msg = f"o3-pro responses endpoint error after {attempts} attempt{'s' if attempts > 1 else ''}: {exc}"
             logging.error(error_msg)
             raise RuntimeError(error_msg) from exc
 
@@ -502,11 +466,10 @@ class OpenAICompatibleProvider(ModelProvider):
 
         Args:
             prompt: User prompt to send to the model
-            model_name: Canonical model name or its alias
+            model_name: Name of the model to use
             system_prompt: Optional system prompt for model behavior
             temperature: Sampling temperature
             max_output_tokens: Maximum tokens to generate
-            images: Optional list of image paths or data URLs to include with the prompt (for vision models)
             **kwargs: Additional provider-specific parameters
 
         Returns:
@@ -538,9 +501,6 @@ class OpenAICompatibleProvider(ModelProvider):
             # Validate parameters with the effective temperature
             self.validate_parameters(model_name, effective_temperature)
 
-        # Resolve to canonical model name
-        resolved_model = self._resolve_model_name(model_name)
-
         # Prepare messages
         messages = []
         if system_prompt:
@@ -562,7 +522,7 @@ class OpenAICompatibleProvider(ModelProvider):
                     # Continue with other images and text
                     continue
         elif images and (not capabilities or not capabilities.supports_images):
-            logging.warning(f"Model {resolved_model} does not support images, ignoring {len(images)} image(s)")
+            logging.warning(f"Model {model_name} does not support images, ignoring {len(images)} image(s)")
 
         # Add user message
         if len(user_content) == 1:
@@ -572,13 +532,13 @@ class OpenAICompatibleProvider(ModelProvider):
             # Text + images, use content array format
             messages.append({"role": "user", "content": user_content})
 
-        # Prepare completion parameters
-        # Always disable streaming for OpenRouter
-        # MCP doesn't use streaming, and this avoids issues with O3 model access
+        # Resolve alias -> canonical early and use consistently
+        resolved_model = self._resolve_model_name(model_name)
+
+        # Prepare completion parameters with canonical model
         completion_params = {
             "model": resolved_model,
             "messages": messages,
-            "stream": False,
         }
 
         # Use the effective temperature we calculated earlier
@@ -597,21 +557,13 @@ class OpenAICompatibleProvider(ModelProvider):
         for key, value in kwargs.items():
             if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "stream"]:
                 # Reasoning models (those that don't support temperature) also don't support these parameters
-                if not supports_sampling and key in ["top_p", "frequency_penalty", "presence_penalty", "stream"]:
+                if not supports_sampling and key in ["top_p", "frequency_penalty", "presence_penalty"]:
                     continue  # Skip unsupported parameters for reasoning models
                 completion_params[key] = value
 
         # Check if this model needs the Responses API endpoint
-        # Prefer capability metadata; fall back to static map when capabilities unavailable
-        use_responses_api = False
-        if capabilities is not None:
-            use_responses_api = getattr(capabilities, "use_openai_response_api", False)
-        else:
-            static_capabilities = self.get_all_model_capabilities().get(resolved_model)
-            if static_capabilities is not None:
-                use_responses_api = getattr(static_capabilities, "use_openai_response_api", False)
-
-        if use_responses_api:
+        # Reasoning and GPT-5 family use the new Responses API
+        if resolved_model in ["o3-pro", "gpt-5-codex", "gpt-5", "gpt-5-mini", "gpt-5-nano"]:
             # These models require the /v1/responses endpoint for stateful context
             # If it fails, we should not fall back to chat/completions
             return self._generate_with_responses_endpoint(
@@ -619,7 +571,6 @@ class OpenAICompatibleProvider(ModelProvider):
                 messages=messages,
                 temperature=temperature,
                 max_output_tokens=max_output_tokens,
-                capabilities=capabilities,
                 **kwargs,
             )
 
@@ -654,12 +605,12 @@ class OpenAICompatibleProvider(ModelProvider):
                 operation=_attempt,
                 max_attempts=max_retries,
                 delays=retry_delays,
-                log_prefix=f"{self.FRIENDLY_NAME} API ({resolved_model})",
+                log_prefix=f"{self.FRIENDLY_NAME} API ({model_name})",
             )
         except Exception as exc:
             attempts = max(attempt_counter["value"], 1)
             error_msg = (
-                f"{self.FRIENDLY_NAME} API error for model {resolved_model} after {attempts} attempt"
+                f"{self.FRIENDLY_NAME} API error for model {model_name} after {attempts} attempt"
                 f"{'s' if attempts > 1 else ''}: {exc}"
             )
             logging.error(error_msg)
@@ -671,7 +622,7 @@ class OpenAICompatibleProvider(ModelProvider):
         For proxy providers, this may use generic capabilities.
 
         Args:
-            model_name: Canonical model name or its alias
+            model_name: Model to validate for
             temperature: Temperature to validate
             **kwargs: Additional parameters to validate
         """

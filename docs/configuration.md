@@ -30,9 +30,16 @@ OPENAI_API_KEY=your-openai-key
 GEMINI_API_KEY=your_gemini_api_key_here
 # Get from: https://makersuite.google.com/app/apikey
 
-# OpenAI API  
+# OpenAI API
 OPENAI_API_KEY=your_openai_api_key_here
 # Get from: https://platform.openai.com/api-keys
+
+# Azure OpenAI API (Responses API - supports GPT-5 and GPT-5-Codex)
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+# Get from: https://portal.azure.com/ (Keys and Endpoint section)
 
 # X.AI GROK API
 XAI_API_KEY=your_xai_api_key_here
@@ -59,6 +66,143 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 - Use standard localhost URLs since the server runs natively
 - Example: `http://localhost:11434/v1` for Ollama
 
+### Azure OpenAI GPT-5 Models Configuration
+
+Azure OpenAI integration uses the **Responses API** exclusively for GPT-5 and GPT-5-Codex models. These models have specific requirements and constraints that differ from standard OpenAI models.
+
+#### Critical Requirements for GPT-5/GPT-5-Codex
+
+| Requirement | Details | Error if Violated |
+|------------|---------|-------------------|
+| **API Type** | Responses API ONLY | Chat Completions API not implemented |
+| **Temperature** | Must be exactly 1.0 | 400 Error: "Unsupported value. Only the default (1) value is supported" |
+| **Min Output Tokens** | Minimum 16 tokens | 400 Error if max_output_tokens < 16 |
+| **API Version** | 2025-03-01-preview or later | Responses API not available in older versions |
+
+#### Setup Steps
+
+1. **Create Azure OpenAI Resource:**
+   - Navigate to [Azure Portal](https://portal.azure.com/)
+   - Create or select an Azure OpenAI resource
+   - Request access to GPT-5 or GPT-5-Codex models if needed
+
+2. **Deploy the Model:**
+   - Go to "Model deployments" in your Azure OpenAI resource
+   - Click "Create new deployment"
+   - Select either `gpt-5` or `gpt-5-codex` as the model
+   - Choose a deployment name (e.g., `gpt-5-production`)
+   - Set capacity (TPM - Tokens Per Minute)
+
+3. **Get Credentials:**
+   - Navigate to "Keys and Endpoint" section
+   - Copy either KEY 1 or KEY 2
+   - Copy the Endpoint URL
+
+4. **Configure Environment Variables:**
+   ```env
+   # All 4 variables are REQUIRED
+   AZURE_OPENAI_API_KEY=your_api_key_from_azure
+   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+   AZURE_OPENAI_API_VERSION=2025-04-01-preview  # Minimum version for Responses API
+   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5  # Your deployment name from Azure Portal
+   ```
+
+#### Model Comparison
+
+| Model | Context Window | Max Output | Vision Support | Code Specialization | Intelligence Score | Use Case |
+|-------|---------------|------------|----------------|--------------------|--------------------|----------|
+| **gpt-5** | 400K tokens | 128K tokens | ✅ Yes | Good | 16 | General purpose reasoning, complex analysis with images |
+| **gpt-5-codex** | 400K tokens | 128K tokens | ❌ No | Elite | 17 | Code generation, refactoring, technical documentation |
+
+#### Key Technical Details
+
+**Responses API Specifics:**
+- Endpoint: `/openai/deployments/{deployment}/responses`
+- Different response format than Chat Completions API
+- Supports reasoning tokens (internal thinking process)
+- Response extraction from `output_text` or `output` array fields
+
+**Reasoning Tokens:**
+- GPT-5 models use internal "reasoning tokens" before generating output
+- These tokens are not visible in the response but affect processing time
+- Contributes to the model's advanced problem-solving capabilities
+
+**Constraints and Limitations:**
+```python
+# Temperature MUST be 1.0
+temperature = 1.0  # Cannot be changed
+
+# Minimum output tokens
+max_output_tokens = max(16, requested_tokens)  # Enforced minimum of 16
+
+# API Version requirement
+api_version = "2025-04-01-preview"  # Or later versions
+```
+
+#### Example Configurations
+
+**GPT-5 General Purpose:**
+```env
+AZURE_OPENAI_API_KEY=sk-proj-abc123...
+AZURE_OPENAI_ENDPOINT=https://contoso-ai.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-general
+DEFAULT_MODEL=gpt-5  # Use GPT-5 as default
+```
+
+**GPT-5-Codex for Development:**
+```env
+AZURE_OPENAI_API_KEY=sk-proj-xyz789...
+AZURE_OPENAI_ENDPOINT=https://dev-team.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=codex-production
+DEFAULT_MODEL=gpt-5-codex  # Use Codex as default
+```
+
+**Multi-Model Setup:**
+```env
+# You can only have ONE deployment active at a time
+# To switch models, change the AZURE_OPENAI_DEPLOYMENT_NAME
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5  # or gpt-5-codex
+```
+
+#### Common Configuration Errors
+
+1. **Wrong API Version:**
+   ```env
+   # ❌ WRONG - Too old for Responses API
+   AZURE_OPENAI_API_VERSION=2024-10-01-preview
+
+   # ✅ CORRECT
+   AZURE_OPENAI_API_VERSION=2025-04-01-preview
+   ```
+
+2. **Incorrect Endpoint Format:**
+   ```env
+   # ❌ WRONG - Missing https://
+   AZURE_OPENAI_ENDPOINT=your-resource.openai.azure.com/
+
+   # ✅ CORRECT
+   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+   ```
+
+3. **Temperature Modification Attempts:**
+   ```python
+   # ❌ This will cause a 400 error
+   # The server enforces temperature=1.0 automatically
+   # Do NOT try to override it in your prompts
+   ```
+
+#### Troubleshooting Quick Reference
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 400 "Unsupported value" | Temperature ≠ 1.0 | Server auto-sets to 1.0, check logs |
+| 400 "Invalid max_output_tokens" | Value < 16 | Minimum is 16 tokens |
+| 404 "Deployment not found" | Wrong deployment name | Verify in Azure Portal |
+| 401 "Unauthorized" | Invalid API key | Regenerate key in Azure Portal |
+| "Responses API not available" | Old API version | Use 2025-03-01-preview or later |
+
 ### Model Configuration
 
 **Default Model Selection:**
@@ -67,27 +211,18 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 DEFAULT_MODEL=auto  # Claude picks best model for each task (recommended)
 ```
 
-- **Available Models:** The canonical capability data for native providers lives in JSON manifests under `conf/`:
-  - `conf/openai_models.json` – OpenAI catalogue (can be overridden with `OPENAI_MODELS_CONFIG_PATH`)
-  - `conf/gemini_models.json` – Gemini catalogue (`GEMINI_MODELS_CONFIG_PATH`)
-  - `conf/xai_models.json` – X.AI / GROK catalogue (`XAI_MODELS_CONFIG_PATH`)
-  - `conf/openrouter_models.json` – OpenRouter catalogue (`OPENROUTER_MODELS_CONFIG_PATH`)
-  - `conf/dial_models.json` – DIAL aggregation catalogue (`DIAL_MODELS_CONFIG_PATH`)
-  - `conf/custom_models.json` – Custom/OpenAI-compatible endpoints (`CUSTOM_MODELS_CONFIG_PATH`)
-
-  Each JSON file documents the allowed fields via its `_README` block and controls model aliases, capability limits, and feature flags. Edit these files (or point the matching `*_MODELS_CONFIG_PATH` variable to your own copy) when you want to adjust context windows, enable JSON mode, or expose additional aliases without touching Python code.
-
-  The shipped defaults cover:
-
-  | Provider | Canonical Models | Notable Aliases |
-  |----------|-----------------|-----------------|
-  | OpenAI | `gpt-5`, `gpt-5-pro`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5-codex`, `gpt-4.1`, `o3`, `o3-mini`, `o3-pro`, `o4-mini` | `gpt5`, `gpt5pro`, `mini`, `nano`, `codex`, `o3mini`, `o3pro`, `o4mini` |
-  | Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` | `pro`, `gemini-pro`, `flash`, `flash-2.0`, `flashlite` |
-  | X.AI | `grok-4`, `grok-3`, `grok-3-fast` | `grok`, `grok4`, `grok3`, `grok3fast`, `grokfast` |
-  | OpenRouter | See `conf/openrouter_models.json` for the continually evolving catalogue | e.g., `opus`, `sonnet`, `flash`, `pro`, `mistral` |
-  | Custom | User-managed entries such as `llama3.2` | Define your own aliases per entry |
-
-  > **Tip:** Copy the JSON file you need, customise it, and point the corresponding `*_MODELS_CONFIG_PATH` environment variable to your version. This lets you enable or disable capabilities (JSON mode, function calling, temperature support) without editing Python.
+**Available Models:**
+- **`auto`**: Claude automatically selects the optimal model
+- **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
+- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
+- **`o3`**: Strong logical reasoning (200K context)
+- **`o3-mini`**: Balanced speed/quality (200K context)
+- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
+- **`gpt-5`**: Azure OpenAI GPT-5 via Responses API (400K context, 128K output)
+- **`gpt-5-codex`**: Azure OpenAI GPT-5-Codex specialized for code (400K context, 128K output)
+- **`grok-3`**: GROK-3 advanced reasoning (131K context)
+- **`grok-4-latest`**: GROK-4 latest flagship model (256K context)
+- **Custom models**: via OpenRouter or local APIs
 
 ### Thinking Mode Configuration
 
@@ -119,17 +254,34 @@ OPENAI_ALLOWED_MODELS=o3-mini,o4-mini,mini
 GOOGLE_ALLOWED_MODELS=flash,pro
 
 # X.AI GROK model restrictions
-XAI_ALLOWED_MODELS=grok-3,grok-3-fast,grok-4
+XAI_ALLOWED_MODELS=grok-3,grok-3-fast,grok-4-latest
 
 # OpenRouter model restrictions (affects models via custom provider)
 OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 ```
 
-**Supported Model Names:** The names/aliases listed in the JSON manifests above are the authoritative source. Keep in mind:
+**Supported Model Names:**
 
-- Aliases are case-insensitive and defined per entry (for example, `mini` maps to `gpt-5-mini` by default, while `flash` maps to `gemini-2.5-flash`).
-- When you override the manifest files you can add or remove aliases as needed; restriction policies (`*_ALLOWED_MODELS`) automatically pick up those changes.
-- Models omitted from a manifest fall back to generic capability detection (where supported) and may have limited feature metadata.
+**OpenAI Models:**
+- `o3` (200K context, high reasoning)
+- `o3-mini` (200K context, balanced)
+- `o4-mini` (200K context, latest balanced)
+- `mini` (shorthand for o4-mini)
+
+**Gemini Models:**
+- `gemini-2.5-flash` (1M context, fast)
+- `gemini-2.5-pro` (1M context, powerful)
+- `flash` (shorthand for Flash model)
+- `pro` (shorthand for Pro model)
+
+**X.AI GROK Models:**
+- `grok-4-latest` (256K context, latest flagship model with reasoning, vision, and structured outputs)
+- `grok-3` (131K context, advanced reasoning)
+- `grok-3-fast` (131K context, higher performance)
+- `grok` (shorthand for grok-4-latest)
+- `grok4` (shorthand for grok-4-latest)
+- `grok3` (shorthand for grok-3)
+- `grokfast` (shorthand for grok-3-fast)
 
 **Example Configurations:**
 ```env
@@ -148,15 +300,10 @@ XAI_ALLOWED_MODELS=grok,grok-3-fast
 
 ### Advanced Configuration
 
-**Custom Model Configuration & Manifest Overrides:**
+**Custom Model Configuration:**
 ```env
-# Override default location of built-in catalogues
-OPENAI_MODELS_CONFIG_PATH=/path/to/openai_models.json
-GEMINI_MODELS_CONFIG_PATH=/path/to/gemini_models.json
-XAI_MODELS_CONFIG_PATH=/path/to/xai_models.json
-OPENROUTER_MODELS_CONFIG_PATH=/path/to/openrouter_models.json
-DIAL_MODELS_CONFIG_PATH=/path/to/dial_models.json
-CUSTOM_MODELS_CONFIG_PATH=/path/to/custom_models.json
+# Override default location of custom_models.json
+CUSTOM_MODELS_CONFIG_PATH=/path/to/your/custom_models.json
 ```
 
 **Conversation Settings:**
@@ -187,6 +334,18 @@ OPENAI_API_KEY=your-openai-key
 XAI_API_KEY=your-xai-key
 LOG_LEVEL=DEBUG
 CONVERSATION_TIMEOUT_HOURS=1
+```
+
+### Azure OpenAI Setup
+```env
+# Azure OpenAI with GPT-5-Codex
+DEFAULT_MODEL=auto
+AZURE_OPENAI_API_KEY=your-azure-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+LOG_LEVEL=INFO
+CONVERSATION_TIMEOUT_HOURS=3
 ```
 
 ### Production Setup

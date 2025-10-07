@@ -28,6 +28,35 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Optional
 
+# Try to load environment variables from .env file if dotenv is available
+# This is optional - environment variables can still be passed directly
+try:
+    from dotenv import dotenv_values, load_dotenv
+
+    # Load environment variables from .env file in the script's directory
+    # This ensures .env is loaded regardless of the current working directory
+    script_dir = Path(__file__).parent
+    env_file = script_dir / ".env"
+
+    # First load only to read ZEN_MCP_FORCE_ENV_OVERRIDE, then reload with proper override setting
+    # Use a temporary environment to read just this configuration variable
+    temp_env = {}
+    if env_file.exists():
+        temp_env = dotenv_values(env_file)
+
+    # Check if we should force override based on .env file content (not system env)
+    force_override = temp_env.get("ZEN_MCP_FORCE_ENV_OVERRIDE", "false").lower() == "true"
+
+    # Load .env file with appropriate override setting
+    load_dotenv(dotenv_path=env_file, override=force_override)
+
+    # Store override setting for logging after logger is configured
+    _zen_mcp_force_override = force_override
+except ImportError:
+    # dotenv not available - this is fine, environment variables can still be passed directly
+    # This commonly happens when running via uvx or in minimal environments
+    pass
+
 from mcp.server import Server  # noqa: E402
 from mcp.server.models import InitializationOptions  # noqa: E402
 from mcp.server.stdio import stdio_server  # noqa: E402
@@ -51,13 +80,11 @@ from tools import (  # noqa: E402
     AnalyzeTool,
     ChallengeTool,
     ChatTool,
-    CLinkTool,
     CodeReviewTool,
     ConsensusTool,
     DebugIssueTool,
     DocgenTool,
     ListModelsTool,
-    LookupTool,
     PlannerTool,
     PrecommitTool,
     RefactorTool,
@@ -68,11 +95,10 @@ from tools import (  # noqa: E402
     VersionTool,
 )
 from tools.models import ToolOutput  # noqa: E402
-from utils.env import env_override_enabled, get_env  # noqa: E402
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
-log_level = (get_env("LOG_LEVEL", "DEBUG") or "DEBUG").upper()
+log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
 
 # Create timezone-aware formatter
 
@@ -151,12 +177,19 @@ except Exception as e:
 
 logger = logging.getLogger(__name__)
 
-# Log ZEN_MCP_FORCE_ENV_OVERRIDE configuration for transparency
-if env_override_enabled():
-    logger.info("ZEN_MCP_FORCE_ENV_OVERRIDE enabled - .env file values will override system environment variables")
-    logger.debug("Environment override prevents conflicts between different AI tools passing cached API keys")
-else:
-    logger.debug("ZEN_MCP_FORCE_ENV_OVERRIDE disabled - system environment variables take precedence")
+# Log ZEN_MCP_FORCE_ENV_OVERRIDE configuration if it was set during dotenv loading
+try:
+    if "_zen_mcp_force_override" in globals():
+        if _zen_mcp_force_override:
+            logger.info(
+                "ZEN_MCP_FORCE_ENV_OVERRIDE enabled - .env file values will override system environment variables"
+            )
+            logger.debug("Environment override prevents conflicts between different AI tools passing cached API keys")
+        else:
+            logger.debug("ZEN_MCP_FORCE_ENV_OVERRIDE disabled - system environment variables take precedence")
+except NameError:
+    # _zen_mcp_force_override not defined, which means dotenv wasn't available or no .env file
+    pass
 
 
 # Create the MCP server instance with a unique name identifier
@@ -175,7 +208,7 @@ def parse_disabled_tools_env() -> set[str]:
     Returns:
         Set of lowercase tool names to disable, empty set if none specified
     """
-    disabled_tools_env = (get_env("DISABLED_TOOLS", "") or "").strip()
+    disabled_tools_env = os.getenv("DISABLED_TOOLS", "").strip()
     if not disabled_tools_env:
         return set()
     return {t.strip().lower() for t in disabled_tools_env.split(",") if t.strip()}
@@ -259,7 +292,6 @@ def filter_disabled_tools(all_tools: dict[str, Any]) -> dict[str, Any]:
 # Tools are instantiated once and reused across requests (stateless design)
 TOOLS = {
     "chat": ChatTool(),  # Interactive development chat and brainstorming
-    "clink": CLinkTool(),  # Bridge requests to configured AI CLIs
     "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
@@ -273,7 +305,6 @@ TOOLS = {
     "tracer": TracerTool(),  # Static call path prediction and control flow analysis
     "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
     "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
-    "apilookup": LookupTool(),  # Quick web/API lookup instructions
     "listmodels": ListModelsTool(),  # List all available AI models by provider
     "version": VersionTool(),  # Display server version and system information
 }
@@ -285,11 +316,6 @@ PROMPT_TEMPLATES = {
         "name": "chat",
         "description": "Chat and brainstorm ideas",
         "template": "Chat with {model} about this",
-    },
-    "clink": {
-        "name": "clink",
-        "description": "Forward a request to a configured AI CLI (e.g., Gemini)",
-        "template": "Use clink with cli_name=<cli> to run this prompt",
     },
     "thinkdeep": {
         "name": "thinkdeeper",
@@ -356,11 +382,6 @@ PROMPT_TEMPLATES = {
         "description": "Challenge a statement critically without automatic agreement",
         "template": "Challenge this statement critically",
     },
-    "apilookup": {
-        "name": "apilookup",
-        "description": "Look up the latest API or SDK information",
-        "template": "Lookup latest API docs for {model}",
-    },
     "listmodels": {
         "name": "listmodels",
         "description": "List available AI models",
@@ -388,7 +409,7 @@ def configure_providers():
     logger.debug("Checking environment variables for API keys...")
     api_keys_to_check = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "CUSTOM_API_URL"]
     for key in api_keys_to_check:
-        value = get_env(key)
+        value = os.getenv(key)
         logger.debug(f"  {key}: {'[PRESENT]' if value else '[MISSING]'}")
     from providers import ModelProviderRegistry
     from providers.azure_openai import AzureOpenAIProvider
@@ -407,14 +428,14 @@ def configure_providers():
     has_custom = False
 
     # Check for Gemini API key
-    gemini_key = get_env("GEMINI_API_KEY")
+    gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key and gemini_key != "your_gemini_api_key_here":
         valid_providers.append("Gemini")
         has_native_apis = True
         logger.info("Gemini API key found - Gemini models available")
 
     # Check for OpenAI API key
-    openai_key = get_env("OPENAI_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
     logger.debug(f"OpenAI key check: key={'[PRESENT]' if openai_key else '[MISSING]'}")
     if openai_key and openai_key != "your_openai_api_key_here":
         valid_providers.append("OpenAI")
@@ -426,43 +447,32 @@ def configure_providers():
         else:
             logger.debug("OpenAI API key is placeholder value")
 
-    # Check for Azure OpenAI configuration
-    azure_key = get_env("AZURE_OPENAI_API_KEY")
-    azure_endpoint = get_env("AZURE_OPENAI_ENDPOINT")
-    azure_models_available = False
-    if azure_key and azure_key != "your_azure_openai_key_here" and azure_endpoint:
-        try:
-            from providers.registries.azure import AzureModelRegistry
-
-            azure_registry = AzureModelRegistry()
-            if azure_registry.list_models():
-                valid_providers.append("Azure OpenAI")
-                has_native_apis = True
-                azure_models_available = True
-                logger.info("Azure OpenAI configuration detected")
-            else:
-                logger.warning(
-                    "Azure OpenAI models configuration is empty. Populate conf/azure_models.json or set AZURE_MODELS_CONFIG_PATH."
-                )
-        except Exception as exc:
-            logger.warning(f"Failed to load Azure OpenAI models: {exc}")
-
     # Check for X.AI API key
-    xai_key = get_env("XAI_API_KEY")
+    xai_key = os.getenv("XAI_API_KEY")
     if xai_key and xai_key != "your_xai_api_key_here":
         valid_providers.append("X.AI (GROK)")
         has_native_apis = True
         logger.info("X.AI API key found - GROK models available")
 
+    # Check for Azure OpenAI API key
+    azure_key = os.getenv("AZURE_OPENAI_API_KEY")
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+    if azure_key and azure_endpoint and azure_deployment:
+        if azure_key != "your_azure_openai_key_here" and azure_endpoint != "https://your-resource.openai.azure.com/":
+            valid_providers.append("Azure OpenAI")
+            has_native_apis = True
+            logger.info(f"Azure OpenAI found - deployment: {azure_deployment}")
+
     # Check for DIAL API key
-    dial_key = get_env("DIAL_API_KEY")
+    dial_key = os.getenv("DIAL_API_KEY")
     if dial_key and dial_key != "your_dial_api_key_here":
         valid_providers.append("DIAL")
         has_native_apis = True
         logger.info("DIAL API key found - DIAL models available")
 
     # Check for OpenRouter API key
-    openrouter_key = get_env("OPENROUTER_API_KEY")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
     logger.debug(f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
     if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
         valid_providers.append("OpenRouter")
@@ -475,14 +485,14 @@ def configure_providers():
             logger.debug("OpenRouter API key is placeholder value")
 
     # Check for custom API endpoint (Ollama, vLLM, etc.)
-    custom_url = get_env("CUSTOM_API_URL")
+    custom_url = os.getenv("CUSTOM_API_URL")
     if custom_url:
         # IMPORTANT: Always read CUSTOM_API_KEY even if empty
         # - Some providers (vLLM, LM Studio, enterprise APIs) require authentication
         # - Others (Ollama) work without authentication (empty key)
         # - DO NOT remove this variable - it's needed for provider factory function
-        custom_key = get_env("CUSTOM_API_KEY", "") or ""  # Default to empty (Ollama doesn't need auth)
-        custom_model = get_env("CUSTOM_MODEL_NAME", "llama3.2") or "llama3.2"
+        custom_key = os.getenv("CUSTOM_API_KEY", "")  # Default to empty (Ollama doesn't need auth)
+        custom_model = os.getenv("CUSTOM_MODEL_NAME", "llama3.2")
         valid_providers.append(f"Custom API ({custom_url})")
         has_custom = True
         logger.info(f"Custom API endpoint found: {custom_url} with model {custom_model}")
@@ -493,51 +503,35 @@ def configure_providers():
 
     # Register providers in priority order:
     # 1. Native APIs first (most direct and efficient)
-    registered_providers = []
-
     if has_native_apis:
         if gemini_key and gemini_key != "your_gemini_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-            registered_providers.append(ProviderType.GOOGLE.value)
-            logger.debug(f"Registered provider: {ProviderType.GOOGLE.value}")
         if openai_key and openai_key != "your_openai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
-            registered_providers.append(ProviderType.OPENAI.value)
-            logger.debug(f"Registered provider: {ProviderType.OPENAI.value}")
-        if azure_models_available:
-            ModelProviderRegistry.register_provider(ProviderType.AZURE, AzureOpenAIProvider)
-            registered_providers.append(ProviderType.AZURE.value)
-            logger.debug(f"Registered provider: {ProviderType.AZURE.value}")
+        if azure_key and azure_endpoint and azure_deployment:
+            if (
+                azure_key != "your_azure_openai_key_here"
+                and azure_endpoint != "https://your-resource.openai.azure.com/"
+            ):
+                ModelProviderRegistry.register_provider(ProviderType.AZURE, AzureOpenAIProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
-            registered_providers.append(ProviderType.XAI.value)
-            logger.debug(f"Registered provider: {ProviderType.XAI.value}")
         if dial_key and dial_key != "your_dial_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.DIAL, DIALModelProvider)
-            registered_providers.append(ProviderType.DIAL.value)
-            logger.debug(f"Registered provider: {ProviderType.DIAL.value}")
 
     # 2. Custom provider second (for local/private models)
     if has_custom:
         # Factory function that creates CustomProvider with proper parameters
         def custom_provider_factory(api_key=None):
             # api_key is CUSTOM_API_KEY (can be empty for Ollama), base_url from CUSTOM_API_URL
-            base_url = get_env("CUSTOM_API_URL", "") or ""
+            base_url = os.getenv("CUSTOM_API_URL", "")
             return CustomProvider(api_key=api_key or "", base_url=base_url)  # Use provided API key or empty string
 
         ModelProviderRegistry.register_provider(ProviderType.CUSTOM, custom_provider_factory)
-        registered_providers.append(ProviderType.CUSTOM.value)
-        logger.debug(f"Registered provider: {ProviderType.CUSTOM.value}")
 
     # 3. OpenRouter last (catch-all for everything else)
     if has_openrouter:
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
-        registered_providers.append(ProviderType.OPENROUTER.value)
-        logger.debug(f"Registered provider: {ProviderType.OPENROUTER.value}")
-
-    # Log all registered providers
-    if registered_providers:
-        logger.info(f"Registered providers: {', '.join(registered_providers)}")
 
     # Require at least one valid provider
     if not valid_providers:
@@ -545,6 +539,7 @@ def configure_providers():
             "At least one API configuration is required. Please set either:\n"
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI models\n"
+            "- AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_DEPLOYMENT_NAME for Azure OpenAI models\n"
             "- XAI_API_KEY for X.AI GROK models\n"
             "- DIAL_API_KEY for DIAL models\n"
             "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
@@ -679,8 +674,7 @@ async def handle_list_tools() -> list[Tool]:
         )
 
     # Log cache efficiency info
-    openrouter_key_for_cache = get_env("OPENROUTER_API_KEY")
-    if openrouter_key_for_cache and openrouter_key_for_cache != "your_openrouter_api_key_here":
+    if os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here":
         logger.debug("OpenRouter registry cache used efficiently across all tool schemas")
 
     logger.debug(f"Returning {len(tools)} tools to MCP client")
@@ -1092,12 +1086,9 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
     # Create model context early to use for history building
     from utils.model_context import ModelContext
 
-    tool = TOOLS.get(context.tool_name)
-    requires_model = tool.requires_model() if tool else True
-
     # Check if we should use the model from the previous conversation turn
     model_from_args = arguments.get("model")
-    if requires_model and not model_from_args and context.turns:
+    if not model_from_args and context.turns:
         # Find the last assistant turn to get the model used
         for turn in reversed(context.turns):
             if turn.role == "assistant" and turn.model_name:
@@ -1105,99 +1096,48 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
                 logger.debug(f"[CONVERSATION_DEBUG] Using model from previous turn: {turn.model_name}")
                 break
 
-    # Resolve an effective model for context reconstruction when DEFAULT_MODEL=auto
-    model_context = arguments.get("_model_context")
-
-    if requires_model:
-        if model_context is None:
-            try:
-                model_context = ModelContext.from_arguments(arguments)
-                arguments.setdefault("_resolved_model_name", model_context.model_name)
-            except ValueError as exc:
-                from providers.registry import ModelProviderRegistry
-
-                fallback_model = None
-                if tool is not None:
-                    try:
-                        fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
-                    except Exception as fallback_exc:  # pragma: no cover - defensive log
-                        logger.debug(
-                            f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
-                        )
-
-                if fallback_model is None:
-                    available_models = ModelProviderRegistry.get_available_model_names()
-                    if available_models:
-                        fallback_model = available_models[0]
-
-                if fallback_model is None:
-                    raise
-
-                logger.debug(
-                    f"[CONVERSATION_DEBUG] Falling back to model '{fallback_model}' for context reconstruction after error: {exc}"
-                )
-                model_context = ModelContext(fallback_model)
-                arguments["_model_context"] = model_context
-                arguments["_resolved_model_name"] = fallback_model
-
+    # Build or repair model context with graceful fallback when needed
+    try:
+        model_context = ModelContext.from_arguments(arguments)
+    except ValueError as exc:
+        # Try to find a reasonable fallback model
         from providers.registry import ModelProviderRegistry
 
-        provider = ModelProviderRegistry.get_provider_for_model(model_context.model_name)
-        if provider is None:
-            fallback_model = None
-            if tool is not None:
-                try:
-                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
-                except Exception as fallback_exc:  # pragma: no cover - defensive log
-                    logger.debug(
-                        f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
+        fallback_model = None
+        # Try to get a category-appropriate fallback if we know the tool
+        if context.tool_name:
+            try:
+                # Import tool registry to get tool instance
+                from tools import get_tool_by_name
+
+                tool_instance = get_tool_by_name(context.tool_name)
+                if tool_instance and hasattr(tool_instance, "get_model_category"):
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(
+                        tool_instance.get_model_category()
                     )
-
-            if fallback_model is None:
-                available_models = ModelProviderRegistry.get_available_model_names()
-                if available_models:
-                    fallback_model = available_models[0]
-
-            if fallback_model is None:
-                raise ValueError(
-                    f"Conversation continuation failed: model '{model_context.model_name}' is not available with current API keys."
+            except Exception as fallback_exc:  # pragma: no cover - defensive log
+                logger.debug(
+                    f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
                 )
 
-            logger.debug(
-                f"[CONVERSATION_DEBUG] Model '{model_context.model_name}' unavailable; swapping to '{fallback_model}' for context reconstruction"
+        if fallback_model is None:
+            available_models = ModelProviderRegistry.get_available_model_names()
+            if available_models:
+                fallback_model = available_models[0]
+
+        if fallback_model is None:
+            # Propagate with helpful error
+            raise ValueError(
+                f"Conversation continuation failed: model context could not be created for arguments; "
+                f"no available fallback models detected. Original error: {exc}"
             )
-            model_context = ModelContext(fallback_model)
-            arguments["_model_context"] = model_context
-            arguments["_resolved_model_name"] = fallback_model
-    else:
-        if model_context is None:
-            from providers.registry import ModelProviderRegistry
 
-            fallback_model = None
-            if tool is not None:
-                try:
-                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
-                except Exception as fallback_exc:  # pragma: no cover - defensive log
-                    logger.debug(
-                        f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
-                    )
-
-            if fallback_model is None:
-                available_models = ModelProviderRegistry.get_available_model_names()
-                if available_models:
-                    fallback_model = available_models[0]
-
-            if fallback_model is None:
-                raise ValueError(
-                    "Conversation continuation failed: no available models detected for context reconstruction."
-                )
-
-            logger.debug(
-                f"[CONVERSATION_DEBUG] Using fallback model '{fallback_model}' for context reconstruction of tool without model requirement"
-            )
-            model_context = ModelContext(fallback_model)
-            arguments["_model_context"] = model_context
-            arguments["_resolved_model_name"] = fallback_model
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Falling back to model '{fallback_model}' for context reconstruction after error: {exc}"
+        )
+        model_context = ModelContext(fallback_model)
+        arguments["_model_context"] = model_context
+        arguments["_resolved_model_name"] = fallback_model
 
     # Build conversation history with model-specific limits
     logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")

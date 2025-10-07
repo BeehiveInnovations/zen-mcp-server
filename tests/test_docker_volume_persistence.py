@@ -25,7 +25,7 @@ class TestDockerVolumePersistence:
         if not self.docker_compose_path.exists():
             pytest.skip("docker-compose.yml not found")
 
-        content = self.docker_compose_path.read_text()
+        content = self.docker_compose_path.read_text(encoding="utf-8")
 
         # Check for named volume definition
         assert "zen-mcp-config:" in content, "zen-mcp-config volume must be defined"
@@ -73,7 +73,7 @@ class TestDockerVolumePersistence:
         log_mount = "./logs:/app/logs"
 
         if self.docker_compose_path.exists():
-            content = self.docker_compose_path.read_text()
+            content = self.docker_compose_path.read_text(encoding="utf-8")
             assert log_mount in content, f"Log mount {log_mount} must be configured"
 
     def test_volume_backup_restore_capability(self):
@@ -113,7 +113,7 @@ class TestDockerVolumePersistence:
             # Test creating a temporary file
             test_file = logs_dir / "test_write_permission.tmp"
             try:
-                test_file.write_text("test")
+                test_file.write_text("test", encoding="utf-8")
                 assert test_file.exists()
             finally:
                 if test_file.exists():

@@ -24,7 +24,7 @@ class TestDockerSecurity:
         if not self.dockerfile_path.exists():
             pytest.skip("Dockerfile not found")
 
-        content = self.dockerfile_path.read_text()
+        content = self.dockerfile_path.read_text(encoding="utf-8")
 
         # Check for user creation or switching
         user_indicators = ["USER " in content, "useradd" in content, "adduser" in content, "RUN addgroup" in content]
@@ -36,7 +36,7 @@ class TestDockerSecurity:
         if not self.compose_path.exists():
             pytest.skip("docker-compose.yml not found")
 
-        content = self.compose_path.read_text()
+        content = self.compose_path.read_text(encoding="utf-8")
 
         # Check that dangerous options are not used
         dangerous_options = ["privileged: true", "--privileged", "cap_add:", "SYS_ADMIN"]
@@ -49,7 +49,7 @@ class TestDockerSecurity:
         if not self.compose_path.exists():
             pytest.skip("docker-compose.yml not found")
 
-        content = self.compose_path.read_text()
+        content = self.compose_path.read_text(encoding="utf-8")
 
         # Check for read-only configurations
         if "read_only:" in content:
@@ -64,7 +64,7 @@ class TestDockerSecurity:
             if not file_path.exists():
                 continue
 
-            content = file_path.read_text().lower()
+            content = file_path.read_text(encoding="utf-8").lower()
 
             # Check that we don't have hardcoded secrets
             for pattern in sensitive_patterns:
@@ -83,7 +83,7 @@ class TestDockerSecurity:
         if not self.compose_path.exists():
             pytest.skip("docker-compose.yml not found")
 
-        content = self.compose_path.read_text()
+        content = self.compose_path.read_text(encoding="utf-8")
 
         # Check for custom network (better than default bridge)
         if "networks:" in content:
@@ -96,7 +96,7 @@ class TestDockerSecurity:
         if not self.compose_path.exists():
             pytest.skip("docker-compose.yml not found")
 
-        content = self.compose_path.read_text()
+        content = self.compose_path.read_text(encoding="utf-8")
 
         # Check that sensitive host paths are not mounted
         dangerous_mounts = ["/:/", "/var/run/docker.sock:", "/etc/passwd:", "/etc/shadow:", "/root:"]
@@ -108,7 +108,7 @@ class TestDockerSecurity:
         """Test that secrets are properly managed"""
         # Check for Docker secrets usage in compose file
         if self.compose_path.exists():
-            content = self.compose_path.read_text()
+            content = self.compose_path.read_text(encoding="utf-8")
 
             # If secrets are used, they should be properly configured
             if "secrets:" in content:
@@ -119,7 +119,7 @@ class TestDockerSecurity:
         if not self.compose_path.exists():
             pytest.skip("docker-compose.yml not found")
 
-        content = self.compose_path.read_text()
+        content = self.compose_path.read_text(encoding="utf-8")
 
         # Check for capability restrictions
         if "cap_drop:" in content:
@@ -141,7 +141,7 @@ class TestDockerSecretsHandling:
         dockerfile = project_root / "Dockerfile"
 
         if dockerfile.exists():
-            content = dockerfile.read_text()
+            content = dockerfile.read_text(encoding="utf-8")
 
             # .env files should not be copied
             assert "COPY .env" not in content, ".env file should not be copied into image"
@@ -152,7 +152,7 @@ class TestDockerSecretsHandling:
         dockerignore = project_root / ".dockerignore"
 
         if dockerignore.exists():
-            content = dockerignore.read_text()
+            content = dockerignore.read_text(encoding="utf-8")
 
             sensitive_files = [".env", "*.key", "*.pem", ".git"]
 
@@ -200,7 +200,7 @@ class TestDockerComplianceChecks:
         if not dockerfile.exists():
             pytest.skip("Dockerfile not found")
 
-        content = dockerfile.read_text()
+        content = dockerfile.read_text(encoding="utf-8")
 
         # Check for multi-stage builds (reduces attack surface)
         if "FROM" in content:
@@ -221,7 +221,7 @@ class TestDockerComplianceChecks:
         compose_file = project_root / "docker-compose.yml"
 
         if compose_file.exists():
-            content = compose_file.read_text()
+            content = compose_file.read_text(encoding="utf-8")
 
             # Check for security context if configured
             security_options = ["security_opt:", "no-new-privileges:", "read_only:"]

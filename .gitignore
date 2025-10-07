@@ -144,6 +144,9 @@ cython_debug/
 # VS Code
 .vscode/
 
+# Cursor
+.cursor/
+
 # macOS
 .DS_Store
 
@@ -161,9 +164,6 @@ htmlcov/
 coverage.xml
 .pytest_cache/
 
-# Test simulation artifacts (dynamically created during testing)
-test_simulation_files/.claude/
-
 # Temporary test directories
 test-setup/
 
@@ -175,8 +175,8 @@ FEATURE_*.md
 # Local user instructions
 CLAUDE.local.md
 
-# Claude Code personal settings
-.claude/settings.local.json
+# Claude Code
+.claude/
 
 # Standalone mode files
 .zen_venv/
