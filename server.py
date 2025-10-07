@@ -1095,7 +1095,40 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
                 logger.debug(f"[CONVERSATION_DEBUG] Using model from previous turn: {turn.model_name}")
                 break
 
-    model_context = ModelContext.from_arguments(arguments)
+    # Build or repair model context with graceful fallback when needed
+    try:
+        model_context = ModelContext.from_arguments(arguments)
+    except ValueError as exc:
+        # Try to find a reasonable fallback model
+        from providers.registry import ModelProviderRegistry
+
+        fallback_model = None
+        if tool is not None:
+            try:
+                fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
+            except Exception as fallback_exc:  # pragma: no cover - defensive log
+                logger.debug(
+                    f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
+                )
+
+        if fallback_model is None:
+            available_models = ModelProviderRegistry.get_available_model_names()
+            if available_models:
+                fallback_model = available_models[0]
+
+        if fallback_model is None:
+            # Propagate with helpful error
+            raise ValueError(
+                f"Conversation continuation failed: model context could not be created for arguments; "
+                f"no available fallback models detected. Original error: {exc}"
+            )
+
+        logger.debug(
+            f"[CONVERSATION_DEBUG] Falling back to model '{fallback_model}' for context reconstruction after error: {exc}"
+        )
+        model_context = ModelContext(fallback_model)
+        arguments["_model_context"] = model_context
+        arguments["_resolved_model_name"] = fallback_model
 
     # Build conversation history with model-specific limits
     logger.debug(f"[CONVERSATION_DEBUG] Building conversation history for thread {continuation_id}")

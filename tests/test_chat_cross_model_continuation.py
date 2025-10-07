@@ -53,7 +53,6 @@ def _extract_number(text: str) -> str:
     return ""
 
 
-@pytest.mark.skip(reason="Skipping integration test that requires live API or outdated cassette")
 @pytest.mark.asyncio
 @pytest.mark.no_mock_provider
 async def test_chat_cross_model_continuation(monkeypatch):

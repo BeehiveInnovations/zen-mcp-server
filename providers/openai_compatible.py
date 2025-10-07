@@ -532,14 +532,14 @@ class OpenAICompatibleProvider(ModelProvider):
             # Text + images, use content array format
             messages.append({"role": "user", "content": user_content})
 
-        # Prepare completion parameters
+        # Resolve alias -> canonical early and use consistently
+        resolved_model = self._resolve_model_name(model_name)
+
+        # Prepare completion parameters with canonical model
         completion_params = {
-            "model": model_name,
+            "model": resolved_model,
             "messages": messages,
         }
-
-        # Check model capabilities once to determine parameter support
-        resolved_model = self._resolve_model_name(model_name)
 
         # Use the effective temperature we calculated earlier
         supports_sampling = effective_temperature is not None
@@ -589,7 +589,7 @@ class OpenAICompatibleProvider(ModelProvider):
             return ModelResponse(
                 content=content,
                 usage=usage,
-                model_name=model_name,
+                model_name=resolved_model,
                 friendly_name=self.FRIENDLY_NAME,
                 provider=self.get_provider_type(),
                 metadata={

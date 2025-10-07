@@ -21,7 +21,6 @@ CASSETTE_PATH = CASSETTE_DIR / "chat_gpt5_moon_distance.json"
 CASSETTE_CONTINUATION_PATH = CASSETTE_DIR / "chat_gpt5_continuation.json"
 
 
-@pytest.mark.skip(reason="Skipping integration test that requires live API or outdated cassette")
 @pytest.mark.asyncio
 @pytest.mark.no_mock_provider
 async def test_chat_auto_mode_with_openai(monkeypatch):
@@ -86,7 +85,6 @@ async def test_chat_auto_mode_with_openai(monkeypatch):
     assert CASSETTE_PATH.exists()
 
 
-@pytest.mark.skip(reason="Skipping integration test that requires live API or outdated cassette")
 @pytest.mark.asyncio
 @pytest.mark.no_mock_provider
 async def test_chat_openai_continuation(monkeypatch):
