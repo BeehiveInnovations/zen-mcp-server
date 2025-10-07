@@ -41,7 +41,7 @@
       "supports_function_calling": true,
       "supports_json_mode": true,
       "supports_images": true,
-      "supports_temperature": true,
+      "supports_temperature": false,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed"
     },
@@ -62,7 +62,7 @@
       "supports_function_calling": true,
       "supports_json_mode": true,
       "supports_images": true,
-      "supports_temperature": true,
+      "supports_temperature": false,
       "max_image_size_mb": 20.0,
       "use_openai_response_api": true,
       "default_reasoning_effort": "high",
@@ -86,7 +86,7 @@
       "supports_function_calling": true,
       "supports_json_mode": true,
       "supports_images": true,
-      "supports_temperature": true,
+      "supports_temperature": false,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed"
     },

@@ -416,7 +416,7 @@ def configure_providers():
     from providers.custom import CustomProvider
     from providers.dial import DIALModelProvider
     from providers.gemini import GeminiModelProvider
-    from providers.openai_provider import OpenAIModelProvider
+    from providers.openai import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
     from providers.shared import ProviderType
     from providers.xai import XAIModelProvider
@@ -459,8 +459,7 @@ def configure_providers():
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
     if azure_key and azure_endpoint and azure_deployment:
-        if (azure_key != "your_azure_openai_key_here" and
-            azure_endpoint != "https://your-resource.openai.azure.com/"):
+        if azure_key != "your_azure_openai_key_here" and azure_endpoint != "https://your-resource.openai.azure.com/":
             valid_providers.append("Azure OpenAI")
             has_native_apis = True
             logger.info(f"Azure OpenAI found - deployment: {azure_deployment}")
@@ -510,8 +509,10 @@ def configure_providers():
         if openai_key and openai_key != "your_openai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         if azure_key and azure_endpoint and azure_deployment:
-            if (azure_key != "your_azure_openai_key_here" and
-                azure_endpoint != "https://your-resource.openai.azure.com/"):
+            if (
+                azure_key != "your_azure_openai_key_here"
+                and azure_endpoint != "https://your-resource.openai.azure.com/"
+            ):
                 ModelProviderRegistry.register_provider(ProviderType.AZURE, AzureOpenAIProvider)
         if xai_key and xai_key != "your_xai_api_key_here":
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)

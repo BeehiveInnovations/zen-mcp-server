@@ -438,9 +438,7 @@ class TestAzureOpenAIProvider:
             deployment_name="gpt-5",
         )
 
-        result = provider.generate_content(
-            prompt="Test", model_name="gpt-5", temperature=1.0
-        )
+        result = provider.generate_content(prompt="Test", model_name="gpt-5", temperature=1.0)
 
         assert result.usage["input_tokens"] == 200
         assert result.usage["prompt_tokens"] == 200
@@ -476,9 +474,7 @@ class TestAzureOpenAIProvider:
             deployment_name="gpt-5",
         )
 
-        result = provider.generate_content(
-            prompt="Test", model_name="gpt-5", temperature=1.0
-        )
+        result = provider.generate_content(prompt="Test", model_name="gpt-5", temperature=1.0)
 
         assert result.usage["prompt_tokens"] == 250
         assert result.usage["input_tokens"] == 250
@@ -700,9 +696,7 @@ class TestAzureOpenAIProvider:
             deployment_name="my-gpt5-deployment",
         )
 
-        result = provider.generate_content(
-            prompt="Test", model_name="gpt-5", temperature=1.0
-        )
+        result = provider.generate_content(prompt="Test", model_name="gpt-5", temperature=1.0)
 
         # Verify metadata
         assert result.metadata["response_id"] == "response-123"
