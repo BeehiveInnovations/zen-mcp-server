@@ -227,8 +227,9 @@
       "supports_function_calling": true,
       "supports_json_mode": true,
       "supports_images": true,
-      "supports_temperature": true,
+      "supports_temperature": false,
       "max_image_size_mb": 20.0,
+      "temperature_constraint": "fixed",
       "use_openai_response_api": true
     }
   ]
