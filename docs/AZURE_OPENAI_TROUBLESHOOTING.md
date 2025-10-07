@@ -6,10 +6,21 @@ This guide provides comprehensive troubleshooting information for Azure OpenAI i
 
 **IMPORTANT:** This implementation uses Azure OpenAI **Responses API** exclusively.
 
-- Works with both **GPT-5** and **GPT-5-Codex** models
-- Uses Responses API (not Chat Completions API) as required by GPT-5-Codex
-- Different content extraction methods than standard Chat Completions
-- Supports multi-turn conversations with proper session management
+### Supported Models
+- **GPT-5**: Advanced reasoning with vision support (400K context, 128K output)
+- **GPT-5-Codex**: Elite code generation without vision (400K context, 128K output)
+
+### Critical Constraints (MUST READ)
+1. **Responses API Only** - Chat Completions API is NOT implemented
+2. **Temperature Fixed at 1.0** - Cannot be changed, returns 400 error if modified
+3. **Minimum Output Tokens: 16** - Values below 16 cause 400 errors
+4. **API Version: 2025-03-01-preview or later** - Required for Responses API support
+
+### Key Differences from Standard OpenAI
+- Uses Responses API endpoint: `/openai/deployments/{deployment}/responses`
+- Different content extraction from response (uses `output_text` or `output` array)
+- Supports reasoning tokens (internal thinking process before output)
+- No temperature control (hardcoded to 1.0 by Azure)
 
 ---
 
@@ -158,25 +169,33 @@ az cognitiveservices account deployment list \
 
 ### 6. Temperature Validation Errors
 
-**Problem:** Invalid temperature value for GPT-5-Codex.
+**Problem:** Invalid temperature value for GPT-5 or GPT-5-Codex.
 
-**Error Message:**
+**Error Messages:**
 ```
-Temperature must be exactly 1.0 for GPT-5-Codex model
-Invalid temperature value: must be 1.0
+400 Bad Request: "Unsupported value. Only the default (1) value is supported"
+Temperature must be exactly 1.0 for GPT-5/GPT-5-Codex models
 ```
 
-**Solution:** The implementation enforces temperature=1.0 for GPT-5-Codex:
+**Root Cause:** Azure OpenAI reasoning models (GPT-5, GPT-5-Codex) do not support temperature adjustment.
+
+**Solution:** The server automatically enforces temperature=1.0:
 
 ```python
-# Temperature is automatically set to 1.0 for GPT-5-Codex
-# No configuration needed - handled internally
+# Temperature is automatically set to 1.0 for all GPT-5 models
+# This is handled internally by the provider
+temperature = 1.0  # Cannot be changed
 
-# For other models (if supported later), temperature can vary
-# But for GPT-5-Codex: temperature=1.0 is required
+# Do NOT attempt to override in prompts or configuration
+# The Azure API will reject any temperature value other than 1.0
 ```
 
-**Note:** This is a GPT-5-Codex requirement enforced by Azure, not a server limitation.
+**Community Reports:**
+- Multiple users have confirmed this constraint in OpenAI forums
+- Error message: "Unsupported value … Only the default (1) value is supported"
+- Applies to both GPT-5 and GPT-5-Codex deployments
+
+**Note:** This is an Azure OpenAI platform requirement for reasoning models, not a server limitation.
 
 ---
 
@@ -342,6 +361,34 @@ az cognitiveservices account show \
 **Ensure using latest version:**
 - API version must be `2025-03-01-preview` or later
 - Older versions do not support Responses API
+
+### 8. Minimum Output Token Errors
+
+**Problem:** Request fails with invalid max_output_tokens value.
+
+**Error Message:**
+```
+400 Bad Request: max_output_tokens must be at least 16
+Invalid parameter: max_output_tokens < 16
+```
+
+**Root Cause:** GPT-5/GPT-5-Codex reasoning models require minimum 16 output tokens.
+
+**Solution:** The server enforces this minimum automatically:
+
+```python
+# Server automatically enforces minimum
+max_output_tokens = max(16, requested_tokens)
+
+# If you see this error, check:
+# 1. Server logs for the actual value being sent
+# 2. Ensure you're not manually setting a lower value
+```
+
+**Official Documentation Note:**
+- OpenAI/Azure docs specify this for reasoning models
+- Applies to both Responses API and Chat Completions (where available)
+- Parameter name varies: `max_output_tokens` (Responses) vs `max_completion_tokens` (Chat)
 
 ---
 

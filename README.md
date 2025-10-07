@@ -84,11 +84,13 @@ For best results, use Claude Code with:
 **1. Get API Keys** (choose one or more):
 - **[OpenRouter](https://openrouter.ai/)** - Access multiple models with one API
 - **[Gemini](https://makersuite.google.com/app/apikey)** - Google's latest models
-- **[OpenAI](https://platform.openai.com/api-keys)** - O3, GPT-5 series
-- **[Azure OpenAI](https://portal.azure.com/)** - GPT-5, GPT-5-Codex via Responses API
+- **[OpenAI](https://platform.openai.com/api-keys)** - O3, O4 reasoning models
+- **[Azure OpenAI](https://portal.azure.com/)** - GPT-5 (vision), GPT-5-Codex (elite code) via Responses API*
 - **[X.AI](https://console.x.ai/)** - Grok models
 - **[DIAL](https://dialx.ai/)** - Vendor-agnostic model access
 - **[Ollama](https://ollama.ai/)** - Local models (free)
+
+*Azure GPT-5 models: 400K context, 128K output, temperature=1.0 only, min 16 output tokens
 
 **2. Install** (choose one):
 
@@ -249,9 +251,9 @@ DISABLED_TOOLS=
 
 **Model Support**
 - **Multiple providers** - Gemini, OpenAI, Azure OpenAI, X.AI, OpenRouter, DIAL, Ollama
-- **Latest models** - GPT-5, GPT-5-Codex, Gemini 2.5 Pro, O3, Grok-4, local Llama
+- **Latest models** - Azure GPT-5/GPT-5-Codex (Responses API), Gemini 2.5 Pro, O3, Grok-4, local Llama
 - **[Thinking modes](docs/advanced-usage.md#thinking-modes)** - Control reasoning depth vs cost
-- **Vision support** - Analyze images, diagrams, screenshots
+- **Vision support** - Analyze images with GPT-5, Gemini, and other vision-capable models
 
 **Developer Experience**
 - **Guided workflows** - Systematic investigation prevents rushed analysis
@@ -307,8 +309,8 @@ Built with the power of **Multi-Model AI** collaboration 🤝
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.com) by Anthropic
 - [Claude Code](https://claude.ai/code) - Your AI coding orchestrator
 - [Gemini 2.5 Pro & Flash](https://ai.google.dev/) - Extended thinking & fast analysis
-- [OpenAI O3 & GPT-5](https://openai.com/) - Strong reasoning & latest capabilities
-- [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - Enterprise GPT-5 & GPT-5-Codex via Responses API
+- [OpenAI O3 & O4](https://openai.com/) - Strong reasoning & systematic analysis
+- [Azure OpenAI GPT-5](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - GPT-5 (vision) & GPT-5-Codex (elite code) via Responses API
 
 ### Star History
 

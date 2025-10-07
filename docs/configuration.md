@@ -66,56 +66,142 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 - Use standard localhost URLs since the server runs natively
 - Example: `http://localhost:11434/v1` for Ollama
 
-### Azure OpenAI Configuration
+### Azure OpenAI GPT-5 Models Configuration
 
-Azure OpenAI integration uses the **Responses API** exclusively, supporting both GPT-5 and GPT-5-Codex models with enterprise-grade features.
+Azure OpenAI integration uses the **Responses API** exclusively for GPT-5 and GPT-5-Codex models. These models have specific requirements and constraints that differ from standard OpenAI models.
 
-**Setup Steps:**
+#### Critical Requirements for GPT-5/GPT-5-Codex
+
+| Requirement | Details | Error if Violated |
+|------------|---------|-------------------|
+| **API Type** | Responses API ONLY | Chat Completions API not implemented |
+| **Temperature** | Must be exactly 1.0 | 400 Error: "Unsupported value. Only the default (1) value is supported" |
+| **Min Output Tokens** | Minimum 16 tokens | 400 Error if max_output_tokens < 16 |
+| **API Version** | 2025-03-01-preview or later | Responses API not available in older versions |
+
+#### Setup Steps
 
 1. **Create Azure OpenAI Resource:**
    - Navigate to [Azure Portal](https://portal.azure.com/)
    - Create or select an Azure OpenAI resource
-   - Deploy a GPT-5 or GPT-5-Codex model
+   - Request access to GPT-5 or GPT-5-Codex models if needed
 
-2. **Get Credentials:**
-   - Go to your Azure OpenAI resource
+2. **Deploy the Model:**
+   - Go to "Model deployments" in your Azure OpenAI resource
+   - Click "Create new deployment"
+   - Select either `gpt-5` or `gpt-5-codex` as the model
+   - Choose a deployment name (e.g., `gpt-5-production`)
+   - Set capacity (TPM - Tokens Per Minute)
+
+3. **Get Credentials:**
    - Navigate to "Keys and Endpoint" section
-   - Copy the API key and endpoint URL
+   - Copy either KEY 1 or KEY 2
+   - Copy the Endpoint URL
 
-3. **Configure Environment Variables:**
+4. **Configure Environment Variables:**
    ```env
-   # Required for Azure OpenAI
+   # All 4 variables are REQUIRED
    AZURE_OPENAI_API_KEY=your_api_key_from_azure
    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-   AZURE_OPENAI_API_VERSION=2025-04-01-preview
-   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-codex
+   AZURE_OPENAI_API_VERSION=2025-04-01-preview  # Minimum version for Responses API
+   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5  # Your deployment name from Azure Portal
    ```
 
-**Supported Models:**
-- **`gpt-5`** - Intelligence score 16, 400K context window, 128K max output tokens
-- **`gpt-5-codex`** - Intelligence score 17, specialized for code generation and analysis
+#### Model Comparison
 
-**Key Features:**
-- **Responses API Implementation** - Uses Azure's Responses API (not Chat Completions API)
-- **Extended Thinking Support** - Full support for extended reasoning capabilities
-- **Deployment-Based Routing** - Routes requests through deployment names rather than model names
-- **Large Context Windows** - 400K token context, 128K token output capacity
-- **Temperature Constraint** - Temperature is fixed at 1.0 (cannot be adjusted)
+| Model | Context Window | Max Output | Vision Support | Code Specialization | Intelligence Score | Use Case |
+|-------|---------------|------------|----------------|--------------------|--------------------|----------|
+| **gpt-5** | 400K tokens | 128K tokens | ✅ Yes | Good | 16 | General purpose reasoning, complex analysis with images |
+| **gpt-5-codex** | 400K tokens | 128K tokens | ❌ No | Elite | 17 | Code generation, refactoring, technical documentation |
 
-**Important Notes:**
-- Azure OpenAI requires all 4 environment variables to be configured
-- The deployment name must match your Azure deployment (not the model name directly)
-- Temperature is always set to 1.0 and cannot be modified
-- Uses deployment-based routing: requests go to your specific deployment endpoint
+#### Key Technical Details
 
-**Example Configuration:**
-```env
-# Example Azure OpenAI setup for GPT-5-Codex
-AZURE_OPENAI_API_KEY=abc123def456ghi789jkl012mno345pqr
-AZURE_OPENAI_ENDPOINT=https://my-company-openai.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2025-04-01-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=my-gpt5-codex-deployment
+**Responses API Specifics:**
+- Endpoint: `/openai/deployments/{deployment}/responses`
+- Different response format than Chat Completions API
+- Supports reasoning tokens (internal thinking process)
+- Response extraction from `output_text` or `output` array fields
+
+**Reasoning Tokens:**
+- GPT-5 models use internal "reasoning tokens" before generating output
+- These tokens are not visible in the response but affect processing time
+- Contributes to the model's advanced problem-solving capabilities
+
+**Constraints and Limitations:**
+```python
+# Temperature MUST be 1.0
+temperature = 1.0  # Cannot be changed
+
+# Minimum output tokens
+max_output_tokens = max(16, requested_tokens)  # Enforced minimum of 16
+
+# API Version requirement
+api_version = "2025-04-01-preview"  # Or later versions
 ```
+
+#### Example Configurations
+
+**GPT-5 General Purpose:**
+```env
+AZURE_OPENAI_API_KEY=sk-proj-abc123...
+AZURE_OPENAI_ENDPOINT=https://contoso-ai.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-general
+DEFAULT_MODEL=gpt-5  # Use GPT-5 as default
+```
+
+**GPT-5-Codex for Development:**
+```env
+AZURE_OPENAI_API_KEY=sk-proj-xyz789...
+AZURE_OPENAI_ENDPOINT=https://dev-team.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=codex-production
+DEFAULT_MODEL=gpt-5-codex  # Use Codex as default
+```
+
+**Multi-Model Setup:**
+```env
+# You can only have ONE deployment active at a time
+# To switch models, change the AZURE_OPENAI_DEPLOYMENT_NAME
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5  # or gpt-5-codex
+```
+
+#### Common Configuration Errors
+
+1. **Wrong API Version:**
+   ```env
+   # ❌ WRONG - Too old for Responses API
+   AZURE_OPENAI_API_VERSION=2024-10-01-preview
+
+   # ✅ CORRECT
+   AZURE_OPENAI_API_VERSION=2025-04-01-preview
+   ```
+
+2. **Incorrect Endpoint Format:**
+   ```env
+   # ❌ WRONG - Missing https://
+   AZURE_OPENAI_ENDPOINT=your-resource.openai.azure.com/
+
+   # ✅ CORRECT
+   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+   ```
+
+3. **Temperature Modification Attempts:**
+   ```python
+   # ❌ This will cause a 400 error
+   # The server enforces temperature=1.0 automatically
+   # Do NOT try to override it in your prompts
+   ```
+
+#### Troubleshooting Quick Reference
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 400 "Unsupported value" | Temperature ≠ 1.0 | Server auto-sets to 1.0, check logs |
+| 400 "Invalid max_output_tokens" | Value < 16 | Minimum is 16 tokens |
+| 404 "Deployment not found" | Wrong deployment name | Verify in Azure Portal |
+| 401 "Unauthorized" | Invalid API key | Regenerate key in Azure Portal |
+| "Responses API not available" | Old API version | Use 2025-03-01-preview or later |
 
 ### Model Configuration
 

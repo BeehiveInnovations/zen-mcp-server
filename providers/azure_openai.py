@@ -69,8 +69,8 @@ class AzureOpenAIProvider(ModelProvider):
             supports_json_mode=True,
             supports_images=True,  # GPT-5 supports vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
-            supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("range"),
+            supports_temperature=False,  # Reasoning model: temperature not supported (fixed internally to 1.0)
+            temperature_constraint=TemperatureConstraint.create("fixed"),
             description="Azure GPT-5 (400K context, 128K output) - Advanced reasoning model with extended thinking",
             aliases=["gpt5", "azure-gpt5", "azure-gpt-5"],
         ),
@@ -107,8 +107,8 @@ class AzureOpenAIProvider(ModelProvider):
             supports_json_mode=True,
             supports_images=True,  # GPT-5 variants support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
-            supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("range"),
+            supports_temperature=False,  # Reasoning model: temperature not supported (fixed internally to 1.0)
+            temperature_constraint=TemperatureConstraint.create("fixed"),
             description="Azure GPT-5-Mini - Faster, cost-effective variant",
             aliases=["gpt5-mini", "gpt5mini", "mini", "azure-mini"],
         ),
@@ -126,8 +126,8 @@ class AzureOpenAIProvider(ModelProvider):
             supports_json_mode=True,
             supports_images=True,  # GPT-5 variants support vision
             max_image_size_mb=20.0,  # 20MB per OpenAI docs
-            supports_temperature=True,
-            temperature_constraint=TemperatureConstraint.create("range"),
+            supports_temperature=False,  # Reasoning model: temperature not supported (fixed internally to 1.0)
+            temperature_constraint=TemperatureConstraint.create("fixed"),
             description="Azure GPT-5-Nano - Fastest, most cost-effective",
             aliases=["gpt5-nano", "gpt5nano", "nano", "azure-nano"],
         ),
@@ -259,7 +259,18 @@ class AzureOpenAIProvider(ModelProvider):
         capabilities = self.get_capabilities(resolved_model)
 
         # Validate parameters
-        self.validate_parameters(resolved_model, temperature, **kwargs)
+        # For reasoning models (no temperature support), skip temperature validation
+        effective_temperature = temperature
+        try:
+            if not capabilities.supports_temperature:
+                effective_temperature = None
+            else:
+                # Coerce into allowed range if needed
+                effective_temperature = capabilities.temperature_constraint.get_corrected_value(temperature)
+                self.validate_parameters(resolved_model, effective_temperature, **kwargs)
+        except Exception:
+            # If validation fails unexpectedly, fall back to omitting temperature
+            effective_temperature = None
 
         # Build input messages in Responses API format
         input_messages = []
@@ -279,9 +290,9 @@ class AzureOpenAIProvider(ModelProvider):
         elif capabilities.max_output_tokens:
             api_params["max_output_tokens"] = capabilities.max_output_tokens
 
-        # Add temperature if model supports it
-        if capabilities.supports_temperature:
-            api_params["temperature"] = temperature
+        # Add temperature only when supported
+        if capabilities.supports_temperature and effective_temperature is not None:
+            api_params["temperature"] = effective_temperature
 
         logger.debug(
             f"Azure OpenAI Responses API request: deployment={self.deployment_name}, "
