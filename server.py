@@ -1104,9 +1104,17 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         from providers.registry import ModelProviderRegistry
 
         fallback_model = None
-        if tool is not None:
+        # Try to get a category-appropriate fallback if we know the tool
+        if context.tool_name:
             try:
-                fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
+                # Import tool registry to get tool instance
+                from tools import get_tool_by_name
+
+                tool_instance = get_tool_by_name(context.tool_name)
+                if tool_instance and hasattr(tool_instance, "get_model_category"):
+                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(
+                        tool_instance.get_model_category()
+                    )
             except Exception as fallback_exc:  # pragma: no cover - defensive log
                 logger.debug(
                     f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"

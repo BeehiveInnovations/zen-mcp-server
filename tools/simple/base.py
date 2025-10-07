@@ -425,7 +425,6 @@ class SimpleTool(BaseTool):
             # Resolve model capabilities for feature gating
             capabilities = self._model_context.capabilities
             supports_thinking = capabilities.supports_extended_thinking
-            supports_temperature = capabilities.supports_temperature
 
             # Generate content with provider abstraction
             if capabilities.supports_temperature:
