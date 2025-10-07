@@ -37,7 +37,7 @@ class TestDockerConfiguration:
         assert self.dockerfile_path.exists(), "Dockerfile must exist"
 
         # Check Dockerfile content
-        content = self.dockerfile_path.read_text()
+        content = self.dockerfile_path.read_text(encoding="utf-8")
         assert "FROM python:" in content, "Dockerfile must have a Python base"
         # Dockerfile uses COPY . . to copy all code
         assert "COPY . ." in content or "COPY --chown=" in content, "Dockerfile must copy source code"
@@ -49,7 +49,7 @@ class TestDockerConfiguration:
         assert self.docker_compose_path.exists(), "docker-compose.yml must exist"
 
         # Basic YAML syntax check
-        content = self.docker_compose_path.read_text()
+        content = self.docker_compose_path.read_text(encoding="utf-8")
         assert "services:" in content, "docker-compose.yml must have services"
         assert "zen-mcp" in content, "Service zen-mcp must be defined"
         assert "build:" in content, "Build configuration must be present"
@@ -59,7 +59,7 @@ class TestDockerConfiguration:
         env_example_path = self.project_root / ".env.example"
 
         if env_example_path.exists():
-            content = env_example_path.read_text()
+            content = env_example_path.read_text(encoding="utf-8")
             assert "GEMINI_API_KEY=" in content, "Template must contain GEMINI_API_KEY"
             assert "OPENAI_API_KEY=" in content, "Template must contain OPENAI_API_KEY"
             assert "LOG_LEVEL=" in content, "Template must contain LOG_LEVEL"
@@ -236,7 +236,7 @@ class TestDockerSecurity:
         dockerfile_path = Path(__file__).parent.parent / "Dockerfile"
 
         if dockerfile_path.exists():
-            content = dockerfile_path.read_text()
+            content = dockerfile_path.read_text(encoding="utf-8")
             # Check that a non-root user is configured
             assert "USER " in content or "useradd" in content, "Dockerfile should configure a non-root user"
 
@@ -246,7 +246,7 @@ class TestDockerSecurity:
         docker_compose_path = Path(__file__).parent.parent / "docker-compose.yml"
 
         if docker_compose_path.exists():
-            content = docker_compose_path.read_text()
+            content = docker_compose_path.read_text(encoding="utf-8")
             # Look for security configurations
             security_indicators = ["read_only", "tmpfs", "security_opt", "cap_drop"]
 
@@ -260,7 +260,7 @@ class TestDockerSecurity:
         dockerfile_path = Path(__file__).parent.parent / "Dockerfile"
 
         if dockerfile_path.exists():
-            content = dockerfile_path.read_text()
+            content = dockerfile_path.read_text(encoding="utf-8")
 
             # Check that no API keys are hardcoded
             sensitive_patterns = ["API_KEY=sk-", "API_KEY=gsk_", "API_KEY=xai-"]
@@ -309,7 +309,7 @@ def temp_project_dir():
         (temp_path / "logs").mkdir()
 
         # Create base files
-        (temp_path / "server.py").write_text("# Mock server.py")
+        (temp_path / "server.py").write_text("# Mock server.py", encoding="utf-8")
         (temp_path / "Dockerfile").write_text(
             """
 FROM python:3.11-slim
@@ -331,7 +331,7 @@ class TestIntegration:
 GEMINI_API_KEY=test_key
 LOG_LEVEL=INFO
 """
-        (temp_project_dir / ".env").write_text(env_content)
+        (temp_project_dir / ".env").write_text(env_content, encoding="utf-8")
 
         # Validate that everything is in place
         assert (temp_project_dir / ".env").exists()

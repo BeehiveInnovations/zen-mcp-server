@@ -2,6 +2,10 @@
 Tests for utility functions
 """
 
+import sys
+
+import pytest
+
 from utils import check_token_limit, estimate_tokens, read_file_content, read_files
 
 
@@ -29,6 +33,7 @@ class TestFileUtils:
         assert "Error: File does not exist" in content
         assert tokens > 0
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Unix-specific test")
     def test_read_file_content_safe_files_allowed(self):
         """Test that safe files outside the original project root are now allowed"""
         # In the new security model, safe files like /etc/passwd

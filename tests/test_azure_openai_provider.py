@@ -160,10 +160,10 @@ class TestAzureOpenAIProvider:
         assert capabilities.supports_json_mode is True
         assert capabilities.supports_images is True
         assert capabilities.max_image_size_mb == 20.0
-        assert capabilities.supports_temperature is True
-        # GPT-5 uses RangeTemperatureConstraint (not fixed)
-        assert capabilities.temperature_constraint.min_temp == 0.0
-        assert capabilities.temperature_constraint.max_temp == 2.0
+        # Azure Responses API enforces fixed temperature behavior for reasoning
+        # models in this provider. Temperature is not user-tunable.
+        assert capabilities.supports_temperature is False
+        assert getattr(capabilities.temperature_constraint, "value", None) == 1.0
 
     def test_get_capabilities_gpt5_codex(self):
         """Test getting model capabilities for GPT-5 Codex."""
@@ -248,7 +248,8 @@ class TestAzureOpenAIProvider:
         call_kwargs = mock_client.responses.create.call_args[1]
 
         assert call_kwargs["model"] == "gpt-5"
-        assert call_kwargs["temperature"] == 1.0
+        # For codex/reasoning models, temperature is omitted (fixed internally)
+        assert "temperature" not in call_kwargs
         assert len(call_kwargs["input"]) == 1
         assert call_kwargs["input"][0]["role"] == "user"
         assert call_kwargs["input"][0]["content"] == "Test prompt"

@@ -29,7 +29,7 @@ class TestDockerHealthCheck:
             pytest.skip("healthcheck.py not found")
 
         # Check if script has Python shebang
-        content = self.healthcheck_script.read_text()
+        content = self.healthcheck_script.read_text(encoding="utf-8")
         assert content.startswith("#!/usr/bin/env python"), "Health check script must have Python shebang"
 
     @patch("subprocess.run")
@@ -101,7 +101,7 @@ class TestDockerHealthCheck:
         compose_file = self.project_root / "docker-compose.yml"
 
         if compose_file.exists():
-            content = compose_file.read_text()
+            content = compose_file.read_text(encoding="utf-8")
 
             # Check for health check configuration
             assert "healthcheck:" in content, "Health check must be configured"
@@ -119,7 +119,7 @@ class TestDockerHealthCheckIntegration:
         dockerfile = project_root / "Dockerfile"
 
         if dockerfile.exists():
-            content = dockerfile.read_text()
+            content = dockerfile.read_text(encoding="utf-8")
 
             # Check that health check script is copied
             script_copied = ("COPY" in content and "healthcheck.py" in content) or "COPY . ." in content

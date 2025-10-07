@@ -34,7 +34,7 @@ class TestDeploymentScripts:
             script_path = self.scripts_dir / script
             if script_path.exists():
                 # Check for shebang
-                content = script_path.read_text()
+                content = script_path.read_text(encoding="utf-8")
                 assert content.startswith("#!/"), f"Script {script} must have shebang"
 
     def test_powershell_scripts_format(self):
@@ -44,7 +44,7 @@ class TestDeploymentScripts:
         for script in ps_scripts:
             script_path = self.scripts_dir / script
             if script_path.exists():
-                content = script_path.read_text()
+                content = script_path.read_text(encoding="utf-8")
 
                 # Check for PowerShell indicators
                 ps_indicators = [
@@ -77,7 +77,7 @@ class TestDeploymentScripts:
         build_script = self.scripts_dir / "build.sh"
 
         if build_script.exists():
-            content = build_script.read_text()
+            content = build_script.read_text(encoding="utf-8")
 
             # Should contain Docker build commands
             assert (
@@ -91,7 +91,7 @@ class TestDeploymentScripts:
         for script_name in deploy_scripts:
             script_path = self.scripts_dir / script_name
             if script_path.exists():
-                content = script_path.read_text()
+                content = script_path.read_text(encoding="utf-8")
 
                 # Look for health check related content
                 health_check_indicators = ["health", "healthcheck", "docker inspect", "container status"]
@@ -108,7 +108,7 @@ class TestDeploymentScripts:
         for script_name in scripts:
             script_path = self.scripts_dir / script_name
             if script_path.exists():
-                content = script_path.read_text()
+                content = script_path.read_text(encoding="utf-8")
 
                 # Check for error handling patterns
                 error_patterns = [
@@ -145,7 +145,7 @@ class TestDeploymentScripts:
         deploy_ps1 = self.scripts_dir / "deploy.ps1"
 
         if deploy_ps1.exists():
-            content = deploy_ps1.read_text()
+            content = deploy_ps1.read_text(encoding="utf-8")
 
             # PowerShell scripts should handle parameters
             param_indicators = ["param(", "[Parameter(", "$SkipHealthCheck", "$HealthCheckTimeout"]
@@ -161,7 +161,7 @@ class TestDeploymentScripts:
         for script_name in scripts_to_check:
             script_path = self.scripts_dir / script_name
             if script_path.exists():
-                content = script_path.read_text()
+                content = script_path.read_text(encoding="utf-8")
 
                 # Check for environment preparation
                 env_prep_patterns = [".env", "environment", "API_KEY", "mkdir", "logs"]
@@ -199,7 +199,7 @@ class TestHealthCheckScript:
         if not self.healthcheck_script.exists():
             pytest.skip("healthcheck.py not found")
 
-        content = self.healthcheck_script.read_text()
+        content = self.healthcheck_script.read_text(encoding="utf-8")
 
         # Expected functions
         expected_functions = ["def check_process", "def check_python_imports", "def check_log_directory"]
@@ -235,7 +235,7 @@ class TestHealthCheckScript:
         if not self.healthcheck_script.exists():
             pytest.skip("healthcheck.py not found")
 
-        content = self.healthcheck_script.read_text()
+        content = self.healthcheck_script.read_text(encoding="utf-8")
 
         # Should have proper exit code handling
         exit_patterns = [
@@ -263,7 +263,7 @@ class TestScriptIntegration:
             deploy_script = project_root / "docker" / "scripts" / "deploy.sh"
 
             if deploy_script.exists():
-                content = deploy_script.read_text()
+                content = deploy_script.read_text(encoding="utf-8")
 
                 # Should work with compose file
                 compose_refs = ["docker-compose", "compose.yml", "compose.yaml"]
@@ -285,8 +285,8 @@ class TestScriptIntegration:
 
         # If both exist, they should have similar functionality
         if unix_deploy.exists() and windows_deploy.exists():
-            unix_content = unix_deploy.read_text()
-            windows_content = windows_deploy.read_text()
+            unix_content = unix_deploy.read_text(encoding="utf-8")
+            windows_content = windows_deploy.read_text(encoding="utf-8")
 
             # Both should reference Docker
             assert "docker" in unix_content.lower()
@@ -300,7 +300,7 @@ class TestScriptIntegration:
         for script_name in scripts:
             script_path = scripts_dir / script_name
             if script_path.exists():
-                content = script_path.read_text()
+                content = script_path.read_text(encoding="utf-8")
 
                 # Check for logging/output
                 logging_patterns = ["echo", "Write-Host", "Write-Output", "print", "logger"]

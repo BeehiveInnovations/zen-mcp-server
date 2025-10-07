@@ -20,7 +20,7 @@ class TestDockerMCPConfiguration:
         if not dockerfile.exists():
             pytest.skip("Dockerfile not found")
 
-        content = dockerfile.read_text()
+        content = dockerfile.read_text(encoding="utf-8")
 
         # Essential checks
         assert "FROM python:" in content
@@ -43,7 +43,7 @@ class TestDockerMCPConfiguration:
         env_example = project_root / ".env.example"
 
         if env_example.exists():
-            content = env_example.read_text()
+            content = env_example.read_text(encoding="utf-8")
 
             # Essential variables
             essential_vars = ["GEMINI_API_KEY", "OPENAI_API_KEY", "LOG_LEVEL"]
