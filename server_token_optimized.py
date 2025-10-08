@@ -177,10 +177,10 @@ def _create_redirect_stub(original_name: str):
                 }
 
             elif mode == "codereview":
-                # codereview/simple only needs: files (+ optional review_type, focus)
+                # codereview/simple only needs: files (per ReviewSimpleRequest)
                 return {
-                    "files": files or ["/code"],  # Provide default if empty
-                    "review_type": "all",
+                    "files": files or ["/code"],
+                    "review_type": "full",
                     "focus": context or None
                 }
 

@@ -583,6 +583,27 @@ class ModeExecutor(BaseTool):
                         "model_responses": [],
                     }
 
+            # Special handling for codereview simple mode
+            if self.mode == "codereview" and self.complexity == "simple":
+                # Convert simple request to workflow format
+                if "files" in arguments:
+                    # This is a simple codereview request, convert to workflow
+                    review_focus = arguments.get("focus", "code quality")
+                    arguments = {
+                        "step": f"Code review of {len(arguments['files'])} file(s) - {review_focus}",
+                        "step_number": 1,
+                        "total_steps": 1,
+                        "next_step_required": False,
+                        "findings": f"Starting {arguments.get('review_type', 'full')} code review",
+                        "files_checked": [],
+                        "relevant_files": arguments["files"],
+                        "relevant_context": [],
+                        "issues_found": [],
+                        "confidence": "medium",
+                        "review_type": arguments.get("review_type", "full"),
+                        "focus": arguments.get("focus"),
+                    }
+
             # Execute the actual tool
             result = await tool.execute(arguments)
 

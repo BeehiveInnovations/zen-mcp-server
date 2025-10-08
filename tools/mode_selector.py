@@ -527,7 +527,7 @@ class ModeSelectorTool(SimpleTool):
                 "required": ["files"],  # Per ReviewSimpleRequest
                 "properties": {
                     "files": {"type": "array", "items": {"type": "string"}, "description": "Files to review"},
-                    "review_type": {"type": "string", "enum": ["security", "performance", "quality", "all"], "description": "Optional: Focus area"},
+                    "review_type": {"type": "string", "enum": ["full", "security", "performance", "quick"], "description": "Optional: Focus area"},
                     "focus": {"type": "string", "description": "Optional: Specific concerns"}
                 }
             },
@@ -541,7 +541,7 @@ class ModeSelectorTool(SimpleTool):
                     "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant methods/functions"},
                     "issues_found": {"type": "array", "items": {"type": "object"}, "description": "Optional: Issues with severity"},
                     "confidence": {"type": "string", "description": "Optional: Confidence level"},
-                    "review_validation_type": {"type": "string", "description": "Optional: Validation type"}
+                    "review_validation_type": {"type": "string", "enum": ["external", "internal"], "description": "Optional: Validation type"}
                 }
             },
 
@@ -557,8 +557,8 @@ class ModeSelectorTool(SimpleTool):
                     "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
                     "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
                     "confidence": {"type": "string", "description": "Optional: Confidence level"},
-                    "analysis_type": {"type": "string", "description": "Optional: Type of analysis"},
-                    "output_format": {"type": "string", "description": "Optional: Output format"}
+                    "analysis_type": {"type": "string", "enum": ["architecture", "performance", "security", "quality", "general"], "description": "Optional: Type of analysis"},
+                    "output_format": {"type": "string", "enum": ["summary", "detailed", "actionable"], "description": "Optional: Output format"}
                 }
             },
             ("analyze", "workflow"): {
@@ -572,8 +572,8 @@ class ModeSelectorTool(SimpleTool):
                     "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
                     "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
                     "confidence": {"type": "string", "description": "Optional: Confidence level"},
-                    "analysis_type": {"type": "string", "description": "Optional: Type of analysis"},
-                    "output_format": {"type": "string", "description": "Optional: Output format"}
+                    "analysis_type": {"type": "string", "enum": ["architecture", "performance", "security", "quality", "general"], "description": "Optional: Type of analysis"},
+                    "output_format": {"type": "string", "enum": ["summary", "detailed", "actionable"], "description": "Optional: Output format"}
                 }
             },
 
@@ -644,10 +644,10 @@ class ModeSelectorTool(SimpleTool):
                     "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
                     "confidence": {"type": "string", "description": "Optional: Confidence level"},
                     "security_scope": {"type": "string", "description": "Optional: Security scope"},
-                    "threat_level": {"type": "string", "description": "Optional: Threat level"},
+                    "threat_level": {"type": "string", "enum": ["low", "medium", "high", "critical"], "description": "Optional: Threat level"},
                     "compliance_requirements": {"type": "array", "items": {"type": "string"}, "description": "Optional: Compliance requirements"},
-                    "audit_focus": {"type": "string", "description": "Optional: Audit focus"},
-                    "severity_filter": {"type": "string", "description": "Optional: Severity filter"}
+                    "audit_focus": {"type": "string", "enum": ["owasp", "compliance", "infrastructure", "dependencies", "comprehensive"], "description": "Optional: Audit focus"},
+                    "severity_filter": {"type": "string", "enum": ["critical", "high", "medium", "low", "all"], "description": "Optional: Severity filter"}
                 }
             },
             ("security", "workflow"): {
@@ -662,10 +662,10 @@ class ModeSelectorTool(SimpleTool):
                     "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
                     "confidence": {"type": "string", "description": "Optional: Confidence level"},
                     "security_scope": {"type": "string", "description": "Optional: Security scope"},
-                    "threat_level": {"type": "string", "description": "Optional: Threat level"},
+                    "threat_level": {"type": "string", "enum": ["low", "medium", "high", "critical"], "description": "Optional: Threat level"},
                     "compliance_requirements": {"type": "array", "items": {"type": "string"}, "description": "Optional: Compliance requirements"},
-                    "audit_focus": {"type": "string", "description": "Optional: Audit focus"},
-                    "severity_filter": {"type": "string", "description": "Optional: Severity filter"}
+                    "audit_focus": {"type": "string", "enum": ["owasp", "compliance", "infrastructure", "dependencies", "comprehensive"], "description": "Optional: Audit focus"},
+                    "severity_filter": {"type": "string", "enum": ["critical", "high", "medium", "low", "all"], "description": "Optional: Severity filter"}
                 }
             },
 
@@ -680,8 +680,8 @@ class ModeSelectorTool(SimpleTool):
                     "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to refactor"},
                     "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
                     "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
-                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
-                    "refactor_type": {"type": "string", "description": "Optional: Type of refactoring"},
+                    "confidence": {"type": "string", "enum": ["exploring", "incomplete", "partial", "complete"], "description": "Optional: Confidence level"},
+                    "refactor_type": {"type": "string", "enum": ["codesmells", "decompose", "modernize", "organization"], "description": "Optional: Type of refactoring"},
                     "focus_areas": {"type": "array", "items": {"type": "string"}, "description": "Optional: Focus areas"},
                     "style_guide_examples": {"type": "array", "items": {"type": "string"}, "description": "Optional: Style examples"}
                 }
@@ -696,8 +696,8 @@ class ModeSelectorTool(SimpleTool):
                     "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to refactor"},
                     "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
                     "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
-                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
-                    "refactor_type": {"type": "string", "description": "Optional: Type of refactoring"},
+                    "confidence": {"type": "string", "enum": ["exploring", "incomplete", "partial", "complete"], "description": "Optional: Confidence level"},
+                    "refactor_type": {"type": "string", "enum": ["codesmells", "decompose", "modernize", "organization"], "description": "Optional: Type of refactoring"},
                     "focus_areas": {"type": "array", "items": {"type": "string"}, "description": "Optional: Focus areas"},
                     "style_guide_examples": {"type": "array", "items": {"type": "string"}, "description": "Optional: Style examples"}
                 }
