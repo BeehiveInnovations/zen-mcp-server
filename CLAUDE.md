@@ -34,21 +34,29 @@ This script automatically runs:
 
 ## Token Optimization (Two-Stage Architecture)
 
-The Zen MCP Server features an optional two-stage token optimization architecture that reduces token usage by **95%** (from ~43,000 to ~800 tokens) while maintaining full functionality.
+The Zen MCP Server features an optional two-stage token optimization architecture that reduces token usage by **82%** (from ~43,000 to ~7,800 tokens) while maintaining full backward compatibility and functionality.
 
 ### How It Works
 
 **Stage 1: Mode Selection** (~200 tokens)
 - Tool: `zen_select_mode`
-- Analyzes task description using keyword matching
-- Recommends optimal mode and complexity
-- Returns structured guidance for Stage 2
+- Analyzes task description using weighted keyword matching
+- Recommends optimal mode and complexity with reasoning
+- Returns **complete schemas** and **working examples**
+- Provides field-level documentation
 
 **Stage 2: Execution** (~600-800 tokens)
 - Tool: `zen_execute`
 - Loads minimal schema for selected mode
 - Executes with mode-specific parameters
+- Provides **enhanced error messages** with field descriptions and examples
 - Delegates to actual tool implementation
+
+**Smart Compatibility Stubs** (~6,000 tokens total for 10 tools)
+- Original tool names (debug, codereview, analyze, etc.) **actually work**
+- Internally handle two-stage flow automatically
+- No user action required - seamless backward compatibility
+- Return real results, not redirect messages
 
 ### Configuration
 
@@ -72,10 +80,17 @@ ZEN_TOKEN_TELEMETRY=true
 
 ### Usage Pattern
 
-**Optimized Two-Stage Flow:**
+**Option 1: Direct Two-Stage Flow (Recommended for Advanced Users)**
 ```bash
-# Step 1: Select mode
+# Step 1: Select mode (get complete schemas and examples)
 zen_select_mode --task "Debug why OAuth tokens aren't persisting"
+
+# Response includes:
+# - selected_mode: "debug"
+# - complexity: "workflow"
+# - reasoning: Why this mode was selected
+# - required_schema: Complete JSON schema with field descriptions
+# - working_example: Copy-paste ready example
 
 # Step 2: Execute with recommended mode
 zen_execute --mode debug --complexity workflow \
@@ -87,10 +102,37 @@ zen_execute --mode debug --complexity workflow \
   }'
 ```
 
-**Backward Compatible (auto-redirects to two-stage):**
+**Option 2: Simple Backward Compatible Mode (Recommended for Quick Tasks)**
 ```bash
-# Original tool names automatically redirect
-debug --request "Debug OAuth issue"
+# Original tool names work automatically - no setup needed!
+# Smart stubs internally handle mode selection and execution
+
+debug --request "Debug OAuth token persistence issue" \
+      --files ["/src/auth.py", "/src/session.py"]
+
+# Returns actual debugging results, not a redirect message
+# Internally:
+#   1. Auto-selects mode="debug", complexity="simple"
+#   2. Transforms simple request to valid schema
+#   3. Executes and returns real results
+```
+
+**Option 3: Enhanced Error Guidance**
+```bash
+# If you provide invalid parameters, you get helpful errors:
+
+zen_execute --mode debug --complexity workflow \
+  --request '{"problem": "OAuth issue"}'
+
+# Response includes:
+# - status: "validation_error"
+# - errors: Array of missing fields with:
+#   - field: "step"
+#   - description: "Current investigation step"
+#   - type: "string"
+#   - example: "Initial investigation of authentication issue"
+# - working_example: Complete valid request you can copy
+# - hint: "Use zen_select_mode first to get correct schema"
 ```
 
 ### Testing Token Optimization

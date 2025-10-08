@@ -605,19 +605,156 @@ class ModeExecutor(BaseTool):
         except Exception as e:
             logger.error(f"Error executing {self.mode} tool: {e}", exc_info=True)
 
-            error_data = {
-                "status": "error",
-                "mode": self.mode,
-                "complexity": self.complexity,
-                "message": str(e),
-                "suggestion": "Check the parameters match the minimal schema for this mode",
-            }
+            # Enhanced error handling for validation errors
+            from pydantic import ValidationError
+
+            if isinstance(e, ValidationError):
+                # Parse validation errors to provide helpful guidance
+                error_details = []
+                for error in e.errors():
+                    field = error['loc'][0] if error['loc'] else 'unknown'
+                    error_type = error['type']
+
+                    # Build detailed error info with field descriptions and examples
+                    field_info = self._get_field_info(field)
+
+                    error_detail = {
+                        "field": field,
+                        "error": error['msg'],
+                        "description": field_info.get("description", "No description available"),
+                        "type": field_info.get("type", "unknown"),
+                        "example": field_info.get("example", "N/A")
+                    }
+
+                    error_details.append(error_detail)
+
+                error_data = {
+                    "status": "validation_error",
+                    "mode": self.mode,
+                    "complexity": self.complexity,
+                    "message": f"Request validation failed for {self.mode} mode with {self.complexity} complexity",
+                    "errors": error_details,
+                    "hint": "💡 Use zen_select_mode first to get the correct schema and working examples",
+                    "schema_reference": f"Required fields for {self.mode}/{self.complexity}",
+                    "working_example": self._get_example_request()
+                }
+            else:
+                # Generic error for non-validation errors
+                error_data = {
+                    "status": "error",
+                    "mode": self.mode,
+                    "complexity": self.complexity,
+                    "message": str(e),
+                    "suggestion": "Check the parameters match the minimal schema for this mode",
+                }
 
             return [TextContent(type="text", text=json.dumps(error_data, indent=2, ensure_ascii=False))]
 
     def get_request_model(self):
         """Return the minimal request model for this mode and complexity"""
         return self._get_request_model()
+
+    def _get_field_info(self, field_name: str) -> dict:
+        """
+        Get detailed information about a field for enhanced error messages.
+
+        Returns field description, type, and example value.
+        """
+        request_model = self._get_request_model()
+        if not request_model or field_name not in request_model.model_fields:
+            return {
+                "description": "Unknown field",
+                "type": "unknown",
+                "example": "N/A"
+            }
+
+        field_info = request_model.model_fields[field_name]
+
+        # Extract type information
+        from typing import get_args, get_origin
+        field_type = field_info.annotation
+        if get_origin(field_type) is type(Optional):
+            args = get_args(field_type)
+            if args:
+                field_type = args[0]
+
+        # Map Python types to readable strings
+        type_map = {
+            str: "string",
+            int: "integer",
+            bool: "boolean",
+            float: "number",
+            list: "array",
+            dict: "object"
+        }
+        type_str = type_map.get(field_type, str(field_type))
+
+        # Get examples based on field name and mode
+        examples = {
+            "problem": "OAuth tokens not persisting across browser sessions",
+            "files": ["/src/auth.py", "/src/session.py"],
+            "confidence": "exploring",
+            "step": "Initial investigation of authentication issue",
+            "step_number": 1,
+            "total_steps": 3,
+            "findings": "Users report needing to re-authenticate after closing browser",
+            "next_step_required": True,
+            "relevant_files": ["/src/app.py", "/src/models.py"],
+            "analysis_type": "architecture",
+            "context": "Understanding the current microservices design",
+            "review_type": "security",
+            "prompt": "Explain the tradeoffs between REST and GraphQL",
+            "models": [{"model": "gemini-pro"}, {"model": "o3-mini"}]
+        }
+
+        return {
+            "description": field_info.description or f"{field_name} field",
+            "type": type_str,
+            "example": examples.get(field_name, "")
+        }
+
+    def _get_example_request(self) -> dict:
+        """Return a working example for the current mode/complexity combination"""
+        examples = {
+            ("debug", "simple"): {
+                "problem": "OAuth tokens not persisting across browser sessions",
+                "files": ["/src/auth.py", "/src/session.py"],
+                "confidence": "exploring"
+            },
+            ("debug", "workflow"): {
+                "step": "Initial investigation of token persistence issue",
+                "step_number": 1,
+                "total_steps": 3,
+                "findings": "Users report needing to re-authenticate after closing browser",
+                "next_step_required": True
+            },
+            ("codereview", "simple"): {
+                "files": ["/src/auth_handler.py"],
+                "review_type": "security"
+            },
+            ("codereview", "workflow"): {
+                "step": "Initial security review",
+                "step_number": 1,
+                "total_steps": 3,
+                "findings": "Starting code review",
+                "next_step_required": True
+            },
+            ("analyze", "simple"): {
+                "relevant_files": ["/src/app.py", "/src/models.py"],
+                "analysis_type": "architecture",
+                "context": "Understanding the current microservices design"
+            },
+            ("chat", "simple"): {
+                "prompt": "Explain the difference between REST and GraphQL APIs"
+            },
+            ("consensus", "simple"): {
+                "prompt": "Should we use microservices or monolith architecture?",
+                "models": [{"model": "gemini-pro"}, {"model": "o3-mini"}]
+            }
+        }
+
+        key = (self.mode, self.complexity)
+        return examples.get(key, {"prompt": f"Example {self.mode} request"})
 
     async def prepare_prompt(self, request) -> str:
         """Not used - mode executors use execute() directly."""

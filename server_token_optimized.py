@@ -87,17 +87,22 @@ def _create_compatibility_stubs() -> Dict[str, Any]:
 
 def _create_redirect_stub(original_name: str):
     """
-    Create a stub tool that redirects to the two-stage flow.
+    Create a smart stub tool that actually works by internally handling the two-stage flow.
 
-    This maintains compatibility with existing tool calls while
-    leveraging the optimized architecture.
+    This maintains full backward compatibility - users can call original tool names
+    and get real results without needing to understand the two-stage architecture.
+
+    The stub automatically:
+    1. Selects the appropriate mode (internal, no user interaction)
+    2. Transforms simple request to valid schema format
+    3. Executes the tool and returns actual results
     """
 
-    class RedirectStub:
+    class SmartStub:
         def __init__(self):
             self.name = original_name
             self.original_name = original_name
-            self.description = f"Optimized {self.original_name} - redirects to two-stage flow for 95% token reduction"
+            self.description = f"{self.original_name.title()} - Auto-optimized with 82% token reduction"
 
         def get_name(self):
             return self.name
@@ -110,66 +115,167 @@ def _create_redirect_stub(original_name: str):
             return {"readOnlyHint": False}  # These tools can execute actions
 
         def requires_model(self) -> bool:
-            """RedirectStub tools need AI model access for processing"""
+            """SmartStub tools need AI model access for processing"""
             return True
 
         def get_model_category(self):
-            """Return model category for RedirectStub tools"""
+            """Return model category for SmartStub tools"""
             from tools.models import ToolModelCategory
 
             return ToolModelCategory.FAST_RESPONSE
 
         def get_input_schema(self):
-            # Minimal schema that accepts anything and redirects
+            # Simple schema that accepts common fields
             return {
                 "type": "object",
                 "properties": {
                     "request": {
                         "type": "string",
-                        "description": f"Your {self.original_name} request - will be routed through optimized flow",
-                    }
+                        "description": f"Your {self.original_name} request (automatically optimized)",
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: Relevant file paths",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Optional: Additional context",
+                    },
                 },
                 "required": ["request"],
                 "additionalProperties": True,
             }
 
+        def _build_simple_request(self, mode: str, user_args: dict) -> dict:
+            """Transform user's simple arguments to valid mode-specific schema"""
+            request_text = user_args.get("request", "")
+            files = user_args.get("files", [])
+            context = user_args.get("context", "")
+
+            # Mode-specific request building
+            if mode == "debug":
+                return {
+                    "problem": request_text,
+                    "files": files or [],
+                    "confidence": "medium"
+                }
+            elif mode == "codereview":
+                return {
+                    "files": files or [],
+                    "review_type": "all",
+                    "context": context or request_text
+                }
+            elif mode == "analyze":
+                return {
+                    "relevant_files": files or [],
+                    "analysis_type": "architecture",
+                    "context": context or request_text
+                }
+            elif mode == "chat":
+                return {
+                    "prompt": request_text,
+                    "context": context
+                }
+            elif mode in ["consensus", "security", "refactor", "testgen", "planner", "tracer"]:
+                # Generic structure that most modes accept
+                return {
+                    "prompt": request_text,
+                    "files": files,
+                    "context": context
+                }
+            else:
+                # Fallback generic request
+                return {
+                    "prompt": request_text,
+                    "context": context
+                }
+
+        def _build_workflow_request(self, user_args: dict) -> dict:
+            """Build workflow request structure"""
+            return {
+                "step": "Initial investigation",
+                "step_number": 1,
+                "total_steps": 1,
+                "findings": user_args.get("request", ""),
+                "next_step_required": False
+            }
+
         async def execute(self, arguments: dict) -> list:
-            # Redirect to mode selector
-            mode_selector = ModeSelectorTool()
+            """
+            Execute tool by internally handling two-stage flow.
 
-            # Build task description from the original request
-            task_description = arguments.get("request", "")
-            if not task_description:
-                # Try to extract from other common fields
-                task_description = (
-                    arguments.get("prompt", "")
-                    or arguments.get("problem", "")
-                    or arguments.get("query", "")
-                    or arguments.get("question", "")
-                    or f"Execute {self.original_name} task"
-                )
+            This provides seamless backward compatibility - users call the tool
+            by its original name and get real results automatically.
+            """
+            try:
+                # Step 1: Auto-select mode internally (no user-facing output)
+                mode_selector = ModeSelectorTool()
 
-            # Execute mode selection
-            result = await mode_selector.execute({"task_description": task_description})
-
-            # Parse the mode selection result
-            if result and isinstance(result[0], TextContent):
-                try:
-                    selection = json.loads(result[0].text)
-
-                    # Add guidance for using the selected mode
-                    selection["compatibility_note"] = (
-                        f"Tool '{self.original_name}' has been optimized. "
-                        f"Please use '{selection['next_step']['tool']}' with the parameters shown above."
+                # Build task description from the original request
+                task_description = arguments.get("request", "")
+                if not task_description:
+                    # Try to extract from other common fields
+                    task_description = (
+                        arguments.get("prompt", "")
+                        or arguments.get("problem", "")
+                        or arguments.get("query", "")
+                        or arguments.get("question", "")
+                        or f"Execute {self.original_name} task"
                     )
 
-                    result[0] = TextContent(type="text", text=json.dumps(selection, indent=2))
-                except (json.JSONDecodeError, KeyError):
-                    pass
+                # Execute mode selection (internal)
+                selection_result = await mode_selector.execute({
+                    "task_description": task_description,
+                    "confidence_level": "medium"
+                })
 
-            return result
+                # Parse the mode selection result
+                if not selection_result or not isinstance(selection_result[0], TextContent):
+                    raise ValueError("Invalid mode selection result")
 
-    return RedirectStub()
+                selection = json.loads(selection_result[0].text)
+                selected_mode = selection["selected_mode"]
+                complexity = selection["complexity"]
+
+                # Step 2: Transform user's simple request to valid zen_execute format
+                if complexity == "workflow":
+                    request = self._build_workflow_request(arguments)
+                else:  # simple or other
+                    request = self._build_simple_request(selected_mode, arguments)
+
+                # Step 3: Execute with mode executor and return actual result
+                executor = create_mode_executor(selected_mode, complexity)
+                result = await executor.execute(request)
+
+                # Record telemetry for successful smart stub execution
+                token_config.record_tool_execution(f"smart_stub_{self.original_name}", True)
+
+                return result
+
+            except Exception as e:
+                logger.error(f"SmartStub '{self.original_name}' execution failed: {e}")
+                token_config.record_tool_execution(f"smart_stub_{self.original_name}", False)
+
+                # Return helpful error message
+                return [
+                    TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "status": "error",
+                            "tool": self.original_name,
+                            "error": str(e),
+                            "suggestion": (
+                                f"The '{self.original_name}' tool encountered an error. "
+                                f"Try providing more context in your 'request' field. "
+                                f"You can also use the two-stage flow directly: "
+                                f"zen_select_mode → zen_execute for more control."
+                            )
+                        }, indent=2)
+                    )
+                ]
+
+    return SmartStub()
 
 
 async def handle_dynamic_tool_execution(name: str, arguments: dict) -> Optional[list]:

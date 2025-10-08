@@ -38,18 +38,48 @@ MODE_DESCRIPTIONS = {
     "tracer": "Code tracing and dependency analysis",
 }
 
-# Keywords that suggest specific modes
+# Keywords that suggest specific modes (with weighted primary/secondary)
 MODE_KEYWORDS = {
-    "debug": ["error", "bug", "broken", "fix", "issue", "problem", "debug", "troubleshoot", "crash", "fail"],
-    "codereview": ["review", "check", "quality", "standards", "code review", "pr review", "pull request"],
-    "analyze": ["analyze", "understand", "explain", "architecture", "structure", "pattern", "codebase"],
-    "consensus": ["should we", "decision", "choice", "approach", "consensus", "which", "compare", "vs"],
-    "chat": ["help", "explain", "tell me", "what is", "how to", "general", "brainstorm", "idea"],
-    "security": ["security", "vulnerability", "auth", "authentication", "encryption", "safe", "exploit"],
-    "refactor": ["refactor", "improve", "clean", "optimize", "simplify", "restructure", "modernize"],
-    "testgen": ["test", "testing", "coverage", "edge case", "unit test", "integration test"],
-    "planner": ["plan", "planning", "breakdown", "steps", "strategy", "roadmap", "implement"],
-    "tracer": ["trace", "flow", "execution", "dependency", "call chain", "follows", "path"],
+    "debug": {
+        "primary": ["error", "bug", "broken", "crash", "fail", "exception"],
+        "secondary": ["fix", "issue", "problem", "debug", "troubleshoot", "not working"]
+    },
+    "codereview": {
+        "primary": ["code review", "pr review", "pull request", "review code"],
+        "secondary": ["review", "check", "quality", "standards", "assess code"]
+    },
+    "analyze": {
+        "primary": ["architecture", "design review", "architectural", "system design", "structure"],
+        "secondary": ["analyze", "understand", "explain", "pattern", "codebase", "examine"]
+    },
+    "consensus": {
+        "primary": ["should we", "decision", "choice", "approach", "which is better", "vs", "or"],
+        "secondary": ["consensus", "compare", "decide", "evaluate options", "pros cons"]
+    },
+    "chat": {
+        "primary": ["explain", "tell me", "what is", "how to", "help me understand"],
+        "secondary": ["help", "general", "brainstorm", "idea", "question"]
+    },
+    "security": {
+        "primary": ["security audit", "vulnerability", "auth", "authentication", "security review"],
+        "secondary": ["encryption", "safe", "exploit", "secure", "injection", "xss"]
+    },
+    "refactor": {
+        "primary": ["refactor", "restructure", "modernize"],
+        "secondary": ["improve", "clean up", "optimize code", "simplify", "better practices"]
+    },
+    "testgen": {
+        "primary": ["generate tests", "test generation", "write tests"],
+        "secondary": ["test", "testing", "coverage", "edge case", "unit test"]
+    },
+    "planner": {
+        "primary": ["create plan", "plan for", "planning", "roadmap", "strategy"],
+        "secondary": ["breakdown", "steps", "how to implement", "approach"]
+    },
+    "tracer": {
+        "primary": ["trace", "execution flow", "call chain", "dependency graph"],
+        "secondary": ["flow", "execution", "dependency", "follows", "path"]
+    },
 }
 
 
@@ -151,18 +181,36 @@ class ModeSelectorTool(SimpleTool):
             # Analyze task description
             task_lower = request.task_description.lower()
 
-            # Score each mode based on keyword matches
+            # Score each mode based on weighted keyword matches
             mode_scores = {}
-            for mode, keywords in MODE_KEYWORDS.items():
-                score = sum(1 for keyword in keywords if keyword in task_lower)
+            mode_matches = {}  # Track what matched for explanation
+            for mode, keyword_sets in MODE_KEYWORDS.items():
+                score = 0
+                matches = {"primary": [], "secondary": []}
+
+                # Primary keywords worth 3 points each
+                for keyword in keyword_sets["primary"]:
+                    if keyword in task_lower:
+                        score += 3
+                        matches["primary"].append(keyword)
+
+                # Secondary keywords worth 1 point each
+                for keyword in keyword_sets["secondary"]:
+                    if keyword in task_lower:
+                        score += 1
+                        matches["secondary"].append(keyword)
+
                 if score > 0:
                     mode_scores[mode] = score
+                    mode_matches[mode] = matches
 
             # Select best mode (highest score, or 'chat' as default)
             if mode_scores:
                 selected_mode = max(mode_scores, key=mode_scores.get)
             else:
                 selected_mode = "chat"  # Default for unclear tasks
+                mode_scores = {"chat": 0}
+                mode_matches = {"chat": {"primary": [], "secondary": []}}
 
             # Determine complexity based on context and confidence
             complexity = self._determine_complexity(
@@ -172,13 +220,16 @@ class ModeSelectorTool(SimpleTool):
             # Build response with clear guidance for stage 2
             required_fields = self._get_required_fields(selected_mode, complexity)
 
-            # Build clearer response with actual field examples
+            # Build clearer response with complete schemas and examples
             response_data = {
                 "status": "mode_selected",
                 "selected_mode": selected_mode,
                 "complexity": complexity,
                 "description": MODE_DESCRIPTIONS[selected_mode],
                 "confidence": self._calculate_confidence(mode_scores, selected_mode),
+                "reasoning": self._explain_selection(task_lower, mode_scores, mode_matches, selected_mode),
+                "required_schema": self._get_complete_schema(selected_mode, complexity),
+                "working_example": self._get_working_example(selected_mode, complexity),
                 "next_step": {
                     "tool": "zen_execute",
                     "instruction": f"Use 'zen_execute' with mode='{selected_mode}' and complexity='{complexity}'",
@@ -194,7 +245,7 @@ class ModeSelectorTool(SimpleTool):
                     "tips": self._get_mode_tips(selected_mode),
                 },
                 "alternatives": self._get_alternatives(mode_scores, selected_mode),
-                "token_savings": "✨ Saves 95% tokens (43k → 800 total)",
+                "token_savings": "✨ Saves 82% tokens (43k → 7.8k total)",
             }
 
             logger.info(f"Mode selected: {selected_mode} (complexity: {complexity})")
@@ -395,6 +446,210 @@ class ModeSelectorTool(SimpleTool):
                 "description": "Optional: Your confidence in the task understanding",
             },
         }
+
+    def _explain_selection(self, task: str, scores: dict, matches: dict, selected: str) -> str:
+        """Explain why this mode was selected"""
+        explanations = []
+
+        selected_matches = matches.get(selected, {})
+
+        # Explain matched keywords
+        if selected_matches.get("primary"):
+            keywords = ", ".join(f"'{kw}'" for kw in selected_matches["primary"])
+            explanations.append(f"Task contains primary keywords: {keywords}")
+
+        if selected_matches.get("secondary"):
+            keywords = ", ".join(f"'{kw}'" for kw in selected_matches["secondary"][:3])  # Limit to 3
+            explanations.append(f"Also matched: {keywords}")
+
+        # Show alternatives considered
+        alternatives = sorted(
+            [(mode, score) for mode, score in scores.items() if mode != selected],
+            key=lambda x: x[1],
+            reverse=True
+        )[:2]
+
+        if alternatives:
+            alt_text = ", ".join([f"{mode} (score: {score})" for mode, score in alternatives])
+            explanations.append(f"Alternatives considered: {alt_text}")
+
+        if not explanations:
+            explanations.append("No strong keyword matches; defaulting to general chat mode")
+
+        return "; ".join(explanations)
+
+    def _get_complete_schema(self, mode: str, complexity: str) -> dict:
+        """Return complete JSON schema for this mode/complexity combination"""
+
+        # Define schemas for all mode/complexity combinations
+        schemas = {
+            ("debug", "simple"): {
+                "type": "object",
+                "required": ["problem", "files", "confidence"],
+                "properties": {
+                    "problem": {
+                        "type": "string",
+                        "description": "Description of what's broken or not working as expected"
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Absolute paths to relevant code files (e.g., ['/path/to/file.py'])"
+                    },
+                    "confidence": {
+                        "type": "string",
+                        "enum": ["exploring", "medium", "high"],
+                        "description": "How well you understand the issue"
+                    }
+                }
+            },
+            ("debug", "workflow"): {
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "findings", "next_step_required"],
+                "properties": {
+                    "step": {
+                        "type": "string",
+                        "description": "Description of current investigation step (e.g., 'Initial investigation')"
+                    },
+                    "step_number": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Current step number in the workflow (1, 2, 3, ...)"
+                    },
+                    "total_steps": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Total number of planned investigation steps"
+                    },
+                    "findings": {
+                        "type": "string",
+                        "description": "What you've discovered so far in this step"
+                    },
+                    "next_step_required": {
+                        "type": "boolean",
+                        "description": "Whether more investigation steps are needed after this one"
+                    }
+                }
+            },
+            ("analyze", "simple"): {
+                "type": "object",
+                "required": ["relevant_files", "analysis_type"],
+                "properties": {
+                    "relevant_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Files to analyze (absolute paths)"
+                    },
+                    "analysis_type": {
+                        "type": "string",
+                        "enum": ["architecture", "patterns", "security", "performance"],
+                        "description": "Type of analysis to perform"
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Optional: Additional context about what you're looking for"
+                    }
+                }
+            },
+            ("codereview", "simple"): {
+                "type": "object",
+                "required": ["files"],
+                "properties": {
+                    "files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Code files to review (absolute paths)"
+                    },
+                    "review_type": {
+                        "type": "string",
+                        "enum": ["security", "performance", "quality", "all"],
+                        "description": "Focus area for the review (default: 'all')"
+                    }
+                }
+            },
+            ("chat", "simple"): {
+                "type": "object",
+                "required": ["prompt"],
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "Your question or request"
+                    }
+                }
+            },
+        }
+
+        # Return specific schema or generic fallback
+        return schemas.get(
+            (mode, complexity),
+            {
+                "type": "object",
+                "required": ["prompt"],
+                "properties": {
+                    "prompt": {"type": "string", "description": "Your request description"}
+                }
+            }
+        )
+
+    def _get_working_example(self, mode: str, complexity: str) -> dict:
+        """Return a copy-paste ready working example"""
+
+        examples = {
+            ("debug", "simple"): {
+                "mode": "debug",
+                "complexity": "simple",
+                "request": {
+                    "problem": "OAuth tokens not persisting across browser sessions",
+                    "files": ["/src/auth.py", "/src/session.py"],
+                    "confidence": "exploring"
+                }
+            },
+            ("debug", "workflow"): {
+                "mode": "debug",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Initial investigation of token persistence issue",
+                    "step_number": 1,
+                    "total_steps": 3,
+                    "findings": "Users report needing to re-authenticate after closing browser",
+                    "next_step_required": True
+                }
+            },
+            ("analyze", "simple"): {
+                "mode": "analyze",
+                "complexity": "simple",
+                "request": {
+                    "relevant_files": ["/src/app.py", "/src/models.py"],
+                    "analysis_type": "architecture",
+                    "context": "Understanding the current microservices design"
+                }
+            },
+            ("codereview", "simple"): {
+                "mode": "codereview",
+                "complexity": "simple",
+                "request": {
+                    "files": ["/src/auth_handler.py"],
+                    "review_type": "security"
+                }
+            },
+            ("chat", "simple"): {
+                "mode": "chat",
+                "complexity": "simple",
+                "request": {
+                    "prompt": "Explain the difference between REST and GraphQL APIs"
+                }
+            },
+        }
+
+        # Return specific example or generic fallback
+        return examples.get(
+            (mode, complexity),
+            {
+                "mode": mode,
+                "complexity": complexity,
+                "request": {"prompt": "Your request here"}
+            }
+        )
 
     async def prepare_prompt(self, request) -> str:
         """
