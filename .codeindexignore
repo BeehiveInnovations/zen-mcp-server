@@ -1,0 +1,63 @@
+# Test directories - don't index test code
+tests/
+simulator_tests/
+test_simulation_files/
+test-setup/
+test_output/
+
+# Test files
+*.test.py
+*_test.py
+test_*.py
+
+# Coverage and test artifacts
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+*.test.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+.zen_venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+/tmp/
+*.tmp
+*.backup
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation build
+docs/_build/
+site/
+
+# Environment files (may contain secrets)
+.env
+.env.*
+*.key
+*.pem

@@ -1,0 +1,251 @@
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"GOOGLE_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"DIAL_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"DIAL_API_HOST\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"DIAL_API_VERSION\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"CUSTOM_API_URL\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"CUSTOM_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"CUSTOM_MODEL_NAME\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"DISABLED_TOOLS\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:52:11-04:00" level=warning msg="The \"MAX_MCP_OUTPUT_TOKENS\" variable is not set. Defaulting to a blank string."
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | FileNotFoundError: [Errno 2] No such file or directory: '/home/zenuser/.zen_mcp'
+zen-mcp-server  | 
+zen-mcp-server  | During handling of the above exception, another exception occurred:
+zen-mcp-server  | 
+zen-mcp-server  | Traceback (most recent call last):
+zen-mcp-server  |   File "/app/server.py", line 66, in <module>
+zen-mcp-server  |     from server_token_optimized import (  # noqa: E402
+zen-mcp-server  |   File "/app/server_token_optimized.py", line 18, in <module>
+zen-mcp-server  |     from token_optimization_config import token_config, estimate_token_savings
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 200, in <module>
+zen-mcp-server  |     token_config = TokenOptimizationConfig()
+zen-mcp-server  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+zen-mcp-server  |   File "/app/token_optimization_config.py", line 60, in __init__
+zen-mcp-server  |     TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1120, in mkdir
+zen-mcp-server  |     self.parent.mkdir(parents=True, exist_ok=True)
+zen-mcp-server  |   File "/usr/local/lib/python3.11/pathlib.py", line 1116, in mkdir
+zen-mcp-server  |     os.mkdir(self, mode)
+zen-mcp-server  | OSError: [Errno 30] Read-only file system: '/home/zenuser'

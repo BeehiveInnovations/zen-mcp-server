@@ -142,9 +142,11 @@ class ChatRequest(ToolRequest):
     """Simple chat request"""
 
     prompt: str = Field(..., description="Your question or request")
-    model: Optional[str] = Field("auto", description="Model preference")
+    working_directory: str = Field(..., description="Absolute directory path for generated code")
+    model: Optional[str] = Field(None, description="Model preference")
     temperature: Optional[float] = Field(None)
     images: Optional[List[str]] = Field(None)
+    files: Optional[List[str]] = Field(None, description="Optional file paths")
 
 
 class SecurityWorkflowRequest(ToolRequest):

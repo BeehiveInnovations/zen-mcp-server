@@ -1,0 +1,78 @@
+--- server.py.original	2025-01-01 00:00:00
++++ server.py	2025-01-01 00:00:00
+@@ -60,6 +60,9 @@
+ 
+ from config import (  # noqa: E402
+     DEFAULT_MODEL,
+     __version__,
+ )
++# Token optimization imports
++from server_token_optimized import (  # noqa: E402
++    get_optimized_tools, handle_dynamic_tool_execution, log_token_optimization_stats
++)
+ from tools import (  # noqa: E402
+     AnalyzeTool,
+     ChallengeTool,
+@@ -262,6 +265,15 @@
+ # Initialize the tool registry with all available AI-powered tools
+ # Each tool provides specialized functionality for different development tasks
+ # Tools are instantiated once and reused across requests (stateless design)
++
++# Check if token optimization is enabled
++optimized_tools = get_optimized_tools()
++if optimized_tools is not None:
++    # Use optimized tool set for token reduction
++    TOOLS = optimized_tools
++    logger.info(f"Using optimized tools - {len(TOOLS)} tools registered for 95% token reduction")
++else:
++    # Use original tool registration
+ TOOLS = {
+     "chat": ChatTool(),  # Interactive development chat and brainstorming
+     "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
+@@ -638,6 +650,14 @@
+ @server.call_tool()
+ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+     """
+     Handle incoming tool execution requests from MCP clients.
++    
++    With token optimization enabled, this may handle:
++    1. Mode selector calls (zen_select_mode)
++    2. Dynamic executor calls (zen_execute_*)
++    3. Compatibility stub redirects
++    4. Original tool calls (when optimization disabled)
+ 
+     This is the main request dispatcher that routes tool calls to their appropriate handlers.
+     It supports both AI-powered tools (from TOOLS registry) and utility tools (implemented as
+@@ -697,6 +717,15 @@
+             - Assistant intelligence and context available when use_assistant_model is true
+     """
+     try:
++        # Check for dynamic tool execution (two-stage architecture)
++        dynamic_result = await handle_dynamic_tool_execution(name, arguments)
++        if dynamic_result is not None:
++            return dynamic_result
++        
+         # Log the incoming request with clean formatting
+         mcp_activity_logger = logging.getLogger("mcp_activity")
+         readable_args = json.dumps(arguments, indent=2) if arguments else "{}"
+@@ -1341,6 +1370,9 @@
+     # and reduces MCP server startup time. The registry already has safeguards
+     # to handle missing providers gracefully.
+ 
++    # Log token optimization configuration
++    from token_optimization_config import token_config
++    token_config.log_configuration()
++
+     # Create a task to ensure graceful shutdown logging
+     shutdown_logged = asyncio.Event()
+ 
+@@ -1356,6 +1388,9 @@
+             # This prevents issues with background tasks still writing logs
+             await asyncio.sleep(0.5)
+ 
++            # Log token optimization stats before shutdown
++            log_token_optimization_stats()
++
+             logger.info("Server shutdown complete")
+             shutdown_logged.set()
+         except Exception as e:

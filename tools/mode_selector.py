@@ -611,9 +611,10 @@ class ModeSelectorTool(SimpleTool):
             # CHAT
             ("chat", "simple"): {
                 "type": "object",
-                "required": ["prompt"],  # Per ChatRequest
+                "required": ["prompt", "working_directory"],  # Per ChatRequest
                 "properties": {
                     "prompt": {"type": "string", "description": "Your question or request"},
+                    "working_directory": {"type": "string", "description": "Absolute directory path for generated code (e.g., /tmp)"},
                     "model": {"type": "string", "description": "Optional: Model preference (default: auto)"},
                     "temperature": {"type": "number", "description": "Optional: Temperature setting"},
                     "images": {"type": "array", "items": {"type": "string"}, "description": "Optional: Images"}
@@ -622,9 +623,10 @@ class ModeSelectorTool(SimpleTool):
             ("chat", "workflow"): {
                 # Reuses ChatRequest - same as simple
                 "type": "object",
-                "required": ["prompt"],
+                "required": ["prompt", "working_directory"],
                 "properties": {
                     "prompt": {"type": "string", "description": "Your question or request"},
+                    "working_directory": {"type": "string", "description": "Absolute directory path for generated code (e.g., /tmp)"},
                     "model": {"type": "string", "description": "Optional: Model preference (default: auto)"},
                     "temperature": {"type": "number", "description": "Optional: Temperature setting"},
                     "images": {"type": "array", "items": {"type": "string"}, "description": "Optional: Images"}
@@ -921,14 +923,16 @@ class ModeSelectorTool(SimpleTool):
                 "mode": "chat",
                 "complexity": "simple",
                 "request": {
-                    "prompt": "Explain the difference between REST and GraphQL APIs"
+                    "prompt": "Explain the difference between REST and GraphQL APIs",
+                    "working_directory": "/tmp"
                 }
             },
             ("chat", "workflow"): {
                 "mode": "chat",
                 "complexity": "workflow",
                 "request": {
-                    "prompt": "Explain the difference between REST and GraphQL APIs in detail"
+                    "prompt": "Explain the difference between REST and GraphQL APIs in detail",
+                    "working_directory": "/tmp"
                 }
             },
 

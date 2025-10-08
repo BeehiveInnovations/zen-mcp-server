@@ -1,0 +1,105 @@
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"GOOGLE_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"DIAL_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"DIAL_API_HOST\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"DIAL_API_VERSION\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"CUSTOM_API_URL\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"CUSTOM_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"CUSTOM_MODEL_NAME\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"DISABLED_TOOLS\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T21:31:26-04:00" level=warning msg="The \"MAX_MCP_OUTPUT_TOKENS\" variable is not set. Defaulting to a blank string."
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block
+zen-mcp-server  |   File "/app/server.py", line 1440
+zen-mcp-server  |     finally:
+zen-mcp-server  | SyntaxError: expected 'except' or 'finally' block

@@ -1,0 +1,38 @@
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"GOOGLE_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"DIAL_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"DIAL_API_HOST\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"DIAL_API_VERSION\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"CUSTOM_API_URL\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"CUSTOM_API_KEY\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"CUSTOM_MODEL_NAME\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"DISABLED_TOOLS\" variable is not set. Defaulting to a blank string."
+time="2025-08-30T19:59:33-04:00" level=warning msg="The \"MAX_MCP_OUTPUT_TOKENS\" variable is not set. Defaulting to a blank string."
+zen-mcp-server  | 2025-08-30 19:57:18,863 - root - INFO - Logging to: /app/logs/mcp_server.log
+zen-mcp-server  | 2025-08-30 19:57:18,863 - root - INFO - Process PID: 1
+zen-mcp-server  | 2025-08-30 19:57:18,864 - server_token_optimized - INFO - Two-stage token optimization enabled - exposing mode selector
+zen-mcp-server  | 2025-08-30 19:57:18,864 - __main__ - INFO - Using optimized tools - 11 tools registered for 95% token reduction
+zen-mcp-server  | 2025-08-30 19:57:18,868 - __main__ - INFO - Gemini API key found - Gemini models available
+zen-mcp-server  | 2025-08-30 19:57:18,868 - __main__ - INFO - OpenAI API key found
+zen-mcp-server  | 2025-08-30 19:57:18,868 - __main__ - INFO - X.AI API key found - GROK models available
+zen-mcp-server  | 2025-08-30 19:57:18,868 - __main__ - INFO - OpenRouter API key found - Multiple models available via OpenRouter
+zen-mcp-server  | 2025-08-30 19:57:18,868 - __main__ - INFO - Available providers: Gemini, OpenAI, X.AI (GROK), OpenRouter
+zen-mcp-server  | 2025-08-30 19:57:18,869 - __main__ - INFO - Provider priority: Native APIs (Gemini, OpenAI) → OpenRouter (catch-all)
+zen-mcp-server  | 2025-08-30 19:57:18,869 - __main__ - INFO - No model restrictions configured - all models allowed
+zen-mcp-server  | 2025-08-30 19:57:18,869 - root - INFO - Using extended timeouts for custom endpoint: https://api.openai.com/v1
+zen-mcp-server  | 2025-08-30 19:57:18,869 - root - INFO - Model allow-list not configured for X.AI - all models permitted. To restrict access, set XAI_ALLOWED_MODELS with comma-separated model names.
+zen-mcp-server  | 2025-08-30 19:57:18,869 - root - INFO - Using extended timeouts for custom endpoint: https://api.x.ai/v1
+zen-mcp-server  | 2025-08-30 19:57:18,870 - root - INFO - Model allow-list not configured for OpenRouter - all models permitted. To restrict access, set OPENROUTER_ALLOWED_MODELS with comma-separated model names.
+zen-mcp-server  | 2025-08-30 19:57:18,870 - root - INFO - Using extended timeouts for custom endpoint: https://openrouter.ai/api/v1
+zen-mcp-server  | 2025-08-30 19:57:18,870 - root - INFO - OpenRouter loaded 18 models with 73 aliases
+zen-mcp-server  | 2025-08-30 19:57:18,870 - __main__ - INFO - Zen MCP Server starting up...
+zen-mcp-server  | 2025-08-30 19:57:18,870 - __main__ - INFO - Log level: INFO
+zen-mcp-server  | 2025-08-30 19:57:18,870 - token_optimization_config - INFO - Token Optimization Configuration:
+zen-mcp-server  | 2025-08-30 19:57:18,870 - token_optimization_config - INFO -   - Enabled: True
+zen-mcp-server  | 2025-08-30 19:57:18,870 - token_optimization_config - INFO -   - Mode: two_stage
+zen-mcp-server  | 2025-08-30 19:57:18,870 - token_optimization_config - INFO -   - Version: v5.12.0-alpha
+zen-mcp-server  | 2025-08-30 19:57:18,870 - token_optimization_config - INFO -   - Telemetry: True
+zen-mcp-server  | 2025-08-30 19:57:18,871 - token_optimization_config - INFO -   - Using two-stage architecture for 95% token reduction
+zen-mcp-server  | 2025-08-30 19:57:18,871 - __main__ - INFO - Model mode: AUTO (Claude will select the best model for each task)
+zen-mcp-server  | 2025-08-30 19:57:18,871 - __main__ - INFO - Default thinking mode (ThinkDeep): high
+zen-mcp-server  | 2025-08-30 19:57:18,871 - __main__ - INFO - Available tools: ['zen_select_mode', 'debug', 'codereview', 'analyze', 'chat', 'consensus', 'security', 'refactor', 'testgen', 'planner', 'tracer']
+zen-mcp-server  | 2025-08-30 19:57:18,871 - __main__ - INFO - Server ready - waiting for tool requests...

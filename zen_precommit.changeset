@@ -1,0 +1,331 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 0d806e8..b3c945a 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -14,6 +14,10 @@ services:
+       - "com.zen-mcp.environment=production"
+       - "com.zen-mcp.description=AI-powered Model Context Protocol server"
+     
++    # Port for TCP MCP connection
++    ports:
++      - "3001:3001"
++    
+     # Environment variables
+     environment:
+       # Default model configuration
+@@ -43,16 +47,26 @@ services:
+       - DISABLED_TOOLS=${DISABLED_TOOLS}
+       - MAX_MCP_OUTPUT_TOKENS=${MAX_MCP_OUTPUT_TOKENS}
+       
++      # Token Optimization A/B Testing (v5.12.0)
++      # Toggle these for A/B testing without rebuilding
++      - ZEN_TOKEN_OPTIMIZATION=${ZEN_TOKEN_OPTIMIZATION:-enabled}
++      - ZEN_OPTIMIZATION_MODE=${ZEN_OPTIMIZATION_MODE:-two_stage}
++      - ZEN_TOKEN_TELEMETRY=${ZEN_TOKEN_TELEMETRY:-true}
++      - ZEN_OPTIMIZATION_VERSION=${ZEN_OPTIMIZATION_VERSION:-v5.12.0-alpha}
++      
+       # Server configuration
+       - PYTHONUNBUFFERED=1
+       - PYTHONPATH=/app
+       - TZ=${TZ:-UTC}
++      - RUNNING_IN_DOCKER=true
++      - MCP_TCP_PORT=3001
+     
+     # Volumes for persistent data
+     volumes:
+       - ./logs:/app/logs
+       - zen-mcp-config:/app/conf
+       - /etc/localtime:/etc/localtime:ro
++      - zen-telemetry:/root/.zen_mcp  # Token optimization telemetry data
+     
+     # Network configuration
+     # networks:
+@@ -95,6 +109,8 @@ services:
+ volumes:
+   zen-mcp-config:
+     driver: local
++  zen-telemetry:
++    driver: local
+ 
+ # Networks
+ # networks:
+diff --git a/server.py b/server.py
+index 106cf88..6fd62d6 100644
+--- a/server.py
++++ b/server.py
+@@ -108,21 +108,35 @@ class LocalTimeFormatter(logging.Formatter):
+ # Configure both console and file logging
+ log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+ 
+-# Clear any existing handlers first
+-root_logger = logging.getLogger()
+-root_logger.handlers.clear()
+-
+-# Create and configure stderr handler explicitly
+-stderr_handler = logging.StreamHandler(sys.stderr)
+-stderr_handler.setLevel(getattr(logging, log_level, logging.INFO))
+-stderr_handler.setFormatter(LocalTimeFormatter(log_format))
+-root_logger.addHandler(stderr_handler)
+-
+-# Note: MCP stdio_server interferes with stderr during tool execution
+-# All logs are properly written to logs/mcp_server.log for monitoring
++def configure_logging_for_stdio(stdio_mode: bool):
++    """Configure logging based on transport mode to prevent stdio interference."""
++    # Clear any existing handlers first
++    root_logger = logging.getLogger()
++    root_logger.handlers.clear()
++    
++    if stdio_mode:
++        # In stdio mode, we MUST NOT write to stderr as it interferes with MCP protocol
++        # Only use NullHandler to prevent any console output
++        root_logger.addHandler(logging.NullHandler())
++        
++        # Capture warnings to prevent them from going to stderr
++        logging.captureWarnings(True)
++        
++        # Redirect sys.stderr to devnull as a last resort
++        import os
++        sys.stderr = open(os.devnull, 'w')
++    else:
++        # Normal mode: can use stderr for logging
++        stderr_handler = logging.StreamHandler(sys.stderr)
++        stderr_handler.setLevel(getattr(logging, log_level, logging.INFO))
++        stderr_handler.setFormatter(LocalTimeFormatter(log_format))
++        root_logger.addHandler(stderr_handler)
++    
++    # Set root logger level
++    root_logger.setLevel(getattr(logging, log_level, logging.INFO))
+ 
+-# Set root logger level
+-root_logger.setLevel(getattr(logging, log_level, logging.INFO))
++# Initial configuration (will be reconfigured in main() based on stdio detection)
++configure_logging_for_stdio(False)
+ 
+ # Add rotating file handler for local log monitoring
+ 
+@@ -1324,13 +1338,21 @@ async def main():
+     """
+     Main entry point for the MCP server.
+ 
+-    Initializes the Gemini API configuration and starts the server using
+-    stdio transport. The server will continue running until the client
+-    disconnects or an error occurs.
+-
+-    The server communicates via standard input/output streams using the
+-    MCP protocol's JSON-RPC message format.
++    Supports both TCP transport (Docker mode) and stdio transport.
++    Command line args: --stdio (force stdio mode)
+     """
++    import sys
++    
++    # Check for stdio flag (for docker exec connections)
++    force_stdio = "--stdio" in sys.argv
++    
++    # Determine if we're in stdio mode (either forced or not in Docker)
++    in_docker = os.getenv("RUNNING_IN_DOCKER") == "true"
++    stdio_mode = force_stdio or (not in_docker)
++    
++    # Reconfigure logging for stdio mode if needed
++    configure_logging_for_stdio(stdio_mode)
++    
+     # Validate and configure providers based on available API keys
+     configure_providers()
+ 
+@@ -1361,22 +1383,102 @@ async def main():
+     logger.info(f"Available tools: {list(TOOLS.keys())}")
+     logger.info("Server ready - waiting for tool requests...")
+ 
+-    # Run the server using stdio transport (standard input/output)
+-    # This allows the server to be launched by MCP clients as a subprocess
+-    async with stdio_server() as (read_stream, write_stream):
++    # Transport mode already determined above
++    tcp_port = int(os.getenv("MCP_TCP_PORT", "3001"))
++    
++    if force_stdio:
++        # Force stdio mode (for docker exec connections)
++        logger.info("Forced stdio mode - running MCP server on stdin/stdout")
+         try:
+-            await server.run(
+-                read_stream,
+-                write_stream,
+-                InitializationOptions(
+-                    server_name="zen",
+-                    server_version=__version__,
+-                    capabilities=ServerCapabilities(
+-                        tools=ToolsCapability(),  # Advertise tool support capability
+-                        prompts=PromptsCapability(),  # Advertise prompt support capability
++            async with stdio_server() as (read_stream, write_stream):
++                await server.run(
++                    read_stream,
++                    write_stream,
++                    InitializationOptions(
++                        server_name="zen",
++                        server_version=__version__,
++                        capabilities=ServerCapabilities(
++                            tools=ToolsCapability(),
++                            prompts=PromptsCapability(),
++                        ),
+                     ),
+-                ),
++                )
++        finally:
++            try:
++                log_token_optimization_stats()
++                logger.info("stdio server shutdown complete")
++            except Exception as e:
++                logger.debug(f"Error logging stdio shutdown stats: {e}")
++                
++    elif in_docker:
++        # Docker mode: Run TCP server (primary) + stdio available via docker exec
++        logger.info(f"Docker mode: TCP server on port {tcp_port}")
++        
++        import asyncio
++        
++        async def handle_tcp_client(reader, writer):
++            """Handle a single TCP client connection"""
++            try:
++                client_address = writer.get_extra_info('peername')
++                logger.info(f"TCP client connected from {client_address}")
++                
++                await server.run(
++                    reader,
++                    writer,
++                    InitializationOptions(
++                        server_name="zen",
++                        server_version=__version__,
++                        capabilities=ServerCapabilities(
++                            tools=ToolsCapability(),
++                            prompts=PromptsCapability(),
++                        ),
++                    ),
++                )
++                
++            except Exception as e:
++                logger.error(f"TCP client error: {e}")
++            finally:
++                writer.close()
++                await writer.wait_closed()
++        
++        async def run_tcp_server():
++            """Start and run the TCP server"""
++            tcp_server = await asyncio.start_server(
++                handle_tcp_client,
++                "0.0.0.0", 
++                tcp_port
+             )
++            
++            logger.info(f"✅ TCP server listening on port {tcp_port}")
++            logger.info("✅ stdio available via: docker exec -i zen-mcp-server python server.py --stdio")
++            
++            async with tcp_server:
++                await tcp_server.serve_forever()
++        
++        # Run TCP server
++        try:
++            await run_tcp_server()
++        except Exception as e:
++            logger.error(f"TCP server error: {e}")
++            raise
++                
++    else:
++        # Run the server using stdio transport (standard input/output)
++        # This allows the server to be launched by MCP clients as a subprocess  
++        try:
++            async with stdio_server() as (read_stream, write_stream):
++                await server.run(
++                    read_stream,
++                    write_stream,
++                    InitializationOptions(
++                        server_name="zen",
++                        server_version=__version__,
++                        capabilities=ServerCapabilities(
++                            tools=ToolsCapability(),  # Advertise tool support capability
++                            prompts=PromptsCapability(),  # Advertise prompt support capability
++                        ),
++                    ),
++                )
+         finally:
+             # Log token optimization stats before shutdown
+             try:
+diff --git a/server_token_optimized.py b/server_token_optimized.py
+index d0e94a7..77a9d70 100644
+--- a/server_token_optimized.py
++++ b/server_token_optimized.py
+@@ -195,7 +195,8 @@ async def handle_dynamic_tool_execution(name: str, arguments: dict) -> Optional[
+             optimized_size = len(json.dumps(executor.get_input_schema()))
+             savings = estimate_token_savings(original_size, optimized_size)
+             
+-            logger.info(f"Dynamic executor '{name}' completed - saved ~{savings:.1f}% tokens")
++            # Use debug level to avoid stdio interference (stderr logging breaks MCP protocol)
++            logger.debug(f"Dynamic executor '{name}' completed - saved ~{savings:.1f}% tokens")
+             
+             return result
+             
+diff --git a/token_optimization_config.py b/token_optimization_config.py
+index 394ad79..09d948a 100644
+--- a/token_optimization_config.py
++++ b/token_optimization_config.py
+@@ -28,7 +28,11 @@ TELEMETRY_ENABLED = os.getenv("ZEN_TOKEN_TELEMETRY", "true").lower() == "true"
+ OPTIMIZATION_VERSION = os.getenv("ZEN_OPTIMIZATION_VERSION", "v5.12.0-alpha-two-stage")
+ 
+ # Telemetry file path
+-TELEMETRY_FILE = Path.home() / ".zen_mcp" / "token_telemetry.jsonl"
++# In Docker, use the logs directory which is writable
++if os.path.exists("/app/logs"):
++    TELEMETRY_FILE = Path("/app/logs") / "token_telemetry.jsonl"
++else:
++    TELEMETRY_FILE = Path.home() / ".zen_mcp" / "token_telemetry.jsonl"
+ 
+ 
+ class TokenOptimizationConfig:
+@@ -57,7 +61,9 @@ class TokenOptimizationConfig:
+         
+         # Ensure telemetry directory exists
+         if self.telemetry_enabled:
+-            TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
++            # In Docker, /app/logs already exists; only create for local dev
++            if not os.path.exists("/app/logs"):
++                TELEMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+     
+     def is_enabled(self) -> bool:
+         """Check if token optimization is enabled"""
+diff --git a/tools/mode_selector.py b/tools/mode_selector.py
+index eb3ae02..f327d23 100644
+--- a/tools/mode_selector.py
++++ b/tools/mode_selector.py
+@@ -321,4 +321,32 @@ class ModeSelectorTool(SimpleTool):
+         # Sort by score descending
+         alternatives.sort(key=lambda x: x['score'], reverse=True)
+         
+-        return alternatives[:2]  # Return top 2 alternatives
+\ No newline at end of file
++        return alternatives[:2]  # Return top 2 alternatives
++    
++    def get_tool_fields(self) -> dict[str, dict[str, Any]]:
++        """Define the tool-specific fields for mode selection"""
++        return {
++            "task_description": {
++                "type": "string",
++                "description": "Describe what you want to accomplish with the Zen tools"
++            },
++            "context_size": {
++                "type": "string",
++                "enum": ["minimal", "standard", "comprehensive"],
++                "description": "Optional: How much context is available"
++            },
++            "confidence_level": {
++                "type": "string", 
++                "enum": ["exploring", "medium", "high"],
++                "description": "Optional: Your confidence in the task understanding"
++            }
++        }
++    
++    async def prepare_prompt(self, request) -> str:
++        """
++        Prepare prompt for mode selection.
++        
++        Since mode selection is rule-based, we don't actually need a prompt.
++        This method is required by the base class but won't be used.
++        """
++        return ""
+\ No newline at end of file

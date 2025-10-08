@@ -197,10 +197,10 @@ def _create_redirect_stub(original_name: str):
                 }
 
             elif mode == "chat":
-                # chat/simple only needs: prompt (+ optional model, temperature, images)
+                # chat/simple needs: prompt + working_directory (required by ChatRequest)
                 return {
                     "prompt": request_text,
-                    "model": "auto"
+                    "working_directory": "/tmp"  # Default safe directory for generated code
                 }
 
             elif mode == "consensus":
@@ -399,6 +399,13 @@ def _create_redirect_stub(original_name: str):
                     "issues_found": [],
                     "confidence": "medium",
                     "trace_mode": "ask"
+                }
+
+            elif mode == "chat":
+                # chat/workflow: Uses ChatRequest which needs working_directory
+                return {
+                    "prompt": request_text,
+                    "working_directory": "/tmp"
                 }
 
             else:
