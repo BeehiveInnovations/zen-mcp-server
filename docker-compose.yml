@@ -6,7 +6,11 @@ services:
       target: runtime
     image: zen-mcp-server:latest
     container_name: zen-mcp-server
-    
+
+    # Keep stdin open for MCP stdio transport
+    stdin_open: true
+    tty: true
+
     # Container labels for traceability
     labels:
       - "com.zen-mcp.service=zen-mcp-server"
@@ -17,7 +21,7 @@ services:
     # Environment variables
     environment:
       # Default model configuration
-      - DEFAULT_MODEL=${DEFAULT_MODEL:-auto}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-2.0-flash-exp}
       
       # API Keys (use Docker secrets in production)
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -42,7 +46,12 @@ services:
       - DEFAULT_THINKING_MODE_THINKDEEP=${DEFAULT_THINKING_MODE_THINKDEEP:-high}
       - DISABLED_TOOLS=${DISABLED_TOOLS}
       - MAX_MCP_OUTPUT_TOKENS=${MAX_MCP_OUTPUT_TOKENS}
-      
+
+      # Token optimization configuration
+      - ZEN_TOKEN_OPTIMIZATION=${ZEN_TOKEN_OPTIMIZATION:-enabled}
+      - ZEN_OPTIMIZATION_MODE=${ZEN_OPTIMIZATION_MODE:-two_stage}
+      - ZEN_TOKEN_TELEMETRY=${ZEN_TOKEN_TELEMETRY:-true}
+
       # Server configuration
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
@@ -95,7 +104,4 @@ volumes:
 # Networks
 networks:
   zen-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+    external: true  # Use existing network
