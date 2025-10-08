@@ -148,58 +148,262 @@ def _create_redirect_stub(original_name: str):
             }
 
         def _build_simple_request(self, mode: str, user_args: dict) -> dict:
-            """Transform user's simple arguments to valid mode-specific schema"""
+            """
+            Transform user's simple arguments to valid mode-specific schema.
+
+            CRITICAL: This must match the schemas defined in mode_selector.py exactly.
+            Many "simple" modes now require workflow fields (step, step_number, etc.)
+            """
             request_text = user_args.get("request", "")
             files = user_args.get("files", [])
             context = user_args.get("context", "")
 
-            # Mode-specific request building
+            # Common workflow fields used by many modes
+            workflow_base = {
+                "step": request_text[:100] if request_text else "Processing request",
+                "step_number": 1,
+                "total_steps": 1,
+                "next_step_required": False,
+                "findings": request_text or "Starting task"
+            }
+
+            # Mode-specific request building (matching mode_selector.py schemas)
             if mode == "debug":
+                # debug/simple only needs: problem (+ optional files, confidence, hypothesis)
                 return {
                     "problem": request_text,
                     "files": files or [],
                     "confidence": "medium"
                 }
+
             elif mode == "codereview":
+                # codereview/simple only needs: files (+ optional review_type, focus)
                 return {
-                    "files": files or [],
+                    "files": files or ["/code"],  # Provide default if empty
                     "review_type": "all",
-                    "context": context or request_text
+                    "focus": context or None
                 }
+
             elif mode == "analyze":
+                # analyze/simple needs: workflow fields + relevant_files
                 return {
-                    "relevant_files": files or [],
+                    **workflow_base,
+                    "relevant_files": files or ["/"],
                     "analysis_type": "architecture",
-                    "context": context or request_text
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
                 }
+
             elif mode == "chat":
+                # chat/simple only needs: prompt (+ optional model, temperature, images)
                 return {
                     "prompt": request_text,
-                    "context": context
+                    "model": "auto"
                 }
-            elif mode in ["consensus", "security", "refactor", "testgen", "planner", "tracer"]:
-                # Generic structure that most modes accept
+
+            elif mode == "consensus":
+                # consensus/simple needs: prompt + models
                 return {
                     "prompt": request_text,
-                    "files": files,
-                    "context": context
+                    "models": [{"model": "o3", "stance": "neutral"}],  # Default model
+                    "relevant_files": files or None
                 }
+
+            elif mode == "security":
+                # security/simple needs: workflow fields (all security requests need them)
+                return {
+                    **workflow_base,
+                    "relevant_files": files or [],
+                    "security_scope": "comprehensive",
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "refactor":
+                # refactor/simple needs: workflow fields
+                return {
+                    **workflow_base,
+                    "relevant_files": files or [],
+                    "refactor_type": "codesmells",
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "incomplete"
+                }
+
+            elif mode == "testgen":
+                # testgen/simple needs: workflow fields + relevant_files
+                return {
+                    **workflow_base,
+                    "relevant_files": files or ["/code"],
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "planner":
+                # planner/simple needs: workflow fields (planning is inherently workflow-based)
+                return {
+                    **workflow_base,
+                    "relevant_files": files or [],
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "tracer":
+                # tracer/simple needs: workflow fields + target
+                return {
+                    **workflow_base,
+                    "target": request_text[:50] if request_text else "main",
+                    "trace_mode": "ask",
+                    "files": files or [],
+                    "relevant_files": [],
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
             else:
-                # Fallback generic request
+                # Fallback with workflow fields (safest default)
                 return {
+                    **workflow_base,
                     "prompt": request_text,
                     "context": context
                 }
 
-        def _build_workflow_request(self, user_args: dict) -> dict:
-            """Build workflow request structure"""
-            return {
-                "step": "Initial investigation",
+        def _build_workflow_request(self, mode: str, user_args: dict) -> dict:
+            """
+            Build workflow request structure with mode-specific required fields.
+
+            CRITICAL: Must match the workflow schemas in mode_selector.py
+            """
+            request_text = user_args.get("request", "")
+            files = user_args.get("files", [])
+            context = user_args.get("context", "")
+
+            # Base workflow fields
+            workflow_base = {
+                "step": request_text[:100] if request_text else "Processing request",
                 "step_number": 1,
-                "total_steps": 1,
-                "findings": user_args.get("request", ""),
-                "next_step_required": False
+                "total_steps": 3,  # Workflow typically has multiple steps
+                "findings": request_text or "Starting investigation",
+                "next_step_required": True
             }
+
+            # Add mode-specific required fields for workflow complexity
+            if mode == "debug":
+                # debug/workflow: workflow fields only
+                return {
+                    **workflow_base,
+                    "files_checked": [],
+                    "confidence": "exploring"
+                }
+
+            elif mode == "codereview":
+                # codereview/workflow: workflow fields + review context
+                return {
+                    **workflow_base,
+                    "files_checked": [],
+                    "relevant_files": files or [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "analyze":
+                # analyze/workflow: workflow fields + relevant_files (REQUIRED)
+                return {
+                    **workflow_base,
+                    "relevant_files": files or ["/"],  # Required field!
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium",
+                    "analysis_type": "architecture"
+                }
+
+            elif mode == "consensus":
+                # consensus/workflow: workflow fields + models (REQUIRED)
+                return {
+                    **workflow_base,
+                    "models": [{"model": "o3", "stance": "neutral"}],  # Required field!
+                    "files_checked": [],
+                    "relevant_files": files or [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "security":
+                # security/workflow: workflow fields + security context
+                return {
+                    **workflow_base,
+                    "files_checked": [],
+                    "relevant_files": files or [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium",
+                    "security_scope": "comprehensive"
+                }
+
+            elif mode == "refactor":
+                # refactor/workflow: workflow fields + refactor context
+                return {
+                    **workflow_base,
+                    "files_checked": [],
+                    "relevant_files": files or [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "incomplete",
+                    "refactor_type": "codesmells"
+                }
+
+            elif mode == "testgen":
+                # testgen/workflow: workflow fields + relevant_files (REQUIRED)
+                return {
+                    **workflow_base,
+                    "relevant_files": files or ["/code"],  # Required field!
+                    "files_checked": [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "planner":
+                # planner/workflow: workflow fields + planning context
+                return {
+                    **workflow_base,
+                    "files_checked": [],
+                    "relevant_files": files or [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium"
+                }
+
+            elif mode == "tracer":
+                # tracer/workflow: workflow fields + target (REQUIRED)
+                return {
+                    **workflow_base,
+                    "target": request_text[:50] if request_text else "main",  # Required field!
+                    "files_checked": [],
+                    "relevant_files": files or [],
+                    "relevant_context": [],
+                    "issues_found": [],
+                    "confidence": "medium",
+                    "trace_mode": "ask"
+                }
+
+            else:
+                # Fallback: generic workflow fields
+                return workflow_base
 
         async def execute(self, arguments: dict) -> list:
             """
@@ -240,7 +444,7 @@ def _create_redirect_stub(original_name: str):
 
                 # Step 2: Transform user's simple request to valid zen_execute format
                 if complexity == "workflow":
-                    request = self._build_workflow_request(arguments)
+                    request = self._build_workflow_request(selected_mode, arguments)
                 else:  # simple or other
                     request = self._build_simple_request(selected_mode, arguments)
 

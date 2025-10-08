@@ -269,21 +269,22 @@ class ModeSelectorTool(SimpleTool):
         """
         Determine task complexity for the selected mode.
 
-        Returns: 'simple', 'workflow', or 'expert'
+        Returns: 'simple' or 'workflow'
+        Note: Only these two complexities exist in mode_executor request models
         """
         # Workflow indicators
         workflow_indicators = ["step", "systematic", "comprehensive", "thorough", "complete", "full", "entire", "all"]
 
-        # Expert indicators
-        expert_indicators = ["complex", "difficult", "advanced", "expert", "production", "critical", "important"]
+        # Complex/expert indicators also suggest workflow (multi-step investigation)
+        complex_indicators = ["complex", "difficult", "advanced", "expert", "production", "critical", "important"]
 
         # Check for workflow needs
         if any(indicator in task_desc for indicator in workflow_indicators):
             return "workflow"
 
-        # Check for expert needs
-        if any(indicator in task_desc for indicator in expert_indicators):
-            return "expert"
+        # Check for complex needs (map to workflow, not "expert")
+        if any(indicator in task_desc for indicator in complex_indicators):
+            return "workflow"
 
         # Use context size hint
         if context_size == "comprehensive":
@@ -479,129 +480,361 @@ class ModeSelectorTool(SimpleTool):
         return "; ".join(explanations)
 
     def _get_complete_schema(self, mode: str, complexity: str) -> dict:
-        """Return complete JSON schema for this mode/complexity combination"""
+        """
+        Return complete JSON schema for this mode/complexity combination.
 
-        # Define schemas for all mode/complexity combinations
+        CRITICAL: These schemas must match the Pydantic models in mode_executor.py exactly
+        to prevent validation errors. Each schema was verified against the corresponding
+        request model class.
+        """
+
+        # Common workflow fields used by many tools
+        workflow_fields = {
+            "step": {"type": "string", "description": "Current workflow step description"},
+            "step_number": {"type": "integer", "minimum": 1, "description": "Step number (starts at 1)"},
+            "total_steps": {"type": "integer", "minimum": 1, "description": "Total estimated steps"},
+            "next_step_required": {"type": "boolean", "description": "Continue with another step?"},
+            "findings": {"type": "string", "description": "Discoveries and insights so far"},
+        }
+
+        # Define schemas for all 20 mode/complexity combinations
+        # Format: (mode, complexity): schema matching mode_executor.py request models
         schemas = {
+            # DEBUG
             ("debug", "simple"): {
                 "type": "object",
-                "required": ["problem", "files", "confidence"],
+                "required": ["problem"],  # Only problem is required per DebugSimpleRequest
                 "properties": {
-                    "problem": {
-                        "type": "string",
-                        "description": "Description of what's broken or not working as expected"
-                    },
-                    "files": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Absolute paths to relevant code files (e.g., ['/path/to/file.py'])"
-                    },
-                    "confidence": {
-                        "type": "string",
-                        "enum": ["exploring", "medium", "high"],
-                        "description": "How well you understand the issue"
-                    }
+                    "problem": {"type": "string", "description": "The issue to debug"},
+                    "files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "confidence": {"type": "string", "enum": ["exploring", "medium", "high"], "description": "Optional: Current confidence level"},
+                    "hypothesis": {"type": "string", "description": "Optional: Initial theory about the issue"}
                 }
             },
             ("debug", "workflow"): {
                 "type": "object",
-                "required": ["step", "step_number", "total_steps", "findings", "next_step_required"],
+                "required": ["step", "step_number", "findings", "next_step_required"],  # Per DebugWorkflowRequest
                 "properties": {
-                    "step": {
-                        "type": "string",
-                        "description": "Description of current investigation step (e.g., 'Initial investigation')"
-                    },
-                    "step_number": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "description": "Current step number in the workflow (1, 2, 3, ...)"
-                    },
-                    "total_steps": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "description": "Total number of planned investigation steps"
-                    },
-                    "findings": {
-                        "type": "string",
-                        "description": "What you've discovered so far in this step"
-                    },
-                    "next_step_required": {
-                        "type": "boolean",
-                        "description": "Whether more investigation steps are needed after this one"
-                    }
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "confidence": {"type": "string", "enum": ["exploring", "medium", "high"], "description": "Optional: Confidence level"}
                 }
             },
-            ("analyze", "simple"): {
-                "type": "object",
-                "required": ["relevant_files", "analysis_type"],
-                "properties": {
-                    "relevant_files": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Files to analyze (absolute paths)"
-                    },
-                    "analysis_type": {
-                        "type": "string",
-                        "enum": ["architecture", "patterns", "security", "performance"],
-                        "description": "Type of analysis to perform"
-                    },
-                    "context": {
-                        "type": "string",
-                        "description": "Optional: Additional context about what you're looking for"
-                    }
-                }
-            },
+
+            # CODEREVIEW
             ("codereview", "simple"): {
                 "type": "object",
-                "required": ["files"],
+                "required": ["files"],  # Per ReviewSimpleRequest
                 "properties": {
-                    "files": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Code files to review (absolute paths)"
-                    },
-                    "review_type": {
-                        "type": "string",
-                        "enum": ["security", "performance", "quality", "all"],
-                        "description": "Focus area for the review (default: 'all')"
-                    }
+                    "files": {"type": "array", "items": {"type": "string"}, "description": "Files to review"},
+                    "review_type": {"type": "string", "enum": ["security", "performance", "quality", "all"], "description": "Optional: Focus area"},
+                    "focus": {"type": "string", "description": "Optional: Specific concerns"}
                 }
             },
+            ("codereview", "workflow"): {
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],  # Per ReviewWorkflowRequest
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant methods/functions"},
+                    "issues_found": {"type": "array", "items": {"type": "object"}, "description": "Optional: Issues with severity"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "review_validation_type": {"type": "string", "description": "Optional: Validation type"}
+                }
+            },
+
+            # ANALYZE
+            ("analyze", "simple"): {
+                "type": "object",
+                # AnalyzeSimpleRequest requires workflow fields + relevant_files
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "relevant_files"],
+                "properties": {
+                    **workflow_fields,
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Files or directories to analyze"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "analysis_type": {"type": "string", "description": "Optional: Type of analysis"},
+                    "output_format": {"type": "string", "description": "Optional: Output format"}
+                }
+            },
+            ("analyze", "workflow"): {
+                # Reuses AnalyzeSimpleRequest - same as simple
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "relevant_files"],
+                "properties": {
+                    **workflow_fields,
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Files or directories to analyze"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "analysis_type": {"type": "string", "description": "Optional: Type of analysis"},
+                    "output_format": {"type": "string", "description": "Optional: Output format"}
+                }
+            },
+
+            # CONSENSUS
+            ("consensus", "simple"): {
+                "type": "object",
+                "required": ["prompt", "models"],  # Per ConsensusSimpleRequest
+                "properties": {
+                    "prompt": {"type": "string", "description": "The question or proposal to evaluate"},
+                    "models": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": "Models to consult. Example: [{'model': 'o3', 'stance': 'neutral'}]"
+                    },
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Context files"},
+                    "images": {"type": "array", "items": {"type": "string"}, "description": "Optional: Images"}
+                }
+            },
+            ("consensus", "workflow"): {
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "models"],  # Per ConsensusWorkflowRequest
+                "properties": {
+                    **workflow_fields,
+                    "models": {"type": "array", "items": {"type": "object"}, "description": "Models to consult"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "current_model_index": {"type": "integer", "description": "Optional: Current model index"},
+                    "model_responses": {"type": "array", "items": {"type": "string"}, "description": "Optional: Model responses"}
+                }
+            },
+
+            # CHAT
             ("chat", "simple"): {
+                "type": "object",
+                "required": ["prompt"],  # Per ChatRequest
+                "properties": {
+                    "prompt": {"type": "string", "description": "Your question or request"},
+                    "model": {"type": "string", "description": "Optional: Model preference (default: auto)"},
+                    "temperature": {"type": "number", "description": "Optional: Temperature setting"},
+                    "images": {"type": "array", "items": {"type": "string"}, "description": "Optional: Images"}
+                }
+            },
+            ("chat", "workflow"): {
+                # Reuses ChatRequest - same as simple
                 "type": "object",
                 "required": ["prompt"],
                 "properties": {
-                    "prompt": {
-                        "type": "string",
-                        "description": "Your question or request"
-                    }
+                    "prompt": {"type": "string", "description": "Your question or request"},
+                    "model": {"type": "string", "description": "Optional: Model preference (default: auto)"},
+                    "temperature": {"type": "number", "description": "Optional: Temperature setting"},
+                    "images": {"type": "array", "items": {"type": "string"}, "description": "Optional: Images"}
+                }
+            },
+
+            # SECURITY
+            ("security", "simple"): {
+                "type": "object",
+                # SecurityWorkflowRequest requires workflow fields even for "simple"
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to audit"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "security_scope": {"type": "string", "description": "Optional: Security scope"},
+                    "threat_level": {"type": "string", "description": "Optional: Threat level"},
+                    "compliance_requirements": {"type": "array", "items": {"type": "string"}, "description": "Optional: Compliance requirements"},
+                    "audit_focus": {"type": "string", "description": "Optional: Audit focus"},
+                    "severity_filter": {"type": "string", "description": "Optional: Severity filter"}
+                }
+            },
+            ("security", "workflow"): {
+                # Reuses SecurityWorkflowRequest - same as simple
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to audit"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "security_scope": {"type": "string", "description": "Optional: Security scope"},
+                    "threat_level": {"type": "string", "description": "Optional: Threat level"},
+                    "compliance_requirements": {"type": "array", "items": {"type": "string"}, "description": "Optional: Compliance requirements"},
+                    "audit_focus": {"type": "string", "description": "Optional: Audit focus"},
+                    "severity_filter": {"type": "string", "description": "Optional: Severity filter"}
+                }
+            },
+
+            # REFACTOR
+            ("refactor", "simple"): {
+                "type": "object",
+                # RefactorSimpleRequest requires workflow fields even for "simple"
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to refactor"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "refactor_type": {"type": "string", "description": "Optional: Type of refactoring"},
+                    "focus_areas": {"type": "array", "items": {"type": "string"}, "description": "Optional: Focus areas"},
+                    "style_guide_examples": {"type": "array", "items": {"type": "string"}, "description": "Optional: Style examples"}
+                }
+            },
+            ("refactor", "workflow"): {
+                # Reuses RefactorSimpleRequest - same as simple
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to refactor"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "refactor_type": {"type": "string", "description": "Optional: Type of refactoring"},
+                    "focus_areas": {"type": "array", "items": {"type": "string"}, "description": "Optional: Focus areas"},
+                    "style_guide_examples": {"type": "array", "items": {"type": "string"}, "description": "Optional: Style examples"}
+                }
+            },
+
+            # TESTGEN
+            ("testgen", "simple"): {
+                "type": "object",
+                # TestGenSimpleRequest requires workflow fields + relevant_files
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "relevant_files"],
+                "properties": {
+                    **workflow_fields,
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Code files to generate tests for"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"}
+                }
+            },
+            ("testgen", "workflow"): {
+                # Reuses TestGenSimpleRequest - same as simple
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "relevant_files"],
+                "properties": {
+                    **workflow_fields,
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Code files to generate tests for"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"}
+                }
+            },
+
+            # PLANNER
+            ("planner", "simple"): {
+                "type": "object",
+                # PlannerWorkflowRequest requires workflow fields (planning is inherently workflow-based)
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "is_step_revision": {"type": "boolean", "description": "Optional: Is step revision"},
+                    "revises_step_number": {"type": "integer", "description": "Optional: Revises step number"},
+                    "is_branch_point": {"type": "boolean", "description": "Optional: Is branch point"},
+                    "branch_from_step": {"type": "integer", "description": "Optional: Branch from step"},
+                    "branch_id": {"type": "string", "description": "Optional: Branch ID"},
+                    "more_steps_needed": {"type": "boolean", "description": "Optional: More steps needed"}
+                }
+            },
+            ("planner", "workflow"): {
+                # Reuses PlannerWorkflowRequest - same as simple
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings"],
+                "properties": {
+                    **workflow_fields,
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "is_step_revision": {"type": "boolean", "description": "Optional: Is step revision"},
+                    "revises_step_number": {"type": "integer", "description": "Optional: Revises step number"},
+                    "is_branch_point": {"type": "boolean", "description": "Optional: Is branch point"},
+                    "branch_from_step": {"type": "integer", "description": "Optional: Branch from step"},
+                    "branch_id": {"type": "string", "description": "Optional: Branch ID"},
+                    "more_steps_needed": {"type": "boolean", "description": "Optional: More steps needed"}
+                }
+            },
+
+            # TRACER
+            ("tracer", "simple"): {
+                "type": "object",
+                # TracerSimpleRequest requires workflow fields + target
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "target"],
+                "properties": {
+                    **workflow_fields,
+                    "target": {"type": "string", "description": "Function or code to trace"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "trace_mode": {"type": "string", "enum": ["precision", "dependencies", "ask"], "description": "Optional: Type of tracing"},
+                    "files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to analyze"}
+                }
+            },
+            ("tracer", "workflow"): {
+                # Reuses TracerSimpleRequest - same as simple
+                "type": "object",
+                "required": ["step", "step_number", "total_steps", "next_step_required", "findings", "target"],
+                "properties": {
+                    **workflow_fields,
+                    "target": {"type": "string", "description": "Function or code to trace"},
+                    "files_checked": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files examined"},
+                    "relevant_files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant files"},
+                    "relevant_context": {"type": "array", "items": {"type": "string"}, "description": "Optional: Relevant context"},
+                    "issues_found": {"type": "array", "items": {"type": "string"}, "description": "Optional: Issues found"},
+                    "confidence": {"type": "string", "description": "Optional: Confidence level"},
+                    "trace_mode": {"type": "string", "enum": ["precision", "dependencies", "ask"], "description": "Optional: Type of tracing"},
+                    "files": {"type": "array", "items": {"type": "string"}, "description": "Optional: Files to analyze"}
                 }
             },
         }
 
-        # Return specific schema or generic fallback
-        return schemas.get(
-            (mode, complexity),
-            {
+        # Return specific schema - NO FALLBACK (all combinations should be defined above)
+        schema = schemas.get((mode, complexity))
+        if not schema:
+            logger.error(f"Missing schema for mode={mode}, complexity={complexity}. This should not happen!")
+            # Emergency fallback only if something is seriously wrong
+            return {
                 "type": "object",
-                "required": ["prompt"],
+                "required": ["error"],
                 "properties": {
-                    "prompt": {"type": "string", "description": "Your request description"}
+                    "error": {"type": "string", "description": f"Invalid mode/complexity combination: {mode}/{complexity}"}
                 }
             }
-        )
+        return schema
 
     def _get_working_example(self, mode: str, complexity: str) -> dict:
-        """Return a copy-paste ready working example"""
+        """
+        Return a copy-paste ready working example.
+
+        CRITICAL: Each example must match the required fields in _get_complete_schema
+        to ensure users can copy-paste without validation errors.
+        """
 
         examples = {
+            # DEBUG
             ("debug", "simple"): {
                 "mode": "debug",
                 "complexity": "simple",
                 "request": {
-                    "problem": "OAuth tokens not persisting across browser sessions",
-                    "files": ["/src/auth.py", "/src/session.py"],
-                    "confidence": "exploring"
+                    "problem": "OAuth tokens not persisting across browser sessions"
                 }
             },
             ("debug", "workflow"): {
@@ -610,28 +843,80 @@ class ModeSelectorTool(SimpleTool):
                 "request": {
                     "step": "Initial investigation of token persistence issue",
                     "step_number": 1,
-                    "total_steps": 3,
                     "findings": "Users report needing to re-authenticate after closing browser",
                     "next_step_required": True
                 }
             },
-            ("analyze", "simple"): {
-                "mode": "analyze",
-                "complexity": "simple",
-                "request": {
-                    "relevant_files": ["/src/app.py", "/src/models.py"],
-                    "analysis_type": "architecture",
-                    "context": "Understanding the current microservices design"
-                }
-            },
+
+            # CODEREVIEW
             ("codereview", "simple"): {
                 "mode": "codereview",
                 "complexity": "simple",
                 "request": {
-                    "files": ["/src/auth_handler.py"],
-                    "review_type": "security"
+                    "files": ["/src/auth_handler.py"]
                 }
             },
+            ("codereview", "workflow"): {
+                "mode": "codereview",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Security review of authentication system",
+                    "step_number": 1,
+                    "total_steps": 2,
+                    "next_step_required": True,
+                    "findings": "Reviewing authentication handlers for security issues"
+                }
+            },
+
+            # ANALYZE
+            ("analyze", "simple"): {
+                "mode": "analyze",
+                "complexity": "simple",
+                "request": {
+                    "step": "Architecture analysis",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Starting architecture analysis",
+                    "relevant_files": ["/src/app.py", "/src/models.py"]
+                }
+            },
+            ("analyze", "workflow"): {
+                "mode": "analyze",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Comprehensive architecture analysis",
+                    "step_number": 1,
+                    "total_steps": 3,
+                    "next_step_required": True,
+                    "findings": "Analyzing microservices architecture patterns",
+                    "relevant_files": ["/src"]
+                }
+            },
+
+            # CONSENSUS
+            ("consensus", "simple"): {
+                "mode": "consensus",
+                "complexity": "simple",
+                "request": {
+                    "prompt": "Should we use PostgreSQL or MongoDB for this use case?",
+                    "models": [{"model": "o3", "stance": "neutral"}]
+                }
+            },
+            ("consensus", "workflow"): {
+                "mode": "consensus",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Database technology consensus",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Seeking consensus on database choice",
+                    "models": [{"model": "o3", "stance": "neutral"}, {"model": "gemini-pro", "stance": "neutral"}]
+                }
+            },
+
+            # CHAT
             ("chat", "simple"): {
                 "mode": "chat",
                 "complexity": "simple",
@@ -639,17 +924,150 @@ class ModeSelectorTool(SimpleTool):
                     "prompt": "Explain the difference between REST and GraphQL APIs"
                 }
             },
+            ("chat", "workflow"): {
+                "mode": "chat",
+                "complexity": "workflow",
+                "request": {
+                    "prompt": "Explain the difference between REST and GraphQL APIs in detail"
+                }
+            },
+
+            # SECURITY
+            ("security", "simple"): {
+                "mode": "security",
+                "complexity": "simple",
+                "request": {
+                    "step": "Security audit",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Starting security audit of authentication system"
+                }
+            },
+            ("security", "workflow"): {
+                "mode": "security",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Comprehensive security audit",
+                    "step_number": 1,
+                    "total_steps": 3,
+                    "next_step_required": True,
+                    "findings": "Beginning thorough security assessment"
+                }
+            },
+
+            # REFACTOR
+            ("refactor", "simple"): {
+                "mode": "refactor",
+                "complexity": "simple",
+                "request": {
+                    "step": "Refactoring analysis",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Analyzing code for refactoring opportunities"
+                }
+            },
+            ("refactor", "workflow"): {
+                "mode": "refactor",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Comprehensive refactoring analysis",
+                    "step_number": 1,
+                    "total_steps": 3,
+                    "next_step_required": True,
+                    "findings": "Identifying code smells and improvement opportunities"
+                }
+            },
+
+            # TESTGEN
+            ("testgen", "simple"): {
+                "mode": "testgen",
+                "complexity": "simple",
+                "request": {
+                    "step": "Test generation",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Generating tests for authentication module",
+                    "relevant_files": ["/src/auth.py"]
+                }
+            },
+            ("testgen", "workflow"): {
+                "mode": "testgen",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Comprehensive test generation",
+                    "step_number": 1,
+                    "total_steps": 2,
+                    "next_step_required": True,
+                    "findings": "Generating comprehensive test suite with edge cases",
+                    "relevant_files": ["/src/auth.py", "/src/user.py"]
+                }
+            },
+
+            # PLANNER
+            ("planner", "simple"): {
+                "mode": "planner",
+                "complexity": "simple",
+                "request": {
+                    "step": "Feature planning",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Creating implementation plan for new feature"
+                }
+            },
+            ("planner", "workflow"): {
+                "mode": "planner",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Detailed feature roadmap",
+                    "step_number": 1,
+                    "total_steps": 5,
+                    "next_step_required": True,
+                    "findings": "Breaking down complex feature into implementation steps"
+                }
+            },
+
+            # TRACER
+            ("tracer", "simple"): {
+                "mode": "tracer",
+                "complexity": "simple",
+                "request": {
+                    "step": "Code tracing",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Tracing authentication flow",
+                    "target": "authenticate_user"
+                }
+            },
+            ("tracer", "workflow"): {
+                "mode": "tracer",
+                "complexity": "workflow",
+                "request": {
+                    "step": "Comprehensive dependency tracing",
+                    "step_number": 1,
+                    "total_steps": 3,
+                    "next_step_required": True,
+                    "findings": "Analyzing call chain and dependencies",
+                    "target": "authenticate_user"
+                }
+            },
         }
 
-        # Return specific example or generic fallback
-        return examples.get(
-            (mode, complexity),
-            {
+        # Return specific example - NO FALLBACK (all combinations should be defined above)
+        example = examples.get((mode, complexity))
+        if not example:
+            logger.error(f"Missing example for mode={mode}, complexity={complexity}. This should not happen!")
+            # Emergency fallback only if something is seriously wrong
+            return {
                 "mode": mode,
                 "complexity": complexity,
-                "request": {"prompt": "Your request here"}
+                "request": {"error": f"Invalid mode/complexity combination: {mode}/{complexity}"}
             }
-        )
+        return example
 
     async def prepare_prompt(self, request) -> str:
         """
