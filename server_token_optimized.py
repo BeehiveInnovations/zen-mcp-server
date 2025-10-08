@@ -224,10 +224,10 @@ def _create_redirect_stub(original_name: str):
                 }
 
             elif mode == "refactor":
-                # refactor/simple needs: workflow fields
+                # refactor/simple needs: workflow fields + relevant_files (required in step 1)
                 return {
                     **workflow_base,
-                    "relevant_files": files or [],
+                    "relevant_files": files or ["/code"],  # RefactorRequest requires non-empty relevant_files in step 1
                     "refactor_type": "codesmells",
                     "files_checked": [],
                     "relevant_context": [],
@@ -355,11 +355,11 @@ def _create_redirect_stub(original_name: str):
                 }
 
             elif mode == "refactor":
-                # refactor/workflow: workflow fields + refactor context
+                # refactor/workflow: workflow fields + refactor context (relevant_files required in step 1)
                 return {
                     **workflow_base,
                     "files_checked": [],
-                    "relevant_files": files or [],
+                    "relevant_files": files or ["/code"],  # RefactorRequest requires non-empty relevant_files in step 1
                     "relevant_context": [],
                     "issues_found": [],
                     "confidence": "incomplete",
