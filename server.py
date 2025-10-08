@@ -39,9 +39,14 @@ from mcp.types import (  # noqa: E402
     ServerCapabilities,
     TextContent,
     Tool,
-    ToolAnnotations,
     ToolsCapability,
 )
+
+# ToolAnnotations may not be available in all MCP versions
+try:
+    from mcp.types import ToolAnnotations
+except ImportError:
+    ToolAnnotations = None
 
 from config import (  # noqa: E402
     DEFAULT_MODEL,
@@ -257,27 +262,42 @@ def filter_disabled_tools(all_tools: dict[str, Any]) -> dict[str, Any]:
 # Initialize the tool registry with all available AI-powered tools
 # Each tool provides specialized functionality for different development tasks
 # Tools are instantiated once and reused across requests (stateless design)
-TOOLS = {
-    "chat": ChatTool(),  # Interactive development chat and brainstorming
-    "clink": CLinkTool(),  # Bridge requests to configured AI CLIs
-    "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
-    "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
-    "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
-    "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
-    "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
-    "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
-    "secaudit": SecauditTool(),  # Comprehensive security audit with OWASP Top 10 and compliance coverage
-    "docgen": DocgenTool(),  # Step-by-step documentation generation with complexity analysis
-    "analyze": AnalyzeTool(),  # General-purpose file and code analysis
-    "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
-    "tracer": TracerTool(),  # Static call path prediction and control flow analysis
-    "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
-    "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
-    "apilookup": LookupTool(),  # Quick web/API lookup instructions
-    "listmodels": ListModelsTool(),  # List all available AI models by provider
-    "version": VersionTool(),  # Display server version and system information
-}
-TOOLS = filter_disabled_tools(TOOLS)
+
+# Check if token optimization is enabled
+try:
+    from server_token_optimized import get_optimized_tools
+
+    OPTIMIZED_TOOLS = get_optimized_tools()
+except ImportError:
+    OPTIMIZED_TOOLS = None
+
+if OPTIMIZED_TOOLS:
+    # Use optimized two-stage token reduction architecture (95% token savings)
+    TOOLS = OPTIMIZED_TOOLS
+    logger.info(f"Token optimization enabled: {len(TOOLS)} tools registered (two-stage architecture)")
+else:
+    # Use standard tool registry
+    TOOLS = {
+        "chat": ChatTool(),  # Interactive development chat and brainstorming
+        "clink": CLinkTool(),  # Bridge requests to configured AI CLIs
+        "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
+        "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
+        "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
+        "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
+        "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
+        "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance
+        "secaudit": SecauditTool(),  # Comprehensive security audit with OWASP Top 10 and compliance coverage
+        "docgen": DocgenTool(),  # Step-by-step documentation generation with complexity analysis
+        "analyze": AnalyzeTool(),  # General-purpose file and code analysis
+        "refactor": RefactorTool(),  # Step-by-step refactoring analysis workflow with expert validation
+        "tracer": TracerTool(),  # Static call path prediction and control flow analysis
+        "testgen": TestGenTool(),  # Step-by-step test generation workflow with expert validation
+        "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
+        "apilookup": LookupTool(),  # Quick web/API lookup instructions
+        "listmodels": ListModelsTool(),  # List all available AI models by provider
+        "version": VersionTool(),  # Display server version and system information
+    }
+    TOOLS = filter_disabled_tools(TOOLS)
 
 # Rich prompt templates for all tools
 PROMPT_TEMPLATES = {
@@ -667,16 +687,27 @@ async def handle_list_tools() -> list[Tool]:
     for tool in TOOLS.values():
         # Get optional annotations from the tool
         annotations = tool.get_annotations()
-        tool_annotations = ToolAnnotations(**annotations) if annotations else None
 
-        tools.append(
-            Tool(
-                name=tool.name,
-                description=tool.description,
-                inputSchema=tool.get_input_schema(),
-                annotations=tool_annotations,
+        # Handle ToolAnnotations based on MCP version
+        if ToolAnnotations and annotations:
+            tool_annotations = ToolAnnotations(**annotations)
+            tools.append(
+                Tool(
+                    name=tool.name,
+                    description=tool.description,
+                    inputSchema=tool.get_input_schema(),
+                    annotations=tool_annotations,
+                )
             )
-        )
+        else:
+            # Fallback for older MCP versions without ToolAnnotations
+            tools.append(
+                Tool(
+                    name=tool.name,
+                    description=tool.description,
+                    inputSchema=tool.get_input_schema(),
+                )
+            )
 
     # Log cache efficiency info
     openrouter_key_for_cache = get_env("OPENROUTER_API_KEY")
