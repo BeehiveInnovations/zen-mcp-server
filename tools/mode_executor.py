@@ -583,6 +583,22 @@ class ModeExecutor(BaseTool):
                         "model_responses": [],
                     }
 
+            # Special handling for debug simple mode
+            if self.mode == "debug" and self.complexity == "simple":
+                # Convert simple request to workflow format
+                if "problem" in arguments:
+                    # This is a simple debug request, convert to workflow
+                    arguments = {
+                        "step": arguments["problem"][:100],  # Use problem as first step
+                        "step_number": 1,
+                        "total_steps": 3,  # Default to 3-step investigation
+                        "next_step_required": True,
+                        "findings": arguments["problem"],
+                        "files_checked": [],
+                        "confidence": arguments.get("confidence", "exploring"),
+                        "hypothesis": arguments.get("hypothesis"),
+                    }
+
             # Special handling for codereview simple mode
             if self.mode == "codereview" and self.complexity == "simple":
                 # Convert simple request to workflow format

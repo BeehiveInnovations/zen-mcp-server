@@ -413,34 +413,18 @@ def _create_redirect_stub(original_name: str):
             by its original name and get real results automatically.
             """
             try:
-                # Step 1: Auto-select mode internally (no user-facing output)
-                mode_selector = ModeSelectorTool()
+                # Step 1: Force mode to match tool name (smart stubs always use their original mode)
+                selected_mode = self.original_name
 
-                # Build task description from the original request
+                # Determine complexity based on task complexity
+                # For smart stubs, default to "simple" for straightforward use
+                complexity = "simple"
+
+                # Check if this looks like a multi-step workflow task
                 task_description = arguments.get("request", "")
-                if not task_description:
-                    # Try to extract from other common fields
-                    task_description = (
-                        arguments.get("prompt", "")
-                        or arguments.get("problem", "")
-                        or arguments.get("query", "")
-                        or arguments.get("question", "")
-                        or f"Execute {self.original_name} task"
-                    )
-
-                # Execute mode selection (internal)
-                selection_result = await mode_selector.execute({
-                    "task_description": task_description,
-                    "confidence_level": "medium"
-                })
-
-                # Parse the mode selection result
-                if not selection_result or not isinstance(selection_result[0], TextContent):
-                    raise ValueError("Invalid mode selection result")
-
-                selection = json.loads(selection_result[0].text)
-                selected_mode = selection["selected_mode"]
-                complexity = selection["complexity"]
+                if any(indicator in task_description.lower() for indicator in
+                       ["step", "systematic", "comprehensive", "thorough", "investigate"]):
+                    complexity = "workflow"
 
                 # Step 2: Transform user's simple request to valid zen_execute format
                 if complexity == "workflow":
