@@ -21,7 +21,7 @@ services:
     # Environment variables
     environment:
       # Default model configuration
-      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-2.0-flash-exp}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-2.5-flash}
       
       # API Keys (use Docker secrets in production)
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -60,7 +60,6 @@ services:
     # Volumes for persistent data
     volumes:
       - ./logs:/app/logs
-      - zen-mcp-config:/app/conf
       - /etc/localtime:/etc/localtime:ro
     
     # Network configuration
@@ -95,11 +94,6 @@ services:
     tmpfs:
       - /tmp:noexec,nosuid,size=100m
       - /app/tmp:noexec,nosuid,size=50m
-
-# Named volumes
-volumes:
-  zen-mcp-config:
-    driver: local
 
 # Networks
 networks:
