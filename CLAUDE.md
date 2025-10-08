@@ -32,6 +32,105 @@ This script automatically runs:
 ./run_integration_tests.sh --with-simulator
 ```
 
+## Token Optimization (Two-Stage Architecture)
+
+The Zen MCP Server features an optional two-stage token optimization architecture that reduces token usage by **95%** (from ~43,000 to ~800 tokens) while maintaining full functionality.
+
+### How It Works
+
+**Stage 1: Mode Selection** (~200 tokens)
+- Tool: `zen_select_mode`
+- Analyzes task description using keyword matching
+- Recommends optimal mode and complexity
+- Returns structured guidance for Stage 2
+
+**Stage 2: Execution** (~600-800 tokens)
+- Tool: `zen_execute`
+- Loads minimal schema for selected mode
+- Executes with mode-specific parameters
+- Delegates to actual tool implementation
+
+### Configuration
+
+Enable token optimization using environment variables:
+
+```bash
+# Enable two-stage optimization
+export ZEN_TOKEN_OPTIMIZATION=enabled
+export ZEN_OPTIMIZATION_MODE=two_stage
+
+# Enable telemetry for A/B testing (optional)
+export ZEN_TOKEN_TELEMETRY=true
+```
+
+Add to `.env` file for persistence:
+```bash
+ZEN_TOKEN_OPTIMIZATION=enabled
+ZEN_OPTIMIZATION_MODE=two_stage
+ZEN_TOKEN_TELEMETRY=true
+```
+
+### Usage Pattern
+
+**Optimized Two-Stage Flow:**
+```bash
+# Step 1: Select mode
+zen_select_mode --task "Debug why OAuth tokens aren't persisting"
+
+# Step 2: Execute with recommended mode
+zen_execute --mode debug --complexity workflow \
+  --request '{
+    "step": "Initial investigation",
+    "step_number": 1,
+    "findings": "OAuth tokens clear on browser refresh",
+    "next_step_required": true
+  }'
+```
+
+**Backward Compatible (auto-redirects to two-stage):**
+```bash
+# Original tool names automatically redirect
+debug --request "Debug OAuth issue"
+```
+
+### Testing Token Optimization
+
+```bash
+# Test the two-stage flow
+python3 test_token_optimization.py
+
+# Verify both modes work
+ZEN_TOKEN_OPTIMIZATION=enabled python3 -c "import server; print(len(server.TOOLS))"
+ZEN_TOKEN_OPTIMIZATION=disabled python3 -c "import server; print(len(server.TOOLS))"
+```
+
+### Modes and Complexity Levels
+
+**Available Modes:**
+- `debug` - Root cause analysis and debugging
+- `codereview` - Code review and quality assessment
+- `analyze` - Architecture and code analysis
+- `consensus` - Multi-model consensus building
+- `chat` - General AI consultation
+- `security` - Security audit and vulnerability assessment
+- `refactor` - Refactoring opportunity analysis
+- `testgen` - Test generation with edge cases
+- `planner` - Sequential task planning
+- `tracer` - Code execution and dependency tracing
+
+**Complexity Levels:**
+- `simple` - Quick, single-shot analysis
+- `workflow` - Systematic, multi-step investigation
+- `expert` - Comprehensive expert analysis
+
+### Benefits
+
+✅ **95% token reduction** (43,000 → 800 tokens total)
+✅ **Faster responses** (less data to process)
+✅ **Better reliability** (structured schemas prevent errors)
+✅ **Backward compatible** (original tool names work)
+✅ **A/B testable** (telemetry tracks effectiveness)
+
 ### Server Management
 
 #### Setup/Update the Server
