@@ -188,3 +188,4 @@ logs/
 /worktrees/
 test_simulation_files/
 .mcp.json
+test_new_grok_models.py
