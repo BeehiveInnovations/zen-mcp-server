@@ -195,7 +195,7 @@ class ModelProvider(ABC):
             return 0
 
         estimated = max(1, len(text) // 4)
-        logger.debug("Estimating %s tokens for model %s via character heuristic", estimated, resolved_model)
+        logger.debug("Estimating %s text units for model %s via character heuristic", estimated, resolved_model)
         return estimated
 
     def close(self) -> None:
