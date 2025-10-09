@@ -167,7 +167,8 @@ ZEN_TOKEN_OPTIMIZATION=disabled python3 -c "import server; print(len(server.TOOL
 
 ### Benefits
 
-✅ **95% token reduction** (43,000 → 800 tokens total)
+✅ **82% token reduction** (43,000 → 7,800 tokens with compatibility stubs)
+✅ **96% reduction in core-only mode** (800 tokens without compatibility stubs)
 ✅ **Faster responses** (less data to process)
 ✅ **Better reliability** (structured schemas prevent errors)
 ✅ **Backward compatible** (original tool names work)

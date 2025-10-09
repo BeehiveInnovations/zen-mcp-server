@@ -193,7 +193,7 @@ class TokenOptimizationConfig:
 
         if self.enabled:
             if self.mode == "two_stage":
-                logger.info("  - Using two-stage architecture for 95% token reduction")
+                logger.info("  - Using two-stage architecture for 82% token reduction")
             else:
                 logger.info(f"  - Using {self.mode} mode")
         else:

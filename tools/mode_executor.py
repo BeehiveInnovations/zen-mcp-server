@@ -13,7 +13,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, List, Optional, Type
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
@@ -641,51 +641,54 @@ class ModeExecutor(BaseTool):
 
             return result
 
-        except Exception as e:
-            logger.error(f"Error executing {self.mode} tool: {e}", exc_info=True)
-
+        except ValidationError as e:
             # Enhanced error handling for validation errors
-            from pydantic import ValidationError
+            logger.warning(f"Validation error in {self.mode} tool: {e}")
 
-            if isinstance(e, ValidationError):
-                # Parse validation errors to provide helpful guidance
-                error_details = []
-                for error in e.errors():
-                    field = error['loc'][0] if error['loc'] else 'unknown'
-                    error_type = error['type']
+            # Parse validation errors to provide helpful guidance
+            error_details = []
+            for error in e.errors():
+                field = error['loc'][0] if error['loc'] else 'unknown'
+                error_type = error['type']
 
-                    # Build detailed error info with field descriptions and examples
-                    field_info = self._get_field_info(field)
+                # Build detailed error info with field descriptions and examples
+                field_info = self._get_field_info(field)
 
-                    error_detail = {
-                        "field": field,
-                        "error": error['msg'],
-                        "description": field_info.get("description", "No description available"),
-                        "type": field_info.get("type", "unknown"),
-                        "example": field_info.get("example", "N/A")
-                    }
-
-                    error_details.append(error_detail)
-
-                error_data = {
-                    "status": "validation_error",
-                    "mode": self.mode,
-                    "complexity": self.complexity,
-                    "message": f"Request validation failed for {self.mode} mode with {self.complexity} complexity",
-                    "errors": error_details,
-                    "hint": "💡 Use zen_select_mode first to get the correct schema and working examples",
-                    "schema_reference": f"Required fields for {self.mode}/{self.complexity}",
-                    "working_example": self._get_example_request()
+                error_detail = {
+                    "field": field,
+                    "error": error['msg'],
+                    "description": field_info.get("description", "No description available"),
+                    "type": field_info.get("type", "unknown"),
+                    "example": field_info.get("example", "N/A")
                 }
-            else:
-                # Generic error for non-validation errors
-                error_data = {
-                    "status": "error",
-                    "mode": self.mode,
-                    "complexity": self.complexity,
-                    "message": str(e),
-                    "suggestion": "Check the parameters match the minimal schema for this mode",
-                }
+
+                error_details.append(error_detail)
+
+            error_data = {
+                "status": "validation_error",
+                "mode": self.mode,
+                "complexity": self.complexity,
+                "message": f"Request validation failed for {self.mode} mode with {self.complexity} complexity",
+                "errors": error_details,
+                "hint": "💡 Use zen_select_mode first to get the correct schema and working examples",
+                "schema_reference": f"Required fields for {self.mode}/{self.complexity}",
+                "working_example": self._get_example_request()
+            }
+
+            return [TextContent(type="text", text=json.dumps(error_data, indent=2, ensure_ascii=False))]
+
+        except Exception as e:
+            # Unexpected errors - log with full traceback for debugging
+            logger.exception(f"Unexpected error executing {self.mode} tool: {e}")
+
+            # Generic error for non-validation errors
+            error_data = {
+                "status": "error",
+                "mode": self.mode,
+                "complexity": self.complexity,
+                "message": str(e),
+                "suggestion": "Check the parameters match the minimal schema for this mode",
+            }
 
             return [TextContent(type="text", text=json.dumps(error_data, indent=2, ensure_ascii=False))]
 

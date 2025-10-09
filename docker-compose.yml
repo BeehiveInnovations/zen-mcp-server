@@ -98,4 +98,7 @@ services:
 # Networks
 networks:
   zen-network:
-    external: true  # Use existing network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

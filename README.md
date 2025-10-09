@@ -390,7 +390,8 @@ DISABLED_TOOLS=
 - **[Large prompt support](docs/advanced-usage.md#working-with-large-prompts)** - Bypass MCP's 25K token limit
 
 **Performance Optimization**
-- **Two-stage token optimization** - 95% token reduction (43K → 800 tokens) with optional architecture
+- **Two-stage token optimization** - 82% token reduction (43K → 7.8K tokens) with backward compatibility
+  - Core-only mode: 96% reduction (800 tokens) without compatibility stubs
 - **Mode-based routing** - Intelligent mode selection loads only needed schemas
 - **Backward compatible** - Original tool names auto-redirect to optimized flow
 - **A/B testable** - Built-in telemetry tracks optimization effectiveness

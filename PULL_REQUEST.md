@@ -162,7 +162,7 @@ ZEN_TOKEN_OPTIMIZATION=enabled  # Default: enabled
 
 ## Provider Support Verified
 
-✅ **4 providers registered and working** with 96+ models:
+✅ **4 providers registered and working** with 137+ models:
 
 **Direct API Providers** (native, highest performance):
 - **Google Gemini** - Gemini 2.5 Pro/Flash (1M context)
