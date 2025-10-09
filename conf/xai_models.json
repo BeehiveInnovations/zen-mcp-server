@@ -82,6 +82,66 @@
       "supports_json_mode": false,
       "supports_images": false,
       "supports_temperature": true
+    },
+    {
+      "model_name": "grok-4-fast-reasoning",
+      "friendly_name": "X.AI (Grok 4 Fast Reasoning)",
+      "aliases": [
+        "grok4fast",
+        "grok-4-fast"
+      ],
+      "intelligence_score": 15,
+      "description": "GROK-4 Fast Reasoning (2M context) - Cost-efficient reasoning model with extended thinking, 40% fewer tokens than Grok 4",
+      "context_window": 2000000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_json_mode": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "max_image_size_mb": 20.0
+    },
+    {
+      "model_name": "grok-4-fast-non-reasoning",
+      "friendly_name": "X.AI (Grok 4 Fast Non-Reasoning)",
+      "aliases": [
+        "grok4fast-nr",
+        "grok-4-fast-nr"
+      ],
+      "intelligence_score": 14,
+      "description": "GROK-4 Fast Non-Reasoning (2M context) - Optimized for speed, skips reasoning for lowest latency",
+      "context_window": 2000000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": false,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_json_mode": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "max_image_size_mb": 20.0
+    },
+    {
+      "model_name": "grok-code-fast-1",
+      "friendly_name": "X.AI (Grok Code Fast 1)",
+      "aliases": [
+        "grok-code",
+        "grokcode",
+        "grok-code-fast"
+      ],
+      "intelligence_score": 16,
+      "description": "GROK Code Fast 1 (256K context) - Specialized coding model optimized for agentic coding tasks with visible reasoning traces",
+      "context_window": 256000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_json_mode": true,
+      "supports_images": false,
+      "supports_temperature": true
     }
   ]
 }
