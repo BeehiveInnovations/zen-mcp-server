@@ -35,37 +35,15 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for test generation workflow
 TESTGEN_WORKFLOW_FIELD_DESCRIPTIONS = {
     "step": (
-        "The test plan for this step. Step 1: State strategy for analyzing code structure, business logic, critical paths, and edge cases. "
-        "Later steps: Report findings and adapt as new test scenarios are identified."
+        "Test plan for this step. Step 1: outline how you'll analyse structure, business logic, critical paths, and edge cases. Later steps: record findings and new scenarios as they emerge."
     ),
-    "step_number": (
-        "The index of the current step in the test generation sequence, beginning at 1. Each step should build upon or "
-        "revise the previous one."
-    ),
-    "total_steps": (
-        "Your current estimate for how many steps will be needed to complete the test generation analysis. "
-        "Adjust as new findings emerge."
-    ),
-    "next_step_required": (
-        "Set to true if you plan to continue the investigation with another step. False means you believe the "
-        "test generation analysis is complete and ready for expert validation."
-    ),
-    "findings": (
-        "Summary of discoveries about the code being tested. Include analysis of functionality, critical paths, edge cases, "
-        "boundary conditions, and error handling. IMPORTANT: Document both happy paths and failure modes. "
-        "Identify existing test patterns. In later steps, confirm or update past findings."
-    ),
-    "files_checked": (
-        "List all files examined (absolute paths). Include even ruled-out files to track exploration path."
-    ),
-    "relevant_files": (
-        "Subset of files_checked containing code needing tests (absolute paths). Include implementation files, "
-        "interfaces, dependencies, or existing test examples."
-    ),
-    "relevant_context": (
-        "List methods/functions needing test coverage, in 'ClassName.methodName' or 'functionName' format. "
-        "Prioritize critical business logic, public APIs, and error-prone code paths."
-    ),
+    "step_number": "Current test-generation step (starts at 1) — each step should build on prior work.",
+    "total_steps": "Estimated number of steps needed for test planning; adjust as new scenarios appear.",
+    "next_step_required": "True while more investigation or planning remains; set False when test planning is ready for expert validation.",
+    "findings": "Summarise functionality, critical paths, edge cases, boundary conditions, error handling, and existing test patterns. Cover both happy and failure paths.",
+    "files_checked": "Absolute paths of every file examined, including those ruled out.",
+    "relevant_files": "Absolute paths of code that requires new or updated tests (implementation, dependencies, existing test fixtures).",
+    "relevant_context": "Functions/methods needing coverage (e.g. 'Class.method', 'function_name'), with emphasis on critical paths and error-prone code.",
     "confidence": (
         "Indicate your current confidence in the test generation assessment. Use: 'exploring' (starting analysis), "
         "'low' (early investigation), 'medium' (some patterns identified), 'high' (strong understanding), "
@@ -74,11 +52,8 @@ TESTGEN_WORKFLOW_FIELD_DESCRIPTIONS = {
         "Do NOT use 'certain' unless the test generation analysis is comprehensively complete, use 'very_high' or 'almost_certain' instead if not 100% sure. "
         "Using 'certain' means you have complete confidence locally and prevents external model validation."
     ),
-    "backtrack_from_step": ("If an earlier finding needs revision, specify the step number to backtrack from."),
-    "images": (
-        "Optional list of absolute paths to architecture diagrams, flow charts, or visual documentation that help "
-        "understand the code structure and test requirements. Only include if they materially assist test planning."
-    ),
+    "backtrack_from_step": "Step number to revisit if earlier findings need revision.",
+    "images": "Optional absolute paths to diagrams or visuals that clarify the system under test.",
 }
 
 
@@ -115,7 +90,6 @@ class TestGenRequest(WorkflowRequest):
     # Override inherited fields to exclude them from schema (except model which needs to be available)
     temperature: Optional[float] = Field(default=None, exclude=True)
     thinking_mode: Optional[str] = Field(default=None, exclude=True)
-    use_websearch: Optional[bool] = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):

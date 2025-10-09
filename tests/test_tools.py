@@ -3,6 +3,8 @@ Tests for individual tool implementations
 """
 
 import json
+import shutil
+import tempfile
 
 import pytest
 
@@ -343,12 +345,17 @@ class TestAbsolutePathValidation:
     async def test_chat_tool_relative_path_rejected(self):
         """Test that chat tool rejects relative paths"""
         tool = ChatTool()
-        result = await tool.execute(
-            {
-                "prompt": "Explain this code",
-                "files": ["code.py"],  # relative path without ./
-            }
-        )
+        temp_dir = tempfile.mkdtemp()
+        try:
+            result = await tool.execute(
+                {
+                    "prompt": "Explain this code",
+                    "files": ["code.py"],  # relative path without ./
+                    "working_directory": temp_dir,
+                }
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
         assert len(result) == 1
         response = json.loads(result[0].text)

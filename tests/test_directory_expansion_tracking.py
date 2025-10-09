@@ -91,6 +91,7 @@ def helper_function():
             "prompt": "Analyze this codebase structure",
             "files": [directory],  # Directory path, not individual files
             "model": "flash",
+            "working_directory": directory,
         }
 
         # Execute the tool
@@ -168,6 +169,7 @@ def helper_function():
             "files": [directory],  # Same directory again
             "model": "flash",
             "continuation_id": thread_id,
+            "working_directory": directory,
         }
 
         # Mock to capture file filtering behavior
@@ -299,6 +301,7 @@ def helper_function():
             "prompt": "Analyze this code",
             "files": [directory],
             "model": "flash",
+            "working_directory": directory,
         }
 
         result = await tool.execute(request_args)

@@ -6,9 +6,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 from providers import ModelProviderRegistry, ModelResponse
-from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
-from providers.openai_provider import OpenAIModelProvider
+from providers.openai import OpenAIModelProvider
+from providers.shared import ProviderType
 
 
 class TestModelProviderRegistry:
@@ -120,13 +120,6 @@ class TestGeminiProvider:
         capabilities = provider.get_capabilities("flash")
         assert capabilities.model_name == "gemini-2.5-flash"
 
-    def test_supports_thinking_mode(self):
-        """Test thinking mode support detection"""
-        provider = GeminiModelProvider(api_key="test-key")
-
-        assert provider.supports_thinking_mode("gemini-2.5-flash")
-        assert provider.supports_thinking_mode("gemini-2.5-pro")
-
     @patch("google.genai.Client")
     def test_generate_content(self, mock_client_class):
         """Test content generation"""
@@ -219,12 +212,10 @@ class TestOpenAIProvider:
         assert not provider.validate_model_name("gpt-4o")
         assert not provider.validate_model_name("invalid-model")
 
-    def test_no_thinking_mode_support(self):
-        """Test that no OpenAI models support thinking mode"""
+    def test_openai_models_do_not_support_extended_thinking(self):
+        """OpenAI catalogue exposes extended thinking capability via ModelCapabilities."""
         provider = OpenAIModelProvider(api_key="test-key")
 
-        assert not provider.supports_thinking_mode("o3")
-        assert not provider.supports_thinking_mode("o3mini")
-        assert not provider.supports_thinking_mode("o3-mini")
-        assert not provider.supports_thinking_mode("o4-mini")
-        assert not provider.supports_thinking_mode("o4-mini")
+        aliases = ["o3", "o3mini", "o3-mini", "o4-mini", "o4mini"]
+        for alias in aliases:
+            assert not provider.get_capabilities(alias).supports_extended_thinking

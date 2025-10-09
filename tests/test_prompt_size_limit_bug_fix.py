@@ -5,9 +5,8 @@ This test verifies that SimpleTool correctly validates only the original user pr
 when conversation history is embedded, rather than validating the full enhanced prompt.
 """
 
-from unittest.mock import MagicMock
-
 from tools.chat import ChatTool
+from tools.shared.base_models import ToolRequest
 
 
 class TestPromptSizeLimitBugFix:
@@ -27,10 +26,6 @@ class TestPromptSizeLimitBugFix:
 
         # Simulate enhanced prompt with conversation history (what server.py creates)
         enhanced_prompt = f"{conversation_history}\n\n=== NEW USER INPUT ===\n{short_user_prompt}"
-
-        # Create request object simulation
-        request = MagicMock()
-        request.prompt = enhanced_prompt  # This is what get_request_prompt() would return
 
         # Simulate server.py behavior: store original prompt in _current_arguments
         tool._current_arguments = {
@@ -107,8 +102,8 @@ class TestPromptSizeLimitBugFix:
             def get_input_schema(self) -> dict:
                 return {}
 
-            def get_request_model(self, request) -> str:
-                return "flash"
+            def get_request_model(self):
+                return ToolRequest
 
             def get_system_prompt(self) -> str:
                 return "Test system prompt"

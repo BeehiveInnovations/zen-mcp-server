@@ -148,9 +148,10 @@ class SimpleTool(BaseTool):
         Returns:
             Complete JSON schema for the tool
         """
+        required_fields = list(self.get_required_fields())
         return SchemaBuilder.build_schema(
             tool_specific_fields=self.get_tool_fields(),
-            required_fields=self.get_required_fields(),
+            required_fields=required_fields,
             model_field_schema=self.get_model_field_schema(),
             auto_mode=self.is_effective_auto_mode(),
         )
@@ -233,13 +234,6 @@ class SimpleTool(BaseTool):
             return request.files if request.files is not None else []
         except AttributeError:
             return []
-
-    def get_request_use_websearch(self, request) -> bool:
-        """Get use_websearch from request. Override for custom websearch handling."""
-        try:
-            return request.use_websearch if request.use_websearch is not None else True
-        except AttributeError:
-            return True
 
     def get_request_as_dict(self, request) -> dict:
         """Convert request to dictionary. Override for custom serialization."""
@@ -410,11 +404,15 @@ class SimpleTool(BaseTool):
 
             # Get the provider from model context (clean OOP - no re-fetching)
             provider = self._model_context.provider
+            capabilities = self._model_context.capabilities
 
             # Get system prompt for this tool
             base_system_prompt = self.get_system_prompt()
+            capability_augmented_prompt = self._augment_system_prompt_with_capabilities(
+                base_system_prompt, capabilities
+            )
             language_instruction = self.get_language_instruction()
-            system_prompt = language_instruction + base_system_prompt
+            system_prompt = language_instruction + capability_augmented_prompt
 
             # Generate AI response using the provider
             logger.info(f"Sending request to {provider.get_provider_type().value} API for {self.get_name()}")
@@ -428,13 +426,16 @@ class SimpleTool(BaseTool):
             estimated_tokens = estimate_tokens(prompt)
             logger.debug(f"Prompt length: {len(prompt)} characters (~{estimated_tokens:,} tokens)")
 
+            # Resolve model capabilities for feature gating
+            supports_thinking = capabilities.supports_extended_thinking
+
             # Generate content with provider abstraction
             model_response = provider.generate_content(
                 prompt=prompt,
                 model_name=self._current_model_name,
                 system_prompt=system_prompt,
                 temperature=temperature,
-                thinking_mode=thinking_mode if provider.supports_thinking_mode(self._current_model_name) else None,
+                thinking_mode=thinking_mode if supports_thinking else None,
                 images=images if images else None,
             )
 
@@ -457,13 +458,99 @@ class SimpleTool(BaseTool):
 
             else:
                 # Handle cases where the model couldn't generate a response
-                finish_reason = model_response.metadata.get("finish_reason", "Unknown")
-                logger.warning(f"Response blocked or incomplete for {self.get_name()}. Finish reason: {finish_reason}")
-                tool_output = ToolOutput(
-                    status="error",
-                    content=f"Response blocked or incomplete. Finish reason: {finish_reason}",
-                    content_type="text",
-                )
+                metadata = model_response.metadata or {}
+                finish_reason = metadata.get("finish_reason", "Unknown")
+
+                if metadata.get("is_blocked_by_safety"):
+                    # Specific handling for content safety blocks
+                    safety_details = metadata.get("safety_feedback") or "details not provided"
+                    logger.warning(
+                        f"Response blocked by content safety policy for {self.get_name()}. "
+                        f"Reason: {finish_reason}, Details: {safety_details}"
+                    )
+                    tool_output = ToolOutput(
+                        status="error",
+                        content="Your request was blocked by the content safety policy. "
+                        "Please try modifying your prompt.",
+                        content_type="text",
+                    )
+                else:
+                    # Handle other empty responses - could be legitimate completion or unclear blocking
+                    if finish_reason == "STOP":
+                        # Model completed normally but returned empty content - retry with clarification
+                        logger.info(
+                            f"Model completed with empty response for {self.get_name()}, retrying with clarification"
+                        )
+
+                        # Retry the same request with modified prompt asking for explicit response
+                        original_prompt = prompt
+                        retry_prompt = f"{original_prompt}\n\nIMPORTANT: Please provide a substantive response. If you cannot respond to the above request, please explain why and suggest alternatives."
+
+                        try:
+                            retry_response = provider.generate_content(
+                                prompt=retry_prompt,
+                                model_name=self._current_model_name,
+                                system_prompt=system_prompt,
+                                temperature=temperature,
+                                thinking_mode=thinking_mode if supports_thinking else None,
+                                images=images if images else None,
+                            )
+
+                            if retry_response.content:
+                                # Successful retry - use the retry response
+                                logger.info(f"Retry successful for {self.get_name()}")
+                                raw_text = retry_response.content
+
+                                # Update model info for the successful retry
+                                model_info = {
+                                    "provider": provider,
+                                    "model_name": self._current_model_name,
+                                    "model_response": retry_response,
+                                }
+
+                                # Parse the retry response
+                                tool_output = self._parse_response(raw_text, request, model_info)
+                                logger.info(f"✅ {self.get_name()} tool completed successfully after retry")
+                            else:
+                                # Retry also failed - inspect metadata to find out why
+                                retry_metadata = retry_response.metadata or {}
+                                if retry_metadata.get("is_blocked_by_safety"):
+                                    # The retry was blocked by safety filters
+                                    safety_details = retry_metadata.get("safety_feedback") or "details not provided"
+                                    logger.warning(
+                                        f"Retry for {self.get_name()} was blocked by content safety policy. "
+                                        f"Details: {safety_details}"
+                                    )
+                                    tool_output = ToolOutput(
+                                        status="error",
+                                        content="Your request was also blocked by the content safety policy after a retry. "
+                                        "Please try rephrasing your prompt significantly.",
+                                        content_type="text",
+                                    )
+                                else:
+                                    # Retry failed for other reasons (e.g., another STOP)
+                                    tool_output = ToolOutput(
+                                        status="error",
+                                        content="The model repeatedly returned empty responses. This may indicate content filtering or a model issue.",
+                                        content_type="text",
+                                    )
+                        except Exception as retry_error:
+                            logger.warning(f"Retry failed for {self.get_name()}: {retry_error}")
+                            tool_output = ToolOutput(
+                                status="error",
+                                content=f"Model returned empty response and retry failed: {str(retry_error)}",
+                                content_type="text",
+                            )
+                    else:
+                        # Non-STOP finish reasons are likely actual errors
+                        logger.warning(
+                            f"Response blocked or incomplete for {self.get_name()}. Finish reason: {finish_reason}"
+                        )
+                        tool_output = ToolOutput(
+                            status="error",
+                            content=f"Response blocked or incomplete. Finish reason: {finish_reason}",
+                            content_type="text",
+                        )
 
             # Return the tool output as TextContent
             return [TextContent(type="text", text=tool_output.model_dump_json())]
@@ -498,44 +585,7 @@ class SimpleTool(BaseTool):
         # Handle conversation continuation like old base.py
         continuation_id = self.get_request_continuation_id(request)
         if continuation_id:
-            # Add turn to conversation memory
-            from utils.conversation_memory import add_turn
-
-            # Extract model metadata for conversation tracking
-            model_provider = None
-            model_name = None
-            model_metadata = None
-
-            if model_info:
-                provider = model_info.get("provider")
-                if provider:
-                    # Handle both provider objects and string values
-                    if isinstance(provider, str):
-                        model_provider = provider
-                    else:
-                        try:
-                            model_provider = provider.get_provider_type().value
-                        except AttributeError:
-                            # Fallback if provider doesn't have get_provider_type method
-                            model_provider = str(provider)
-                model_name = model_info.get("model_name")
-                model_response = model_info.get("model_response")
-                if model_response:
-                    model_metadata = {"usage": model_response.usage, "metadata": model_response.metadata}
-
-            # Only add the assistant's response to the conversation
-            # The user's turn is handled elsewhere (when thread is created/continued)
-            add_turn(
-                continuation_id,  # thread_id as positional argument
-                "assistant",  # role as positional argument
-                raw_text,  # content as positional argument
-                files=self.get_request_files(request),
-                images=self.get_request_images(request),
-                tool_name=self.get_name(),
-                model_provider=model_provider,
-                model_name=model_name,
-                model_metadata=model_metadata,
-            )
+            self._record_assistant_turn(continuation_id, raw_text, request, model_info)
 
         # Create continuation offer like old base.py
         continuation_data = self._create_continuation_offer(request, model_info)
@@ -588,7 +638,7 @@ class SimpleTool(BaseTool):
                     return {
                         "continuation_id": continuation_id,
                         "remaining_turns": remaining_turns,
-                        "note": f"Claude can continue this conversation for {remaining_turns} more exchanges.",
+                        "note": f"You can continue this conversation for {remaining_turns} more exchanges.",
                     }
             else:
                 # New conversation - create thread and offer continuation
@@ -612,7 +662,7 @@ class SimpleTool(BaseTool):
                 return {
                     "continuation_id": new_thread_id,
                     "remaining_turns": MAX_CONVERSATION_TURNS - 1,
-                    "note": f"Claude can continue this conversation for {MAX_CONVERSATION_TURNS - 1} more exchanges.",
+                    "note": f"You can continue this conversation for {MAX_CONVERSATION_TURNS - 1} more exchanges.",
                 }
         except Exception:
             return None
@@ -624,6 +674,14 @@ class SimpleTool(BaseTool):
         from tools.models import ContinuationOffer, ToolOutput
 
         try:
+            if not self.get_request_continuation_id(request):
+                self._record_assistant_turn(
+                    continuation_data["continuation_id"],
+                    content,
+                    request,
+                    model_info,
+                )
+
             continuation_offer = ContinuationOffer(
                 continuation_id=continuation_data["continuation_id"],
                 note=continuation_data["note"],
@@ -659,6 +717,47 @@ class SimpleTool(BaseTool):
             # Fallback to simple success if continuation offer fails
             return ToolOutput(status="success", content=content, content_type="text")
 
+    def _record_assistant_turn(
+        self, continuation_id: str, response_text: str, request, model_info: Optional[dict]
+    ) -> None:
+        """Persist an assistant response in conversation memory."""
+
+        if not continuation_id:
+            return
+
+        from utils.conversation_memory import add_turn
+
+        model_provider = None
+        model_name = None
+        model_metadata = None
+
+        if model_info:
+            provider = model_info.get("provider")
+            if provider:
+                if isinstance(provider, str):
+                    model_provider = provider
+                else:
+                    try:
+                        model_provider = provider.get_provider_type().value
+                    except AttributeError:
+                        model_provider = str(provider)
+            model_name = model_info.get("model_name")
+            model_response = model_info.get("model_response")
+            if model_response:
+                model_metadata = {"usage": model_response.usage, "metadata": model_response.metadata}
+
+        add_turn(
+            continuation_id,
+            "assistant",
+            response_text,
+            files=self.get_request_files(request),
+            images=self.get_request_images(request),
+            tool_name=self.get_name(),
+            model_provider=model_provider,
+            model_name=model_name,
+            model_metadata=model_metadata,
+        )
+
     # Convenience methods for common tool patterns
 
     def build_standard_prompt(
@@ -682,7 +781,11 @@ class SimpleTool(BaseTool):
         Returns:
             Complete formatted prompt ready for the AI model
         """
-        # Add context files if provided
+        # Check size limits against raw user input before enriching with internal context
+        content_to_validate = self.get_prompt_content_for_size_validation(user_content)
+        self._validate_token_limit(content_to_validate, "Content")
+
+        # Add context files if provided (does not affect MCP boundary enforcement)
         files = self.get_request_files(request)
         if files:
             file_content, processed_files = self._prepare_file_content_for_prompt(
@@ -695,15 +798,8 @@ class SimpleTool(BaseTool):
             if file_content:
                 user_content = f"{user_content}\n\n=== {file_context_title} ===\n{file_content}\n=== END CONTEXT ===="
 
-        # Check token limits - only validate original user prompt, not conversation history
-        content_to_validate = self.get_prompt_content_for_size_validation(user_content)
-        self._validate_token_limit(content_to_validate, "Content")
-
-        # Add web search instruction if enabled
-        websearch_instruction = ""
-        use_websearch = self.get_request_use_websearch(request)
-        if use_websearch:
-            websearch_instruction = self.get_websearch_instruction(use_websearch, self.get_websearch_guidance())
+        # Add standardized web search guidance
+        websearch_instruction = self.get_websearch_instruction(self.get_websearch_guidance())
 
         # Combine system prompt with user content
         full_prompt = f"""{system_prompt}{websearch_instruction}
@@ -888,5 +984,11 @@ Please provide a thoughtful, comprehensive response:"""
         finally:
             # Restore original guidance method
             self.get_websearch_guidance = original_guidance
+
+        if system_prompt:
+            marker = "\n\n=== USER REQUEST ===\n"
+            if marker in full_prompt:
+                _, user_section = full_prompt.split(marker, 1)
+                return f"=== USER REQUEST ===\n{user_section}"
 
         return full_prompt

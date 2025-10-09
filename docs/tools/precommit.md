@@ -94,8 +94,8 @@ Then it shared the changes and relevant code with Gemini 2.5 Pro - the following
 
   🚨 [HIGH PRIORITY] Critical Issue Found
 
-  Inconsistent Provider Handling in tools/base.py
-  - Location: tools/base.py line ~1833 in _create_continuation_offer_response method
+  Inconsistent Provider Handling in tools/shared/base_tool.py
+  - Location: tools/shared/base_tool.py inside _create_continuation_offer_response
   - Problem: The defensive provider handling pattern was applied in 2 locations but missed a 3rd location
   - Impact: Risk of AttributeError: 'str' object has no attribute 'get_provider_type' in continuation scenarios
   - Fix Required: Apply the same defensive pattern to the missed location
@@ -149,7 +149,6 @@ Use zen and perform a thorough precommit ensuring there aren't any new regressio
 - `focus_on`: Specific aspects to focus on
 - `temperature`: Temperature for response (default: 0.2)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for best practices (default: true)
 - `use_assistant_model`: Whether to use expert validation phase (default: true, set to false to use Claude only)
 - `continuation_id`: Continue previous validation discussions
 

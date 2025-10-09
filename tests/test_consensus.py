@@ -122,8 +122,8 @@ class TestConsensusTool:
         # relevant_files should be present as it's used by consensus
         assert "relevant_files" in schema["properties"]
 
-        # model field should be present for Gemini compatibility (consensus uses 'models' as well)
-        assert "model" in schema["properties"]
+        # model field should NOT be present as consensus uses 'models' field instead
+        assert "model" not in schema["properties"]
 
         # Verify workflow fields that should NOT be present
         assert "files_checked" not in schema["properties"]
@@ -131,7 +131,6 @@ class TestConsensusTool:
         assert "issues_found" not in schema["properties"]
         assert "temperature" not in schema["properties"]
         assert "thinking_mode" not in schema["properties"]
-        assert "use_websearch" not in schema["properties"]
 
         # Images should be present now
         assert "images" in schema["properties"]
@@ -330,6 +329,80 @@ class TestConsensusTool:
         response_data = {}
         result = tool.customize_workflow_response(response_data, request)
         assert result["consensus_workflow_status"] == "ready_for_synthesis"
+
+    @pytest.mark.asyncio
+    async def test_consensus_with_relevant_files_model_context_fix(self):
+        """Test that consensus tool properly handles relevant_files without RuntimeError.
+
+        This is a regression test for the bug where _prepare_file_content_for_prompt
+        was called without model_context parameter, causing RuntimeError:
+        'Model context not provided for file preparation'
+
+        Bug details:
+        - Occurred when consensus tool processed requests with relevant_files
+        - _consult_model method called _prepare_file_content_for_prompt without model_context
+        - Method expected model_context parameter but got None (default value)
+        - Runtime validation in base_tool.py threw RuntimeError
+        """
+        from unittest.mock import AsyncMock, Mock, patch
+
+        from utils.model_context import ModelContext
+
+        tool = ConsensusTool()
+
+        # Create a mock request with relevant_files (the trigger condition)
+        mock_request = Mock()
+        mock_request.relevant_files = ["/test/file1.py", "/test/file2.js"]
+        mock_request.continuation_id = None
+
+        # Mock model configuration
+        model_config = {"model": "flash", "stance": "neutral"}
+
+        # Mock the provider and model name resolution
+        with (
+            patch.object(tool, "get_model_provider") as mock_get_provider,
+            patch.object(tool, "_prepare_file_content_for_prompt") as mock_prepare_files,
+            patch.object(tool, "_get_stance_enhanced_prompt") as mock_get_prompt,
+            patch.object(tool, "get_name", return_value="consensus"),
+        ):
+
+            # Setup mocks
+            mock_provider = Mock()
+            mock_provider.generate_content = AsyncMock(return_value={"response": "test response"})
+            mock_get_provider.return_value = mock_provider
+            mock_prepare_files.return_value = ("file content", [])
+            mock_get_prompt.return_value = "system prompt"
+
+            # Set up the tool's attributes that would be set during normal execution
+            tool.original_proposal = "Test proposal"
+
+            try:
+                # This should not raise RuntimeError after the fix
+                # The method should create ModelContext and pass it to _prepare_file_content_for_prompt
+                await tool._consult_model(model_config, mock_request)
+
+                # Verify that _prepare_file_content_for_prompt was called with model_context
+                mock_prepare_files.assert_called_once()
+                call_args = mock_prepare_files.call_args
+
+                # Check that model_context was passed as keyword argument
+                assert "model_context" in call_args.kwargs, "model_context should be passed as keyword argument"
+
+                # Verify the model_context is a proper ModelContext instance
+                model_context = call_args.kwargs["model_context"]
+                assert isinstance(model_context, ModelContext), "model_context should be ModelContext instance"
+
+                # Verify model_context properties are correct
+                assert model_context.model_name == "flash"
+                # Note: provider is accessed lazily, conversation_history and tool_name
+                # are not part of ModelContext constructor in current implementation
+
+            except RuntimeError as e:
+                if "Model context not provided" in str(e):
+                    pytest.fail("The model_context fix is not working. RuntimeError still occurs: " + str(e))
+                else:
+                    # Re-raise if it's a different RuntimeError
+                    raise
 
 
 if __name__ == "__main__":

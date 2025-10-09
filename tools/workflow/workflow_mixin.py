@@ -41,7 +41,7 @@ class BaseWorkflowMixin(ABC):
     """
     Abstract base class providing guided workflow functionality for tools.
 
-    This class implements a sophisticated workflow pattern where Claude performs
+    This class implements a sophisticated workflow pattern where the CLI performs
     systematic local work before calling external models for expert analysis.
     Tools can inherit from this class to gain comprehensive workflow capabilities.
 
@@ -52,7 +52,7 @@ class BaseWorkflowMixin(ABC):
     - Fully type-annotated for excellent IDE support
 
     Context-Aware File Embedding:
-    - Intermediate steps: Only reference file names (saves Claude's context)
+    - Intermediate steps: Only reference file names (saves the CLI's context)
     - Final steps: Embed full file content for expert analysis
     - Integrates with existing token budgeting infrastructure
 
@@ -148,7 +148,7 @@ class BaseWorkflowMixin(ABC):
             request: Optional request object for continuation-aware decisions
 
         Returns:
-            List of specific actions Claude should take before calling tool again
+            List of specific actions the CLI should take before calling tool again
         """
         pass
 
@@ -266,13 +266,6 @@ class BaseWorkflowMixin(ABC):
             return request.thinking_mode if request.thinking_mode is not None else self.get_expert_thinking_mode()
         except AttributeError:
             return self.get_expert_thinking_mode()
-
-    def get_request_use_websearch(self, request) -> bool:
-        """Get use_websearch from request. Override for custom websearch handling."""
-        try:
-            return request.use_websearch if request.use_websearch is not None else True
-        except AttributeError:
-            return True
 
     def get_expert_analysis_instruction(self) -> str:
         """
@@ -452,11 +445,11 @@ class BaseWorkflowMixin(ABC):
         Handle file context appropriately based on workflow phase.
 
         CONTEXT-AWARE FILE EMBEDDING STRATEGY:
-        1. Intermediate steps + continuation: Only reference file names (save Claude's context)
+        1. Intermediate steps + continuation: Only reference file names (save the CLI's context)
         2. Final step: Embed full file content for expert analysis
         3. Expert analysis: Always embed relevant files with token budgeting
 
-        This prevents wasting Claude's limited context on intermediate steps while ensuring
+        This prevents wasting the CLI's limited context on intermediate steps while ensuring
         the final expert analysis has complete file context.
         """
         continuation_id = self.get_request_continuation_id(request)
@@ -491,7 +484,7 @@ class BaseWorkflowMixin(ABC):
         Determine whether to embed file content based on workflow context.
 
         CORRECT LOGIC:
-        - NEVER embed files when Claude is getting the next step (next_step_required=True)
+        - NEVER embed files when the CLI is getting the next step (next_step_required=True)
         - ONLY embed files when sending to external model (next_step_required=False)
 
         Args:
@@ -573,7 +566,7 @@ class BaseWorkflowMixin(ABC):
     def _reference_workflow_files(self, request: Any) -> None:
         """
         Reference file names without embedding content for intermediate steps.
-        Saves Claude's context while still providing file awareness.
+        Saves the CLI's context while still providing file awareness.
         """
         # Workflow tools use relevant_files, not files
         request_files = self.get_request_relevant_files(request)
@@ -590,10 +583,7 @@ class BaseWorkflowMixin(ABC):
 
         # Create a simple reference note
         file_names = [os.path.basename(f) for f in request_files]
-        reference_note = (
-            f"Files referenced in this step: {', '.join(file_names)}\n"
-            f"(File content available via conversation history or can be discovered by Claude)"
-        )
+        reference_note = f"Files referenced in this step: {', '.join(file_names)}\n"
 
         self._file_reference_note = reference_note
         logger.debug(f"[WORKFLOW_FILES] {self.get_name()}: Set _file_reference_note: {self._file_reference_note}")
@@ -733,7 +723,7 @@ class BaseWorkflowMixin(ABC):
             if not request.next_step_required:
                 response_data = await self.handle_work_completion(response_data, request, arguments)
             else:
-                # Force Claude to work before calling tool again
+                # Force CLI to work before calling tool again
                 response_data = self.handle_work_continuation(response_data, request)
 
             # Allow tools to customize the final response
@@ -827,7 +817,7 @@ class BaseWorkflowMixin(ABC):
             response_data["file_context"] = {
                 "type": "reference_only",
                 "note": reference_note,
-                "context_optimization": "Files referenced but not embedded to preserve Claude's context window",
+                "context_optimization": "Files referenced but not embedded to preserve the context window",
             }
 
         return response_data
@@ -1121,7 +1111,7 @@ class BaseWorkflowMixin(ABC):
                 response_data["file_context"] = {
                     "type": "reference_only",
                     "note": reference_note,
-                    "context_optimization": "Files referenced but not embedded to preserve Claude's context window",
+                    "context_optimization": "Files referenced but not embedded to preserve the context window",
                 }
 
         return response_data
@@ -1490,8 +1480,11 @@ class BaseWorkflowMixin(ABC):
 
             # Get system prompt for this tool with localization support
             base_system_prompt = self.get_system_prompt()
+            capability_augmented_prompt = self._augment_system_prompt_with_capabilities(
+                base_system_prompt, getattr(self._model_context, "capabilities", None)
+            )
             language_instruction = self.get_language_instruction()
-            system_prompt = language_instruction + base_system_prompt
+            system_prompt = language_instruction + capability_augmented_prompt
 
             # Check if tool wants system prompt embedded in main prompt
             if self.should_embed_system_prompt():
@@ -1514,7 +1507,6 @@ class BaseWorkflowMixin(ABC):
                 system_prompt=system_prompt,
                 temperature=validated_temperature,
                 thinking_mode=self.get_request_thinking_mode(request),
-                use_websearch=self.get_request_use_websearch(request),
                 images=list(set(self.consolidated_findings.images)) if self.consolidated_findings.images else None,
             )
 

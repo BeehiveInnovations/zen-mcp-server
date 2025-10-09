@@ -93,6 +93,7 @@ class WorkflowSchemaBuilder:
         tool_name: str = None,
         excluded_workflow_fields: list[str] = None,
         excluded_common_fields: list[str] = None,
+        require_model: bool = False,
     ) -> dict[str, Any]:
         """
         Build complete schema for workflow tools.
@@ -142,7 +143,7 @@ class WorkflowSchemaBuilder:
 
         required = standard_required + (required_fields or [])
 
-        if auto_mode and "model" not in required:
+        if (auto_mode or require_model) and "model" not in required:
             required.append("model")
 
         # Build the complete schema

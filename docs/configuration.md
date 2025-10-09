@@ -67,16 +67,83 @@ CUSTOM_MODEL_NAME=llama3.2                          # Default model
 DEFAULT_MODEL=auto  # Claude picks best model for each task (recommended)
 ```
 
-**Available Models:**
-- **`auto`**: Claude automatically selects the optimal model
-- **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
-- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
-- **`o3`**: Strong logical reasoning (200K context)
-- **`o3-mini`**: Balanced speed/quality (200K context)
-- **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
-- **`grok-3`**: GROK-3 advanced reasoning (131K context)
-- **`grok-4-latest`**: GROK-4 latest flagship model (256K context)
-- **Custom models**: via OpenRouter or local APIs
+- **Available Models:** The canonical capability data for native providers lives in JSON manifests under `conf/`:
+  - `conf/openai_models.json` – OpenAI catalogue (can be overridden with `OPENAI_MODELS_CONFIG_PATH`)
+  - `conf/gemini_models.json` – Gemini catalogue (`GEMINI_MODELS_CONFIG_PATH`)
+  - `conf/xai_models.json` – X.AI / GROK catalogue (`XAI_MODELS_CONFIG_PATH`)
+  - `conf/openrouter_models.json` – OpenRouter catalogue (`OPENROUTER_MODELS_CONFIG_PATH`)
+  - `conf/dial_models.json` – DIAL aggregation catalogue (`DIAL_MODELS_CONFIG_PATH`)
+  - `conf/custom_models.json` – Custom/OpenAI-compatible endpoints (`CUSTOM_MODELS_CONFIG_PATH`)
+
+  Each JSON file documents the allowed fields via its `_README` block and controls model aliases, capability limits, and feature flags (including `allow_code_generation`). Edit these files (or point the matching `*_MODELS_CONFIG_PATH` variable to your own copy) when you want to adjust context windows, enable JSON mode, enable structured code generation, or expose additional aliases without touching Python code.
+
+  The shipped defaults cover:
+
+  | Provider | Canonical Models | Notable Aliases |
+  |----------|-----------------|-----------------|
+  | OpenAI | `gpt-5`, `gpt-5-pro`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5-codex`, `gpt-4.1`, `o3`, `o3-mini`, `o3-pro`, `o4-mini` | `gpt5`, `gpt5pro`, `mini`, `nano`, `codex`, `o3mini`, `o3pro`, `o4mini` |
+  | Gemini | `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` | `pro`, `gemini-pro`, `flash`, `flash-2.0`, `flashlite` |
+  | X.AI | `grok-4`, `grok-3`, `grok-3-fast` | `grok`, `grok4`, `grok3`, `grok3fast`, `grokfast` |
+  | OpenRouter | See `conf/openrouter_models.json` for the continually evolving catalogue | e.g., `opus`, `sonnet`, `flash`, `pro`, `mistral` |
+  | Custom | User-managed entries such as `llama3.2` | Define your own aliases per entry |
+
+  > **Tip:** Copy the JSON file you need, customise it, and point the corresponding `*_MODELS_CONFIG_PATH` environment variable to your version. This lets you enable or disable capabilities (JSON mode, function calling, temperature support, code generation) without editing Python.
+
+### Code Generation Capability
+
+**`allow_code_generation` Flag:**
+
+The `allow_code_generation` capability enables models to generate complete, production-ready implementations in a structured format. When enabled, the `chat` tool will inject special instructions for substantial code generation tasks.
+
+```json
+{
+  "model_name": "gpt-5",
+  "allow_code_generation": true,
+  ...
+}
+```
+
+**When to Enable:**
+
+- **Enable for**: Models MORE capable than your primary CLI's model (e.g., GPT-5, GPT-5 Pro when using Claude Code with Sonnet 4.5)
+- **Purpose**: Get complete implementations from a more powerful reasoning model that your primary CLI can then review and apply
+- **Use case**: Large-scale implementations, major refactoring, complete module creation
+
+**Important Guidelines:**
+
+1. Only enable for models significantly more capable than your primary CLI to ensure high-quality generated code
+2. The capability triggers structured code output (`<GENERATED-CODE>` blocks) for substantial implementation requests
+3. Minor code changes still use inline code blocks regardless of this setting
+4. Generated code is saved to `zen_generated.code` in the user's working directory
+5. Your CLI receives instructions to review and apply the generated code systematically
+
+**Example Configuration:**
+
+```json
+// OpenAI models configuration (conf/openai_models.json)
+{
+  "models": [
+    {
+      "model_name": "gpt-5",
+      "allow_code_generation": true,
+      "intelligence_score": 18,
+      ...
+    },
+    {
+      "model_name": "gpt-5-pro",
+      "allow_code_generation": true,
+      "intelligence_score": 19,
+      ...
+    }
+  ]
+}
+```
+
+**Typical Workflow:**
+1. You ask your AI agent to implement a complex new feature using `chat` with a higher-reasoning model such as **gpt-5-pro**
+2. GPT-5-Pro generates structured implementation and shares the complete implementation with Zen
+3. Zen saves the code to `zen_generated.code` and asks AI agent to implement the plan
+4. AI agent continues from the previous context, reads the file, applies the implementation
 
 ### Thinking Mode Configuration
 
@@ -108,34 +175,17 @@ OPENAI_ALLOWED_MODELS=o3-mini,o4-mini,mini
 GOOGLE_ALLOWED_MODELS=flash,pro
 
 # X.AI GROK model restrictions
-XAI_ALLOWED_MODELS=grok-3,grok-3-fast,grok-4-latest
+XAI_ALLOWED_MODELS=grok-3,grok-3-fast,grok-4
 
 # OpenRouter model restrictions (affects models via custom provider)
 OPENROUTER_ALLOWED_MODELS=opus,sonnet,mistral
 ```
 
-**Supported Model Names:**
+**Supported Model Names:** The names/aliases listed in the JSON manifests above are the authoritative source. Keep in mind:
 
-**OpenAI Models:**
-- `o3` (200K context, high reasoning)
-- `o3-mini` (200K context, balanced)
-- `o4-mini` (200K context, latest balanced)
-- `mini` (shorthand for o4-mini)
-
-**Gemini Models:**
-- `gemini-2.5-flash` (1M context, fast)
-- `gemini-2.5-pro` (1M context, powerful)
-- `flash` (shorthand for Flash model)
-- `pro` (shorthand for Pro model)
-
-**X.AI GROK Models:**
-- `grok-4-latest` (256K context, latest flagship model with reasoning, vision, and structured outputs)
-- `grok-3` (131K context, advanced reasoning)
-- `grok-3-fast` (131K context, higher performance)
-- `grok` (shorthand for grok-4-latest)
-- `grok4` (shorthand for grok-4-latest)
-- `grok3` (shorthand for grok-3)
-- `grokfast` (shorthand for grok-3-fast)
+- Aliases are case-insensitive and defined per entry (for example, `mini` maps to `gpt-5-mini` by default, while `flash` maps to `gemini-2.5-flash`).
+- When you override the manifest files you can add or remove aliases as needed; restriction policies (`*_ALLOWED_MODELS`) automatically pick up those changes.
+- Models omitted from a manifest fall back to generic capability detection (where supported) and may have limited feature metadata.
 
 **Example Configurations:**
 ```env
@@ -154,10 +204,15 @@ XAI_ALLOWED_MODELS=grok,grok-3-fast
 
 ### Advanced Configuration
 
-**Custom Model Configuration:**
+**Custom Model Configuration & Manifest Overrides:**
 ```env
-# Override default location of custom_models.json
-CUSTOM_MODELS_CONFIG_PATH=/path/to/your/custom_models.json
+# Override default location of built-in catalogues
+OPENAI_MODELS_CONFIG_PATH=/path/to/openai_models.json
+GEMINI_MODELS_CONFIG_PATH=/path/to/gemini_models.json
+XAI_MODELS_CONFIG_PATH=/path/to/xai_models.json
+OPENROUTER_MODELS_CONFIG_PATH=/path/to/openrouter_models.json
+DIAL_MODELS_CONFIG_PATH=/path/to/dial_models.json
+CUSTOM_MODELS_CONFIG_PATH=/path/to/custom_models.json
 ```
 
 **Conversation Settings:**

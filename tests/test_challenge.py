@@ -26,7 +26,7 @@ class TestChallengeTool:
         assert self.tool.get_name() == "challenge"
         assert "reflexive agreement" in self.tool.get_description()
         assert "critical thinking" in self.tool.get_description()
-        assert "thoughtful evaluation" in self.tool.get_description()
+        assert "reasoned analysis" in self.tool.get_description()
         assert self.tool.get_default_temperature() == 0.2  # TEMPERATURE_ANALYTICAL
 
     def test_requires_model(self):
@@ -54,7 +54,6 @@ class TestChallengeTool:
         assert "model" not in properties
         assert "temperature" not in properties
         assert "thinking_mode" not in properties
-        assert "use_websearch" not in properties
         assert "continuation_id" not in properties
 
     def test_request_model_validation(self):
@@ -154,8 +153,8 @@ class TestChallengeTool:
 
         assert "prompt" in fields
         assert fields["prompt"]["type"] == "string"
-        assert "message or statement" in fields["prompt"]["description"]
-        assert "analyze critically" in fields["prompt"]["description"]
+        assert "Statement to scrutinize" in fields["prompt"]["description"]
+        assert "strip the word 'challenge'" in fields["prompt"]["description"]
 
     def test_required_fields_list(self):
         """Test required fields list"""

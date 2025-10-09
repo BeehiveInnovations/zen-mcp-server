@@ -4,8 +4,8 @@ import os
 
 import pytest
 
-from providers.base import ProviderType
 from providers.registry import ModelProviderRegistry
+from providers.shared import ProviderType
 from tools.models import ToolModelCategory
 
 
@@ -86,7 +86,7 @@ class TestAutoModeProviderSelection:
                 os.environ.pop(key, None)
 
             # Register only OpenAI provider
-            from providers.openai_provider import OpenAIModelProvider
+            from providers.openai import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 
@@ -98,7 +98,7 @@ class TestAutoModeProviderSelection:
             balanced = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.BALANCED)
 
             # Should select appropriate OpenAI models based on new preference order
-            assert extended_reasoning == "o3"  # O3 for extended reasoning
+            assert extended_reasoning == "gpt-5-codex"  # GPT-5-Codex prioritized for extended reasoning
             assert fast_response == "gpt-5"  # gpt-5 comes first in fast response preference
             assert balanced == "gpt-5"  # gpt-5 for balanced
 
@@ -127,7 +127,7 @@ class TestAutoModeProviderSelection:
 
             # Register both providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai_provider import OpenAIModelProvider
+            from providers.openai import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
@@ -212,7 +212,7 @@ class TestAutoModeProviderSelection:
 
             # Register both providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai_provider import OpenAIModelProvider
+            from providers.openai import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
@@ -256,7 +256,7 @@ class TestAutoModeProviderSelection:
 
             # Register all providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai_provider import OpenAIModelProvider
+            from providers.openai import OpenAIModelProvider
             from providers.xai import XAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -307,7 +307,7 @@ class TestAutoModeProviderSelection:
 
             # Register all providers
             from providers.gemini import GeminiModelProvider
-            from providers.openai_provider import OpenAIModelProvider
+            from providers.openai import OpenAIModelProvider
             from providers.xai import XAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -330,10 +330,10 @@ class TestAutoModeProviderSelection:
                 assert provider.get_provider_type() == expected_provider_type, f"Wrong provider for '{alias}'"
 
                 # Test alias resolution
-                resolved_name = provider._resolve_model_name(alias)
+                resolved_model_name = provider._resolve_model_name(alias)
                 assert (
-                    resolved_name == expected_resolved_name
-                ), f"Alias '{alias}' should resolve to '{expected_resolved_name}', got '{resolved_name}'"
+                    resolved_model_name == expected_resolved_name
+                ), f"Alias '{alias}' should resolve to '{expected_resolved_name}', got '{resolved_model_name}'"
 
         finally:
             # Restore original environment

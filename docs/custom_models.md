@@ -35,22 +35,34 @@ This guide covers setting up multiple AI model providers including OpenRouter, c
 
 ## Model Aliases
 
-The server uses `conf/custom_models.json` to map convenient aliases to both OpenRouter and custom model names. This unified registry supports both cloud models (via OpenRouter) and local models (via custom endpoints).
+Zen ships multiple registries:
+
+- `conf/openai_models.json` – native OpenAI catalogue (override with `OPENAI_MODELS_CONFIG_PATH`)
+- `conf/gemini_models.json` – native Google Gemini catalogue (`GEMINI_MODELS_CONFIG_PATH`)
+- `conf/xai_models.json` – native X.AI / GROK catalogue (`XAI_MODELS_CONFIG_PATH`)
+- `conf/openrouter_models.json` – OpenRouter catalogue (`OPENROUTER_MODELS_CONFIG_PATH`)
+- `conf/dial_models.json` – DIAL aggregation catalogue (`DIAL_MODELS_CONFIG_PATH`)
+- `conf/custom_models.json` – local/self-hosted OpenAI-compatible catalogue (`CUSTOM_MODELS_CONFIG_PATH`)
+
+Copy whichever file you need into your project (or point the corresponding `*_MODELS_CONFIG_PATH` env var at your own copy) and edit it to advertise the models you want.
 
 ### OpenRouter Models (Cloud)
 
-| Alias | Maps to OpenRouter Model |
-|-------|-------------------------|
-| `opus` | `anthropic/claude-opus-4` |
-| `sonnet`, `claude` | `anthropic/claude-sonnet-4` |
-| `haiku` | `anthropic/claude-3.5-haiku` |
-| `gpt4o`, `4o` | `openai/gpt-4o` |
-| `gpt4o-mini`, `4o-mini` | `openai/gpt-4o-mini` |
-| `pro`, `gemini` | `google/gemini-2.5-pro` |
-| `flash` | `google/gemini-2.5-flash` |
-| `mistral` | `mistral/mistral-large` |
-| `deepseek`, `coder` | `deepseek/deepseek-coder` |
-| `perplexity` | `perplexity/llama-3-sonar-large-32k-online` |
+The curated defaults in `conf/openrouter_models.json` include popular entries such as:
+
+| Alias | Canonical Model | Highlights |
+|-------|-----------------|------------|
+| `opus`, `claude-opus` | `anthropic/claude-opus-4.1` | Flagship Claude reasoning model with vision |
+| `sonnet`, `sonnet4.5` | `anthropic/claude-sonnet-4.5` | Balanced Claude with high context window |
+| `haiku` | `anthropic/claude-3.5-haiku` | Fast Claude option with vision |
+| `pro`, `gemini` | `google/gemini-2.5-pro` | Frontier Gemini with extended thinking |
+| `flash` | `google/gemini-2.5-flash` | Ultra-fast Gemini with vision |
+| `mistral` | `mistralai/mistral-large-2411` | Frontier Mistral (text only) |
+| `llama3` | `meta-llama/llama-3-70b` | Large open-weight text model |
+| `deepseek-r1` | `deepseek/deepseek-r1-0528` | DeepSeek reasoning model |
+| `perplexity` | `perplexity/llama-3-sonar-large-32k-online` | Search-augmented model |
+
+Consult the JSON file for the full list, aliases, and capability flags. Add new entries as OpenRouter releases additional models.
 
 ### Custom/Local Models
 
@@ -58,7 +70,19 @@ The server uses `conf/custom_models.json` to map convenient aliases to both Open
 |-------|-------------------|------|
 | `local-llama`, `local` | `llama3.2` | Requires `CUSTOM_API_URL` configured |
 
-View the full list in [`conf/custom_models.json`](conf/custom_models.json).
+View the baseline OpenRouter catalogue in [`conf/openrouter_models.json`](conf/openrouter_models.json) and populate [`conf/custom_models.json`](conf/custom_models.json) with your local models.
+
+Native catalogues (`conf/openai_models.json`, `conf/gemini_models.json`, `conf/xai_models.json`, `conf/dial_models.json`) follow the same schema. Updating those files lets you:
+
+- Expose new aliases (e.g., map `enterprise-pro` to `gpt-5-pro`)
+- Advertise support for JSON mode or vision if the upstream provider adds it
+- Adjust token limits when providers increase context windows
+
+Because providers load the manifests on import, you can tweak capabilities without touching Python. Restart the server after editing the JSON files so changes are picked up.
+
+To control ordering in auto mode or the `listmodels` summary, adjust the
+[`intelligence_score`](model_ranking.md) for each entry (or rely on the automatic
+heuristic described there).
 
 **Note:** While you can use any OpenRouter model by its full name, models not in the config file will use generic capabilities (32K context window, no extended thinking, etc.) which may not match the model's actual capabilities. For best results, add new models to the config file with their proper specifications.
 
@@ -148,7 +172,7 @@ CUSTOM_MODEL_NAME=your-loaded-model
 
 ## Using Models
 
-**Using model aliases (from conf/custom_models.json):**
+**Using model aliases (from the registry files):**
 ```
 # OpenRouter models:
 "Use opus for deep analysis"         # → anthropic/claude-opus-4
@@ -181,20 +205,20 @@ CUSTOM_MODEL_NAME=your-loaded-model
 
 The system automatically routes models to the appropriate provider:
 
-1. **Models with `is_custom: true`** → Always routed to Custom API (requires `CUSTOM_API_URL`)
-2. **Models with `is_custom: false` or omitted** → Routed to OpenRouter (requires `OPENROUTER_API_KEY`)
+1. Entries in `conf/custom_models.json` → Always routed through the Custom API (requires `CUSTOM_API_URL`)
+2. Entries in `conf/openrouter_models.json` → Routed through OpenRouter (requires `OPENROUTER_API_KEY`)
 3. **Unknown models** → Fallback logic based on model name patterns
 
 **Provider Priority Order:**
 1. Native APIs (Google, OpenAI) - if API keys are available
-2. Custom endpoints - for models marked with `is_custom: true`
+2. Custom endpoints - for models declared in `conf/custom_models.json`  
 3. OpenRouter - catch-all for cloud models
 
 This ensures clean separation between local and cloud models while maintaining flexibility for unknown models.
 
 ## Model Configuration
 
-The server uses `conf/custom_models.json` to define model aliases and capabilities. You can:
+These JSON files define model aliases and capabilities. You can:
 
 1. **Use the default configuration** - Includes popular models with convenient aliases
 2. **Customize the configuration** - Add your own models and aliases
@@ -202,7 +226,7 @@ The server uses `conf/custom_models.json` to define model aliases and capabiliti
 
 ### Adding Custom Models
 
-Edit `conf/custom_models.json` to add new models. The configuration supports both OpenRouter (cloud) and custom endpoint (local) models.
+Edit `conf/openrouter_models.json` to tweak OpenRouter behaviour or `conf/custom_models.json` to add local models. Each entry maps directly onto [`ModelCapabilities`](../providers/shared/model_capabilities.py).
 
 #### Adding an OpenRouter Model
 
@@ -228,7 +252,6 @@ Edit `conf/custom_models.json` to add new models. The configuration supports bot
   "supports_extended_thinking": false,
   "supports_json_mode": false,
   "supports_function_calling": false,
-  "is_custom": true,
   "description": "My custom Ollama/vLLM model"
 }
 ```
@@ -240,10 +263,9 @@ Edit `conf/custom_models.json` to add new models. The configuration supports bot
 - `supports_extended_thinking`: Whether the model has extended reasoning capabilities
 - `supports_json_mode`: Whether the model can guarantee valid JSON output
 - `supports_function_calling`: Whether the model supports function/tool calling
-- `is_custom`: **Set to `true` for models that should ONLY work with custom endpoints** (Ollama, vLLM, etc.)
 - `description`: Human-readable description of the model
 
-**Important:** Always set `is_custom: true` for local models. This ensures they're only used when `CUSTOM_API_URL` is configured and prevents conflicts with OpenRouter.
+**Important:** Keep OpenRouter and Custom models in their respective files so that requests are routed correctly.
 
 ## Available Models
 

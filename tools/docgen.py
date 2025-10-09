@@ -37,58 +37,21 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for documentation generation
 DOCGEN_FIELD_DESCRIPTIONS = {
     "step": (
-        "Step 1 (DISCOVERY): Plan to discover ALL files needing documentation; count and list them clearly. DO NOT document yet. "
-        "Step 2+ (DOCUMENTATION): Document ONE file at a time. CRITICAL: DO NOT ALTER CODE LOGIC - only add documentation. "
-        "If you find bugs, TRACK them but DO NOT FIX. Report progress using counters."
+        "Step 1 (Discovery): list every file that needs documentation and record the total. Do not write docs yet. "
+        "Steps 2+: document exactly one file per step. Never change code logic; log bugs separately. Keep the counters accurate."
     ),
-    "step_number": (
-        "The index of the current step in the documentation generation sequence, beginning at 1. Each step should build upon or "
-        "revise the previous one."
-    ),
-    "total_steps": (
-        "Total steps needed to complete documentation: 1 (discovery) + number of files to document. "
-        "This is calculated dynamically based on total_files_to_document counter."
-    ),
-    "next_step_required": (
-        "Set to true if you plan to continue the documentation analysis with another step. False means you believe the "
-        "documentation plan is complete and ready for implementation."
-    ),
-    "findings": (
-        "Summary of documentation needs found in this step. Note missing docs, complexity, and call flows. "
-        "IMPORTANT: Document both well-documented areas and areas needing docs. "
-        "CRITICAL: If ANY bugs are found, STOP and report them immediately before continuing documentation."
-    ),
-    "relevant_files": (
-        "Current focus files (absolute paths) for this step. Focus on documenting ONE FILE completely per step."
-    ),
-    "relevant_context": (
-        "List methods/functions needing documentation, in 'ClassName.methodName' or 'functionName' format. "
-        "Prioritize complex logic, important interfaces, or missing documentation."
-    ),
-    "num_files_documented": (
-        "Counter for fully documented files. Starts at 0. Increment only when a file is 100% complete. "
-        "CRITICAL: Must equal 'total_files_to_document' to finish."
-    ),
-    "total_files_to_document": (
-        "Counter for total files needing documentation. Set in step 1 during discovery. "
-        "This is the completion target for the 'num_files_documented' counter."
-    ),
-    "document_complexity": (
-        "Whether to include algorithmic complexity (Big O) analysis in function/method documentation. "
-        "Default: true. When enabled, analyzes and documents the computational complexity of algorithms."
-    ),
-    "document_flow": (
-        "Whether to include call flow and dependency information in documentation. "
-        "Default: true. When enabled, documents which methods this function calls and which methods call this function."
-    ),
-    "update_existing": (
-        "Whether to update existing documentation when it's found to be incorrect or incomplete. "
-        "Default: true. When enabled, improves existing docs rather than just adding new ones."
-    ),
-    "comments_on_complex_logic": (
-        "Whether to add inline comments around complex logic within functions. "
-        "Default: true. When enabled, adds explanatory comments for non-obvious algorithmic steps."
-    ),
+    "step_number": "Current documentation step (starts at 1).",
+    "total_steps": "1 discovery step + one step per file documented (tracks via `total_files_to_document`).",
+    "next_step_required": "True while more files still need documentation; False once everything is complete.",
+    "findings": "Summarize documentation gaps, complexity, call flows, and well-documented areas. Stop and report immediately if you uncover a bug.",
+    "relevant_files": "Absolute paths for the file(s) you are documenting this step—stick to a single file per step.",
+    "relevant_context": "Functions or methods needing documentation (e.g. 'Class.method', 'function_name'), especially complex or user-facing areas.",
+    "num_files_documented": "Count of files finished so far. Increment only when a file is fully documented.",
+    "total_files_to_document": "Total files identified in discovery; completion requires matching this count.",
+    "document_complexity": "Include algorithmic complexity (Big O) analysis when True (default).",
+    "document_flow": "Include call flow/dependency notes when True (default).",
+    "update_existing": "True (default) to polish inaccurate or outdated docs instead of leaving them untouched.",
+    "comments_on_complex_logic": "True (default) to add inline comments around non-obvious logic.",
 }
 
 
@@ -243,7 +206,6 @@ class DocgenTool(WorkflowTool):
             "model",  # Documentation doesn't need external model selection
             "temperature",  # Documentation doesn't need temperature control
             "thinking_mode",  # Documentation doesn't need thinking mode
-            "use_websearch",  # Documentation doesn't need web search
             "images",  # Documentation doesn't use images
         ]
 

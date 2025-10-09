@@ -21,6 +21,16 @@ The consensus tool orchestrates multiple AI models to provide diverse perspectiv
 3. **Synthesize results**: Claude combines all perspectives into a balanced recommendation
 4. **Natural language**: Use simple descriptions like "supportive", "critical", or "against" - the tool handles synonyms automatically
 
+## Watch In Action
+
+The following is a hypothetical example designed to demonstrate how one consensus can be built upon another (via [continuation](../context-revival.md)). In this scenario, we start with a _blinded_ consensus, where one model is tasked with taking a **for** stance and another with an **against** stance. This approach allows us to see how each model evaluates a particular option relative to the alternative. We then conduct a second consensus — all initiated by a single prompt and orchestrated by Claude Code in this video — to gather each model’s final conclusions.
+
+<div style="center">
+  
+  [Zen Consensus Debate](https://github.com/user-attachments/assets/76a23dd5-887a-4382-9cf0-642f5cf6219e)
+  
+</div>
+
 ## Example Prompts
 
 **For/Against Analysis:**
@@ -69,7 +79,6 @@ Get a consensus from gemini supporting the idea for implementing X, grok opposin
 - `focus_areas`: Specific aspects to emphasize
 - `temperature`: Control consistency (default: 0.2 for stable consensus)
 - `thinking_mode`: Analysis depth (minimal/low/medium/high/max)
-- `use_websearch`: Enable research for enhanced analysis (default: true)
 - `continuation_id`: Continue previous consensus discussions
 
 ## Model Configuration Examples

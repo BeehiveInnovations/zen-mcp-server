@@ -12,6 +12,7 @@ RECORDING: To record new responses, delete the cassette file and run with real A
 
 import logging
 import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -92,9 +93,15 @@ class TestO3ProOutputTextFix:
     async def _execute_chat_tool_test(self):
         """Execute the ChatTool with o3-pro and return the result."""
         chat_tool = ChatTool()
-        arguments = {"prompt": "What is 2 + 2?", "model": "o3-pro", "temperature": 1.0}
+        with tempfile.TemporaryDirectory() as workdir:
+            arguments = {
+                "prompt": "What is 2 + 2?",
+                "model": "o3-pro",
+                "temperature": 1.0,
+                "working_directory": workdir,
+            }
 
-        return await chat_tool.execute(arguments)
+            return await chat_tool.execute(arguments)
 
     def _verify_chat_tool_response(self, result):
         """Verify the ChatTool response contains expected data."""

@@ -38,12 +38,14 @@ class TestChatTool:
 
         # Required fields
         assert "prompt" in schema["required"]
+        assert "working_directory" in schema["required"]
 
         # Properties
         properties = schema["properties"]
         assert "prompt" in properties
         assert "files" in properties
         assert "images" in properties
+        assert "working_directory" in properties
 
     def test_request_model_validation(self):
         """Test that the request model validates correctly"""
@@ -54,6 +56,7 @@ class TestChatTool:
             "images": ["test.png"],
             "model": "anthropic/claude-opus-4.1",
             "temperature": 0.7,
+            "working_directory": "/tmp",  # Dummy absolute path
         }
 
         request = ChatRequest(**request_data)
@@ -62,6 +65,7 @@ class TestChatTool:
         assert request.images == ["test.png"]
         assert request.model == "anthropic/claude-opus-4.1"
         assert request.temperature == 0.7
+        assert request.working_directory == "/tmp"
 
     def test_required_fields(self):
         """Test that required fields are enforced"""
@@ -69,7 +73,7 @@ class TestChatTool:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            ChatRequest(model="anthropic/claude-opus-4.1")
+            ChatRequest(model="anthropic/claude-opus-4.1", working_directory="/tmp")
 
     def test_model_availability(self):
         """Test that model availability works"""
@@ -84,20 +88,19 @@ class TestChatTool:
         assert schema["type"] == "string"
         assert "description" in schema
 
-        # In auto mode, should have enum. In normal mode, should have model descriptions
+        # Description should route callers to listmodels, regardless of mode
+        assert "listmodels" in schema["description"]
         if self.tool.is_effective_auto_mode():
-            assert "enum" in schema
-            assert len(schema["enum"]) > 0
-            assert "IMPORTANT:" in schema["description"]
+            assert "auto mode" in schema["description"].lower()
         else:
-            # Normal mode - should have model descriptions in description
-            assert "Model to use" in schema["description"]
-            assert "Native models:" in schema["description"]
+            import config
+
+            assert f"'{config.DEFAULT_MODEL}'" in schema["description"]
 
     @pytest.mark.asyncio
     async def test_prompt_preparation(self):
         """Test that prompt preparation works correctly"""
-        request = ChatRequest(prompt="Test prompt", files=[], use_websearch=True)
+        request = ChatRequest(prompt="Test prompt", files=[], working_directory="/tmp")
 
         # Mock the system prompt and file handling
         with patch.object(self.tool, "get_system_prompt", return_value="System prompt"):
@@ -108,13 +111,13 @@ class TestChatTool:
                             prompt = await self.tool.prepare_prompt(request)
 
                             assert "Test prompt" in prompt
-                            assert "System prompt" in prompt
-                            assert "USER REQUEST" in prompt
+                            assert prompt.startswith("=== USER REQUEST ===")
+                            assert "System prompt" not in prompt
 
     def test_response_formatting(self):
         """Test that response formatting works correctly"""
         response = "Test response content"
-        request = ChatRequest(prompt="Test")
+        request = ChatRequest(prompt="Test", working_directory="/tmp")
 
         formatted = self.tool.format_response(response, request)
 
@@ -147,6 +150,7 @@ class TestChatTool:
 
         required_fields = self.tool.get_required_fields()
         assert "prompt" in required_fields
+        assert "working_directory" in required_fields
 
 
 class TestChatRequestModel:
@@ -161,10 +165,11 @@ class TestChatRequestModel:
         assert "context" in CHAT_FIELD_DESCRIPTIONS["prompt"]
         assert "full-paths" in CHAT_FIELD_DESCRIPTIONS["files"] or "absolute" in CHAT_FIELD_DESCRIPTIONS["files"]
         assert "visual context" in CHAT_FIELD_DESCRIPTIONS["images"]
+        assert "directory" in CHAT_FIELD_DESCRIPTIONS["working_directory"].lower()
 
     def test_default_values(self):
         """Test that default values work correctly"""
-        request = ChatRequest(prompt="Test")
+        request = ChatRequest(prompt="Test", working_directory="/tmp")
 
         assert request.prompt == "Test"
         assert request.files == []  # Should default to empty list
@@ -174,14 +179,13 @@ class TestChatRequestModel:
         """Test that ChatRequest properly inherits from ToolRequest"""
         from tools.shared.base_models import ToolRequest
 
-        request = ChatRequest(prompt="Test")
+        request = ChatRequest(prompt="Test", working_directory="/tmp")
         assert isinstance(request, ToolRequest)
 
         # Should have inherited fields
         assert hasattr(request, "model")
         assert hasattr(request, "temperature")
         assert hasattr(request, "thinking_mode")
-        assert hasattr(request, "use_websearch")
         assert hasattr(request, "continuation_id")
         assert hasattr(request, "images")  # From base model too
 

@@ -7,28 +7,43 @@ This guide explains how to add support for a new AI model provider to the Zen MC
 Each provider:
 - Inherits from `ModelProvider` (base class) or `OpenAICompatibleProvider` (for OpenAI-compatible APIs)
 - Defines supported models using `ModelCapabilities` objects
-- Implements a few core abstract methods
-- Gets registered automatically via environment variables
+- Implements the minimal abstract hooks (`get_provider_type()` and `generate_content()`)
+- Gets wired into `configure_providers()` so environment variables control activation
+- Can leverage helper subclasses (e.g., `AzureOpenAIProvider`) when only client wiring differs
+
+### Intelligence score cheatsheet
+
+Set `intelligence_score` (1–20) when you want deterministic ordering in auto
+mode or the `listmodels` output. The runtime rank starts from this human score
+and adds smaller bonuses for context window, extended thinking, and other
+features ([details here](model_ranking.md)).
 
 ## Choose Your Implementation Path
 
 **Option A: Full Provider (`ModelProvider`)**
 - For APIs with unique features or custom authentication
 - Complete control over API calls and response handling
-- Required methods: `generate_content()`, `count_tokens()`, `get_capabilities()`, `validate_model_name()`, `supports_thinking_mode()`, `get_provider_type()`
+- Populate `MODEL_CAPABILITIES`, implement `generate_content()` and `get_provider_type()`, and only override `get_all_model_capabilities()` / `_lookup_capabilities()` when your catalogue comes from a registry or remote source (override `count_tokens()` only when you have a provider-accurate tokenizer)
 
 **Option B: OpenAI-Compatible (`OpenAICompatibleProvider`)**
 - For APIs that follow OpenAI's chat completion format
-- Only need to define: model configurations, capabilities, and validation
+- Supply `MODEL_CAPABILITIES`, override `get_provider_type()`, and optionally adjust configuration (the base class handles alias resolution, validation, and request wiring)
 - Inherits all API handling automatically
 
-⚠️ **Important**: If using aliases (like `"gpt"` → `"gpt-4"`), override `generate_content()` to resolve them before API calls.
+⚠️ **Important**: If you implement a custom `generate_content()`, call `_resolve_model_name()` before invoking the SDK so aliases (e.g. `"gpt"` → `"gpt-4"`) resolve correctly. The shared implementations already do this for you.
+
+**Option C: Azure OpenAI (`AzureOpenAIProvider`)**
+- For Azure-hosted deployments of OpenAI models
+- Reuses the OpenAI-compatible pipeline but swaps in the `AzureOpenAI` client and a deployment mapping (canonical model → deployment ID)
+- Define deployments in [`conf/azure_models.json`](../conf/azure_models.json) (or the file referenced by `AZURE_MODELS_CONFIG_PATH`).
+- Entries follow the [`ModelCapabilities`](../providers/shared/model_capabilities.py) schema and must include a `deployment` identifier.
+  See [Azure OpenAI Configuration](azure_openai.md) for a step-by-step walkthrough.
 
 ## Step-by-Step Guide
 
 ### 1. Add Provider Type
 
-Add your provider to `ProviderType` enum in `providers/base.py`:
+Add your provider to the `ProviderType` enum in `providers/shared/provider_type.py`:
 
 ```python
 class ProviderType(Enum):
@@ -48,19 +63,27 @@ Create `providers/example.py`:
 
 import logging
 from typing import Optional
-from .base import ModelCapabilities, ModelProvider, ModelResponse, ProviderType, RangeTemperatureConstraint
+
+from .base import ModelProvider
+from .shared import (
+    ModelCapabilities,
+    ModelResponse,
+    ProviderType,
+    RangeTemperatureConstraint,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class ExampleModelProvider(ModelProvider):
     """Example model provider implementation."""
 
-    # Define models using ModelCapabilities objects (like Gemini provider)
-    SUPPORTED_MODELS = {
+    MODEL_CAPABILITIES = {
         "example-large": ModelCapabilities(
             provider=ProviderType.EXAMPLE,
             model_name="example-large",
             friendly_name="Example Large",
+            intelligence_score=18,
             context_window=100_000,
             max_output_tokens=50_000,
             supports_extended_thinking=False,
@@ -72,6 +95,7 @@ class ExampleModelProvider(ModelProvider):
             provider=ProviderType.EXAMPLE,
             model_name="example-small",
             friendly_name="Example Small",
+            intelligence_score=14,
             context_window=32_000,
             max_output_tokens=16_000,
             temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
@@ -84,49 +108,42 @@ class ExampleModelProvider(ModelProvider):
         super().__init__(api_key, **kwargs)
         # Initialize your API client here
 
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        resolved_name = self._resolve_model_name(model_name)
+    def get_all_model_capabilities(self) -> dict[str, ModelCapabilities]:
+        return dict(self.MODEL_CAPABILITIES)
 
-        if resolved_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Unsupported model: {model_name}")
+    def get_provider_type(self) -> ProviderType:
+        return ProviderType.EXAMPLE
 
-        # Apply restrictions if needed
-        from utils.model_restrictions import get_restriction_service
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
-            raise ValueError(f"Model '{model_name}' is not allowed.")
-
-        return self.SUPPORTED_MODELS[resolved_name]
-
-    def generate_content(self, prompt: str, model_name: str, system_prompt: Optional[str] = None,
-                        temperature: float = 0.7, max_output_tokens: Optional[int] = None, **kwargs) -> ModelResponse:
+    def generate_content(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_output_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> ModelResponse:
         resolved_name = self._resolve_model_name(model_name)
 
         # Your API call logic here
         # response = your_api_client.generate(...)
 
         return ModelResponse(
-            content="Generated response",  # From your API
+            content="Generated response",
             usage={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
             model_name=resolved_name,
             friendly_name="Example",
             provider=ProviderType.EXAMPLE,
         )
-
-    def count_tokens(self, text: str, model_name: str) -> int:
-        return len(text) // 4  # Simple estimation
-
-    def get_provider_type(self) -> ProviderType:
-        return ProviderType.EXAMPLE
-
-    def validate_model_name(self, model_name: str) -> bool:
-        resolved_name = self._resolve_model_name(model_name)
-        return resolved_name in self.SUPPORTED_MODELS
-
-    def supports_thinking_mode(self, model_name: str) -> bool:
-        capabilities = self.get_capabilities(model_name)
-        return capabilities.supports_extended_thinking
 ```
+
+`ModelProvider.get_capabilities()` automatically resolves aliases, enforces the
+shared restriction service, and returns the correct `ModelCapabilities`
+instance. Override `_lookup_capabilities()` only when you source capabilities
+from a registry or remote API. `ModelProvider.count_tokens()` uses a simple
+4-characters-per-token estimate so providers work out of the box—override it
+only when you can call the provider's real tokenizer (for example, the
+OpenAI-compatible base class integrates `tiktoken`).
 
 #### Option B: OpenAI-Compatible Provider (Simplified)
 
@@ -136,8 +153,15 @@ For OpenAI-compatible APIs:
 """Example OpenAI-compatible provider."""
 
 from typing import Optional
-from .base import ModelCapabilities, ModelResponse, ProviderType, RangeTemperatureConstraint
+
 from .openai_compatible import OpenAICompatibleProvider
+from .shared import (
+    ModelCapabilities,
+    ModelResponse,
+    ProviderType,
+    RangeTemperatureConstraint,
+)
+
 
 class ExampleProvider(OpenAICompatibleProvider):
     """Example OpenAI-compatible provider."""
@@ -145,7 +169,7 @@ class ExampleProvider(OpenAICompatibleProvider):
     FRIENDLY_NAME = "Example"
 
     # Define models using ModelCapabilities (consistent with other providers)
-    SUPPORTED_MODELS = {
+    MODEL_CAPABILITIES = {
         "example-model-large": ModelCapabilities(
             provider=ProviderType.EXAMPLE,
             model_name="example-model-large",
@@ -161,36 +185,22 @@ class ExampleProvider(OpenAICompatibleProvider):
         kwargs.setdefault("base_url", "https://api.example.com/v1")
         super().__init__(api_key, **kwargs)
 
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        resolved_name = self._resolve_model_name(model_name)
-        if resolved_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Unsupported model: {model_name}")
-        return self.SUPPORTED_MODELS[resolved_name]
-
     def get_provider_type(self) -> ProviderType:
         return ProviderType.EXAMPLE
-
-    def validate_model_name(self, model_name: str) -> bool:
-        resolved_name = self._resolve_model_name(model_name)
-        return resolved_name in self.SUPPORTED_MODELS
-
-    def generate_content(self, prompt: str, model_name: str, **kwargs) -> ModelResponse:
-        # IMPORTANT: Resolve aliases before API call
-        resolved_model_name = self._resolve_model_name(model_name)
-        return super().generate_content(prompt=prompt, model_name=resolved_model_name, **kwargs)
 ```
+
+`OpenAICompatibleProvider` already exposes the declared models via
+`MODEL_CAPABILITIES`, resolves aliases through the shared base pipeline, and
+enforces restrictions. Most subclasses only need to provide the class metadata
+shown above.
 
 ### 3. Register Your Provider
 
 Add environment variable mapping in `providers/registry.py`:
 
 ```python
-# In _get_api_key_for_provider method:
-key_mapping = {
-    ProviderType.GOOGLE: "GEMINI_API_KEY",
-    ProviderType.OPENAI: "OPENAI_API_KEY",
-    ProviderType.EXAMPLE: "EXAMPLE_API_KEY",  # Add this
-}
+# In _get_api_key_for_provider (providers/registry.py), add:
+    ProviderType.EXAMPLE: "EXAMPLE_API_KEY",
 ```
 
 Add to `server.py`:
@@ -209,16 +219,7 @@ if example_key:
     logger.info("Example API key found - Example models available")
 ```
 
-3. **Add to provider priority** (in `providers/registry.py`):
-```python
-PROVIDER_PRIORITY_ORDER = [
-    ProviderType.GOOGLE,
-    ProviderType.OPENAI,
-    ProviderType.EXAMPLE,     # Add your provider here
-    ProviderType.CUSTOM,      # Local models
-    ProviderType.OPENROUTER,  # Catch-all (keep last)
-]
-```
+3. **Add to provider priority** (edit `ModelProviderRegistry.PROVIDER_PRIORITY_ORDER` in `providers/registry.py`): insert your provider in the list at the appropriate point in the cascade of native → custom → catch-all providers.
 
 ### 4. Environment Configuration
 
@@ -229,7 +230,23 @@ EXAMPLE_API_KEY=your_api_key_here
 
 # Optional: Disable specific tools
 DISABLED_TOOLS=debug,tracer
+
+# Optional (OpenAI-compatible providers): Restrict accessible models
+EXAMPLE_ALLOWED_MODELS=example-model-large,example-model-small
 ```
+
+For Azure OpenAI deployments:
+
+```bash
+AZURE_OPENAI_API_KEY=your_azure_openai_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+# Models are defined in conf/azure_models.json (or AZURE_MODELS_CONFIG_PATH)
+# AZURE_OPENAI_API_VERSION=2024-02-15-preview
+# AZURE_OPENAI_ALLOWED_MODELS=gpt-4o,gpt-4o-mini
+# AZURE_MODELS_CONFIG_PATH=/absolute/path/to/custom_azure_models.json
+```
+
+You can also define Azure models in [`conf/azure_models.json`](../conf/azure_models.json) (the bundled file is empty so you can copy it safely). Each entry mirrors the `ModelCapabilities` schema and must include a `deployment` field. Set `AZURE_MODELS_CONFIG_PATH` if you maintain a custom copy outside the repository.
 
 **Note**: The `description` field in `ModelCapabilities` helps Claude choose the best model in auto mode.
 
@@ -238,15 +255,11 @@ DISABLED_TOOLS=debug,tracer
 Create basic tests to verify your implementation:
 
 ```python
-# Test model validation
-provider = ExampleModelProvider("test-key")
-assert provider.validate_model_name("large") == True
-assert provider.validate_model_name("unknown") == False
-
 # Test capabilities
-caps = provider.get_capabilities("large")
-assert caps.context_window > 0
-assert caps.provider == ProviderType.EXAMPLE
+provider = ExampleModelProvider("test-key")
+capabilities = provider.get_capabilities("large")
+assert capabilities.context_window > 0
+assert capabilities.provider == ProviderType.EXAMPLE
 ```
 
 
@@ -260,30 +273,18 @@ When a user requests a model, providers are checked in priority order:
 3. **OpenRouter** - catch-all for everything else
 
 ### Model Validation
-Your `validate_model_name()` should **only** return `True` for models you explicitly support:
-
-```python
-def validate_model_name(self, model_name: str) -> bool:
-    resolved_name = self._resolve_model_name(model_name)
-    return resolved_name in self.SUPPORTED_MODELS  # Be specific!
-```
+`ModelProvider.validate_model_name()` delegates to `get_capabilities()` so most
+providers can rely on the shared implementation. Override it only when you need
+to opt out of that pipeline—for example, `CustomProvider` declines OpenRouter
+models so they fall through to the dedicated OpenRouter provider.
 
 ### Model Aliases
-The base class handles alias resolution automatically via the `aliases` field in `ModelCapabilities`.
+Aliases declared on `ModelCapabilities` are applied automatically via
+`_resolve_model_name()`, and both the validation and request flows call it
+before touching your SDK. Override `generate_content()` only when your provider
+needs additional alias handling beyond the shared behaviour.
 
 ## Important Notes
-
-### Alias Resolution in OpenAI-Compatible Providers
-If using `OpenAICompatibleProvider` with aliases, **you must override `generate_content()`** to resolve aliases before API calls:
-
-```python
-def generate_content(self, prompt: str, model_name: str, **kwargs) -> ModelResponse:
-    # Resolve alias before API call
-    resolved_model_name = self._resolve_model_name(model_name)
-    return super().generate_content(prompt=prompt, model_name=resolved_model_name, **kwargs)
-```
-
-Without this, API calls with aliases like `"large"` will fail because your API doesn't recognize the alias.
 
 ## Best Practices
 
@@ -296,7 +297,7 @@ Without this, API calls with aliases like `"large"` will fail because your API d
 
 ## Quick Checklist
 
-- [ ] Added to `ProviderType` enum in `providers/base.py`
+- [ ] Added to `ProviderType` enum in `providers/shared/provider_type.py`
 - [ ] Created provider class with all required methods
 - [ ] Added API key mapping in `providers/registry.py`
 - [ ] Added to provider priority order in `registry.py`
@@ -310,5 +311,3 @@ See existing implementations:
 - **Full provider**: `providers/gemini.py`
 - **OpenAI-compatible**: `providers/custom.py`
 - **Base classes**: `providers/base.py`
-
-The modern approach uses `ModelCapabilities` objects directly in `SUPPORTED_MODELS`, making the implementation much cleaner and more consistent.

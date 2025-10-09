@@ -2,9 +2,9 @@
 Base class for workflow MCP tools.
 
 Workflow tools follow a multi-step pattern:
-1. Claude calls tool with work step data
+1. CLI calls tool with work step data
 2. Tool tracks findings and progress
-3. Tool forces Claude to pause and investigate between steps
+3. Tool forces the CLI to pause and investigate between steps
 4. Once work is complete, tool calls external AI model for expert analysis
 5. Tool returns structured response combining investigation + expert analysis
 
@@ -139,12 +139,16 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
         Returns:
             Complete JSON schema for the workflow tool
         """
+        requires_model = self.requires_model()
+        model_field_schema = self.get_model_field_schema() if requires_model else None
+        auto_mode = self.is_effective_auto_mode() if requires_model else False
         return WorkflowSchemaBuilder.build_schema(
             tool_specific_fields=self.get_tool_fields(),
             required_fields=self.get_required_fields(),
-            model_field_schema=self.get_model_field_schema(),
-            auto_mode=self.is_effective_auto_mode(),
+            model_field_schema=model_field_schema,
+            auto_mode=auto_mode,
             tool_name=self.get_name(),
+            require_model=requires_model,
         )
 
     def get_workflow_request_model(self):
@@ -162,7 +166,7 @@ class WorkflowTool(BaseTool, BaseWorkflowMixin):
         """
         Default implementation - workflow tools typically don't need predefined steps.
 
-        The workflow is driven by Claude's investigation process rather than
+        The workflow is driven by the CLI's investigation process rather than
         predefined steps. Override this if your tool needs specific step guidance.
         """
         return []

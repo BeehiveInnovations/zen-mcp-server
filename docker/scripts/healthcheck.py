@@ -6,6 +6,15 @@ Health check script for Zen MCP Server Docker container
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+try:
+    from utils.env import get_env
+except ImportError:  # pragma: no cover - resolves module path inside container
+    project_root = Path(__file__).resolve().parents[2]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from utils.env import get_env  # type: ignore[import-error]
 
 
 def check_process():
@@ -63,14 +72,14 @@ def check_environment():
         "OPENROUTER_API_KEY",
     ]
 
-    has_api_key = any(os.getenv(key) for key in api_keys)
+    has_api_key = any(get_env(key) for key in api_keys)
     if not has_api_key:
         print("No API keys found in environment", file=sys.stderr)
         return False
 
     # Validate API key formats (basic checks)
     for key in api_keys:
-        value = os.getenv(key)
+        value = get_env(key)
         if value:
             if len(value.strip()) < 10:
                 print(f"API key {key} appears too short or invalid", file=sys.stderr)

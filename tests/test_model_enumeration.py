@@ -6,6 +6,7 @@ all expected models based on which providers are configured via environment vari
 """
 
 import importlib
+import json
 import os
 
 import pytest
@@ -121,6 +122,16 @@ class TestModelEnumeration:
 
         assert found_count == 0, "Custom models should not be included without CUSTOM_API_URL"
 
+    def test_custom_models_not_exposed_with_openrouter_only(self):
+        """Ensure OpenRouter access alone does not surface custom-only endpoints."""
+        self._setup_environment({"OPENROUTER_API_KEY": "test-openrouter-key"})
+
+        tool = AnalyzeTool()
+        models = tool._get_available_models()
+
+        for alias in ("local-llama", "llama3.2"):
+            assert alias not in models, f"Custom model alias '{alias}' should remain hidden without CUSTOM_API_URL"
+
     def test_no_duplicates_with_overlapping_providers(self):
         """Test that models aren't duplicated when multiple providers offer the same model."""
         self._setup_environment(
@@ -164,6 +175,54 @@ class TestModelEnumeration:
             assert model_name in models, f"Model {model_name} should be present"
         else:
             assert model_name not in models, f"Native model {model_name} should not be present without API key"
+
+    def test_openrouter_free_model_aliases_available(self, tmp_path, monkeypatch):
+        """Free OpenRouter variants should expose both canonical names and aliases."""
+        # Configure environment with OpenRouter access only
+        self._setup_environment({"OPENROUTER_API_KEY": "test-openrouter-key"})
+
+        # Create a temporary OpenRouter model config with a free variant
+        custom_config = {
+            "models": [
+                {
+                    "model_name": "deepseek/deepseek-r1:free",
+                    "aliases": ["deepseek-free", "r1-free"],
+                    "context_window": 163840,
+                    "max_output_tokens": 8192,
+                    "supports_extended_thinking": False,
+                    "supports_json_mode": True,
+                    "supports_function_calling": False,
+                    "supports_images": False,
+                    "max_image_size_mb": 0.0,
+                    "description": "DeepSeek R1 free tier variant",
+                }
+            ]
+        }
+
+        config_path = tmp_path / "openrouter_models.json"
+        config_path.write_text(json.dumps(custom_config), encoding="utf-8")
+        monkeypatch.setenv("OPENROUTER_MODELS_CONFIG_PATH", str(config_path))
+
+        # Reset cached registries so the temporary config is loaded
+        from tools.shared.base_tool import BaseTool
+
+        monkeypatch.setattr(BaseTool, "_openrouter_registry_cache", None, raising=False)
+
+        from providers.openrouter import OpenRouterProvider
+
+        monkeypatch.setattr(OpenRouterProvider, "_registry", None, raising=False)
+
+        # Rebuild the provider registry with OpenRouter registered
+        ModelProviderRegistry._instance = None
+        from providers.shared import ProviderType
+
+        ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
+
+        tool = AnalyzeTool()
+        models = tool._get_available_models()
+
+        assert "deepseek/deepseek-r1:free" in models, "Canonical free model name should be available"
+        assert "deepseek-free" in models, "Free model alias should be included for MCP validation"
 
 
 # DELETED: test_auto_mode_behavior_with_environment_variables

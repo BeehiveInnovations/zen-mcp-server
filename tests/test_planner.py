@@ -63,7 +63,6 @@ class TestPlannerTool:
         assert "files" not in schema["properties"]  # Excluded for planning
         assert "temperature" not in schema["properties"]
         assert "thinking_mode" not in schema["properties"]
-        assert "use_websearch" not in schema["properties"]
 
         # Check required fields
         assert "step" in schema["required"]

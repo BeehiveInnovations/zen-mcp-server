@@ -40,6 +40,7 @@ multi-turn file handling:
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -463,11 +464,17 @@ def read_file_content(
             return content, estimate_tokens(content)
 
         # Check file size to prevent memory exhaustion
-        file_size = path.stat().st_size
+        stat_result = path.stat()
+        file_size = stat_result.st_size
         logger.debug(f"[FILES] File size for {file_path}: {file_size:,} bytes")
         if file_size > max_size:
             logger.debug(f"[FILES] File too large: {file_path} ({file_size:,} > {max_size:,} bytes)")
-            content = f"\n--- FILE TOO LARGE: {file_path} ---\nFile size: {file_size:,} bytes (max: {max_size:,})\n--- END FILE ---\n"
+            modified_at = datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
+            content = (
+                f"\n--- FILE TOO LARGE: {file_path} (Last modified: {modified_at}) ---\n"
+                f"File size: {file_size:,} bytes (max: {max_size:,})\n"
+                "--- END FILE ---\n"
+            )
             return content, estimate_tokens(content)
 
         # Determine if we should add line numbers
@@ -495,7 +502,12 @@ def read_file_content(
         # NOTE: These markers ("--- BEGIN FILE: ... ---") are distinct from git diff markers
         # ("--- BEGIN DIFF: ... ---") to allow AI to distinguish between complete file content
         # vs. partial diff content when files appear in both sections
-        formatted = f"\n--- BEGIN FILE: {file_path} ---\n{file_content}\n--- END FILE: {file_path} ---\n"
+        modified_at = datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
+        formatted = (
+            f"\n--- BEGIN FILE: {file_path} (Last modified: {modified_at}) ---\n"
+            f"{file_content}\n"
+            f"--- END FILE: {file_path} ---\n"
+        )
         tokens = estimate_tokens(formatted)
         logger.debug(f"[FILES] Formatted content for {file_path}: {len(formatted)} chars, {tokens} tokens")
         return formatted, tokens
@@ -797,7 +809,7 @@ def check_total_file_size(files: list[str], model_name: str) -> Optional[dict]:
 
     IMPORTANT: This performs STRICT REJECTION at MCP boundary.
     No partial inclusion - either all files fit or request is rejected.
-    This forces Claude to make better file selection decisions.
+    This forces the CLI to make better file selection decisions.
 
     This function MUST be called with the effective model name (after resolution).
     It should never receive 'auto' or None - model resolution happens earlier.

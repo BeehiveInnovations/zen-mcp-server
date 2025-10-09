@@ -19,10 +19,11 @@ Key Features:
 """
 
 import logging
-import os
 import threading
 import time
 from typing import Optional
+
+from utils.env import get_env
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class InMemoryStorage:
         self._lock = threading.Lock()
         # Match Redis behavior: cleanup interval based on conversation timeout
         # Run cleanup at 1/10th of timeout interval (e.g., 18 mins for 3 hour timeout)
-        timeout_hours = int(os.getenv("CONVERSATION_TIMEOUT_HOURS", "3"))
+        timeout_hours = int(get_env("CONVERSATION_TIMEOUT_HOURS", "3") or "3")
         self._cleanup_interval = (timeout_hours * 3600) // 10
         self._cleanup_interval = max(300, self._cleanup_interval)  # Minimum 5 minutes
         self._shutdown = False
