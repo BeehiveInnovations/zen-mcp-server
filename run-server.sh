@@ -81,7 +81,7 @@ clear_python_cache() {
 # Get cross-platform Python executable path from venv
 get_venv_python_path() {
     local venv_path="$1"
-    
+
     # Convert to absolute path for consistent behavior across shell environments
     local abs_venv_path
     abs_venv_path=$(cd "$(dirname "$venv_path")" && pwd)/$(basename "$venv_path")
@@ -885,7 +885,7 @@ install_dependencies() {
     # If pip is still not available after retries, try to bootstrap it
     if [[ "$pip_available" == false ]]; then
         print_warning "pip is not available in the Python environment after $max_attempts attempts"
-        
+
         # Enhanced diagnostic information for debugging
         print_info "Diagnostic information:"
         print_info "  Python executable: $python_cmd"
@@ -893,7 +893,7 @@ install_dependencies() {
         print_info "  Python executable permissions: $(ls -la "$python_cmd" 2>/dev/null || echo "Cannot check")"
         print_info "  Virtual environment path: $VENV_PATH"
         print_info "  Virtual environment exists: $(if [[ -d "$VENV_PATH" ]]; then echo "Yes"; else echo "No"; fi)"
-        
+
         print_info "Attempting to bootstrap pip..."
 
         # Extract the base python command for bootstrap (fallback to python3)

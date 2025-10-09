@@ -7,13 +7,62 @@ Thank you for your interest in contributing to Zen MCP Server! This guide will h
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally
 3. **Set up the development environment**:
+
+   **Option A: Traditional Setup**
    ```bash
    ./run-server.sh
    ```
+
+   **Option B: Nix Flake (Recommended for Nix users)**
+   ```bash
+   # Automatic environment activation with direnv (one-time setup)
+   direnv allow
+
+   # Or manually enter development shell
+   nix develop
+
+   # Build and test the package
+   nix build
+   nix run
+   ```
+
 4. **Create a feature branch** from `main`:
    ```bash
    git checkout -b feat/your-feature-name
    ```
+
+### Nix Development Environment
+
+The Nix flake provides several advantages for development:
+
+- **Reproducible Environment**: Identical dependencies across all systems
+- **Zero Setup**: No need to install Python, pip, or manage virtual environments
+- **Isolated Dependencies**: No conflicts with system packages
+- **Cross-Platform**: Works on Linux, macOS, and NixOS
+
+**Available Nix Commands:**
+```bash
+# Enter development shell with all dependencies
+nix develop
+
+# Build the package
+nix build
+./result/bin/zen-mcp-server
+
+# Run directly without building
+nix run
+
+# Install system-wide
+nix profile install .
+
+# Install from GitHub (for users)
+nix profile install github:BeehiveInnovations/zen-mcp-server
+```
+
+**With direnv** (`.envrc` included):
+- Environment automatically activates when entering the directory
+- All development tools (Python, pytest, black, ruff, isort) available instantly
+- No manual activation needed
 
 ## Development Process
 

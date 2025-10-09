@@ -42,7 +42,7 @@ To monitor logs during test execution:
 # Or manually monitor main server logs (includes all tool execution details)
 tail -f -n 500 logs/mcp_server.log
 
-# Monitor MCP activity logs (tool calls and completions)  
+# Monitor MCP activity logs (tool calls and completions)
 tail -f logs/mcp_activity.log
 
 # Check log file sizes (logs rotate at 20MB)

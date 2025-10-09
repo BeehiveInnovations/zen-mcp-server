@@ -185,6 +185,11 @@ logs/
 *.backup
 /.desktop_configured
 
+# Nix development environment
+.nix-venv/
+.direnv/
+result
+
 /worktrees/
 test_simulation_files/
 .mcp.json

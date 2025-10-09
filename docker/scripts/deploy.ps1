@@ -31,13 +31,13 @@ function Test-EnvironmentVariables {
     # At least one of these API keys must be set
     $requiredVars = @(
         "GEMINI_API_KEY",
-        "GOOGLE_API_KEY", 
+        "GOOGLE_API_KEY",
         "OPENAI_API_KEY",
         "XAI_API_KEY",
         "DIAL_API_KEY",
         "OPENROUTER_API_KEY"
     )
-    
+
     $hasApiKey = $false
     foreach ($var in $requiredVars) {
         $value = [Environment]::GetEnvironmentVariable($var)
@@ -58,7 +58,7 @@ function Test-EnvironmentVariables {
 # Load environment variables from .env file
 if (Test-Path ".env") {
     Write-ColorText "Loading environment variables from .env..." -Color Green
-    
+
     # Read .env file and set environment variables
     Get-Content ".env" | ForEach-Object {
         if ($_ -match '^([^#][^=]*?)=(.*)$') {
@@ -85,7 +85,7 @@ function Wait-ForHealth {
         [int]$MaxAttempts = 6,
         [int]$InitialDelay = 2
     )
-    
+
     $attempt = 1
     $delay = $InitialDelay
 
@@ -101,11 +101,11 @@ function Wait-ForHealth {
                     $status = "unavailable"
                 }
             }
-            
+
             if ($status -eq "healthy") {
                 return $true
             }
-            
+
             Write-ColorText "Waiting for service to be healthy... (attempt $attempt/$MaxAttempts, retrying in ${delay}s)" -Color Yellow
             Start-Sleep -Seconds $delay
             $delay = $delay * 2
@@ -157,12 +157,12 @@ try {
 # Wait for health check (unless skipped)
 if (!$SkipHealthCheck) {
     Write-ColorText "Waiting for service to be healthy..." -Color Green
-    
+
     # Try simple timeout first, then use exponential backoff if needed
     $timeout = $HealthCheckTimeout
     $elapsed = 0
     $healthy = $false
-    
+
     while ($elapsed -lt $timeout) {
         try {
             $containerId = docker-compose ps -q zen-mcp
@@ -176,7 +176,7 @@ if (!$SkipHealthCheck) {
         } catch {
             # Continue checking
         }
-        
+
         Start-Sleep -Seconds 2
         $elapsed += 2
     }

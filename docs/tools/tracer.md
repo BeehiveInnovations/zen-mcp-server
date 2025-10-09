@@ -11,7 +11,7 @@ The `tracer` tool is a specialized prompt-generation tool that creates structure
 - Detailed branching analysis and side effects
 - Shows when and how functions are called throughout the system
 
-**`dependencies` Mode**: For classes/modules/protocols  
+**`dependencies` Mode**: For classes/modules/protocols
 - Maps bidirectional dependencies and structural relationships
 - Identifies coupling and architectural dependencies
 - Shows how components interact and depend on each other

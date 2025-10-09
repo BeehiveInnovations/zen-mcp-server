@@ -101,7 +101,7 @@ heuristic described there).
 OPENROUTER_API_KEY=your-openrouter-api-key
 ```
 
-> **Note:** Control which models can be used directly in your OpenRouter dashboard at [openrouter.ai](https://openrouter.ai/). 
+> **Note:** Control which models can be used directly in your OpenRouter dashboard at [openrouter.ai](https://openrouter.ai/).
 > This gives you centralized control over model access and spending limits.
 
 That's it! The setup script handles all necessary configuration automatically.
@@ -198,7 +198,7 @@ CUSTOM_MODEL_NAME=your-loaded-model
 "Use meta-llama/Llama-2-7b-chat-hf via zen to analyze"
 ```
 
-**For OpenRouter:** Check current model pricing at [openrouter.ai/models](https://openrouter.ai/models).  
+**For OpenRouter:** Check current model pricing at [openrouter.ai/models](https://openrouter.ai/models).
 **For Local models:** Context window and capabilities are defined in `conf/custom_models.json`.
 
 ## Model Provider Selection

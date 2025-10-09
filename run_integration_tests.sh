@@ -11,13 +11,15 @@ echo "=============================================="
 echo "These tests use real API calls with your configured keys"
 echo ""
 
-# Activate virtual environment
-if [[ -f ".zen_venv/bin/activate" ]]; then
+# Activate virtual environment (skip if in Nix environment)
+if [[ -n "$NIX_BUILD_TOP" ]] || [[ -n "$IN_NIX_SHELL" ]]; then
+    echo "✅ Using Nix development environment"
+elif [[ -f ".zen_venv/bin/activate" ]]; then
     source .zen_venv/bin/activate
     echo "✅ Using virtual environment"
 else
     echo "❌ No virtual environment found!"
-    echo "Please run: ./run-server.sh first"
+    echo "Please run: ./run-server.sh first or use 'nix develop'"
     exit 1
 fi
 

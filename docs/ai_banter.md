@@ -1,7 +1,7 @@
 # The Code Comedy Hour
 
-Just when I thought it was a routine test, Claude and it's _thought-partner_ would go off-script with unexpectedly quirky behavior - the smaller the model, 
-the quirkier the responses. 
+Just when I thought it was a routine test, Claude and it's _thought-partner_ would go off-script with unexpectedly quirky behavior - the smaller the model,
+the quirkier the responses.
 
 It's happened more times than I can count, but I figured it’s time I start saving a few. Here are some recent ones.
 

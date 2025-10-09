@@ -18,7 +18,7 @@ from tests.transport_helpers import inject_transport
 # Simple one-line setup with automatic transport injection
 def test_expensive_api_call(monkeypatch):
     inject_transport(monkeypatch, "tests/openai_cassettes/my_test.json")
-    
+
     # Make API calls - automatically recorded/replayed with PII sanitization
     result = await chat_tool.execute({"prompt": "2+2?", "model": "o3-pro"})
 ```
@@ -39,7 +39,7 @@ from tests.transport_helpers import inject_transport
 async def test_with_recording(monkeypatch):
     # One-line setup - handles all transport injection complexity
     inject_transport(monkeypatch, "tests/openai_cassettes/my_test.json")
-    
+
     # Use API normally - recording/replay happens transparently
     result = await chat_tool.execute({"prompt": "2+2?", "model": "o3-pro"})
 ```
@@ -125,4 +125,3 @@ For implementation details, see:
 - `tests/http_transport_recorder.py` - Core transport implementation
 - `tests/pii_sanitizer.py` - Sanitization patterns and logic
 - `tests/transport_helpers.py` - Simplified test integration
-

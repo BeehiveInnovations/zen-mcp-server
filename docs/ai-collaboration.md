@@ -31,7 +31,7 @@ This server enables **true AI collaboration** between Claude and multiple AI mod
 
 **Independent Work Between Exchanges:**
 - Claude can work independently between exchanges (analyzing code, implementing fixes, gathering data)
-- Return to Gemini with progress updates and additional context  
+- Return to Gemini with progress updates and additional context
 - Each exchange shares only incremental information while maintaining full conversation history
 - Automatically bypasses MCP's 25K token limits through incremental updates
 

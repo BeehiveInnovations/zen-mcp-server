@@ -63,7 +63,7 @@ The tool provides:
 
 🛠️ Available Tools (12):
 • chat - General development chat & collaborative thinking
-• thinkdeep - Extended reasoning partner  
+• thinkdeep - Extended reasoning partner
 • consensus - Multi-model perspective gathering
 • codereview - Professional code review
 • precommit - Pre-commit validation
