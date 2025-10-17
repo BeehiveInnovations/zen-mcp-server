@@ -50,7 +50,7 @@ Regardless of your default configuration, you can specify models per request:
 | **`llama`** (Llama 3.2) | Custom/Local | 128K tokens | Local inference, privacy | On-device analysis, cost-free processing |
 | **Any model** | OpenRouter | Varies | Access to GPT-4, Claude, Llama, etc. | User-specified or based on task requirements |
 
-**Mix & Match Providers:** Use multiple providers simultaneously! Set both `OPENROUTER_API_KEY` and `CUSTOM_API_URL` to access 
+**Mix & Match Providers:** Use multiple providers simultaneously! Set both `OPENROUTER_API_KEY` and `CUSTOM_API_URL` to access
 cloud models (expensive/powerful) AND local models (free/private) in the same conversation.
 
 **Model Capabilities:**
@@ -80,7 +80,7 @@ cloud models (expensive/powerful) AND local models (free/private) in the same co
 GOOGLE_ALLOWED_MODELS=flash,pro
 OPENAI_ALLOWED_MODELS=o4-mini,o3-mini
 
-# Production: Cost-optimized  
+# Production: Cost-optimized
 GOOGLE_ALLOWED_MODELS=flash
 OPENAI_ALLOWED_MODELS=o4-mini
 
@@ -160,7 +160,7 @@ All tools that work with files support **both individual files and entire direct
 
 **`analyze`** - Analyze files or directories
 - `files`: List of file paths or directories (required)
-- `question`: What to analyze (required)  
+- `question`: What to analyze (required)
 - `model`: auto|pro|flash|flash-2.0|flashlite|o3|o3-mini|o4-mini|gpt4.1|gpt5|gpt5-mini|gpt5-nano (default: server default)
 - `analysis_type`: architecture|performance|security|quality|general
 - `output_format`: summary|detailed|actionable
@@ -169,7 +169,7 @@ All tools that work with files support **both individual files and entire direct
 
 ```
 "Analyze the src/ directory for architectural patterns" (auto mode picks best model)
-"Use flash to quickly analyze main.py and tests/ to understand test coverage" 
+"Use flash to quickly analyze main.py and tests/ to understand test coverage"
 "Use o3 for logical analysis of the algorithm in backend/core.py"
 "Use pro for deep analysis of the entire backend/ directory structure"
 ```
@@ -287,7 +287,7 @@ Session 2: "Continue our RAG discussion with o3"
 ```
 Think hard about designing and developing a fun calculator app in swift. Review your design plans with o3, taking in
 their suggestions but keep the feature-set realistic and doable without adding bloat. Begin implementing and in between
-implementation, get a codereview done by Gemini Pro and chat with Flash if you need to for creative directions.   
+implementation, get a codereview done by Gemini Pro and chat with Flash if you need to for creative directions.
 ```
 
 ### Code → Review → Fix
@@ -301,16 +301,16 @@ work. Fix medium to critical bugs / concerns / issues and show me the final prod
 ```
 Take a look at these log files saved under subfolder/diagnostics.log there's a bug where the user says the app
 crashes at launch. Think hard and go over each line, tallying it with corresponding code within the project. After
-you've performed initial investigation, ask gemini pro to analyze the log files and the related code where you 
+you've performed initial investigation, ask gemini pro to analyze the log files and the related code where you
 suspect lies the bug and then formulate and implement a bare minimal fix. Must not regress. Perform a precommit
-with zen in the end using gemini pro to confirm we're okay to publish the fix 
+with zen in the end using gemini pro to confirm we're okay to publish the fix
 ```
 
 ### Refactor → Review → Implement → Test
 ```
-Use zen to analyze this legacy authentication module for decomposition opportunities. The code is getting hard to 
-maintain and we need to break it down. Use gemini pro with high thinking mode to identify code smells and suggest 
-a modernization strategy. After reviewing the refactoring plan, implement the changes step by step and then 
+Use zen to analyze this legacy authentication module for decomposition opportunities. The code is getting hard to
+maintain and we need to break it down. Use gemini pro with high thinking mode to identify code smells and suggest
+a modernization strategy. After reviewing the refactoring plan, implement the changes step by step and then
 generate comprehensive tests with zen to ensure nothing breaks.
 ```
 
@@ -349,7 +349,7 @@ The Zen MCP server supports vision-capable models for analyzing images, diagrams
 # Debug with error screenshots
 "Use zen to debug this error with the stack trace screenshot and error.py"
 
-# Architecture analysis with diagrams  
+# Architecture analysis with diagrams
 "Analyze this system architecture diagram with gemini pro for bottlenecks"
 
 # UI review with mockups
@@ -392,9 +392,9 @@ The MCP protocol has a combined request+response limit of approximately 25K toke
 User: "Use gemini to review this code: [50,000+ character detailed analysis]"
 
 # Server detects the large prompt and responds:
-Zen MCP: "The prompt is too large for MCP's token limits (>50,000 characters). 
-Please save the prompt text to a temporary file named 'prompt.txt' and resend 
-the request with an empty prompt string and the absolute file path included 
+Zen MCP: "The prompt is too large for MCP's token limits (>50,000 characters).
+Please save the prompt text to a temporary file named 'prompt.txt' and resend
+the request with an empty prompt string and the absolute file path included
 in the files parameter, along with any other files you wish to share as context."
 
 # Claude automatically handles this:

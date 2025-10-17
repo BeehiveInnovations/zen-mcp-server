@@ -165,9 +165,9 @@ from .shared import (
 
 class ExampleProvider(OpenAICompatibleProvider):
     """Example OpenAI-compatible provider."""
-    
+
     FRIENDLY_NAME = "Example"
-    
+
     # Define models using ModelCapabilities (consistent with other providers)
     MODEL_CAPABILITIES = {
         "example-model-large": ModelCapabilities(
@@ -180,7 +180,7 @@ class ExampleProvider(OpenAICompatibleProvider):
             aliases=["large", "big"],
         ),
     }
-    
+
     def __init__(self, api_key: str, **kwargs):
         kwargs.setdefault("base_url", "https://api.example.com/v1")
         super().__init__(api_key, **kwargs)
@@ -269,7 +269,7 @@ assert capabilities.provider == ProviderType.EXAMPLE
 ### Provider Priority
 When a user requests a model, providers are checked in priority order:
 1. **Native providers** (Gemini, OpenAI, Example) - handle their specific models
-2. **Custom provider** - handles local/self-hosted models  
+2. **Custom provider** - handles local/self-hosted models
 3. **OpenRouter** - catch-all for everything else
 
 ### Model Validation
@@ -290,7 +290,7 @@ needs additional alias handling beyond the shared behaviour.
 
 - **Be specific in model validation** - only accept models you actually support
 - **Use ModelCapabilities objects** consistently (like Gemini provider)
-- **Include descriptive aliases** for better user experience  
+- **Include descriptive aliases** for better user experience
 - **Add error handling** and logging for debugging
 - **Test with real API calls** to verify everything works
 - **Follow the existing patterns** in `providers/gemini.py` and `providers/custom.py`

@@ -54,9 +54,9 @@ How beautiful is that? Claude used `precommit` twice and `codereview` once and a
 
 ### Real-world Example
 
-Here's an example where Claude was made to go through changes *it* was asked to make. Its recommendation 
-to **Publish all Changes** was made after a rigorous set of prompts where it examined the small set of changes 
-from different angles (performance, bugs, anti-patterns etc). After confirming that unit tests were 
+Here's an example where Claude was made to go through changes *it* was asked to make. Its recommendation
+to **Publish all Changes** was made after a rigorous set of prompts where it examined the small set of changes
+from different angles (performance, bugs, anti-patterns etc). After confirming that unit tests were
 passing, it went ahead with an initial review with O3; came back clean - all good to go. O3 was happy, everything looked great.
 
 Then it shared the changes and relevant code with Gemini 2.5 Pro - the following is the outcome:

@@ -161,7 +161,7 @@ Documentation generation excels with analytical models like Gemini Pro or O3, wh
 - **Objective-C**: /// comments
 - **Swift**: /// comments
 - **JavaScript/TypeScript**: /** */ JSDoc style
-- **Java**: /** */ Javadoc style  
+- **Java**: /** */ Javadoc style
 - **C#**: /// XML documentation comments
 - **C/C++**: /// for documentation comments
 - **Go**: // comments above functions/types

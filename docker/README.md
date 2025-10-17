@@ -109,7 +109,7 @@ docker-compose up -d zen-mcp
 The container includes health checks that verify:
 - Server process is running
 - Python modules can be imported
-- Log directory is writable  
+- Log directory is writable
 - API keys are configured
 
 ## Volumes and Persistent Data
@@ -333,7 +333,7 @@ python -m json.tool .vscode/mcp.json
 The Zen MCP Server provides these tools when properly configured:
 
 - **chat** - General AI conversation and collaboration
-- **thinkdeep** - Multi-stage investigation and reasoning  
+- **thinkdeep** - Multi-stage investigation and reasoning
 - **planner** - Interactive sequential planning
 - **consensus** - Multi-model consensus workflow
 - **codereview** - Comprehensive code review

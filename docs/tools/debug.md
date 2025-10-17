@@ -2,8 +2,8 @@
 
 **Step-by-step investigation followed by expert debugging assistance**
 
-The `debug` workflow guides Claude through a systematic investigation process where Claude performs methodical code 
-examination, evidence collection, and hypothesis formation across multiple steps. Once the investigation is complete, 
+The `debug` workflow guides Claude through a systematic investigation process where Claude performs methodical code
+examination, evidence collection, and hypothesis formation across multiple steps. Once the investigation is complete,
 the tool provides expert analysis from the selected AI model (optionally) based on all gathered findings.
 
 ## Example Prompts
@@ -17,7 +17,7 @@ You can also ask it to debug on its own, no external model required (**recommend
 Use debug tool to find out why the app is crashing, here are some app logs [paste app logs] and a crash trace: [paste crash trace]
 ```
 
-## How It Works 
+## How It Works
 
 The debug tool implements a **systematic investigation methodology** where Claude is guided through structured debugging steps:
 
@@ -29,10 +29,10 @@ The debug tool implements a **systematic investigation methodology** where Claud
 5. **Completion**: Once investigation is thorough, Claude signals completion
 
 **Expert Analysis Phase:**
-After Claude completes the investigation, it automatically calls the selected AI model with (unless confidence is **certain**, 
+After Claude completes the investigation, it automatically calls the selected AI model with (unless confidence is **certain**,
 in which case expert analysis is bypassed):
 - Complete investigation summary with all steps and findings
-- Relevant files and methods identified during investigation  
+- Relevant files and methods identified during investigation
 - Final hypothesis and confidence assessment
 - Error context and supporting evidence
 - Visual debugging materials if provided

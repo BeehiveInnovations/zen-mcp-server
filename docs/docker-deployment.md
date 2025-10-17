@@ -20,7 +20,7 @@ This guide covers deploying Zen MCP Server using Docker and Docker Compose for p
    ```bash
    # Linux/macOS
    ./docker/scripts/deploy.sh
-   
+
    # Windows PowerShell
    .\docker\scripts\deploy.ps1
    ```

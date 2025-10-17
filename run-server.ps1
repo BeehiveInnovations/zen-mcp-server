@@ -94,8 +94,8 @@ param(
 
 # ============================================================================
 # Zen MCP Server Setup Script for Windows
-# 
-# A Windows-compatible setup script that handles environment setup, 
+#
+# A Windows-compatible setup script that handles environment setup,
 # dependency installation, and configuration.
 # ============================================================================
 
@@ -103,7 +103,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ----------------------------------------------------------------------------
-# Constants and Configuration  
+# Constants and Configuration
 # ----------------------------------------------------------------------------
 
 $script:VENV_PATH = ".zen_venv"
@@ -161,11 +161,11 @@ function Test-Command {
 # Alternative method to force remove locked directories
 function Remove-LockedDirectory {
     param([string]$Path)
-    
+
     if (!(Test-Path $Path)) {
         return $true
     }
-    
+
     try {
         # Try standard removal first
         Remove-Item -Recurse -Force $Path -ErrorAction Stop
@@ -173,7 +173,7 @@ function Remove-LockedDirectory {
     }
     catch {
         Write-Warning "Standard removal failed, trying alternative methods..."
-        
+
         # Method 1: Use takeown and icacls to force ownership
         try {
             Write-Info "Attempting to take ownership of locked files..."
@@ -185,25 +185,25 @@ function Remove-LockedDirectory {
         catch {
             Write-Warning "Ownership method failed"
         }
-        
+
         # Method 2: Rename and schedule for deletion on reboot
         try {
             $tempName = "$Path.delete_$(Get-Random)"
             Write-Info "Renaming to: $tempName (will be deleted on next reboot)"
             Rename-Item $Path $tempName -ErrorAction Stop
-            
+
             # Schedule for deletion on reboot using movefile
             if (Get-Command "schtasks" -ErrorAction SilentlyContinue) {
                 Write-Info "Scheduling for deletion on next reboot..."
             }
-            
+
             Write-Warning "Environment renamed to $tempName and will be deleted on next reboot"
             return $true
         }
         catch {
             Write-Warning "Rename method failed"
         }
-        
+
         # If all methods fail, return false
         return $false
     }
@@ -215,23 +215,23 @@ function Manage-ConfigBackups {
         [string]$ConfigFilePath,
         [int]$MaxBackups = 3
     )
-    
+
     if (!(Test-Path $ConfigFilePath)) {
         Write-Warning "Configuration file not found: $ConfigFilePath"
         return $null
     }
-    
+
     try {
         # Create new backup with timestamp
         $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
         $backupPath = "$ConfigFilePath.backup_$timestamp"
         Copy-Item $ConfigFilePath $backupPath -ErrorAction Stop
-        
+
         # Find all existing backups for this config file
         $configDir = Split-Path $ConfigFilePath -Parent
         $configFileName = Split-Path $ConfigFilePath -Leaf
         $backupPattern = "$configFileName.backup_*"
-        
+
         $existingBackups = Get-ChildItem -Path $configDir -Filter $backupPattern -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending
         
@@ -249,7 +249,7 @@ function Manage-ConfigBackups {
             }
             Write-Success "Backup retention: kept $MaxBackups most recent backups"
         }
-        
+
         Write-Success "Backup created: $(Split-Path $backupPath -Leaf)"
         return $backupPath
         
@@ -280,11 +280,11 @@ function Get-Version {
 # Clear Python cache files
 function Clear-PythonCache {
     Write-Info "Clearing Python cache files..."
-    
+
     try {
         # Remove .pyc files
         Get-ChildItem -Path . -Recurse -Filter "*.pyc" -ErrorAction SilentlyContinue | Remove-Item -Force
-        
+
         # Remove __pycache__ directories
         Get-ChildItem -Path . -Recurse -Name "__pycache__" -Directory -ErrorAction SilentlyContinue | 
         ForEach-Object { Remove-Item -Path $_ -Recurse -Force }
@@ -299,7 +299,7 @@ function Clear-PythonCache {
 # Get absolute path
 function Get-AbsolutePath {
     param([string]$Path)
-    
+
     if (Test-Path $Path) {
         # Use Resolve-Path for full resolution
         return Resolve-Path $Path
@@ -330,7 +330,7 @@ function Test-PythonVersion {
 # Find Python installation
 function Find-Python {
     $pythonCandidates = @("python", "python3", "py")
-    
+
     foreach ($cmd in $pythonCandidates) {
         if (Test-Command $cmd) {
             if (Test-PythonVersion $cmd) {
@@ -340,7 +340,7 @@ function Find-Python {
             }
         }
     }
-    
+
     # Try Windows Python Launcher with specific versions
     $pythonVersions = @("3.12", "3.11", "3.10", "3.9")
     foreach ($version in $pythonVersions) {
@@ -354,7 +354,7 @@ function Find-Python {
             continue
         }
     }
-    
+
     Write-Error "Python 3.10+ not found. Please install Python from https://python.org"
     return $null
 }
@@ -364,29 +364,29 @@ function Cleanup-Docker {
     if (Test-Path $DOCKER_CLEANED_FLAG) {
         return
     }
-    
+
     if (!(Test-Command "docker")) {
         return
     }
-    
+
     try {
         $null = docker info 2>$null
     }
     catch {
         return
     }
-    
+
     $foundArtifacts = $false
-    
+
     # Define containers to remove
     $containers = @(
         "gemini-mcp-server",
-        "gemini-mcp-redis", 
+        "gemini-mcp-redis",
         "zen-mcp-server",
         "zen-mcp-redis",
         "zen-mcp-log-monitor"
     )
-    
+
     # Remove containers
     foreach ($container in $containers) {
         try {
@@ -405,7 +405,7 @@ function Cleanup-Docker {
             # Ignore errors
         }
     }
-    
+
     # Remove images
     $images = @("gemini-mcp-server:latest", "zen-mcp-server:latest")
     foreach ($image in $images) {
@@ -424,7 +424,7 @@ function Cleanup-Docker {
             # Ignore errors
         }
     }
-    
+
     # Remove volumes
     $volumes = @("redis_data", "mcp_logs")
     foreach ($volume in $volumes) {
@@ -443,51 +443,51 @@ function Cleanup-Docker {
             # Ignore errors
         }
     }
-    
+
     if ($foundArtifacts) {
         Write-Success "Docker cleanup complete"
     }
-    
+
     New-Item -Path $DOCKER_CLEANED_FLAG -ItemType File -Force | Out-Null
 }
 
 # Validate API keys
 function Test-ApiKeys {
     Write-Step "Validating API Keys"
-    
+
     if (!(Test-Path ".env")) {
         Write-Warning "No .env file found. API keys should be configured."
         return $false
     }
-    
+
     $envContent = Get-Content ".env"
     $hasValidKey = $false
-    
+
     $keyPatterns = @{
         "GEMINI_API_KEY"     = "AIza[0-9A-Za-z-_]{35}"
         "OPENAI_API_KEY"     = "sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}"
         "XAI_API_KEY"        = "xai-[a-zA-Z0-9-_]+"
         "OPENROUTER_API_KEY" = "sk-or-[a-zA-Z0-9-_]+"
     }
-    
+
     foreach ($line in $envContent) {
         if ($line -match '^([^#][^=]*?)=(.*)$') {
             $key = $matches[1].Trim()
             $value = $matches[2].Trim() -replace '^["'']|["'']$', ''
-            
+
             if ($keyPatterns.ContainsKey($key) -and $value -ne "your_${key.ToLower()}_here" -and $value.Length -gt 10) {
                 Write-Success "Found valid $key"
                 $hasValidKey = $true
             }
         }
     }
-    
+
     if (!$hasValidKey) {
         Write-Warning "No valid API keys found in .env file"
         Write-Info "Please edit .env file with your actual API keys"
         return $false
     }
-    
+
     return $true
 }
 
@@ -499,11 +499,11 @@ function Test-Uv {
 # Setup environment using uv-first approach
 function Initialize-Environment {
     Write-Step "Setting up Python Environment"
-    
+
     # Try uv first for faster package management
     if (Test-Uv) {
         Write-Info "Using uv for faster package management..."
-        
+
         if (Test-Path $VENV_PATH) {
             if ($Force) {
                 Write-Warning "Removing existing environment..."
@@ -517,7 +517,7 @@ function Initialize-Environment {
                 }
             }
         }
-        
+
         try {
             Write-Info "Creating virtual environment with uv..."
             uv venv $VENV_PATH --python 3.12
@@ -530,23 +530,23 @@ function Initialize-Environment {
             Write-Warning "uv failed, falling back to venv"
         }
     }
-    
+
     # Fallback to standard venv
     $pythonCmd = Find-Python
     if (!$pythonCmd) {
         throw "Python 3.10+ not found"
     }
-    
+
     if (Test-Path $VENV_PATH) {
         if ($Force) {
             Write-Warning "Removing existing environment..."
             try {
                 # Stop any Python processes that might be using the venv
                 Get-Process python* -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*$VENV_PATH*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-                
+
                 # Wait a moment for processes to terminate
                 Start-Sleep -Seconds 2
-                
+
                 # Use the robust removal function
                 if (Remove-LockedDirectory $VENV_PATH) {
                     Write-Success "Existing environment removed"
@@ -572,7 +572,7 @@ function Initialize-Environment {
             return Get-AbsolutePath "$VENV_PATH\Scripts\python.exe"
         }
     }
-    
+
     Write-Info "Creating virtual environment with $pythonCmd..."
     if ($pythonCmd.StartsWith("py ")) {
         Invoke-Expression "$pythonCmd -m venv $VENV_PATH"
@@ -580,11 +580,11 @@ function Initialize-Environment {
     else {
         & $pythonCmd -m venv $VENV_PATH
     }
-    
+
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to create virtual environment"
     }
-    
+
     Write-Success "Virtual environment created"
     return Get-AbsolutePath "$VENV_PATH\Scripts\python.exe"
 }
@@ -592,17 +592,17 @@ function Initialize-Environment {
 # Setup virtual environment (legacy function for compatibility)
 function Initialize-VirtualEnvironment {
     Write-Step "Setting up Python Virtual Environment"
-    
+
     if (!$SkipVenv -and (Test-Path $VENV_PATH)) {
         if ($Force) {
             Write-Warning "Removing existing virtual environment..."
             try {
                 # Stop any Python processes that might be using the venv
                 Get-Process python* -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*$VENV_PATH*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-                
+
                 # Wait a moment for processes to terminate
                 Start-Sleep -Seconds 2
-                
+
                 # Use the robust removal function
                 if (Remove-LockedDirectory $VENV_PATH) {
                     Write-Success "Existing environment removed"
@@ -628,21 +628,21 @@ function Initialize-VirtualEnvironment {
             return
         }
     }
-    
+
     if ($SkipVenv) {
         Write-Warning "Skipping virtual environment setup"
         return
     }
-    
+
     $pythonCmd = Find-Python
     if (!$pythonCmd) {
         Write-Error "Python 3.10+ not found. Please install Python from https://python.org"
         exit 1
     }
-    
+
     Write-Info "Using Python: $pythonCmd"
     Write-Info "Creating virtual environment..."
-    
+
     try {
         if ($pythonCmd.StartsWith("py ")) {
             Invoke-Expression "$pythonCmd -m venv $VENV_PATH"
@@ -650,11 +650,11 @@ function Initialize-VirtualEnvironment {
         else {
             & $pythonCmd -m venv $VENV_PATH
         }
-        
+
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to create virtual environment"
         }
-        
+
         Write-Success "Virtual environment created"
     }
     catch {
@@ -670,7 +670,7 @@ function Install-Dependencies {
         [string]$PythonPath,
         [switch]$InstallDevDependencies = $false
     )
-    
+
     Write-Step "Installing Dependencies"
 
     # Build requirements files list
@@ -713,7 +713,7 @@ function Install-Dependencies {
     # Fallback to pip
     Write-Info "Installing dependencies with pip..."
     $pipCmd = Join-Path (Split-Path $PythonPath -Parent) "pip.exe"
-    
+
     try {
         # Upgrade pip first
         & $pipCmd install --upgrade pip | Out-Null
@@ -745,12 +745,12 @@ function Install-Dependencies {
 # Test Docker availability and requirements
 function Test-DockerRequirements {
     Write-Step "Checking Docker Requirements"
-    
+
     if (!(Test-Command "docker")) {
         Write-Error "Docker not found. Please install Docker Desktop from https://docker.com"
         return $false
     }
-    
+
     try {
         $null = docker version 2>$null
         Write-Success "Docker is installed and running"
@@ -759,7 +759,7 @@ function Test-DockerRequirements {
         Write-Error "Docker is installed but not running. Please start Docker Desktop."
         return $false
     }
-    
+
     if (!(Test-Command "docker-compose")) {
         Write-Warning "docker-compose not found. Trying docker compose..."
         try {
@@ -781,9 +781,9 @@ function Test-DockerRequirements {
 # Build Docker image
 function Build-DockerImage {
     param([switch]$Force = $false)
-    
+
     Write-Step "Building Docker Image"
-    
+
     # Check if image exists
     try {
         $imageExists = docker images --format "{{.Repository}}:{{.Tag}}" | Where-Object { $_ -eq "zen-mcp-server:latest" }
@@ -795,7 +795,7 @@ function Build-DockerImage {
     catch {
         # Continue if command fails
     }
-    
+
     if ($Force -and $imageExists) {
         Write-Info "Forcing rebuild of Docker image..."
         try {
@@ -805,7 +805,7 @@ function Build-DockerImage {
             Write-Warning "Could not remove existing image, continuing..."
         }
     }
-    
+
     Write-Info "Building Docker image from Dockerfile..."
     try {
         $buildArgs = @()
@@ -813,12 +813,12 @@ function Build-DockerImage {
             # For development builds, we could add specific build args
             Write-Info "Building with development support..."
         }
-        
+
         docker build -t zen-mcp-server:latest .
         if ($LASTEXITCODE -ne 0) {
             throw "Docker build failed"
         }
-        
+
         Write-Success "Docker image built successfully"
         return $true
     }
@@ -831,11 +831,11 @@ function Build-DockerImage {
 # Prepare Docker environment file
 function Initialize-DockerEnvironment {
     Write-Step "Preparing Docker Environment"
-    
+
     # Ensure .env file exists
     if (!(Test-Path ".env")) {
         Write-Warning "No .env file found. Creating default .env file..."
-        
+
         $defaultEnv = @"
 # API Keys - Replace with your actual keys
 GEMINI_API_KEY=your_gemini_api_key_here
@@ -863,7 +863,7 @@ DEFAULT_THINKING_MODE_THINKDEEP=high
 #MAX_MCP_OUTPUT_TOKENS=
 #TZ=UTC
 "@
-        
+
         $defaultEnv | Out-File -FilePath ".env" -Encoding UTF8
         Write-Success "Default .env file created"
         Write-Warning "Please edit .env file with your actual API keys"
@@ -871,25 +871,25 @@ DEFAULT_THINKING_MODE_THINKDEEP=high
     else {
         Write-Success ".env file exists"
     }
-    
+
     # Create logs directory for volume mount
     Initialize-Logging
-    
+
     return $true
 }
 
 # Start Docker services
 function Start-DockerServices {
     param([switch]$Follow = $false)
-    
+
     Write-Step "Starting Docker Services"
-    
+
     # Check if docker-compose.yml exists
     if (!(Test-Path "docker-compose.yml")) {
         Write-Error "docker-compose.yml not found in current directory"
         return $false
     }
-    
+
     try {
         # Stop any existing services
         Write-Info "Stopping any existing services..."
@@ -899,7 +899,7 @@ function Start-DockerServices {
         else {
             docker compose down 2>$null
         }
-        
+
         # Start services
         Write-Info "Starting Zen MCP Server with Docker Compose..."
         if (Test-Command "docker-compose") {
@@ -918,11 +918,11 @@ function Start-DockerServices {
                 docker compose up -d --build
             }
         }
-        
+
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to start Docker services"
         }
-        
+
         if (!$Follow) {
             Write-Success "Docker services started successfully"
             Write-Info "Container name: zen-mcp-server"
@@ -932,7 +932,7 @@ function Start-DockerServices {
             Write-Host "To stop: " -NoNewline
             Write-Host "docker-compose down" -ForegroundColor Yellow
         }
-        
+
         return $true
     }
     catch {
@@ -967,7 +967,7 @@ function Get-DockerStatus {
 # Setup logging directory
 function Initialize-Logging {
     Write-Step "Setting up Logging"
-    
+
     if (!(Test-Path $LOG_DIR)) {
         New-Item -ItemType Directory -Path $LOG_DIR -Force | Out-Null
         Write-Success "Logs directory created"
@@ -980,17 +980,17 @@ function Initialize-Logging {
 # Check Docker
 function Test-Docker {
     Write-Step "Checking Docker Setup"
-    
+
     if ($SkipDocker) {
         Write-Warning "Skipping Docker checks"
         return
     }
-    
+
     if (Test-Command "docker") {
         try {
             $null = docker version 2>$null
             Write-Success "Docker is installed and running"
-            
+
             if (Test-Command "docker-compose") {
                 Write-Success "Docker Compose is available"
             }
@@ -1070,10 +1070,10 @@ $script:DockerMcpConfig = @{
 # Generate Docker MCP configuration using docker run (recommended for all clients)
 function Get-DockerMcpConfigRun {
     param([string]$ServerPath)
-    
+
     $scriptDir = Split-Path $ServerPath -Parent
     $envFile = Join-Path $scriptDir ".env"
-    
+
     return @{
         command = "docker"
         args    = @("run", "--rm", "-i", "--env-file", $envFile, "zen-mcp-server:latest", "python", "server.py")
@@ -1094,7 +1094,7 @@ function Get-PythonMcpConfig {
 # Check if client uses mcp.json format with servers structure
 function Test-McpJsonFormat {
     param([hashtable]$Client)
-    
+
     $configFileName = Split-Path $Client.ConfigPath -Leaf
     return $configFileName -eq "mcp.json"
 }
@@ -1102,7 +1102,7 @@ function Test-McpJsonFormat {
 # Check if client uses the new VS Code Insiders format (servers instead of mcpServers)
 function Test-VSCodeInsidersFormat {
     param([hashtable]$Client)
-    
+
     return $Client.IsVSCodeInsiders -eq $true -and $Client.ConfigJsonPath -eq "servers.zen"
 }
 
@@ -1114,7 +1114,7 @@ function Get-ExistingMcpConfigType {
         [Parameter(Mandatory = $true)]
         [string]$ConfigPath
     )
-    
+
     if (!(Test-Path $ConfigPath)) {
         return @{
             Exists  = $false
@@ -1122,7 +1122,7 @@ function Get-ExistingMcpConfigType {
             Details = "No configuration found"
         }
     }
-    
+
     try {
         $content = Get-Content $ConfigPath -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
         if (!$content) {
@@ -1132,12 +1132,12 @@ function Get-ExistingMcpConfigType {
                 Details = "Invalid JSON configuration"
             }
         }
-        
+
         # Navigate to zen configuration
         $pathParts = $Client.ConfigJsonPath.Split('.')
         $zenKey = $pathParts[-1]
         $parentPath = $pathParts[0..($pathParts.Length - 2)]
-        
+
         $targetObject = $content
         foreach ($key in $parentPath) {
             if (!$targetObject.PSObject.Properties[$key]) {
@@ -1149,7 +1149,7 @@ function Get-ExistingMcpConfigType {
             }
             $targetObject = $targetObject.$key
         }
-        
+
         if (!$targetObject.PSObject.Properties[$zenKey]) {
             return @{
                 Exists  = $false
@@ -1157,14 +1157,14 @@ function Get-ExistingMcpConfigType {
                 Details = "Zen configuration not found"
             }
         }
-        
+
         $zenConfig = $targetObject.$zenKey
-        
+
         # Analyze configuration type
         if ($zenConfig.command -eq "docker") {
             $dockerType = "Unknown"
             $details = "Docker configuration"
-            
+
             if ($zenConfig.args -and $zenConfig.args.Count -gt 0) {
                 if ($zenConfig.args[0] -eq "run") {
                     $dockerType = "Docker Run"
@@ -1178,7 +1178,7 @@ function Get-ExistingMcpConfigType {
                     $details = "Docker ($($zenConfig.args[0]))"
                 }
             }
-            
+
             return @{
                 Exists  = $true
                 Type    = "Docker"
@@ -1191,7 +1191,7 @@ function Get-ExistingMcpConfigType {
         elseif ($zenConfig.command -and $zenConfig.command.EndsWith("python.exe")) {
             $pythonType = "Python"
             $details = "Python virtual environment"
-            
+
             if ($zenConfig.command.Contains(".zen_venv")) {
                 $details = "Python (zen virtual environment)"
             }
@@ -1201,7 +1201,7 @@ function Get-ExistingMcpConfigType {
             else {
                 $details = "Python (system installation)"
             }
-            
+
             return @{
                 Exists  = $true
                 Type    = "Python"
@@ -1267,7 +1267,7 @@ function Configure-McpClient {
             Write-Warning "$($Client.Name) user directory not found. Skipping."
             return
         }
-        
+
         # Find most recent settings.json (default or profile)
         $settingsFiles = @()
         $defaultSettings = $configPath
@@ -1277,7 +1277,7 @@ function Configure-McpClient {
                 LastModified = (Get-Item $defaultSettings).LastWriteTime
             }
         }
-        
+
         $profilesPath = Join-Path $userPath "profiles"
         if (Test-Path $profilesPath) {
             Get-ChildItem $profilesPath -Directory | ForEach-Object {
@@ -1290,7 +1290,7 @@ function Configure-McpClient {
                 }
             }
         }
-        
+
         if ($settingsFiles.Count -gt 0) {
             $configPath = ($settingsFiles | Sort-Object LastModified -Descending | Select-Object -First 1).Path
         }
@@ -1303,7 +1303,7 @@ function Configure-McpClient {
             Write-Warning "$($Client.Name) user directory not found. Skipping."
             return
         }
-        
+
         # Find most recent mcp.json (default or profile)
         $mcpFiles = @()
         $defaultMcp = $configPath
@@ -1313,7 +1313,7 @@ function Configure-McpClient {
                 LastModified = (Get-Item $defaultMcp).LastWriteTime
             }
         }
-        
+
         $profilesPath = Join-Path $userPath "profiles"
         if (Test-Path $profilesPath) {
             Get-ChildItem $profilesPath -Directory | ForEach-Object {
@@ -1326,7 +1326,7 @@ function Configure-McpClient {
                 }
             }
         }
-        
+
         if ($mcpFiles.Count -gt 0) {
             $configPath = ($mcpFiles | Sort-Object LastModified -Descending | Select-Object -First 1).Path
         }
@@ -1335,12 +1335,12 @@ function Configure-McpClient {
     # Check if already configured and analyze existing configuration
     $existingConfig = Get-ExistingMcpConfigType -Client $Client -ConfigPath $configPath
     $newConfigType = if ($UseDocker) { "Docker" } else { "Python" }
-    
+
     if ($existingConfig.Exists) {
         Write-Info "Found existing Zen MCP configuration in $($Client.Name)"
         Write-Info "  Current: $($existingConfig.Details)"
         Write-Info "  New: $newConfigType configuration"
-        
+
         if ($existingConfig.Type -eq $newConfigType) {
             Write-Warning "Same configuration type ($($existingConfig.Type)) already exists"
             $response = Read-Host "`nOverwrite existing $($existingConfig.Type) configuration? (y/N)"
@@ -1350,12 +1350,12 @@ function Configure-McpClient {
             Write-Info "  Replacing: $($existingConfig.Type) → $newConfigType"
             $response = Read-Host "`nReplace $($existingConfig.Type) with $newConfigType configuration? (y/N)"
         }
-        
+
         if ($response -ne 'y' -and $response -ne 'Y') {
             Write-Info "Keeping existing configuration in $($Client.Name)"
             return
         }
-        
+
         Write-Info "Proceeding with configuration update..."
     }
     else {
@@ -1383,7 +1383,7 @@ function Configure-McpClient {
         $config = New-Object PSObject
         $usesMcpJsonFormat = Test-McpJsonFormat -Client $Client
         $usesVSCodeInsidersFormat = Test-VSCodeInsidersFormat -Client $Client
-        
+
         if (Test-Path $configPath) {
             $fileContent = Get-Content $configPath -Raw
             if ($fileContent.Trim()) {
@@ -1391,7 +1391,7 @@ function Configure-McpClient {
             }
             if ($null -eq $config) { $config = New-Object PSObject }
         }
-        
+
         # Initialize structure for mcp.json format files if they don't exist or are empty
         if ($usesMcpJsonFormat) {
             if ($usesVSCodeInsidersFormat) {
@@ -1407,7 +1407,7 @@ function Configure-McpClient {
                 }
             }
         }
-        
+
         # Initialize MCP structure for VS Code settings.json if it doesn't exist
         if ($Client.IsVSCode -and $Client.ConfigJsonPath.StartsWith("mcp.")) {
             if (!$config.PSObject.Properties["mcp"]) {
@@ -1419,7 +1419,7 @@ function Configure-McpClient {
         }
 
         # Generate server config
-        $serverConfig = if ($UseDocker) { 
+        $serverConfig = if ($UseDocker) {
             # Use docker run for all clients (more reliable than docker exec)
             Get-DockerMcpConfigRun $ServerPath
         }
@@ -1431,7 +1431,7 @@ function Configure-McpClient {
         $pathParts = $Client.ConfigJsonPath.Split('.')
         $zenKey = $pathParts[-1]
         $parentPath = $pathParts[0..($pathParts.Length - 2)]
-        
+
         $targetObject = $config
         foreach ($key in $parentPath) {
             if (!$targetObject.PSObject.Properties[$key]) {
@@ -1462,14 +1462,14 @@ function Invoke-McpClientConfiguration {
         [string]$PythonPath = "",
         [string]$ServerPath = ""
     )
-    
+
     Write-Step "Checking Client Integrations"
-    
+
     # Configure GUI clients
     foreach ($client in $script:McpClientDefinitions) {
         Configure-McpClient -Client $client -UseDocker $UseDocker -PythonPath $PythonPath -ServerPath $ServerPath
     }
-    
+
     # Handle CLI tools separately (they don't follow JSON config pattern)
     if (!$UseDocker) {
         Test-ClaudeCliIntegration $PythonPath $ServerPath
@@ -1481,13 +1481,13 @@ function Invoke-McpClientConfiguration {
 # Keep existing CLI integration functions
 function Test-ClaudeCliIntegration {
     param([string]$PythonPath, [string]$ServerPath)
-    
+
     if (!(Test-Command "claude")) {
         return
     }
-    
+
     Write-Info "Claude CLI detected - checking configuration..."
-    
+
     try {
         $claudeConfig = claude mcp list 2>$null
         if ($claudeConfig -match "zen") {
@@ -1506,21 +1506,21 @@ function Test-ClaudeCliIntegration {
 
 function Test-GeminiCliIntegration {
     param([string]$ScriptDir)
-    
+
     $zenWrapper = Join-Path $ScriptDir "zen-mcp-server.cmd"
-    
+
     # Check if Gemini settings file exists (Windows path)
     $geminiConfig = "$env:USERPROFILE\.gemini\settings.json"
     if (!(Test-Path $geminiConfig)) {
         return
     }
-    
+
     # Check if zen is already configured
     $configContent = Get-Content $geminiConfig -Raw -ErrorAction SilentlyContinue
     if ($configContent -and $configContent -match '"zen"') {
         return
     }
-    
+
     # Ask user if they want to add Zen to Gemini CLI
     Write-Host ""
     $response = Read-Host "Configure Zen for Gemini CLI? (y/N)"
@@ -1528,7 +1528,7 @@ function Test-GeminiCliIntegration {
         Write-Info "Skipping Gemini CLI integration"
         return
     }
-    
+
     # Ensure wrapper script exists
     if (!(Test-Path $zenWrapper)) {
         Write-Info "Creating wrapper script for Gemini CLI..."
@@ -1541,38 +1541,38 @@ if exist ".zen_venv\Scripts\python.exe" (
     python server.py %*
 )
 "@ | Out-File -FilePath $zenWrapper -Encoding ASCII
-        
+
         Write-Success "Created zen-mcp-server.cmd wrapper script"
     }
-    
+
     # Update Gemini settings
     Write-Info "Updating Gemini CLI configuration..."
-    
+
     try {
         # Create backup with retention management
         $backupPath = Manage-ConfigBackups $geminiConfig
-        
+
         # Read existing config or create new one
         $config = @{}
         if (Test-Path $geminiConfig) {
             $config = Get-Content $geminiConfig -Raw | ConvertFrom-Json
         }
-        
+
         # Ensure mcpServers exists
         if (!$config.mcpServers) {
             $config | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value @{} -Force
         }
-        
+
         # Add zen server
         $zenConfig = @{
             command = $zenWrapper
         }
-        
+
         $config.mcpServers | Add-Member -MemberType NoteProperty -Name "zen" -Value $zenConfig -Force
-        
+
         # Write updated config
         $config | ConvertTo-Json -Depth 10 | Out-File $geminiConfig -Encoding UTF8
-        
+
         Write-Success "Successfully configured Gemini CLI"
         Write-Host "  Config: $geminiConfig" -ForegroundColor Gray
         Write-Host "  Restart Gemini CLI to use Zen MCP Server" -ForegroundColor Gray
@@ -1858,9 +1858,9 @@ function Show-ConfigInstructions {
         [string]$ServerPath = "",
         [switch]$UseDocker = $false
     )
-    
+
     Write-Step "Configuration Instructions"
-    
+
     if ($UseDocker) {
         Write-Host "Docker Configuration:" -ForegroundColor Yellow
         Write-Host "The MCP clients have been configured to use Docker containers." -ForegroundColor White
@@ -1873,10 +1873,10 @@ function Show-ConfigInstructions {
         Write-Host "Server Path: $ServerPath" -ForegroundColor Cyan
         Write-Host ""
     }
-    
+
     Write-Host "Supported MCP Clients:" -ForegroundColor Green
     Write-Host "✓ Claude Desktop" -ForegroundColor White
-    Write-Host "✓ Claude CLI" -ForegroundColor White  
+    Write-Host "✓ Claude CLI" -ForegroundColor White
     Write-Host "✓ VSCode (with MCP extension)" -ForegroundColor White
     Write-Host "✓ VSCode Insiders" -ForegroundColor White
     Write-Host "✓ Cursor" -ForegroundColor White
@@ -1896,9 +1896,9 @@ function Show-SetupInstructions {
         [string]$ServerPath = "",
         [switch]$UseDocker = $false
     )
-    
+
     Write-Step "Setup Complete"
-    
+
     if ($UseDocker) {
         Write-Success "Zen MCP Server is configured for Docker deployment"
         Write-Host "Docker command: docker exec -i zen-mcp-server python server.py" -ForegroundColor Cyan
@@ -1908,7 +1908,7 @@ function Show-SetupInstructions {
         Write-Host "Python: $PythonPath" -ForegroundColor Cyan
         Write-Host "Server: $ServerPath" -ForegroundColor Cyan
     }
-    
+
     Write-Host ""
     Write-Host "MCP clients will automatically connect to the server." -ForegroundColor Green
     Write-Host "For manual configuration, use the paths shown above." -ForegroundColor Gray
@@ -1917,19 +1917,19 @@ function Show-SetupInstructions {
 # Start the server
 function Start-Server {
     Write-Step "Starting Zen MCP Server"
-    
+
     $pythonPath = "$VENV_PATH\Scripts\python.exe"
     if (!(Test-Path $pythonPath)) {
         Write-Error "Python virtual environment not found. Please run setup first."
         return
     }
-    
+
     $serverPath = "server.py"
     if (!(Test-Path $serverPath)) {
         Write-Error "Server script not found: $serverPath"
         return
     }
-    
+
     try {
         Write-Info "Launching server..."
         & $pythonPath $serverPath
@@ -1942,16 +1942,16 @@ function Start-Server {
 # Follow server logs
 function Follow-Logs {
     Write-Step "Following Server Logs"
-    
+
     $logPath = Join-Path $LOG_DIR $LOG_FILE
-    
+
     if (!(Test-Path $logPath)) {
         Write-Warning "Log file not found: $logPath"
         Write-Info "Starting server to generate logs..."
         Start-Server
         return
     }
-    
+
     try {
         Write-Info "Following logs at: $logPath"
         Write-Host "Press Ctrl+C to stop following logs"
@@ -1970,7 +1970,7 @@ function Follow-Logs {
 # Initialize .env file if it doesn't exist
 function Initialize-EnvFile {
     Write-Step "Setting up Environment File"
-    
+
     if (!(Test-Path ".env")) {
         Write-Info "Creating default .env file..."
         @"
@@ -2000,7 +2000,7 @@ DEFAULT_THINKING_MODE_THINKDEEP=high
 #MAX_MCP_OUTPUT_TOKENS=
 #TZ=UTC
 "@ | Out-File -FilePath ".env" -Encoding UTF8
-        
+
         Write-Success "Default .env file created"
         Write-Warning "Please edit .env file with your actual API keys"
     }
@@ -2015,14 +2015,14 @@ function Import-EnvFile {
         Write-Warning "No .env file found"
         return
     }
-    
+
     try {
         $envContent = Get-Content ".env" -ErrorAction Stop
         foreach ($line in $envContent) {
             if ($line -match '^([^#][^=]*?)=(.*)$') {
                 $key = $matches[1].Trim()
                 $value = $matches[2].Trim() -replace '^["'']|["'']$', ''
-                
+
                 # Set environment variable for the current session
                 [Environment]::SetEnvironmentVariable($key, $value, "Process")
             }
@@ -2043,26 +2043,26 @@ function Invoke-DockerWorkflow {
     Write-Step "Starting Docker Workflow"
     Write-Host "Zen MCP Server" -ForegroundColor Green
     Write-Host "=================" -ForegroundColor Cyan
-    
+
     $version = Get-Version
     Write-Host "Version: $version"
     Write-Host "Mode: Docker Container" -ForegroundColor Yellow
     Write-Host ""
-    
+
     # Docker setup and validation
     if (!(Test-DockerRequirements)) { exit 1 }
     if (!(Initialize-DockerEnvironment)) { exit 1 }
-    
+
     Import-EnvFile
     Test-ApiKeys
-    
+
     if (!(Build-DockerImage -Force:$Force)) { exit 1 }
-    
+
     # Configure MCP clients for Docker
     Invoke-McpClientConfiguration -UseDocker $true
-    
+
     Show-SetupInstructions -UseDocker
-    
+
     # Start Docker services
     Write-Step "Starting Zen MCP Server"
     if ($Follow) {
@@ -2070,13 +2070,13 @@ function Invoke-DockerWorkflow {
         Start-DockerServices -Follow
         exit 0
     }
-    
+
     if (!(Start-DockerServices)) { exit 1 }
-    
+
     Write-Host ""
     Write-Success "Zen MCP Server is running in Docker!"
     Write-Host ""
-    
+
     Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "1. Restart your MCP clients (Claude Desktop, etc.)" -ForegroundColor White
     Write-Host "2. The server is now ready to use" -ForegroundColor White
@@ -2095,22 +2095,22 @@ function Invoke-PythonWorkflow {
     Write-Step "Starting Python Virtual Environment Workflow"
     Write-Host "Zen MCP Server" -ForegroundColor Green
     Write-Host "=================" -ForegroundColor Cyan
-    
+
     $version = Get-Version
     Write-Host "Version: $version"
     Write-Host ""
-    
+
     if (!(Test-Path $VENV_PATH)) {
         Write-Info "Setting up Python environment for first time..."
     }
-    
+
     # Python environment setup
     Cleanup-Docker
     Clear-PythonCache
     Initialize-EnvFile
     Import-EnvFile
     Test-ApiKeys
-    
+
     try {
         $pythonPath = Initialize-Environment
     }
@@ -2118,7 +2118,7 @@ function Invoke-PythonWorkflow {
         Write-Error "Failed to setup Python environment: $_"
         exit 1
     }
-    
+
     try {
         Install-Dependencies $pythonPath -InstallDevDependencies:$Dev
     }
@@ -2126,19 +2126,19 @@ function Invoke-PythonWorkflow {
         Write-Error "Failed to install dependencies: $_"
         exit 1
     }
-    
+
     $serverPath = Get-AbsolutePath "server.py"
-    
+
     # Configure MCP clients for Python
     Invoke-McpClientConfiguration -UseDocker $false -PythonPath $pythonPath -ServerPath $serverPath
-    
+
     Show-SetupInstructions $pythonPath $serverPath
     Initialize-Logging
-    
+
     Write-Host ""
     Write-Host "Logs will be written to: $(Get-AbsolutePath $LOG_DIR)\$LOG_FILE"
     Write-Host ""
-    
+
     if ($Follow) {
         Follow-Logs
     }
@@ -2148,7 +2148,7 @@ function Invoke-PythonWorkflow {
         Write-Host "To update: git pull, then run .\run-server.ps1 again" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "Happy coding! 🎉" -ForegroundColor Green
-        
+
         $response = Read-Host "`nStart the server now? (y/N)"
         if ($response -eq 'y' -or $response -eq 'Y') {
             Start-Server
@@ -2171,12 +2171,12 @@ function Start-MainProcess {
         Show-Help
         exit 0
     }
-    
+
     if ($Version) {
-        Show-Version  
+        Show-Version
         exit 0
     }
-    
+
     if ($ClearCache) {
         Clear-PythonCache
         Write-Success "Cache cleared successfully"
@@ -2184,7 +2184,7 @@ function Start-MainProcess {
         Write-Host "You can now run '.\run-server.ps1' normally"
         exit 0
     }
-    
+
     if ($Config) {
         # Setup minimal environment to get paths for config display
         Write-Info "Setting up environment for configuration display..."

@@ -2,7 +2,7 @@
 
 ## **The Most Profound Feature: Context Revival After Reset**
 
-**This powerful feature cannot be highlighted enough**: The Zen MCP Server implements a simple continuation system that seemingly transcends Claude's context limitations. 
+**This powerful feature cannot be highlighted enough**: The Zen MCP Server implements a simple continuation system that seemingly transcends Claude's context limitations.
 
 ## How Context Revival Works
 
@@ -75,13 +75,13 @@ Claude: "Ah yes, excellent plan! Based on O3's optimization insights and our ear
 
 ## Why This Changes Everything
 
-**Before Zen MCP**: Claude's context resets meant losing entire conversation threads. 
+**Before Zen MCP**: Claude's context resets meant losing entire conversation threads.
 Complex multi-step analyses were fragmented and had to restart from scratch. You most likely need to re-prompt Claude or to make it re-read some previously
 saved document / `CLAUDE.md` etc - no need. Zen remembers.
 
 **With Zen MCP**: Claude can orchestrate multi-hour, multi-tool workflows where:
 - **O3** handles logical analysis and debugging
-- **Gemini Pro** performs deep architectural reviews  
+- **Gemini Pro** performs deep architectural reviews
 - **Flash** provides quick formatting and style checks
 - **Claude** coordinates everything while maintaining full context
 
@@ -95,7 +95,7 @@ The system is highly configurable:
 # Maximum conversation turns (default: 20)
 MAX_CONVERSATION_TURNS=20
 
-# Thread expiration in hours (default: 3) 
+# Thread expiration in hours (default: 3)
 CONVERSATION_TIMEOUT_HOURS=3
 ```
 

@@ -1,6 +1,6 @@
 [run]
 source = gemini_server
-omit = 
+omit =
     */tests/*
     */venv/*
     */__pycache__/*

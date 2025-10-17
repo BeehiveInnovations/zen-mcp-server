@@ -1,6 +1,21 @@
 ---
 default_stages: [pre-commit, pre-push]
 repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Python formatting and linting
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
@@ -29,6 +44,8 @@ exclude: |
     \.venv/|
     venv/|
     \.zen_venv/|
+    \.nix-venv/|
+    \.direnv/|
     __pycache__/|
     \.pytest_cache/|
     logs/|
