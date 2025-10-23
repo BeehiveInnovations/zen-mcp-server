@@ -19,7 +19,7 @@ class TestGeminiTokenEstimation(unittest.TestCase):
         # Create a mock that raises exception when LocalTokenizer is accessed
         mock_genai = MagicMock()
         mock_genai.LocalTokenizer.side_effect = Exception("mocked failure")
-        
+
         with patch("providers.gemini.genai", mock_genai):
             # "Hello world" = 11 characters / 4 = 2 tokens
             tokens = self.provider._calculate_text_tokens("gemini-2.5-flash", "Hello world")
