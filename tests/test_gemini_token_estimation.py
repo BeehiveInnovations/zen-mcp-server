@@ -1,7 +1,7 @@
 """Tests for Gemini provider offline token estimation."""
 
 import unittest
-from unittest.mock import Mock, MagicMock, mock_open, patch
+from unittest.mock import MagicMock, Mock, mock_open, patch
 
 from providers.gemini import GeminiModelProvider
 
@@ -170,7 +170,7 @@ class TestGeminiTokenEstimation(unittest.TestCase):
 
     def test_calculate_audio_tokens_io_error(self):
         """Test audio token calculation raises ValueError on I/O error."""
-        with patch("tinytag.TinyTag.get", side_effect=IOError("I/O error")):
+        with patch("tinytag.TinyTag.get", side_effect=OSError("I/O error")):
             with self.assertRaises(ValueError) as context:
                 self.provider._calculate_audio_tokens("/path/to/ioerror.mp3")
             self.assertIn("Cannot access audio file", str(context.exception))

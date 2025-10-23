@@ -539,7 +539,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             raise ValueError(f"Image file not found for token estimation: {file_path}")
         except PermissionError:
             raise ValueError(f"Permission denied accessing image file: {file_path}")
-        except (OSError, IOError) as e:
+        except OSError as e:
             raise ValueError(f"Cannot access image file {file_path}: {e}")
         except Exception as e:
             # Other errors (parsing issues, corrupted image, library errors) - use fallback
@@ -576,7 +576,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             raise ValueError(f"PDF file not found for token estimation: {file_path}")
         except PermissionError:
             raise ValueError(f"Permission denied accessing PDF file: {file_path}")
-        except (OSError, IOError) as e:
+        except OSError as e:
             raise ValueError(f"Cannot access PDF file {file_path}: {e}")
         except Exception as e:
             # Other errors (parsing issues, corrupted PDF) - use fallback
@@ -630,7 +630,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             raise ValueError(f"Video file not found for token estimation: {file_path}")
         except PermissionError:
             raise ValueError(f"Permission denied accessing video file: {file_path}")
-        except (OSError, IOError) as e:
+        except OSError as e:
             raise ValueError(f"Cannot access video file {file_path}: {e}")
         except Exception as e:
             # Other errors (corrupted video, unsupported codec) - use fallback
@@ -670,7 +670,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             raise ValueError(f"Audio file not found for token estimation: {file_path}")
         except PermissionError:
             raise ValueError(f"Permission denied accessing audio file: {file_path}")
-        except (OSError, IOError) as e:
+        except OSError as e:
             raise ValueError(f"Cannot access audio file {file_path}: {e}")
         except Exception as e:
             # Other errors (corrupted audio, unsupported format) - use fallback
@@ -699,7 +699,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             raise ValueError(f"Text file not found for token estimation: {file_path}")
         except PermissionError:
             raise ValueError(f"Permission denied accessing text file: {file_path}")
-        except (OSError, IOError) as e:
+        except OSError as e:
             raise ValueError(f"Cannot access text file {file_path}: {e}")
 
     def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> Optional[int]:
