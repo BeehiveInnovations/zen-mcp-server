@@ -1,7 +1,7 @@
 """Tests for Gemini provider offline token estimation."""
 
 import unittest
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, MagicMock, mock_open, patch
 
 from providers.gemini import GeminiModelProvider
 
@@ -14,14 +14,16 @@ class TestGeminiTokenEstimation(unittest.TestCase):
         self.provider = GeminiModelProvider("test-key")
 
     # Test: Text token calculation
-    # Note: LocalTokenizer tests skipped as it may not be available in all google-genai versions
     def test_calculate_text_tokens_fallback(self):
-        """Test text token calculation uses character-based fallback."""
-        # "Hello world" = 11 characters / 4 = 2 tokens
-        tokens = self.provider._calculate_text_tokens("gemini-2.5-flash", "Hello world")
-
-        # Should use fallback (LocalTokenizer may not be available)
-        self.assertGreater(tokens, 0)
+        """Test text token calculation uses character-based fallback when LocalTokenizer fails."""
+        # Create a mock that raises exception when LocalTokenizer is accessed
+        mock_genai = MagicMock()
+        mock_genai.LocalTokenizer.side_effect = Exception("mocked failure")
+        
+        with patch("providers.gemini.genai", mock_genai):
+            # "Hello world" = 11 characters / 4 = 2 tokens
+            tokens = self.provider._calculate_text_tokens("gemini-2.5-flash", "Hello world")
+            self.assertEqual(tokens, 2)
 
     # Test: Image token calculation
     def test_calculate_image_tokens_small_image(self):

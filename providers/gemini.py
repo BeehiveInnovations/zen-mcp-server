@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 from google import genai
 from google.genai import types
 
+from config import GEMINI_MEDIA_RESOLUTION
 from utils.env import get_env
 from utils.image_utils import validate_image
 
@@ -206,13 +207,15 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
 
         # Add media resolution configuration
         # Supports LOW (saves 62-75% tokens), MEDIUM (default), HIGH (quality)
-        from config import GEMINI_MEDIA_RESOLUTION
-
         media_resolution = kwargs.get("media_resolution") or GEMINI_MEDIA_RESOLUTION
-        if media_resolution.upper() in ["LOW", "MEDIUM", "HIGH"]:
-            resolution_enum = getattr(types.MediaResolution, f"MEDIA_RESOLUTION_{media_resolution.upper()}", None)
-            if resolution_enum:
-                generation_config.media_resolution = resolution_enum
+        RESOLUTION_MAP = {
+            "LOW": types.MediaResolution.MEDIA_RESOLUTION_LOW,
+            "MEDIUM": types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+            "HIGH": types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+        }
+        resolution_enum = RESOLUTION_MAP.get(media_resolution.upper())
+        if resolution_enum:
+            generation_config.media_resolution = resolution_enum
 
         # Retry logic with progressive delays
         attempt_counter = {"value": 0}
@@ -479,8 +482,6 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             Token count
         """
         try:
-            from google import genai
-
             tokenizer = genai.LocalTokenizer(model_name=model_name)
             result = tokenizer.count_tokens(content)
             return result.total_tokens
@@ -676,6 +677,31 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             logger.warning("Failed to calculate audio tokens for %s: %s", file_path, e)
             return 320
 
+    def _calculate_text_file_tokens(self, model_name: str, file_path: str) -> int:
+        """Calculate text file token count by reading file and using text tokenization.
+
+        Args:
+            model_name: The model to count tokens for
+            file_path: Path to the text file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                content = f.read()
+                return self._calculate_text_tokens(model_name, content)
+
+        except FileNotFoundError:
+            raise ValueError(f"Text file not found for token estimation: {file_path}")
+        except PermissionError:
+            raise ValueError(f"Permission denied accessing text file: {file_path}")
+        except (OSError, IOError) as e:
+            raise ValueError(f"Cannot access text file {file_path}: {e}")
+
     def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> Optional[int]:
         """Estimate token count for files using offline calculation.
 
@@ -712,16 +738,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
 
             # Text/code files: use LocalTokenizer (SentencePiece)
             elif mime_type.startswith("text/") or "json" in mime_type or "xml" in mime_type:
-                try:
-                    with open(file_path, encoding="utf-8") as f:
-                        content = f.read()
-                        total_tokens += self._calculate_text_tokens(model_name, content)
-                except FileNotFoundError:
-                    raise ValueError(f"Text file not found for token estimation: {file_path}")
-                except PermissionError:
-                    raise ValueError(f"Permission denied accessing text file: {file_path}")
-                except (OSError, IOError) as e:
-                    raise ValueError(f"Cannot access text file {file_path}: {e}")
+                total_tokens += self._calculate_text_file_tokens(model_name, file_path)
 
             # Videos: use tinytag to extract duration
             elif mime_type.startswith("video/"):
