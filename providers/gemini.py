@@ -50,6 +50,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         "gemini-2.5-pro": 32768,  # Pro 2.5 thinking budget limit
     }
 
+    # Retry configuration for API calls
+    MAX_RETRIES = 4
+    RETRY_DELAYS = [1, 3, 5, 8]  # seconds
+
     def __init__(self, api_key: str, **kwargs):
         """Initialize Gemini provider with API key and optional base URL."""
         self._ensure_registry()
@@ -200,9 +204,17 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
+        # Add media resolution configuration
+        # Supports LOW (saves 62-75% tokens), MEDIUM (default), HIGH (quality)
+        from config import GEMINI_MEDIA_RESOLUTION
+
+        media_resolution = kwargs.get("media_resolution") or GEMINI_MEDIA_RESOLUTION
+        if media_resolution.upper() in ["LOW", "MEDIUM", "HIGH"]:
+            resolution_enum = getattr(types.MediaResolution, f"MEDIA_RESOLUTION_{media_resolution.upper()}", None)
+            if resolution_enum:
+                generation_config.media_resolution = resolution_enum
+
         # Retry logic with progressive delays
-        max_retries = 4  # Total of 4 attempts
-        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
         attempt_counter = {"value": 0}
 
         def _attempt() -> ModelResponse:
@@ -297,8 +309,8 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         try:
             return self._run_with_retries(
                 operation=_attempt,
-                max_attempts=max_retries,
-                delays=retry_delays,
+                max_attempts=self.MAX_RETRIES,
+                delays=self.RETRY_DELAYS,
                 log_prefix=f"Gemini API ({resolved_model_name})",
             )
         except Exception as exc:
@@ -451,6 +463,283 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return None
+
+    def _calculate_text_tokens(self, model_name: str, content: str) -> int:
+        """Calculate text token count using LocalTokenizer.
+
+        Reference: google-genai[local-tokenizer] using SentencePiece
+
+        Uses Gemini's official offline tokenizer (same as Gemma models).
+
+        Args:
+            model_name: The model to count tokens for
+            content: Text content
+
+        Returns:
+            Token count
+        """
+        try:
+            from google import genai
+
+            tokenizer = genai.LocalTokenizer(model_name=model_name)
+            result = tokenizer.count_tokens(content)
+            return result.total_tokens
+
+        except Exception as e:
+            logger.warning("LocalTokenizer failed: %s, using fallback", str(e))
+            # Fallback: 1 token ≈ 4 characters
+            return len(content) // 4
+
+    def _calculate_image_tokens(self, file_path: str, model_name: str = "gemini-2.5-flash") -> int:
+        """Calculate image token count per Google Developer API specification.
+
+        Reference: https://ai.google.dev/gemini-api/docs/tokens
+
+        Formula (Google Developer API, NOT Vertex AI):
+        - Small images (width AND height ≤384px): 258 tokens
+        - Gemini 1.5 and earlier: Fixed 258 tokens (no tiling)
+        - Gemini 2.0+: Fixed 768×768 tiles, tiles=ceil(w/768)×ceil(h/768)
+
+        Note: Vertex AI uses different crop_unit formula - not applicable here.
+
+        Args:
+            file_path: Path to the image file
+            model_name: Model name for version detection
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        try:
+            import math
+
+            import imagesize
+
+            width, height = imagesize.get(file_path)
+
+            # Small images: BOTH dimensions must be ≤384
+            if width <= 384 and height <= 384:
+                return 258
+
+            # Gemini 1.5 and earlier: Fixed 258 tokens (no tiling)
+            # "Prior to Gemini 2.0, images used a fixed 258 tokens"
+            if "1.5" in model_name or "1.0" in model_name:
+                return 258
+
+            # Gemini 2.0+: Fixed 768×768 tiles
+            tiles_x = math.ceil(width / 768)
+            tiles_y = math.ceil(height / 768)
+            tiles = tiles_x * tiles_y
+            return 258 * tiles
+
+        except FileNotFoundError:
+            raise ValueError(f"Image file not found for token estimation: {file_path}")
+        except PermissionError:
+            raise ValueError(f"Permission denied accessing image file: {file_path}")
+        except (OSError, IOError) as e:
+            raise ValueError(f"Cannot access image file {file_path}: {e}")
+        except Exception as e:
+            # Other errors (parsing issues, corrupted image, library errors) - use fallback
+            logger.warning("Failed to calculate image tokens for %s: %s", file_path, e)
+            return 258
+
+    def _calculate_pdf_tokens(self, file_path: str) -> int:
+        """Calculate PDF token count per Gemini API specification.
+
+        Reference: https://ai.google.dev/gemini-api/docs/document-processing
+
+        Formula: 258 tokens per page
+        Maximum: 1,000 pages
+
+        Args:
+            file_path: Path to the PDF file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        try:
+            import pypdf
+
+            with open(file_path, "rb") as f:
+                pdf = pypdf.PdfReader(f)
+                num_pages = len(pdf.pages)
+
+            return 258 * num_pages
+
+        except FileNotFoundError:
+            raise ValueError(f"PDF file not found for token estimation: {file_path}")
+        except PermissionError:
+            raise ValueError(f"Permission denied accessing PDF file: {file_path}")
+        except (OSError, IOError) as e:
+            raise ValueError(f"Cannot access PDF file {file_path}: {e}")
+        except Exception as e:
+            # Other errors (parsing issues, corrupted PDF) - use fallback
+            logger.warning("Failed to calculate PDF tokens for %s: %s", file_path, e)
+            return 258 * 10
+
+    def _calculate_video_tokens(self, file_path: str) -> int:
+        """Calculate video token count per Gemini API specification.
+
+        Reference: https://ai.google.dev/gemini-api/docs/video-understanding
+
+        Official formula (sampled at 1 FPS):
+        - If mediaResolution is set to low: 66 tokens/frame + 32 tokens/sec audio
+          Total: Approximately 100 tokens per second
+        - Otherwise (default): 258 tokens/frame + 32 tokens/sec audio + metadata
+          Total: Approximately 300 tokens per second
+
+        Args:
+            file_path: Path to the video file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        try:
+            from tinytag import TinyTag
+
+            from config import GEMINI_MEDIA_RESOLUTION
+
+            tag = TinyTag.get(file_path)
+            duration_seconds = tag.duration
+
+            if duration_seconds is None:
+                logger.warning("Could not extract video duration from %s", file_path)
+                # Fallback: assume 10 seconds
+                duration_seconds = 10.0
+
+            # Determine tokens per second based on media resolution
+            if GEMINI_MEDIA_RESOLUTION.upper() == "LOW":
+                # Low media resolution: approximately 100 tokens/sec
+                tokens_per_second = 100
+            else:
+                # Default media resolution: approximately 300 tokens/sec
+                tokens_per_second = 300
+
+            return int(duration_seconds * tokens_per_second)
+
+        except FileNotFoundError:
+            raise ValueError(f"Video file not found for token estimation: {file_path}")
+        except PermissionError:
+            raise ValueError(f"Permission denied accessing video file: {file_path}")
+        except (OSError, IOError) as e:
+            raise ValueError(f"Cannot access video file {file_path}: {e}")
+        except Exception as e:
+            # Other errors (corrupted video, unsupported codec) - use fallback
+            logger.warning("Failed to calculate video tokens for %s: %s", file_path, e)
+            return 3000
+
+    def _calculate_audio_tokens(self, file_path: str) -> int:
+        """Calculate audio token count per Gemini API specification.
+
+        Reference: https://ai.google.dev/gemini-api/docs/video-understanding
+
+        Formula: 32 tokens per second
+
+        Args:
+            file_path: Path to the audio file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        try:
+            from tinytag import TinyTag
+
+            tag = TinyTag.get(file_path)
+            duration_seconds = tag.duration
+
+            if duration_seconds is None:
+                logger.warning("Could not extract audio duration from %s", file_path)
+                # Fallback: assume 10 seconds
+                duration_seconds = 10.0
+
+            return int(duration_seconds * 32)
+
+        except FileNotFoundError:
+            raise ValueError(f"Audio file not found for token estimation: {file_path}")
+        except PermissionError:
+            raise ValueError(f"Permission denied accessing audio file: {file_path}")
+        except (OSError, IOError) as e:
+            raise ValueError(f"Cannot access audio file {file_path}: {e}")
+        except Exception as e:
+            # Other errors (corrupted audio, unsupported format) - use fallback
+            logger.warning("Failed to calculate audio tokens for %s: %s", file_path, e)
+            return 320
+
+    def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> Optional[int]:
+        """Estimate token count for files using offline calculation.
+
+        Uses local calculation based on official Gemini API formulas:
+          - Text: LocalTokenizer (SentencePiece) or character-based fallback
+          - Images: 258 tokens (small/old models) or 768×768 tiles (Gemini 2.0+)
+          - PDFs: 258 tokens per page
+          - Videos: ~300 tokens/sec (default) or ~100 tokens/sec (LOW mediaResolution)
+          - Audio: 32 tokens per second
+
+        Args:
+            model_name: The model to estimate tokens for
+            files: List of file dicts with 'path' and 'mime_type' keys
+
+        Returns:
+            Estimated token count, or None if estimation failed
+        """
+        if not files:
+            return 0
+
+        # Offline estimation: Local calculation using official formulas
+        total_tokens = 0
+        for file_info in files:
+            file_path = file_info.get("path", "")
+            mime_type = file_info.get("mime_type", "")
+
+            # Images: use official formula (version-specific)
+            if mime_type.startswith("image/"):
+                total_tokens += self._calculate_image_tokens(file_path, model_name)
+
+            # PDFs: 258 tokens per page
+            elif mime_type == "application/pdf":
+                total_tokens += self._calculate_pdf_tokens(file_path)
+
+            # Text/code files: use LocalTokenizer (SentencePiece)
+            elif mime_type.startswith("text/") or "json" in mime_type or "xml" in mime_type:
+                try:
+                    with open(file_path, encoding="utf-8") as f:
+                        content = f.read()
+                        total_tokens += self._calculate_text_tokens(model_name, content)
+                except FileNotFoundError:
+                    raise ValueError(f"Text file not found for token estimation: {file_path}")
+                except PermissionError:
+                    raise ValueError(f"Permission denied accessing text file: {file_path}")
+                except (OSError, IOError) as e:
+                    raise ValueError(f"Cannot access text file {file_path}: {e}")
+
+            # Videos: use tinytag to extract duration
+            elif mime_type.startswith("video/"):
+                total_tokens += self._calculate_video_tokens(file_path)
+
+            # Audio: use tinytag to extract duration
+            elif mime_type.startswith("audio/"):
+                total_tokens += self._calculate_audio_tokens(file_path)
+
+            # Unknown types: raise error with clear message
+            else:
+                raise ValueError(
+                    f"Unsupported mime type '{mime_type}' for file: {file_path}. "
+                    f"Supported types: text/*, image/*, video/*, audio/*, application/pdf"
+                )
+
+        logger.debug("Offline estimation (local calculation): %d tokens for %d files", total_tokens, len(files))
+        return total_tokens
 
     def get_preferred_model(self, category: "ToolModelCategory", allowed_models: list[str]) -> Optional[str]:
         """Get Gemini's preferred model for a given category from allowed models.
