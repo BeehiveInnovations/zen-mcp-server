@@ -438,6 +438,8 @@ class SimpleTool(BaseTool):
             # Estimate image tokens if images are provided
             if images:
                 image_tokens = 0
+                use_fallback = False
+
                 if hasattr(provider, "estimate_tokens_for_files"):
                     try:
                         # Prepare file list for token estimation
@@ -451,12 +453,13 @@ class SimpleTool(BaseTool):
                         )
                         logger.debug(f"Image tokens: {image_tokens:,} for {len(images)} image(s)")
                     except Exception as e:
-                        logger.warning(f"Image token estimation failed: {e}, using simple estimate")
-                        # Fallback: rough estimate for images
-                        image_tokens = len(images) * 258  # Conservative estimate per image
-                        logger.debug(f"Image tokens (fallback): {image_tokens:,} for {len(images)} image(s)")
+                        logger.warning(f"Image token estimation failed: {e}, using fallback")
+                        use_fallback = True
                 else:
-                    # Fallback for providers without file token estimation
+                    use_fallback = True
+
+                if use_fallback:
+                    # Fallback: rough estimate for images (258 tokens per image)
                     image_tokens = len(images) * 258
                     logger.debug(f"Image tokens (fallback): {image_tokens:,} for {len(images)} image(s)")
 

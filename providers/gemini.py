@@ -764,7 +764,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         except (FileNotFoundError, PermissionError, OSError) as e:
             self._handle_file_access_error(file_path, e, "Text")
 
-    def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> Optional[int]:
+    def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> int:
         """Estimate token count for files using offline calculation.
 
         Uses local calculation based on official Gemini API formulas:
@@ -779,7 +779,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
             files: List of file dicts with 'path' and 'mime_type' keys
 
         Returns:
-            Estimated token count, or None if estimation failed
+            Estimated token count
+
+        Raises:
+            ValueError: If a file cannot be accessed or has an unsupported mime type
         """
         if not files:
             return 0
