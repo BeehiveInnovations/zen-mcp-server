@@ -10,6 +10,39 @@ if TYPE_CHECKING:
 from google import genai
 from google.genai import types
 
+# LocalTokenizer import kept for backward compatibility with tests
+# Token estimation logic has been refactored to utils/gemini_token_estimator.py
+try:
+    from google.genai.local_tokenizer import LocalTokenizer  # noqa: F401
+
+    _HAS_LOCAL_TOKENIZER = True
+except ImportError:
+    _HAS_LOCAL_TOKENIZER = False
+
+# Optional dependencies kept for backward compatibility with tests
+try:
+    import imagesize  # noqa: F401
+
+    _HAS_IMAGESIZE = True
+except ImportError:
+    _HAS_IMAGESIZE = False
+
+try:
+    import pypdf  # noqa: F401
+
+    _HAS_PYPDF = True
+except ImportError:
+    _HAS_PYPDF = False
+
+try:
+    from tinytag import TinyTag  # noqa: F401
+
+    _HAS_TINYTAG = True
+except ImportError:
+    _HAS_TINYTAG = False
+
+from config import GEMINI_MEDIA_RESOLUTION
+from utils import gemini_token_estimator
 from utils.env import get_env
 from utils.image_utils import validate_image
 
@@ -32,6 +65,16 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
     REGISTRY_CLASS = GeminiModelRegistry
     MODEL_CAPABILITIES: ClassVar[dict[str, ModelCapabilities]] = {}
 
+    # Media resolution mapping for video token estimation
+    _RESOLUTION_MAP = {
+        "LOW": types.MediaResolution.MEDIA_RESOLUTION_LOW,
+        "MEDIUM": types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+        "HIGH": types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+    }
+
+    # Legacy model aliases without version numbers (map to 1.0)
+    _LEGACY_MODEL_ALIASES = {"gemini-pro", "gemini-pro-vision"}
+
     # Thinking mode configurations - percentages of model's max_thinking_tokens
     # These percentages work across all models that support thinking
     THINKING_BUDGETS = {
@@ -49,6 +92,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         "gemini-2.5-flash": 24576,  # Flash 2.5 thinking budget limit
         "gemini-2.5-pro": 32768,  # Pro 2.5 thinking budget limit
     }
+
+    # Retry configuration for API calls
+    MAX_RETRIES = 4
+    RETRY_DELAYS = [1, 3, 5, 8]  # seconds
 
     def __init__(self, api_key: str, **kwargs):
         """Initialize Gemini provider with API key and optional base URL."""
@@ -200,9 +247,14 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
+        # Add media resolution configuration
+        # Supports LOW (saves 62-75% tokens), MEDIUM (default), HIGH (quality)
+        media_resolution = kwargs.get("media_resolution") or GEMINI_MEDIA_RESOLUTION
+        resolution_enum = self._RESOLUTION_MAP.get(media_resolution.upper())
+        if resolution_enum:
+            generation_config.media_resolution = resolution_enum
+
         # Retry logic with progressive delays
-        max_retries = 4  # Total of 4 attempts
-        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
         attempt_counter = {"value": 0}
 
         def _attempt() -> ModelResponse:
@@ -297,8 +349,8 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         try:
             return self._run_with_retries(
                 operation=_attempt,
-                max_attempts=max_retries,
-                delays=retry_delays,
+                max_attempts=self.MAX_RETRIES,
+                delays=self.RETRY_DELAYS,
                 log_prefix=f"Gemini API ({resolved_model_name})",
             )
         except Exception as exc:
@@ -451,6 +503,204 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return None
+
+    def _is_pre_gemini_2_model(self, model_name: str) -> bool:
+        """Check if model is pre-Gemini 2.0 (1.0 or 1.5 series).
+
+        Uses pattern matching to automatically handle new 1.x model variants
+        without requiring code updates.
+
+        Args:
+            model_name: The model name to check
+
+        Returns:
+            True if model is Gemini 1.0 or 1.5 series, False otherwise
+        """
+        # Check if it's a 1.x versioned model (gemini-1.0-*, gemini-1.5-*)
+        if model_name.startswith("gemini-1."):
+            return True
+        # Check if it's a legacy alias (gemini-pro, gemini-pro-vision)
+        if model_name in self._LEGACY_MODEL_ALIASES:
+            return True
+        return False
+
+    @staticmethod
+    def _handle_file_access_error(file_path: str, error: Exception, file_type: str) -> None:
+        """Handle file access errors with consistent error messages.
+
+        Args:
+            file_path: Path to the file
+            error: The exception that was raised
+            file_type: Type of file (e.g., 'Image', 'PDF', 'Video')
+
+        Raises:
+            ValueError: With descriptive error message
+        """
+        if isinstance(error, FileNotFoundError):
+            raise ValueError(f"{file_type} file not found for token estimation: {file_path}") from error
+        elif isinstance(error, PermissionError):
+            raise ValueError(f"Permission denied accessing {file_type.lower()} file: {file_path}") from error
+        elif isinstance(error, OSError):
+            raise ValueError(f"Cannot access {file_type.lower()} file {file_path}: {error}") from error
+
+    def _calculate_text_tokens(self, model_name: str, content: str) -> int:
+        """Calculate text token count using LocalTokenizer.
+
+        Delegates to shared gemini_token_estimator utility.
+
+        Args:
+            model_name: The model to count tokens for
+            content: Text content
+
+        Returns:
+            Token count
+        """
+        return gemini_token_estimator.calculate_text_tokens(model_name, content)
+
+    def _calculate_image_tokens(self, file_path: str, model_name: str = "gemini-2.5-flash") -> int:
+        """Calculate image token count per Google Developer API specification.
+
+        Delegates to shared gemini_token_estimator utility.
+
+        Args:
+            file_path: Path to the image file
+            model_name: Model name for version detection
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        return gemini_token_estimator.estimate_image_tokens(file_path, model_name)
+
+    def _calculate_pdf_tokens(self, file_path: str) -> int:
+        """Calculate PDF token count per Gemini API specification.
+
+        Delegates to shared gemini_token_estimator utility.
+
+        Args:
+            file_path: Path to the PDF file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        return gemini_token_estimator.estimate_pdf_tokens(file_path)
+
+    def _calculate_video_tokens(self, file_path: str) -> int:
+        """Calculate video token count per Gemini API specification.
+
+        Delegates to shared gemini_token_estimator utility.
+
+        Args:
+            file_path: Path to the video file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        return gemini_token_estimator.estimate_video_tokens(file_path, GEMINI_MEDIA_RESOLUTION)
+
+    def _calculate_audio_tokens(self, file_path: str) -> int:
+        """Calculate audio token count per Gemini API specification.
+
+        Delegates to shared gemini_token_estimator utility.
+
+        Args:
+            file_path: Path to the audio file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        return gemini_token_estimator.estimate_audio_tokens(file_path)
+
+    def _calculate_text_file_tokens(self, model_name: str, file_path: str) -> int:
+        """Calculate text file token count by reading file and using text tokenization.
+
+        Args:
+            model_name: The model to count tokens for
+            file_path: Path to the text file
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If file cannot be accessed (not found, permission denied, etc.)
+        """
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                content = f.read()
+                return self._calculate_text_tokens(model_name, content)
+
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            self._handle_file_access_error(file_path, e, "Text")
+
+    def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> int:
+        """Estimate token count for files using offline calculation.
+
+        Uses local calculation based on official Gemini API formulas:
+          - Text: LocalTokenizer (SentencePiece) or character-based fallback
+          - Images: 258 tokens (small/old models) or 768×768 tiles (Gemini 2.0+)
+          - PDFs: 258 tokens per page
+          - Videos: ~300 tokens/sec (default) or ~100 tokens/sec (LOW mediaResolution)
+          - Audio: 32 tokens per second
+
+        Args:
+            model_name: The model to estimate tokens for
+            files: List of file dicts with 'path' and 'mime_type' keys
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If a file cannot be accessed or has an unsupported mime type
+        """
+        if not files:
+            return 0
+
+        # Offline estimation: Local calculation using official formulas
+        total_tokens = 0
+        for file_info in files:
+            file_path = file_info.get("path", "")
+            mime_type = file_info.get("mime_type", "")
+
+            # Images: use official formula (version-specific)
+            if mime_type.startswith("image/"):
+                total_tokens += self._calculate_image_tokens(file_path, model_name)
+
+            # PDFs: 258 tokens per page
+            elif mime_type == "application/pdf":
+                total_tokens += self._calculate_pdf_tokens(file_path)
+
+            # Text/code files: use LocalTokenizer (SentencePiece)
+            elif mime_type.startswith("text/") or "json" in mime_type or "xml" in mime_type:
+                total_tokens += self._calculate_text_file_tokens(model_name, file_path)
+
+            # Videos: use tinytag to extract duration
+            elif mime_type.startswith("video/"):
+                total_tokens += self._calculate_video_tokens(file_path)
+
+            # Audio: use tinytag to extract duration
+            elif mime_type.startswith("audio/"):
+                total_tokens += self._calculate_audio_tokens(file_path)
+
+            # Unknown types: raise error with clear message
+            else:
+                raise ValueError(
+                    f"Unsupported mime type '{mime_type}' for file: {file_path}. "
+                    f"Supported types: text/*, image/*, video/*, audio/*, application/pdf"
+                )
+
+        logger.debug("Offline estimation (local calculation): %d tokens for %d files", total_tokens, len(files))
+        return total_tokens
 
     def get_preferred_model(self, category: "ToolModelCategory", allowed_models: list[str]) -> Optional[str]:
         """Get Gemini's preferred model for a given category from allowed models.
