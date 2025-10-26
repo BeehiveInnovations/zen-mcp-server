@@ -272,6 +272,12 @@ class OpenRouterProvider(OpenAICompatibleProvider):
             if file_path:
                 try:
                     total += estimate_file_tokens(file_path)
-                except Exception:
+                except Exception as e:
+                    logging.warning(
+                        "Failed to estimate tokens for %s: %s, using fallback",
+                        file_path,
+                        e,
+                        exc_info=True,
+                    )
                     total += 1000  # Conservative fallback
         return total

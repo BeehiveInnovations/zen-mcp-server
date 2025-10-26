@@ -13,13 +13,18 @@ The estimators follow official Gemini API specifications:
 
 import logging
 import math
-import os
 
 import imagesize
 import pypdf
 from tinytag import TinyTag
 
 logger = logging.getLogger(__name__)
+
+# Fallback values for token estimation when metadata is unavailable
+FALLBACK_PDF_PAGE_COUNT = 10  # Conservative estimate for corrupted/unreadable PDFs
+FALLBACK_MEDIA_DURATION_SECONDS = 10.0  # Conservative estimate for audio/video without duration metadata
+FALLBACK_VIDEO_TOKENS = 3000  # Fallback for corrupted video (10 sec * 300 tokens/sec)
+FALLBACK_AUDIO_TOKENS = 320  # Fallback for corrupted audio (10 sec * 32 tokens/sec)
 
 # Optional: LocalTokenizer for accurate text token counting
 # This is the only optional dependency (requires google-genai[local-tokenizer])
@@ -192,7 +197,7 @@ def estimate_pdf_tokens(file_path: str) -> int:
     except Exception as e:
         # Other errors (parsing issues, corrupted PDF) - use fallback
         logger.warning("PDF token estimation failed for %s: %s, using fallback", file_path, e)
-        return 258 * 10  # Conservative fallback
+        return 258 * FALLBACK_PDF_PAGE_COUNT  # Conservative fallback
 
 
 def estimate_video_tokens(file_path: str, media_resolution: str = "MEDIUM") -> int:
@@ -218,7 +223,7 @@ def estimate_video_tokens(file_path: str, media_resolution: str = "MEDIUM") -> i
 
         if duration_seconds is None:
             logger.warning("Could not extract video duration from %s", file_path)
-            duration_seconds = 10.0  # Fallback
+            duration_seconds = FALLBACK_MEDIA_DURATION_SECONDS  # Fallback
 
         # Determine tokens per second based on media resolution
         if media_resolution.upper() == "LOW":
@@ -239,7 +244,7 @@ def estimate_video_tokens(file_path: str, media_resolution: str = "MEDIUM") -> i
     except Exception as e:
         # Other errors (corrupted video, unsupported codec) - use fallback
         logger.warning("Video token estimation failed for %s: %s, using fallback", file_path, e)
-        return 3000  # Conservative fallback
+        return FALLBACK_VIDEO_TOKENS  # Conservative fallback
 
 
 def estimate_audio_tokens(file_path: str) -> int:
@@ -262,7 +267,7 @@ def estimate_audio_tokens(file_path: str) -> int:
 
         if duration_seconds is None:
             logger.warning("Could not extract audio duration from %s", file_path)
-            duration_seconds = 10.0  # Fallback
+            duration_seconds = FALLBACK_MEDIA_DURATION_SECONDS  # Fallback
 
         return int(duration_seconds * 32)
 
@@ -277,7 +282,7 @@ def estimate_audio_tokens(file_path: str) -> int:
     except Exception as e:
         # Other errors (corrupted audio, unsupported format) - use fallback
         logger.warning("Audio token estimation failed for %s: %s, using fallback", file_path, e)
-        return 320  # Conservative fallback
+        return FALLBACK_AUDIO_TOKENS  # Conservative fallback
 
 
 def estimate_tokens_for_files(model_name: str, files: list[dict], media_resolution: str = "MEDIUM") -> int:
@@ -317,7 +322,19 @@ def estimate_tokens_for_files(model_name: str, files: list[dict], media_resoluti
             total_tokens += estimate_pdf_tokens(file_path)
 
         # Text/code files: use LocalTokenizer
-        elif mime_type.startswith("text/") or "json" in mime_type or "xml" in mime_type:
+        elif (
+            mime_type.startswith("text/")
+            or mime_type
+            in {
+                "application/json",
+                "application/xml",
+                "application/javascript",
+                "application/yaml",
+                "text/yaml",
+                "application/toml",
+            }
+            or mime_type.endswith(("+json", "+xml"))
+        ):
             try:
                 with open(file_path, encoding="utf-8") as f:
                     content = f.read()
