@@ -52,7 +52,8 @@ class ModelCapabilities:
     supports_images: bool = False
     supports_json_mode: bool = False
     supports_temperature: bool = True
-    use_openai_response_api: bool = False
+    supports_responses_api: bool = False  # OpenAI: Whether model supports /v1/responses endpoint
+    use_openai_response_api: bool = False  # OpenAI: Whether to actually use Responses API
     default_reasoning_effort: Optional[str] = None
     allow_code_generation: bool = (
         False  # Enables structured code generation in chat tool for substantial implementations
