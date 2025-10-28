@@ -72,6 +72,13 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
     def client(self):
         """Lazy initialization of Gemini client."""
         if self._client is None:
+            # Build client_kwargs dictionary first
+            client_kwargs: dict[str, object] = {}
+
+            if self.api_key:
+                client_kwargs["api_key"] = self.api_key
+
+            # Configure http_options if needed
             http_options_kwargs: dict[str, object] = {}
             if self._base_url:
                 http_options_kwargs["base_url"] = self._base_url
@@ -85,15 +92,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                     http_options_kwargs.get("base_url"),
                     http_options_kwargs.get("timeout"),
                 )
-                if self.api_key:
-                    self._client = genai.Client(api_key=self.api_key, http_options=http_options)
-                else:
-                    self._client = genai.Client(http_options=http_options)
-            else:
-                if self.api_key:
-                    self._client = genai.Client(api_key=self.api_key)
-                else:
-                    self._client = genai.Client()
+                client_kwargs["http_options"] = http_options
+
+            # Single client initialization with all kwargs
+            self._client = genai.Client(**client_kwargs)
         return self._client
 
     def _resolve_http_timeout(self) -> Optional[float]:
