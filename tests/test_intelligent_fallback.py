@@ -88,25 +88,27 @@ class TestIntelligentFallback:
         from providers.gemini import GeminiModelProvider
         from providers.openai import OpenAIModelProvider
 
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False):
-            # Clear and register providers
-            ModelProviderRegistry._instance = None
-            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
-            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+        # Mock ADC to prevent it from being detected
+        with patch("providers.registry.ModelProviderRegistry._has_google_adc", return_value=False):
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False):
+                # Clear and register providers
+                ModelProviderRegistry._instance = None
+                ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+                ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
-            available = ModelProviderRegistry.get_available_providers_with_keys()
-            assert ProviderType.OPENAI in available
-            assert ProviderType.GOOGLE not in available
+                available = ModelProviderRegistry.get_available_providers_with_keys()
+                assert ProviderType.OPENAI in available
+                assert ProviderType.GOOGLE not in available
 
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-key"}, clear=False):
-            # Clear and register providers
-            ModelProviderRegistry._instance = None
-            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
-            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-key"}, clear=False):
+                # Clear and register providers
+                ModelProviderRegistry._instance = None
+                ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
+                ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
-            available = ModelProviderRegistry.get_available_providers_with_keys()
-            assert ProviderType.GOOGLE in available
-            assert ProviderType.OPENAI not in available
+                available = ModelProviderRegistry.get_available_providers_with_keys()
+                assert ProviderType.GOOGLE in available
+                assert ProviderType.OPENAI not in available
 
     def test_auto_mode_conversation_memory_integration(self):
         """Test that conversation memory uses intelligent fallback in auto mode"""

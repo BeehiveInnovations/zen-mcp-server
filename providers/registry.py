@@ -115,11 +115,14 @@ class ModelProviderRegistry:
                 # Initialize custom provider with both API key and base URL
                 provider = provider_class(api_key=api_key, base_url=custom_url)
         elif provider_type == ProviderType.GOOGLE:
-            # For Gemini, check if custom base URL is configured
-            if not api_key:
+            # For Gemini, check if API key exists OR if ADC is available
+            if not api_key and not cls._has_google_adc():
+                # Neither API key nor ADC available
                 return None
+
+            # Initialize with API key (which can be None if ADC is available)
             gemini_base_url = get_env("GEMINI_BASE_URL")
-            provider_kwargs = {"api_key": api_key}
+            provider_kwargs = {"api_key": api_key}  # api_key can be None for ADC
             if gemini_base_url:
                 provider_kwargs["base_url"] = gemini_base_url
                 logging.info(f"Initialized Gemini provider with custom endpoint: {gemini_base_url}")
@@ -469,3 +472,26 @@ class ModelProviderRegistry:
         instance = cls()
         instance._providers.pop(provider_type, None)
         instance._initialized_providers.pop(provider_type, None)
+
+    @staticmethod
+    def _has_google_adc() -> bool:
+        """Check if Google Application Default Credentials (ADC) are available.
+
+        Returns:
+            True if Google ADC is available, False otherwise
+        """
+        try:
+            from google.auth import default
+            from google.auth.exceptions import DefaultCredentialsError
+
+            try:
+                # Try to get default credentials
+                credentials, _ = default()
+                # Return True if ADC credentials exist
+                return credentials is not None
+            except DefaultCredentialsError:
+                # Return False if ADC is not available
+                return False
+        except ImportError:
+            # Return False if google.auth library is not available
+            return False

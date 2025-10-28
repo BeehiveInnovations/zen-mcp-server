@@ -27,30 +27,32 @@ class TestListModelsTool:
     @pytest.mark.asyncio
     async def test_execute_with_no_providers(self, tool):
         """Test listing models with no providers configured"""
-        with patch.dict(os.environ, {}, clear=True):
-            # Set auto mode
-            os.environ["DEFAULT_MODEL"] = "auto"
+        # Mock ADC to prevent it from being detected
+        with patch("providers.registry.ModelProviderRegistry._has_google_adc", return_value=False):
+            with patch.dict(os.environ, {}, clear=True):
+                # Set auto mode
+                os.environ["DEFAULT_MODEL"] = "auto"
 
-            result = await tool.execute({})
+                result = await tool.execute({})
 
-            assert len(result) == 1
-            assert isinstance(result[0], TextContent)
+                assert len(result) == 1
+                assert isinstance(result[0], TextContent)
 
-            # Parse JSON response
-            response = json.loads(result[0].text)
-            assert response["status"] == "success"
+                # Parse JSON response
+                response = json.loads(result[0].text)
+                assert response["status"] == "success"
 
-            content = response["content"]
+                content = response["content"]
 
-            # Check that providers show as not configured
-            assert "Google Gemini ❌" in content
-            assert "OpenAI ❌" in content
-            assert "X.AI (Grok) ❌" in content
-            assert "OpenRouter ❌" in content
-            assert "Custom/Local API ❌" in content
+                # Check that providers show as not configured
+                assert "Google Gemini ❌" in content
+                assert "OpenAI ❌" in content
+                assert "X.AI (Grok) ❌" in content
+                assert "OpenRouter ❌" in content
+                assert "Custom/Local API ❌" in content
 
-            # Check summary shows 0 configured
-            assert "**Configured Providers**: 0" in content
+                # Check summary shows 0 configured
+                assert "**Configured Providers**: 0" in content
 
     @pytest.mark.asyncio
     async def test_execute_with_gemini_configured(self, tool):

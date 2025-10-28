@@ -312,10 +312,12 @@ class TestConfigureProvidersFunction:
         """Test configure_providers raises error when no valid API keys."""
         from server import configure_providers
 
-        with patch.dict(
-            os.environ,
-            {"GEMINI_API_KEY": "", "OPENAI_API_KEY": "", "OPENROUTER_API_KEY": "", "CUSTOM_API_URL": ""},
-            clear=True,
-        ):
-            with pytest.raises(ValueError, match="At least one API configuration is required"):
-                configure_providers()
+        # Mock ADC to simulate environment without Google Cloud credentials
+        with patch("providers.registry.ModelProviderRegistry._has_google_adc", return_value=False):
+            with patch.dict(
+                os.environ,
+                {"GEMINI_API_KEY": "", "OPENAI_API_KEY": "", "OPENROUTER_API_KEY": "", "CUSTOM_API_URL": ""},
+                clear=True,
+            ):
+                with pytest.raises(ValueError, match="At least one API configuration is required"):
+                    configure_providers()
