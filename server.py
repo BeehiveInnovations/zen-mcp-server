@@ -407,12 +407,19 @@ def configure_providers():
     has_openrouter = False
     has_custom = False
 
-    # Check for Gemini API key
+    # Check for Gemini API key or ADC
     gemini_key = get_env("GEMINI_API_KEY")
-    if gemini_key and gemini_key != "your_gemini_api_key_here":
+    has_gemini_key = gemini_key and gemini_key != "your_gemini_api_key_here"
+    has_gemini_adc = ModelProviderRegistry._has_google_adc() if not has_gemini_key else False
+
+    if has_gemini_key:
         valid_providers.append("Gemini")
         has_native_apis = True
-        logger.info("Gemini API key found - Gemini models available")
+        logger.info("Gemini provider configured (API Key)")
+    elif has_gemini_adc:
+        valid_providers.append("Gemini")
+        has_native_apis = True
+        logger.info("Gemini provider configured (Application Default Credentials)")
 
     # Check for OpenAI API key
     openai_key = get_env("OPENAI_API_KEY")
@@ -497,7 +504,7 @@ def configure_providers():
     registered_providers = []
 
     if has_native_apis:
-        if gemini_key and gemini_key != "your_gemini_api_key_here":
+        if has_gemini_key or has_gemini_adc:
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             registered_providers.append(ProviderType.GOOGLE.value)
             logger.debug(f"Registered provider: {ProviderType.GOOGLE.value}")

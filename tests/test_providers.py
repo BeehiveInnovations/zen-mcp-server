@@ -52,11 +52,13 @@ class TestModelProviderRegistry:
     @patch.dict(os.environ, {}, clear=True)
     def test_get_provider_no_api_key(self):
         """Test getting provider without API key returns None"""
-        ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
+        # Mock ADC to prevent it from being detected
+        with patch("providers.registry.ModelProviderRegistry._has_google_adc", return_value=False):
+            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
-        provider = ModelProviderRegistry.get_provider(ProviderType.GOOGLE)
+            provider = ModelProviderRegistry.get_provider(ProviderType.GOOGLE)
 
-        assert provider is None
+            assert provider is None
 
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"})
     @pytest.mark.no_mock_provider

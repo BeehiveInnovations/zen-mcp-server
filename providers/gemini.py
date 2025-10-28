@@ -50,10 +50,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         "gemini-2.5-pro": 32768,  # Pro 2.5 thinking budget limit
     }
 
-    def __init__(self, api_key: str, **kwargs):
-        """Initialize Gemini provider with API key and optional base URL."""
+    def __init__(self, api_key: Optional[str] = None, **kwargs):
+        """Initialize Gemini provider with API key or via ADC."""
         self._ensure_registry()
-        super().__init__(api_key, **kwargs)
+        super().__init__(api_key or "", **kwargs)
         self._client = None
         self._token_counters = {}  # Cache for token counting
         self._base_url = kwargs.get("base_url", None)  # Optional custom endpoint
@@ -72,6 +72,13 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
     def client(self):
         """Lazy initialization of Gemini client."""
         if self._client is None:
+            # Build client_kwargs dictionary first
+            client_kwargs: dict[str, object] = {}
+
+            if self.api_key:
+                client_kwargs["api_key"] = self.api_key
+
+            # Configure http_options if needed
             http_options_kwargs: dict[str, object] = {}
             if self._base_url:
                 http_options_kwargs["base_url"] = self._base_url
@@ -85,9 +92,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                     http_options_kwargs.get("base_url"),
                     http_options_kwargs.get("timeout"),
                 )
-                self._client = genai.Client(api_key=self.api_key, http_options=http_options)
-            else:
-                self._client = genai.Client(api_key=self.api_key)
+                client_kwargs["http_options"] = http_options
+
+            # Single client initialization with all kwargs
+            self._client = genai.Client(**client_kwargs)
         return self._client
 
     def _resolve_http_timeout(self) -> Optional[float]:
