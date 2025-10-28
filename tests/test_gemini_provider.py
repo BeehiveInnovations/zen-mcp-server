@@ -38,8 +38,7 @@ def test_configure_providers_registers_gemini_with_adc(monkeypatch):
     """Tests that configure_providers registers Gemini when no key is present (for ADC)."""
 
     # Reset the registry to a known state
-    ModelProviderRegistry._providers = {}
-    ModelProviderRegistry._initialized_providers = {}
+    ModelProviderRegistry.reset_for_testing()
 
     # Mock get_env to simulate no Gemini API key
     def mock_get_env(key):
