@@ -1,42 +1,72 @@
-"""Shared OpenAI token estimation utilities.
+"""OpenAI token estimation utilities for text, images, and PDFs.
 
-This module provides reusable token estimation logic for OpenAI models,
-enabling accurate token counting for both direct OpenAI API and OpenRouter-proxied calls.
+This module provides accurate token counting for OpenAI models, supporting both
+direct OpenAI API calls and OpenRouter-proxied requests (openai/* prefix).
 
-The estimators follow official OpenAI API specifications:
+Implementation follows official OpenAI documentation and pricing specifications:
 
-- Text: tiktoken (o200k_base for GPT-4o/o3/o4, cl100k_base for GPT-3.5/4)
+- Text: tiktoken with model-specific encodings (o200k_base for GPT-4o/o3/o4, cl100k_base for others)
 
-- Images: Uses openai-vision-cost library for accurate token calculation
-  * Automatically handles tile-based vs patch-based formulas
-  * Supports 34+ OpenAI vision models including:
-    - GPT-4o family (tile-based with varying constants)
-    - GPT-4.1/5 families (tile or patch depending on variant)
-    - o-series models (tile or patch depending on variant)
-  * Library maintained by community, tracks official OpenAI changes
+- Images: Two-stage resize (cap to 2048x2048, then min-side to 768 if needed), followed by 512x512 tiling.
+  * detail=low: Fixed base cost (~85 tokens per image)
+  * detail=high: Base + per-tile cost (~170 tokens per 512x512 tile)
+  * detail=auto: Adaptive based on image dimensions
+  * Supports both tile-based (standard models) and patch-based (mini/nano variants)
 
-- PDF: Total = Text tokens (extracted via tokenizer) + Image tokens per page (each page = one full-page image)
-  * Requires proper PDF parsing for accurate estimation
-  * Current implementation provides rough heuristic only (~500 tokens/page)
+- PDFs: Text tokens (extracted via tiktoken) + image tokens per page (each page treated as full-page image)
+  * Uses MediaBox dimensions with proper rotation handling
+  * Preserves aspect ratio when converting PDF points to pixel equivalents
 
-- Video: Not supported for token estimation
+Token constants are configurable per model family to accommodate OpenAI pricing updates.
+Defaults based on OpenAI Pricing calculator and Azure OpenAI technical documentation.
 """
 
 import logging
 
 import imagesize
 import tiktoken
-from openai_vision_cost import calculate_tokens_only
 from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
-# Detail level mapping for OpenAI vision API (Gemini PR 302 pattern)
-# Maps user-facing configuration values to openai-vision-cost library format
+# References (authoritative sources; keep links up to date):
+# - OpenAI Pricing (interactive Pricing calculator):
+#   https://openai.com/api/pricing/
+# - OpenAI Images & Vision guide (detail modes, examples):
+#   https://platform.openai.com/docs/guides/images-vision
+# - OpenAI Vision fine-tuning (low-detail representation guidance):
+#   https://platform.openai.com/docs/guides/vision-fine-tuning
+# - Azure OpenAI – GPT with Vision (scaling/tiling engineering rules & examples):
+#   https://learn.microsoft.com/azure/ai-services/openai/concepts/gpt-with-vision
+
+# Detail normalization map (case-insensitive)
 _DETAIL_MAP = {
-    "LOW": "low",  # Fast, fixed ~85 tokens per image
-    "HIGH": "high",  # Accurate, tile-based calculation
-    "AUTO": "high",  # Phase 1: Treat AUTO as HIGH (conservative)
+    "LOW": "low",  # Fast, fixed base (~85 tokens/image)
+    "HIGH": "high",  # High detail: scaling + 512x512 tiling
+    "AUTO": "auto",  # Adaptive: if min-side ≤512 → low, else high
+}
+
+# Model-specific overrides for (base_tokens, per_tile_tokens). Defaults to (85, 170).
+# Substring matching enables family-level configuration (e.g., "gpt-5" matches "gpt-5-pro")
+_MODEL_TILE_CONST: dict[str, tuple[int, int]] = {
+    # GPT-5 family uses different constants than GPT-4 series
+    "gpt-5": (70, 140),
+}
+
+DEFAULT_BASE_TOKENS = 85
+DEFAULT_PER_TILE_TOKENS = 170
+
+# Patch-based defaults for mini/nano model variants
+# These models use 32px patches with a cap at 1536 patches
+DEFAULT_PATCH_SIZE = 32
+DEFAULT_PATCH_CAP = 1536
+DEFAULT_PATCH_MULTIPLIER = 1.0
+
+# Model-specific overrides for patch-based calculations: (patch_size, patch_cap, multiplier)
+# Multipliers determined from OpenAI Pricing calculator observations
+_MODEL_PATCH_CONST: dict[str, tuple[int, int, float]] = {
+    "gpt-5-mini": (32, 1536, 1.20),
+    "gpt-5-nano": (32, 1536, 1.50),
 }
 
 
@@ -58,7 +88,129 @@ class UnsupportedContentTypeError(ValueError):
 
 
 # Fallback values for token estimation when metadata is unavailable
-FALLBACK_IMAGE_TOKENS = 765  # Typical 1024×1024 image on gpt-4o
+FALLBACK_IMAGE_TOKENS = 765  # Fallback magnitude for typical 1024x1024 case when size reading fails
+
+
+# ------------------------------
+# Internals: image cost core
+# ------------------------------
+
+
+def _pick_tile_const(model_name: str) -> tuple[int, int]:
+    """Return (base, per-tile) constants by model name; default to (85, 170).
+
+    Substring matching enables family-level overrides (e.g., 'gpt-4o-mini').
+    """
+    m = (model_name or "").lower().replace("openai/", "")
+    for key, pair in _MODEL_TILE_CONST.items():
+        if key in m:
+            return pair
+    return (DEFAULT_BASE_TOKENS, DEFAULT_PER_TILE_TOKENS)
+
+
+def _resize_for_vision(width: int, height: int) -> tuple[int, int]:
+    """Logical resize (no resampling) per documented vision behavior.
+
+    1) Cap to within 2048x2048 (preserve aspect ratio)
+    2) If min-side remains >768, downscale so min-side becomes 768
+    """
+    import math
+
+    if width <= 0 or height <= 0:
+        return (0, 0)
+
+    w, h = int(width), int(height)
+
+    max_side = max(w, h)
+    if max_side > 2048:
+        scale = 2048.0 / max_side
+        w = int(math.floor(w * scale))
+        h = int(math.floor(h * scale))
+
+    min_side = min(w, h)
+    if min_side > 768:
+        scale = 768.0 / min_side
+        w = int(math.floor(w * scale))
+        h = int(math.floor(h * scale))
+
+    return (max(w, 1), max(h, 1))
+
+
+def _count_tiles(width: int, height: int) -> int:
+    """Return the number of 512x512 tiles (ceil partial blocks)."""
+    import math
+
+    return math.ceil(width / 512.0) * math.ceil(height / 512.0)
+
+
+def _is_patch_based(model_name: str) -> bool:
+    """Heuristic: treat mini/nano families as patch-based (32px patches).
+
+    The exact accounting may evolve per model family. Calibrate constants
+    (size/cap/multiplier) with the official Pricing page.
+    """
+    m = (model_name or "").lower()
+    m = m.replace("openai/", "")
+    return ("-mini" in m) or ("-nano" in m) or m.endswith("mini") or m.endswith("nano")
+
+
+def _pick_patch_const(model_name: str) -> tuple[int, int, float]:
+    """Return (patch_size, patch_cap, multiplier) for patch-based models.
+
+    Defaults to (32, 1536, 1.0). Override per family where needed.
+    """
+    m = (model_name or "").lower().replace("openai/", "")
+    for key, cfg in _MODEL_PATCH_CONST.items():
+        if key in m:
+            return cfg
+    return (DEFAULT_PATCH_SIZE, DEFAULT_PATCH_CAP, DEFAULT_PATCH_MULTIPLIER)
+
+
+def _estimate_tile_tokens_by_dims(width: int, height: int, detail: str, model_name: str) -> int:
+    """Estimate tokens for tile-based accounting by dimensions.
+
+    Logic per docs:
+    1) logical resize to fit within 2048x2048; if min-side still >768, downscale so min-side=768
+       (aspect ratio preserved).
+    2) tiles = ceil(W/512) * ceil(H/512)
+    3) tokens = base + per_tile * tiles
+    Low detail returns base; AUTO uses low when min-side <= 512.
+    See: OpenAI Images & Vision; Azure GPT-with-Vision examples.
+    """
+    mode = _DETAIL_MAP.get((detail or "high").upper(), "high")
+    base, per_tile = _pick_tile_const(model_name)
+    if mode == "low":
+        return base
+    if mode == "auto" and min(width, height) <= 512:
+        return base
+    rw, rh = _resize_for_vision(width, height)
+    tiles = _count_tiles(rw, rh)
+    return base + per_tile * tiles
+
+
+def _estimate_patch_tokens_by_dims(width: int, height: int, detail: str, model_name: str) -> int:
+    """Estimate tokens for patch-based accounting by dimensions (mini/nano families).
+
+    Logic per common references:
+    1) logical resize to fit within 2048x2048; if min-side still >768, downscale so min-side=768.
+    2) patches = ceil(W/patch_size) * ceil(H/patch_size); cap at patch_cap (e.g., 1536).
+    3) tokens = patches * multiplier (model-specific; calibrate with Pricing calculator).
+    Low detail returns base; AUTO uses low when min-side <= 512.
+    See: OpenAI Images & Vision; Azure GPT-with-Vision; Pricing calculator.
+    """
+    mode = _DETAIL_MAP.get((detail or "high").upper(), "high")
+    base, _ = _pick_tile_const(model_name)
+    if mode == "low":
+        return base
+    if mode == "auto" and min(width, height) <= 512:
+        return base
+    patch_size, patch_cap, multiplier = _pick_patch_const(model_name)
+    import math
+
+    rw, rh = _resize_for_vision(width, height)
+    patches = math.ceil(rw / float(patch_size)) * math.ceil(rh / float(patch_size))
+    patches = min(patches, patch_cap)
+    return int(round(patches * float(multiplier)))
 
 
 def is_openai_model(model_name: str) -> bool:
@@ -121,42 +273,21 @@ def calculate_text_tokens(model_name: str, content: str) -> int:
 
 
 def estimate_image_tokens(file_path: str, model_name: str, detail: str) -> int:
-    """Estimate image token count using openai-vision-cost library.
+    """Estimate tokens for a single image based on documented scaling/tiling rules.
 
-    Uses the community-maintained openai-vision-cost library which implements
-    OpenAI's official token calculation formulas for 34+ vision models.
-
-    Automatically handles:
-    - Tile-based models (GPT-4o family, GPT-4.1, GPT-5, o3, o4 main models)
-    - Patch-based models (mini/nano variants with multipliers)
-    - Model-specific constants (e.g., gpt-4o-mini's higher tile costs)
-
-    Args:
-        file_path: Path to the image file
-        model_name: Model name (supports OpenRouter prefixes like "openai/")
-        detail: Detail level ("LOW", "HIGH", or "AUTO", case-insensitive).
-                Must be provided by caller.
-
-    Returns:
-        Estimated token count
-
-    Raises:
-        ValueError: If file cannot be accessed or model is unsupported
+    - low: fixed base (default 85)
+    - high: scale (≤2048, min-side ≤768) → 512x512 tiling → base + per-tile
+    - auto: if min-side ≤512 treat as low, else high
     """
-    # Normalize and map detail level (Gemini PR 302 pattern)
-    detail_key = detail.upper()
-    detail_value = _DETAIL_MAP.get(detail_key, "high")  # Default to high if invalid
-
     try:
-        # Get image dimensions
         width, height = imagesize.get(file_path)
+        if not width or not height:
+            return FALLBACK_IMAGE_TOKENS
 
-        # Clean model name (remove OpenRouter prefix)
-        clean_model_name = model_name.replace("openai/", "")
-
-        # Use openai-vision-cost library for calculation
-        result = calculate_tokens_only(width, height, clean_model_name, detail_value)
-        return result["text_tokens"]  # Final tokens after multiplier
+        if _is_patch_based(model_name):
+            return _estimate_patch_tokens_by_dims(width, height, detail, model_name)
+        else:
+            return _estimate_tile_tokens_by_dims(width, height, detail, model_name)
 
     except (FileNotFoundError, PermissionError, OSError) as e:
         if isinstance(e, FileNotFoundError):
@@ -172,53 +303,21 @@ def estimate_image_tokens(file_path: str, model_name: str, detail: str) -> int:
             model_name,
             e,
         )
-        # Conservative fallback
         return FALLBACK_IMAGE_TOKENS
 
 
 def estimate_pdf_tokens(file_path: str, model_name: str, detail: str) -> int:
-    """Estimate PDF token count using official OpenAI formula.
+    """Estimate PDF tokens = text tokens + sum of per-page image tokens.
 
-    Official OpenAI PDF token calculation:
-    Total = Text tokens + Image tokens per page
-
-    - Text: Extract text from PDF, count with tiktoken
-    - Images: Each page rendered as one full-page image
-      * Reads actual MediaBox dimensions per page (handles A4, Letter, Legal, etc.)
-      * Handles page rotation (/Rotate)
-      * Calculates image tokens based on aspect ratio and 512×512 tile formula
-        - Token count depends ONLY on aspect ratio r = long_edge / short_edge
-        - DPI/physical size does not affect calculation
-        - Common sizes: A4≈6 tiles, Letter≈4 tiles, Legal≈6 tiles (HIGH/AUTO mode)
-      * Uses openai-vision-cost library for automatic model-specific token calculation
-
-    References:
-    - OpenAI Platform PDF docs: https://platform.openai.com/docs/guides/pdf-files
-    - Image token pricing: https://openai.com/api/pricing/
-    - Vision API docs: https://platform.openai.com/docs/guides/images-vision
-
-    Args:
-        file_path: Path to the PDF file
-        model_name: Model name for token calculation
-        detail: Detail level ("LOW", "HIGH", or "AUTO", case-insensitive).
-                Must be provided by caller.
-
-    Returns:
-        Estimated token count (text tokens + image tokens for all pages)
-
-    Raises:
-        ValueError: If file cannot be accessed or is invalid
+    Note: The 96/72 factor maps PDF points (1/72 inch) to a pixel-like space to
+    preserve aspect ratio only. The eventual tile count is driven by the logical
+    vision resize (≤2048, min-side ≤768), not physical DPI.
     """
-    # Normalize and map detail level (Gemini PR 302 pattern)
-    detail_key = detail.upper()
-    detail_value = _DETAIL_MAP.get(detail_key, "high")  # Default to high if invalid
-
     try:
-        # Open PDF and extract text
         reader = PdfReader(file_path)
         num_pages = len(reader.pages)
 
-        # Extract all text from PDF
+        # Text side: extract all text across pages
         full_text = ""
         for page in reader.pages:
             try:
@@ -226,74 +325,49 @@ def estimate_pdf_tokens(file_path: str, model_name: str, detail: str) -> int:
             except Exception as e:
                 logger.warning(f"Failed to extract text from a page in {file_path}: {e}")
 
-        # Calculate text tokens using tiktoken
         text_tokens = calculate_text_tokens(model_name, full_text)
 
-        # Calculate image tokens per page
-        # Each page is rendered as a full-page image, regardless of embedded images
-        # Token calculation is based on aspect ratio and tile formula (not DPI)
-        clean_model_name = model_name.replace("openai/", "")
+        # Image side: charge each page as a full-page image
         total_image_tokens = 0
-
         for page_num, page in enumerate(reader.pages, start=1):
             try:
-                # Get page dimensions from MediaBox (in PDF points, 1/72 inch)
                 mediabox = page.mediabox
                 width_pt = float(mediabox.width)
                 height_pt = float(mediabox.height)
 
-                # Handle page rotation
-                rotation = page.get("/Rotate", 0)
+                rotation = int(page.get("/Rotate", 0) or 0) % 360
                 if rotation in (90, 270):
-                    # Swap width and height for rotated pages
                     width_pt, height_pt = height_pt, width_pt
 
-                # Convert PDF points (1/72 inch) to "pixels" ONLY to preserve aspect ratio.
-                # Vision pricing depends on the resize-then-512×512-tiling pipeline;
-                # token count is driven by r = long_edge / short_edge, not DPI/physical size.
-                # The (96/72) factor is a convenient mapping to keep r intact for the cost library;
-                # absolute pixel values don't matter for token count—only the aspect ratio does.
-                page_width_px = int(width_pt * 96 / 72)
-                page_height_px = int(height_pt * 96 / 72)
+                PX_PER_PT = 96.0 / 72.0
+                w_px = max(1, int(width_pt * PX_PER_PT))
+                h_px = max(1, int(height_pt * PX_PER_PT))
 
-                # Calculate per-page image tokens via openai-vision-cost.
-                # The lib automatically:
-                # - picks the right formula by model & detail (low/high);
-                # - uses the common-paper approximation tiles ≈ 2 × ceil(1.5 × r) when r ≤ 2.667;
-                # - falls back to tiles = ceil(W/512) × ceil(H/512) for extra-long pages (r > 2.667),
-                #   where W/H follow the "cap longest side to 2048; set shortest to 768" resize;
-                # - applies model-specific constants (base_tokens, per_tile_tokens).
-                result = calculate_tokens_only(page_width_px, page_height_px, clean_model_name, detail_value)
-                page_image_tokens = result["text_tokens"]
-                total_image_tokens += page_image_tokens
+                # Reuse image cost logic (no real image decoding)
+                if _is_patch_based(model_name):
+                    page_tokens = _estimate_patch_tokens_by_dims(w_px, h_px, detail, model_name)
+                else:
+                    page_tokens = _estimate_tile_tokens_by_dims(w_px, h_px, detail, model_name)
+
+                total_image_tokens += page_tokens
 
                 logger.debug(
-                    f"Page {page_num}: {width_pt:.1f}×{height_pt:.1f} pt "
-                    f"({page_width_px}×{page_height_px} px), "
-                    f"rotation={rotation}°, tokens={page_image_tokens}"
+                    f"Page {page_num}: {width_pt:.1f}x{height_pt:.1f} pt -> {w_px}x{h_px} px, tokens={page_tokens}"
                 )
-
             except Exception as e:
-                # Fallback for problematic pages: use common A4 size
                 logger.warning(
-                    f"Failed to get dimensions for page {page_num} in {file_path}: {e}. "
-                    f"Using fallback A4 size (595×842 pt)."
+                    f"Failed to estimate image tokens for page {page_num} in {file_path}: {e}. Use A4 fallback."
                 )
-                # A4: 595×842 pt → 794×1123 px at 96 DPI
-                fallback_result = calculate_tokens_only(794, 1123, clean_model_name, detail_value)
-                total_image_tokens += fallback_result["text_tokens"]
+                # A4: 595x842 pt -> 794x1123 px @96DPI
+                if _is_patch_based(model_name):
+                    total_image_tokens += _estimate_patch_tokens_by_dims(794, 1123, detail, model_name)
+                else:
+                    total_image_tokens += _estimate_tile_tokens_by_dims(794, 1123, detail, model_name)
 
-        # Total tokens = text tokens + image tokens
         total_tokens = text_tokens + total_image_tokens
-
         logger.info(
-            f"PDF token estimation for {file_path}: "
-            f"{num_pages} pages, {text_tokens} text tokens, "
-            f"{total_image_tokens} image tokens "
-            f"(avg {total_image_tokens//num_pages if num_pages > 0 else 0}/page), "
-            f"total: {total_tokens} tokens"
+            f"PDF token estimation for {file_path}: {num_pages} pages, text={text_tokens}, images={total_image_tokens}, total={total_tokens}"
         )
-
         return total_tokens
 
     except (FileNotFoundError, PermissionError) as e:

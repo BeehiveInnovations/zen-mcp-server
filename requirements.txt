@@ -8,7 +8,6 @@ importlib-resources>=5.0.0; python_version<"3.9"
 # Token estimation dependencies
 tiktoken>=0.5.0  # OpenAI tokenizer for accurate text token counting
 imagesize>=1.4.0  # Fast image dimension reading for token estimation
-openai-vision-cost>=1.0.0  # Accurate image token calculation for OpenAI vision models
 pypdf>=3.0.0  # PDF text extraction and page counting for accurate PDF token estimation
 
 # Development dependencies (install with pip install -r requirements-dev.txt)

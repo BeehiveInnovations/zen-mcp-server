@@ -101,11 +101,12 @@ class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider)
             capabilities = None
 
         # Check if this model should use Responses API
+        # Two flags: supports_responses_api (model capability) and use_openai_response_api (user config)
         use_responses_api = False
         model_supports_responses_api = False
         if capabilities is not None:
-            model_supports_responses_api = getattr(capabilities, "use_openai_response_api", False)
-            use_responses_api = model_supports_responses_api
+            model_supports_responses_api = getattr(capabilities, "supports_responses_api", False)
+            use_responses_api = getattr(capabilities, "use_openai_response_api", False)
 
         # Check if files require Responses API
         has_files = files and len(files) > 0
