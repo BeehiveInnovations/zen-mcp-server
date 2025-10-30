@@ -91,7 +91,11 @@ class OpenAIResponsesProvider(ModelProvider):
 
         # Add system prompt if provided
         if system_prompt:
-            input_messages.append({"role": "user", "content": [{"type": "input_text", "text": system_prompt}]})
+            input_messages.append({
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": system_prompt}]
+            })
 
         # Add user prompt with optional images
         user_content = [{"type": "input_text", "text": prompt}]
@@ -107,7 +111,11 @@ class OpenAIResponsesProvider(ModelProvider):
                 except Exception as e:
                     logging.warning(f"Failed to process image {image_path}: {e}")
 
-        input_messages.append({"role": "user", "content": user_content})
+        input_messages.append({
+            "type": "message",
+            "role": "user",
+            "content": user_content
+        })
 
         # Handle file attachments if provided
         file_ids = []
