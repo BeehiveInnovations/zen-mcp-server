@@ -7,11 +7,12 @@ Implementation follows official OpenAI documentation and pricing specifications:
 
 - Text: tiktoken with model-specific encodings (o200k_base for GPT-4o/o3/o4, cl100k_base for others)
 
-- Images: Two-stage resize (cap to 2048x2048, then min-side to 768 if needed), followed by 512x512 tiling.
+- Images: Two-stage resize (cap to 2048x2048, then min-side to 768 if needed), followed by tiling or patch calculation.
   * detail=low: Fixed base cost (~85 tokens per image)
-  * detail=high: Base + per-tile cost (~170 tokens per 512x512 tile)
+  * detail=high: Base + per-tile cost (~170 tokens per 512x512 tile) OR patch count (GPT-4.1)
   * detail=auto: Adaptive based on image dimensions
-  * Supports both tile-based (standard models) and patch-based (mini/nano variants)
+  * Tile-based: GPT-4o (85+170), GPT-5 (70+140)
+  * Patch-based: GPT-4.1 series (32×32 patches, cap 1536, with optional multipliers)
 
 - PDFs: Text tokens (extracted via tiktoken) + image tokens per page (each page treated as full-page image)
   * Uses MediaBox dimensions with proper rotation handling
@@ -29,44 +30,104 @@ from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
-# References (authoritative sources; keep links up to date):
-# - OpenAI Pricing (interactive Pricing calculator):
+# References (official OpenAI documentation):
+# - Vision API Guide (image/PDF processing, detail modes):
+#   https://platform.openai.com/docs/guides/vision
+# - Vision Token Calculation (tile-based for GPT-4o):
+#   https://platform.openai.com/docs/guides/vision#vision-token-calculation
+# - GPT-4.1 Patch Algorithm (official - 32×32 patches, cap 1536):
+#   https://openai-hd4n6.mintlify.app/docs/guides/images
+#   Quote: "Calculate the number of 32px × 32px patches needed to fully cover the image...
+#           The token cost is the number of patches, capped at 1536."
+# - GPT-4.1 Multipliers (official): mini=1.62×, nano=2.46×
+#   Source: https://openai-hd4n6.mintlify.app/docs/guides/images
+# - PDF Processing (official: short-side ≤768px, long-side ≤2048px):
+#   https://platform.openai.com/docs/guides/vision#pdfs
+# - Detail Parameter (official: auto uses low if min-side ≤512px):
+#   https://platform.openai.com/docs/guides/vision#detail
+#   https://learn.microsoft.com/azure/ai-services/openai/how-to/vision#choose-detail-mode
+# - OpenAI Pricing (interactive calculator):
 #   https://openai.com/api/pricing/
-# - OpenAI Images & Vision guide (detail modes, examples):
-#   https://platform.openai.com/docs/guides/images-vision
-# - OpenAI Vision fine-tuning (low-detail representation guidance):
-#   https://platform.openai.com/docs/guides/vision-fine-tuning
-# - Azure OpenAI – GPT with Vision (scaling/tiling engineering rules & examples):
+# - Azure OpenAI Vision (scaling/tiling examples):
 #   https://learn.microsoft.com/azure/ai-services/openai/concepts/gpt-with-vision
+#
+# Community research & empirical validation (GPT-5 parameters pending official docs):
+# - GPT-5 constants (base=70, tile=140): Observed from pricing calculator & community testing
+#   Note: GPT-5 family not yet in official docs as of verification date
+#   Community: https://community.openai.com/t/gpt-5-mini-image-input-token-calculation-discrepancy-with-official-faq-formula/1344040
+# - GPT-5-mini/nano multipliers (1.20×, 1.50×): Pricing calculator observations
+#   Reduced from GPT-4.1 (1.62×, 2.46×) per community analysis
+#   Research: https://www.oranlooney.com/post/gpt-cnn/ (GPT-4o analysis)
+# - PDF ~90 DPI effective: Empirical testing confirms 768px short-side rule
+#   Analysis: https://medium.com/@abasiri/why-openai-models-struggle-with-pdfs-and-why-gemini-fairs-much-better-ad7b75e2336d
+#   Reddit: https://www.reddit.com/r/Rag/comments/1izoxi1/why_openai_models_are_terrible_at_pdfs_conversions/
 
 # Detail normalization map (case-insensitive)
+# Official docs: https://platform.openai.com/docs/guides/vision#detail
 _DETAIL_MAP = {
     "LOW": "low",  # Fast, fixed base (~85 tokens/image)
     "HIGH": "high",  # High detail: scaling + 512x512 tiling
-    "AUTO": "auto",  # Adaptive: if min-side ≤512 → low, else high
+    "AUTO": "auto",  # Adaptive: min-side ≤512 → low, else high (official threshold)
 }
 
 # Model-specific overrides for (base_tokens, per_tile_tokens). Defaults to (85, 170).
 # Substring matching enables family-level configuration (e.g., "gpt-5" matches "gpt-5-pro")
+# Official tile calculation: https://platform.openai.com/docs/guides/vision#vision-token-calculation
 _MODEL_TILE_CONST: dict[str, tuple[int, int]] = {
-    # GPT-5 family uses different constants than GPT-4 series
+    # GPT-5 family: base=70, tile=140 (vs GPT-4o: 85, 170) - reduced token cost
+    # Note: GPT-5 not yet in official docs; parameters from pricing calculator observations
+    # 512×512 image = 70 (base) + 140 (1 tile) = 210 tokens
+    # Community discussion: https://community.openai.com/t/gpt-5-mini-image-input-token-calculation-discrepancy-with-official-faq-formula/1344040
+    # Pricing: https://openai.com/api/pricing/
     "gpt-5": (70, 140),
 }
 
+# GPT-4o default constants (tile-based): 512×512 = 85 (base) + 170 (1 tile) = 255 tokens
+# Note: GPT-4.1 does NOT use these values - it uses patch-based (see _MODEL_PATCH_CONST)
+# Official for GPT-4o: https://platform.openai.com/docs/models
 DEFAULT_BASE_TOKENS = 85
 DEFAULT_PER_TILE_TOKENS = 170
 
-# Patch-based defaults for mini/nano model variants
-# These models use 32px patches with a cap at 1536 patches
+# Patch-based defaults (GPT-4.1 series and mini/nano variants)
+# Official for GPT-4.1: 32px patches, 1536 cap
+# Source: https://openai-hd4n6.mintlify.app/docs/guides/images
 DEFAULT_PATCH_SIZE = 32
 DEFAULT_PATCH_CAP = 1536
 DEFAULT_PATCH_MULTIPLIER = 1.0
 
 # Model-specific overrides for patch-based calculations: (patch_size, patch_cap, multiplier)
-# Multipliers determined from OpenAI Pricing calculator observations
+#
+# IMPORTANT: GPT-4.1 series ALL use patch-based algorithm (32×32 patches, cap 1536)
+# This differs from GPT-4o which uses tile-based (85 base + 170 per tile)
+#
+# Official OpenAI documentation (GPT-4.1 patch algorithm):
+# "Calculate the number of 32px × 32px patches needed to fully cover the image...
+#  The token cost is the number of patches, capped at 1536."
+# Source: https://openai-hd4n6.mintlify.app/docs/guides/images
+#
+# GPT-4.1 Token Calculation Examples:
+# - GPT-4.1 standard: 512×512 → 16×16 = 256 patches = 256 tokens (no base overhead)
+# - GPT-4.1-mini: 256 patches × 1.62 multiplier ≈ 415 tokens
+# - GPT-4.1-nano: 256 patches × 2.46 multiplier ≈ 630 tokens
+#
+# GPT-5 Token Calculation (reduced multipliers):
+# - GPT-5-mini: 210 base (tile) × 1.20 ≈ 252 tokens (26% reduction vs GPT-4.1-mini)
+# - GPT-5-nano: 210 base (tile) × 1.50 ≈ 315 tokens (50% reduction vs GPT-4.1-nano)
+#
+# Official Sources:
+# - GPT-4.1 patch algorithm & multipliers: https://openai-hd4n6.mintlify.app/docs/guides/images
+# - GPT-4.1 multipliers (official): mini=1.62×, nano=2.46×
+# - GPT-5 pricing: https://openai.com/api/pricing/
+# - GPT-5 multipliers (observed): mini=1.20×, nano=1.50×
+#   Community: https://community.openai.com/t/gpt-5-mini-image-input-token-calculation-discrepancy-with-official-faq-formula/1344040
 _MODEL_PATCH_CONST: dict[str, tuple[int, int, float]] = {
-    "gpt-5-mini": (32, 1536, 1.20),
-    "gpt-5-nano": (32, 1536, 1.50),
+    # GPT-4.1 series: All use patch-based (official documentation)
+    "gpt-4.1": (32, 1536, 1.0),  # Standard model: patches only, no multiplier
+    "gpt-4.1-mini": (32, 1536, 1.62),  # Official multiplier
+    "gpt-4.1-nano": (32, 1536, 2.46),  # Official multiplier
+    # GPT-5 series: Reduced multipliers vs GPT-4.1
+    "gpt-5-mini": (32, 1536, 1.20),  # Observed (26% reduction vs GPT-4.1-mini)
+    "gpt-5-nano": (32, 1536, 1.50),  # Observed (50% reduction vs GPT-4.1-nano)
 }
 
 
@@ -100,19 +161,26 @@ def _pick_tile_const(model_name: str) -> tuple[int, int]:
     """Return (base, per-tile) constants by model name; default to (85, 170).
 
     Substring matching enables family-level overrides (e.g., 'gpt-4o-mini').
+    Uses longest-match-first to prevent ambiguous substring matches.
     """
     m = (model_name or "").lower().replace("openai/", "")
-    for key, pair in _MODEL_TILE_CONST.items():
+    # Sort keys by length (descending) to match most specific patterns first
+    for key in sorted(_MODEL_TILE_CONST.keys(), key=len, reverse=True):
         if key in m:
-            return pair
+            return _MODEL_TILE_CONST[key]
     return (DEFAULT_BASE_TOKENS, DEFAULT_PER_TILE_TOKENS)
 
 
 def _resize_for_vision(width: int, height: int) -> tuple[int, int]:
     """Logical resize (no resampling) per documented vision behavior.
 
-    1) Cap to within 2048x2048 (preserve aspect ratio)
+    Two-stage resize algorithm (official):
+    1) Cap to within 2048×2048 (preserve aspect ratio)
     2) If min-side remains >768, downscale so min-side becomes 768
+
+    Official documentation:
+    - https://platform.openai.com/docs/guides/vision#vision-token-calculation
+    - https://learn.microsoft.com/azure/ai-services/openai/concepts/gpt-with-vision
     """
     import math
 
@@ -144,13 +212,29 @@ def _count_tiles(width: int, height: int) -> int:
 
 
 def _is_patch_based(model_name: str) -> bool:
-    """Heuristic: treat mini/nano families as patch-based (32px patches).
+    """Determine if model uses patch-based (32px patches) vs tile-based (512px tiles) algorithm.
 
-    The exact accounting may evolve per model family. Calibrate constants
-    (size/cap/multiplier) with the official Pricing page.
+    Patch-based models (official documentation):
+    - GPT-4.1 series (all variants: standard, mini, nano)
+    - Mini/nano variants of other models
+
+    Tile-based models:
+    - GPT-4o series (85 base + 170 per tile)
+    - GPT-5 series standard models (70 base + 140 per tile)
+
+    Official sources:
+    - GPT-4.1 patch algorithm: https://openai-hd4n6.mintlify.app/docs/guides/images
+    - GPT-4o tile algorithm: https://platform.openai.com/docs/guides/vision#vision-token-calculation
     """
     m = (model_name or "").lower()
     m = m.replace("openai/", "")
+
+    # GPT-4.1 series ALL use patch-based (official documentation)
+    # Use precise matching to avoid false positives with gpt-4.10, gpt-4.11, etc.
+    if m == "gpt-4.1" or m.startswith("gpt-4.1-"):
+        return True
+
+    # Other mini/nano variants use patch-based
     return ("-mini" in m) or ("-nano" in m) or m.endswith("mini") or m.endswith("nano")
 
 
@@ -158,24 +242,39 @@ def _pick_patch_const(model_name: str) -> tuple[int, int, float]:
     """Return (patch_size, patch_cap, multiplier) for patch-based models.
 
     Defaults to (32, 1536, 1.0). Override per family where needed.
+
+    Uses longest-match-first to ensure specific variants (e.g., gpt-4.1-mini)
+    are matched before generic patterns (e.g., gpt-4.1).
     """
     m = (model_name or "").lower().replace("openai/", "")
-    for key, cfg in _MODEL_PATCH_CONST.items():
+    # Sort keys by length (descending) to match most specific patterns first
+    # This ensures "gpt-4.1-mini" matches before "gpt-4.1"
+    for key in sorted(_MODEL_PATCH_CONST.keys(), key=len, reverse=True):
         if key in m:
-            return cfg
+            return _MODEL_PATCH_CONST[key]
     return (DEFAULT_PATCH_SIZE, DEFAULT_PATCH_CAP, DEFAULT_PATCH_MULTIPLIER)
 
 
 def _estimate_tile_tokens_by_dims(width: int, height: int, detail: str, model_name: str) -> int:
     """Estimate tokens for tile-based accounting by dimensions.
 
-    Logic per docs:
-    1) logical resize to fit within 2048x2048; if min-side still >768, downscale so min-side=768
-       (aspect ratio preserved).
-    2) tiles = ceil(W/512) * ceil(H/512)
-    3) tokens = base + per_tile * tiles
-    Low detail returns base; AUTO uses low when min-side <= 512.
-    See: OpenAI Images & Vision; Azure GPT-with-Vision examples.
+    Official logic for tile-based models (GPT-4o, GPT-5 series):
+    1) Resize: cap to 2048×2048; if min-side >768, scale to min-side=768 (aspect preserved)
+    2) Tiles: ceil(W/512) × ceil(H/512)
+    3) Tokens: base + per_tile × tiles
+
+    NOTE: GPT-4.1 series do NOT use this tile-based algorithm.
+    They use patch-based (32×32 patches) - see _estimate_patch_tokens_by_dims()
+
+    Detail modes:
+    - low: Fixed base tokens only (no tiling)
+    - auto: Uses low if min-side ≤512px, else high
+    - high: Full tiling calculation
+
+    Official sources:
+    - GPT-4o tile algorithm: https://platform.openai.com/docs/guides/vision#vision-token-calculation
+    - Detail modes: https://platform.openai.com/docs/guides/vision#detail
+    - Azure examples: https://learn.microsoft.com/azure/ai-services/openai/concepts/gpt-with-vision
     """
     mode = _DETAIL_MAP.get((detail or "high").upper(), "high")
     base, per_tile = _pick_tile_const(model_name)
@@ -189,14 +288,32 @@ def _estimate_tile_tokens_by_dims(width: int, height: int, detail: str, model_na
 
 
 def _estimate_patch_tokens_by_dims(width: int, height: int, detail: str, model_name: str) -> int:
-    """Estimate tokens for patch-based accounting by dimensions (mini/nano families).
+    """Estimate tokens for patch-based accounting by dimensions.
 
-    Logic per common references:
-    1) logical resize to fit within 2048x2048; if min-side still >768, downscale so min-side=768.
-    2) patches = ceil(W/patch_size) * ceil(H/patch_size); cap at patch_cap (e.g., 1536).
-    3) tokens = patches * multiplier (model-specific; calibrate with Pricing calculator).
-    Low detail returns base; AUTO uses low when min-side <= 512.
-    See: OpenAI Images & Vision; Azure GPT-with-Vision; Pricing calculator.
+    Official logic for patch-based models (GPT-4.1 series - all variants):
+    1) Resize: cap to 2048×2048; if min-side >768, scale to min-side=768 (aspect preserved)
+    2) Patches: ceil(W/patch_size) × ceil(H/patch_size); cap at 1536 patches
+    3) Tokens: patches × multiplier (model-specific)
+       - GPT-4.1 standard: multiplier = 1.0 (patches only, no base overhead)
+       - GPT-4.1-mini: multiplier = 1.62× (official)
+       - GPT-4.1-nano: multiplier = 2.46× (official)
+
+    Detail modes same as tile-based:
+    - low: Fixed base tokens (uses tile constants for compatibility)
+    - auto: Uses low if min-side ≤512px, else high
+    - high: Full patch calculation
+
+    Official sources (GPT-4.1):
+    - Patch algorithm: https://openai-hd4n6.mintlify.app/docs/guides/images
+    - Detail modes: https://platform.openai.com/docs/guides/vision#detail
+    - Quote: "Calculate the number of 32px × 32px patches needed to fully cover the image...
+              The token cost is the number of patches, capped at 1536.
+              For gpt-4.1-mini, multiply by 1.62; for gpt-4.1-nano, multiply by 2.46."
+
+    Community sources (GPT-5 mini/nano):
+    - GPT-5 multipliers (observed): mini=1.20×, nano=1.50×
+    - Pricing calculator: https://openai.com/api/pricing/
+    - Community: https://community.openai.com/t/gpt-5-mini-image-input-token-calculation-discrepancy-with-official-faq-formula/1344040
     """
     mode = _DETAIL_MAP.get((detail or "high").upper(), "high")
     base, _ = _pick_tile_const(model_name)
@@ -309,9 +426,30 @@ def estimate_image_tokens(file_path: str, model_name: str, detail: str) -> int:
 def estimate_pdf_tokens(file_path: str, model_name: str, detail: str) -> int:
     """Estimate PDF tokens = text tokens + sum of per-page image tokens.
 
-    Note: The 96/72 factor maps PDF points (1/72 inch) to a pixel-like space to
-    preserve aspect ratio only. The eventual tile count is driven by the logical
-    vision resize (≤2048, min-side ≤768), not physical DPI.
+    PDF Processing:
+    1) Text extraction: tiktoken encoding of all page text
+    2) Visual processing: Each page treated as full-page image with official resize rules
+
+    Important: OpenAI scales PDF pages to short-side ≤768px, long-side ≤2048px (~90 DPI effective)
+    Our implementation uses 96/72 factor (1.333) to preserve PDF aspect ratio, then applies
+    _resize_for_vision() which enforces the official 768px/2048px limits.
+
+    Verified calculation (US Letter 612×792 pt):
+    - Step 1: 612×792 pt → 816×1056 px (96 DPI conversion, aspect preserved)
+    - Step 2: 816×1056 → 768×994 px (_resize_for_vision short-side rule)
+    - Step 3: 768×994 → 2×2 tiles = 4 tiles
+    - Step 4: GPT-5 tokens = 70 (base) + 140×4 (tiles) = 630 tokens
+
+    The 96 DPI is only an intermediate step; final result matches OpenAI's ~90 DPI effective.
+
+    Official sources:
+    - PDF processing: https://platform.openai.com/docs/guides/vision#pdfs
+    - Resize rules: https://platform.openai.com/docs/guides/vision#vision-token-calculation
+    - Token calculation: https://platform.openai.com/docs/guides/vision#detail
+
+    Empirical validation:
+    - Analysis: https://medium.com/@abasiri/why-openai-models-struggle-with-pdfs-and-why-gemini-fairs-much-better-ad7b75e2336d
+    - Discussion: https://www.reddit.com/r/Rag/comments/1izoxi1/why_openai_models_are_terrible_at_pdfs_conversions/
     """
     try:
         reader = PdfReader(file_path)

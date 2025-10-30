@@ -31,6 +31,7 @@ class TestOpenAIModelDetection:
         assert not openai_token_estimator.is_openai_model("claude-3-opus")
         assert not openai_token_estimator.is_openai_model("llama-3-70b")
 
+
 class TestTextTokenEstimation:
     """Test text token counting."""
 

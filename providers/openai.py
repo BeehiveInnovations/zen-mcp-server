@@ -101,17 +101,14 @@ class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider)
             capabilities = None
 
         # Check if this model should use Responses API
-        # Two flags: supports_responses_api (model capability) and use_openai_response_api (user config)
         use_responses_api = False
-        model_supports_responses_api = False
         if capabilities is not None:
-            model_supports_responses_api = getattr(capabilities, "supports_responses_api", False)
             use_responses_api = getattr(capabilities, "use_openai_response_api", False)
 
         # Check if files require Responses API
         has_files = files and len(files) > 0
         if has_files:
-            if not model_supports_responses_api:
+            if not use_responses_api:
                 # Model doesn't support Responses API, but files were provided
                 supported_models = [
                     "gpt-5",
@@ -387,24 +384,6 @@ class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider)
                 use_responses = getattr(capabilities, "use_openai_response_api", False)
                 if not use_responses:
                     continue
-
-                # Check API support configuration
-                supports_responses = getattr(capabilities, "supports_responses_api", None)
-
-                # Critical: User enabled Responses API but model doesn't support it
-                if supports_responses is False:
-                    warnings.append(
-                        f"❌ CONFIG ERROR: '{model_name}' has 'use_openai_response_api: true' "
-                        f"but 'supports_responses_api: false'. This model does NOT support Responses API. "
-                        f"Set 'use_openai_response_api: false' in conf/openai_models.json"
-                    )
-                # Warning: Missing capability declaration (legacy config)
-                elif supports_responses is None:
-                    warnings.append(
-                        f"⚠️  '{model_name}' missing 'supports_responses_api' field. "
-                        f"Please add this field to conf/openai_models.json for validation. "
-                        f"Check your research to determine if this model supports Responses API."
-                    )
 
             except Exception as e:
                 logger.debug(f"Could not validate {model_name}: {e}")

@@ -17,12 +17,11 @@
       "max_image_size_mb": "Maximum total size in MB for all images combined (capped at 40MB max for custom models)",
       "supports_temperature": "Whether the model accepts temperature parameter in API calls (set to false for O3/O4 reasoning models)",
       "temperature_constraint": "Type of temperature constraint: 'fixed' (fixed value), 'range' (continuous range), 'discrete' (specific values), or omit for default range",
-      "use_openai_response_api": "User choice: Set to true to actually use the /responses endpoint for this model. Only valid if supports_responses_api=true. Provides: preserved reasoning (5% boost), file_search, web_search, better caching. Leave false/omit to use Chat Completions API.",
+      "use_openai_response_api": "Set to true when the model must use the /responses endpoint (reasoning models like GPT-5 Pro). Leave false/omit for standard chat completions.",
       "default_reasoning_effort": "Default reasoning effort level for models that support it (e.g., 'low', 'medium', 'high'). Omit if not applicable.",
       "description": "Human-readable description of the model",
       "intelligence_score": "1-20 human rating used as the primary signal for auto-mode model ordering",
-      "allow_code_generation": "Whether this model can generate and suggest fully working code - complete with functions, files, and detailed implementation instructions - for your AI tool to use right away. Only set this to 'true' for a model more capable than the AI model / CLI you're currently using.",
-      "supports_responses_api": "Whether this model technically supports the Responses API. true = model can use /v1/responses endpoint, false = model only supports /v1/chat/completions. Based on OpenAI official support. Examples: gpt-5/gpt-4.1/o3 support it, gpt-3.5-turbo/gpt-4-turbo do not."
+      "allow_code_generation": "Whether this model can generate and suggest fully working code - complete with functions, files, and detailed implementation instructions - for your AI tool to use right away. Only set this to 'true' for a model more capable than the AI model / CLI you're currently using."
     }
   },
   "models": [
@@ -46,7 +45,6 @@
       "supports_temperature": true,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "medium"
     },
@@ -72,8 +70,7 @@
       "use_openai_response_api": true,
       "default_reasoning_effort": "high",
       "allow_code_generation": true,
-      "temperature_constraint": "fixed",
-      "supports_responses_api": true
+      "temperature_constraint": "fixed"
     },
     {
       "model_name": "gpt-5-mini",
@@ -96,7 +93,6 @@
       "supports_temperature": true,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "low"
     },
@@ -121,7 +117,6 @@
       "supports_temperature": true,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "low"
     },
@@ -141,7 +136,6 @@
       "supports_temperature": false,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "medium"
     },
@@ -164,7 +158,6 @@
       "supports_temperature": false,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "low"
     },
@@ -188,7 +181,6 @@
       "max_image_size_mb": 20.0,
       "use_openai_response_api": true,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "default_reasoning_effort": "high"
     },
     {
@@ -209,7 +201,6 @@
       "supports_temperature": false,
       "max_image_size_mb": 20.0,
       "temperature_constraint": "fixed",
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "low"
     },
@@ -231,7 +222,6 @@
       "supports_images": true,
       "supports_temperature": true,
       "max_image_size_mb": 20.0,
-      "supports_responses_api": true,
       "use_openai_response_api": true,
       "default_reasoning_effort": "medium"
     },
@@ -257,7 +247,6 @@
       "supports_temperature": true,
       "max_image_size_mb": 20.0,
       "use_openai_response_api": true,
-      "supports_responses_api": true,
       "default_reasoning_effort": "medium"
     }
   ]
