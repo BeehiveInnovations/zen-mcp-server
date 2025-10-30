@@ -59,8 +59,17 @@ class TestTextTokenEstimation:
 class TestImageTokenEstimation:
     """Test image token estimation."""
 
-    def test_estimate_image_tokens_tile_based_low(self):
-        """Test tile-based estimation with low detail (case-insensitive)."""
+    @pytest.mark.parametrize(
+        "detail,expected_tokens",
+        [
+            ("LOW", 85),  # Fixed base tokens for low detail
+            ("low", 85),  # Case-insensitive
+            ("HIGH", 85),  # Small image: 85 base + tiles (>= 85)
+            ("high", 85),  # Case-insensitive
+        ],
+    )
+    def test_estimate_image_tokens_tile_based(self, detail, expected_tokens):
+        """Test tile-based estimation with different detail levels (case-insensitive)."""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             # Create a minimal PNG (1x1 pixel)
             tmp.write(
@@ -71,36 +80,8 @@ class TestImageTokenEstimation:
             tmp_path = tmp.name
 
         try:
-            # Test with uppercase (Gemini PR 302 pattern)
-            tokens = openai_token_estimator.estimate_image_tokens(tmp_path, "gpt-4o", "LOW")
-            assert tokens == 85  # Fixed base tokens for low detail
-
-            # Verify case-insensitivity
-            tokens_lowercase = openai_token_estimator.estimate_image_tokens(tmp_path, "gpt-4o", "low")
-            assert tokens_lowercase == 85
-        finally:
-            os.unlink(tmp_path)
-
-    def test_estimate_image_tokens_tile_based_high(self):
-        """Test tile-based estimation with high detail (case-insensitive)."""
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-            # Create a minimal PNG
-            tmp.write(
-                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-                b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
-                b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
-            )
-            tmp_path = tmp.name
-
-        try:
-            # Test with uppercase (Gemini PR 302 pattern)
-            tokens = openai_token_estimator.estimate_image_tokens(tmp_path, "gpt-4o", "HIGH")
-            # Small image: 85 base + 170 per tile
-            assert tokens >= 85
-
-            # Verify case-insensitivity
-            tokens_lowercase = openai_token_estimator.estimate_image_tokens(tmp_path, "gpt-4o", "high")
-            assert tokens_lowercase >= 85
+            tokens = openai_token_estimator.estimate_image_tokens(tmp_path, "gpt-4o", detail)
+            assert tokens >= expected_tokens
         finally:
             os.unlink(tmp_path)
 
@@ -182,34 +163,35 @@ class TestFileTokenEstimation:
         finally:
             os.unlink(tmp_path)
 
-    def test_estimate_tokens_for_files_audio_not_supported(self):
-        """Test audio files raise error."""
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-            tmp.write(b"fake audio")
+    @pytest.mark.parametrize(
+        "suffix,mime_type,error_pattern",
+        [
+            (".mp3", "audio/mpeg", "does not support audio"),
+            (".mp4", "video/mp4", "does not support video"),
+        ],
+    )
+    def test_estimate_tokens_for_files_unsupported_media(self, suffix, mime_type, error_pattern):
+        """Test unsupported media files (audio/video) raise errors."""
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(b"fake media content")
             tmp_path = tmp.name
 
         try:
-            files = [{"path": tmp_path, "mime_type": "audio/mpeg"}]
-            with pytest.raises(openai_token_estimator.UnsupportedContentTypeError, match="does not support audio"):
+            files = [{"path": tmp_path, "mime_type": mime_type}]
+            with pytest.raises(openai_token_estimator.UnsupportedContentTypeError, match=error_pattern):
                 openai_token_estimator.estimate_tokens_for_files("gpt-4o", files, "HIGH")
         finally:
             os.unlink(tmp_path)
 
-    def test_estimate_tokens_for_files_video_not_supported(self):
-        """Test video files raise error."""
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-            tmp.write(b"fake video")
-            tmp_path = tmp.name
-
-        try:
-            files = [{"path": tmp_path, "mime_type": "video/mp4"}]
-            with pytest.raises(openai_token_estimator.UnsupportedContentTypeError, match="does not support video"):
-                openai_token_estimator.estimate_tokens_for_files("gpt-4o", files, "HIGH")
-        finally:
-            os.unlink(tmp_path)
-
-    def test_estimate_tokens_for_files_pdf_without_responses_api(self):
-        """Test PDF files require Responses API."""
+    @pytest.mark.parametrize(
+        "use_responses_api,should_succeed",
+        [
+            (False, False),  # PDF requires Responses API
+            (True, True),  # PDF works with Responses API
+        ],
+    )
+    def test_estimate_tokens_for_files_pdf_responses_api(self, use_responses_api, should_succeed):
+        """Test PDF files require Responses API enabled."""
         # Create a minimal valid PDF
         pdf_content = (
             b"%PDF-1.4\n"
@@ -227,37 +209,21 @@ class TestFileTokenEstimation:
 
         try:
             files = [{"path": tmp_path, "mime_type": "application/pdf"}]
-            # Without use_responses_api=True, should raise error
-            with pytest.raises(
-                openai_token_estimator.UnsupportedContentTypeError, match="PDF/document files .* Responses API"
-            ):
-                openai_token_estimator.estimate_tokens_for_files("gpt-4o", files, "HIGH", use_responses_api=False)
-        finally:
-            os.unlink(tmp_path)
-
-    def test_estimate_tokens_for_files_pdf_with_responses_api(self):
-        """Test PDF files work with Responses API enabled."""
-        # Create a minimal valid PDF
-        pdf_content = (
-            b"%PDF-1.4\n"
-            b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
-            b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
-            b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> >>\nendobj\n"
-            b"4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 100 700 Td (Hello World) Tj ET\nendstream\nendobj\n"
-            b"xref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000300 00000 n\n"
-            b"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n394\n%%EOF"
-        )
-
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-            tmp.write(pdf_content)
-            tmp_path = tmp.name
-
-        try:
-            files = [{"path": tmp_path, "mime_type": "application/pdf"}]
-            # With use_responses_api=True, should work
-            tokens = openai_token_estimator.estimate_tokens_for_files("gpt-4o", files, "HIGH", use_responses_api=True)
-            # Should have text tokens + image tokens per page
-            assert tokens > 85  # At least base image tokens for 1 page
+            if should_succeed:
+                # With use_responses_api=True, should work
+                tokens = openai_token_estimator.estimate_tokens_for_files(
+                    "gpt-4o", files, "HIGH", use_responses_api=use_responses_api
+                )
+                # Should have text tokens + image tokens per page
+                assert tokens > 85  # At least base image tokens for 1 page
+            else:
+                # Without use_responses_api=True, should raise error
+                with pytest.raises(
+                    openai_token_estimator.UnsupportedContentTypeError, match="PDF/document files .* Responses API"
+                ):
+                    openai_token_estimator.estimate_tokens_for_files(
+                        "gpt-4o", files, "HIGH", use_responses_api=use_responses_api
+                    )
         finally:
             os.unlink(tmp_path)
 

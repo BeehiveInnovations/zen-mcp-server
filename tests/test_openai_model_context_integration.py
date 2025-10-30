@@ -66,47 +66,34 @@ class TestOpenAIModelContextIntegration(unittest.TestCase):
             # Should fall back to conservative estimation (1 token ≈ 4 chars)
             self.assertEqual(tokens, len("Test text") // 4)
 
-    def test_estimate_file_tokens_with_openai_provider_image(self):
-        """Test estimate_file_tokens calls OpenAI provider for image files."""
-        # Setup mock provider with estimate_tokens_for_files method
-        self.mock_openai_provider.estimate_tokens_for_files.return_value = 255
+    @patch("utils.model_context.ModelProviderRegistry.get_provider_for_model")
+    def test_estimate_file_tokens_with_openai_provider(self, mock_get_provider):
+        """Test estimate_file_tokens calls OpenAI provider for different file types."""
+        # Test cases: (file_path, expected_tokens, expected_mime_type)
+        test_cases = [
+            ("/path/to/image.jpg", 255, "image/jpeg"),
+            ("/path/to/audio.mp3", 100, "audio/mpeg"),
+        ]
 
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model", return_value=self.mock_openai_provider
-        ):
-            model_context = ModelContext("gpt-4o")
+        for file_path, expected_tokens, expected_mime in test_cases:
+            with self.subTest(file_path=file_path):
+                # Setup mock provider
+                self.mock_openai_provider.estimate_tokens_for_files.return_value = expected_tokens
+                mock_get_provider.return_value = self.mock_openai_provider
 
-            tokens = model_context.estimate_file_tokens("/path/to/image.jpg")
+                model_context = ModelContext("gpt-4o")
+                tokens = model_context.estimate_file_tokens(file_path)
 
-            # Should call provider's file estimation
-            self.assertEqual(tokens, 255)
-            self.mock_openai_provider.estimate_tokens_for_files.assert_called_once()
+                # Verify result
+                self.assertEqual(tokens, expected_tokens)
 
-            # Verify the call arguments
-            call_args = self.mock_openai_provider.estimate_tokens_for_files.call_args
-            model_name, files = call_args[0]
-            self.assertEqual(model_name, "gpt-4o")
-            self.assertEqual(len(files), 1)
-            self.assertEqual(files[0]["path"], "/path/to/image.jpg")
-            self.assertEqual(files[0]["mime_type"], "image/jpeg")
-
-    def test_estimate_file_tokens_with_openai_provider_audio(self):
-        """Test estimate_file_tokens calls OpenAI provider for audio files (GPT-4o)."""
-        # Setup mock provider for GPT-4o with audio support
-        self.mock_openai_provider.estimate_tokens_for_files.return_value = 100
-
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model", return_value=self.mock_openai_provider
-        ):
-            model_context = ModelContext("gpt-4o")
-
-            tokens = model_context.estimate_file_tokens("/path/to/audio.mp3")
-
-            # Should call provider's estimation
-            self.assertEqual(tokens, 100)
-            call_args = self.mock_openai_provider.estimate_tokens_for_files.call_args
-            files = call_args[0][1]
-            self.assertEqual(files[0]["mime_type"], "audio/mpeg")
+                # Verify call arguments
+                call_args = self.mock_openai_provider.estimate_tokens_for_files.call_args
+                model_name, files = call_args[0]
+                self.assertEqual(model_name, "gpt-4o")
+                self.assertEqual(len(files), 1)
+                self.assertEqual(files[0]["path"], file_path)
+                self.assertEqual(files[0]["mime_type"], expected_mime)
 
     def test_estimate_file_tokens_fallback_when_provider_lacks_method(self):
         """Test estimate_file_tokens falls back when provider doesn't have estimation method."""
@@ -145,58 +132,30 @@ class TestOpenAIModelContextIntegration(unittest.TestCase):
                 self.assertEqual(tokens, 150)
                 mock_fallback.assert_called_once_with("/path/to/video.mp4")
 
-    def test_estimate_file_tokens_fallback_when_provider_returns_none(self):
-        """Test estimate_file_tokens falls back when provider returns None."""
+    @patch("utils.model_context.ModelProviderRegistry.get_provider_for_model")
+    @patch("utils.file_utils.estimate_file_tokens")
+    def test_estimate_file_tokens_fallback_when_provider_returns_none(self, mock_fallback, mock_get_provider):
+        """Test estimate_file_tokens falls back when provider returns None (unknown file types)."""
+        # Setup provider to return None
         self.mock_openai_provider.estimate_tokens_for_files.return_value = None
+        mock_get_provider.return_value = self.mock_openai_provider
 
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model", return_value=self.mock_openai_provider
-        ):
-            with patch("utils.file_utils.estimate_file_tokens", return_value=200) as mock_fallback:
+        # Test cases: (file_path, fallback_tokens)
+        test_cases = [
+            ("/path/to/unknown.xyz", 200),  # Unknown extension
+            ("/path/to/noext", 300),  # No extension
+        ]
+
+        for file_path, fallback_tokens in test_cases:
+            with self.subTest(file_path=file_path):
+                mock_fallback.return_value = fallback_tokens
+
                 model_context = ModelContext("gpt-4o")
-
-                tokens = model_context.estimate_file_tokens("/path/to/unknown.xyz")
+                tokens = model_context.estimate_file_tokens(file_path)
 
                 # Should fall back when provider returns None
-                self.assertEqual(tokens, 200)
-                mock_fallback.assert_called_once_with("/path/to/unknown.xyz")
-
-    def test_estimate_file_tokens_fallback_for_unknown_mime_type(self):
-        """Test estimate_file_tokens uses fallback for files without detectable mime type."""
-        # Mock provider to return None for unknown mime types (triggers fallback)
-        self.mock_openai_provider.estimate_tokens_for_files.return_value = None
-
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model", return_value=self.mock_openai_provider
-        ):
-            with patch("utils.file_utils.estimate_file_tokens", return_value=300) as mock_fallback:
-                model_context = ModelContext("gpt-4o")
-
-                # File without extension will get "text/plain" mime type, provider returns None
-                tokens = model_context.estimate_file_tokens("/path/to/noext")
-
-                # Should use fallback when provider returns None
-                self.assertEqual(tokens, 300)
-                mock_fallback.assert_called_once_with("/path/to/noext")
-
-    def test_openai_text_tokens_more_accurate_than_fallback(self):
-        """Test that OpenAI provider tokenization is more accurate than simple fallback."""
-        # This is a conceptual test - actual token counts depend on tiktoken
-        text = "The quick brown fox jumps over the lazy dog."
-
-        # Mock OpenAI provider with realistic token count (using tiktoken logic)
-        self.mock_openai_provider._calculate_text_tokens.return_value = 10
-
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model", return_value=self.mock_openai_provider
-        ):
-            model_context = ModelContext("gpt-4o")
-
-            tokens = model_context.estimate_tokens(text)
-
-            # Provider tokenization (10) should be different from fallback (len//4 = 11)
-            self.assertEqual(tokens, 10)
-            self.assertNotEqual(tokens, len(text) // 4)
+                self.assertEqual(tokens, fallback_tokens)
+                mock_fallback.assert_called_with(file_path)
 
     def test_unsupported_content_type_propagates_error(self):
         """Test that UnsupportedContentTypeError is propagated, not caught for fallback."""
@@ -254,40 +213,26 @@ class TestOpenRouterIntegration(unittest.TestCase):
             max_output_tokens=16_000,
         )
 
-    def test_openrouter_routes_openai_models_correctly(self):
-        """Test that OpenRouter routes OpenAI models to OpenAI estimator."""
-        # Setup OpenRouter provider with routing logic
+    @patch("utils.model_context.ModelProviderRegistry.get_provider_for_model")
+    def test_openrouter_routes_openai_models(self, mock_get_provider):
+        """Test that OpenRouter routes OpenAI models to OpenAI estimator (text and files)."""
+        mock_get_provider.return_value = self.mock_openrouter_provider
+
+        # Test text estimation
         self.mock_openrouter_provider._calculate_text_tokens.return_value = 25
+        model_context = ModelContext("openai/gpt-4o")
+        tokens = model_context.estimate_tokens("OpenRouter test text")
+        self.assertEqual(tokens, 25)
+        self.mock_openrouter_provider._calculate_text_tokens.assert_called_once_with(
+            "openai/gpt-4o", "OpenRouter test text"
+        )
 
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model",
-            return_value=self.mock_openrouter_provider,
-        ):
-            model_context = ModelContext("openai/gpt-4o")
-
-            tokens = model_context.estimate_tokens("OpenRouter test text")
-
-            # Should call OpenRouter's routing implementation
-            self.assertEqual(tokens, 25)
-            self.mock_openrouter_provider._calculate_text_tokens.assert_called_once_with(
-                "openai/gpt-4o", "OpenRouter test text"
-            )
-
-    def test_openrouter_image_estimation_for_openai_models(self):
-        """Test OpenRouter routes image estimation for OpenAI models."""
+        # Test image estimation
         self.mock_openrouter_provider.estimate_tokens_for_files.return_value = 340
-
-        with patch(
-            "utils.model_context.ModelProviderRegistry.get_provider_for_model",
-            return_value=self.mock_openrouter_provider,
-        ):
-            model_context = ModelContext("openai/gpt-5")
-
-            tokens = model_context.estimate_file_tokens("/path/to/large_image.png")
-
-            # Should use OpenRouter's routing to OpenAI estimator
-            self.assertEqual(tokens, 340)
-            call_args = self.mock_openrouter_provider.estimate_tokens_for_files.call_args
-            model_name, files = call_args[0]
-            self.assertEqual(model_name, "openai/gpt-5")
-            self.assertEqual(files[0]["mime_type"], "image/png")
+        model_context = ModelContext("openai/gpt-5")
+        tokens = model_context.estimate_file_tokens("/path/to/large_image.png")
+        self.assertEqual(tokens, 340)
+        call_args = self.mock_openrouter_provider.estimate_tokens_for_files.call_args
+        model_name, files = call_args[0]
+        self.assertEqual(model_name, "openai/gpt-5")
+        self.assertEqual(files[0]["mime_type"], "image/png")

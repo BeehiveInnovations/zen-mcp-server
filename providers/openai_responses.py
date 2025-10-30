@@ -38,6 +38,23 @@ class OpenAIResponsesProvider(ModelProvider):
         super().__init__(api_key=api_key)
         self.client = OpenAI(api_key=self.api_key)
 
+    def close(self):
+        """Close the OpenAI client and release resources."""
+        try:
+            if hasattr(self, "client") and self.client is not None:
+                self.client.close()
+        except Exception:
+            # Suppress errors during cleanup
+            pass
+
+    def __del__(self):
+        """Ensure client is closed when provider is garbage collected."""
+        try:
+            self.close()
+        except Exception:
+            # Suppress all errors during garbage collection
+            pass
+
     def get_provider_type(self) -> ProviderType:
         """Return the provider type."""
         return self.PROVIDER_TYPE
@@ -200,17 +217,47 @@ class OpenAIResponsesProvider(ModelProvider):
             raise
 
     def _process_image(self, image_path: str) -> Optional[dict]:
-        """Process image for inclusion in request.
+        """Process image for Responses API.
+
+        Responses API requires input_image type with image_url as string.
+        Supports: HTTP(S) URLs, data URIs, and local files (converted to Base64).
 
         Args:
-            image_path: Path to image or data URL
+            image_path: Path to image, HTTP URL, or data URI
 
         Returns:
-            Image content dict for API request
+            Image content dict for API request in format:
+            {"type": "input_image", "image_url": "<url_or_data_uri>"}
+
+        Note:
+            - HTTP/HTTPS URLs: passed through directly
+            - Data URIs: validated and passed through
+            - Local files: read and converted to Base64 data URI
         """
-        # This should be implemented based on OpenAI's image format requirements
-        # For now, return a placeholder
-        return {"type": "input_image", "image_url": image_path}
+        from utils.image_utils import validate_image
+        import base64
+
+        try:
+            # Data URL - validate and pass through
+            if image_path.startswith("data:"):
+                validate_image(image_path)
+                return {"type": "input_image", "image_url": image_path}
+
+            # HTTP/HTTPS URL - pass through directly
+            if image_path.startswith(("http://", "https://")):
+                return {"type": "input_image", "image_url": image_path}
+
+            # Local file - read and encode to Base64 data URI
+            image_bytes, mime_type = validate_image(image_path)
+            encoded_data = base64.b64encode(image_bytes).decode("utf-8")
+            data_uri = f"data:{mime_type};base64,{encoded_data}"
+
+            logging.debug(f"Encoded local image '{image_path}' as {mime_type} data URI ({len(encoded_data)} chars)")
+            return {"type": "input_image", "image_url": data_uri}
+
+        except Exception as e:
+            logging.warning(f"Failed to process image '{image_path}': {e}")
+            return None
 
     def _extract_content(self, response) -> str:
         """Extract content from Responses API response.

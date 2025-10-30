@@ -58,6 +58,32 @@ class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider)
         # Validate configuration on startup
         self._validate_responses_api_config()
 
+    def close(self):
+        """Close all clients and release resources."""
+        try:
+            # Close Responses API provider
+            if hasattr(self, "responses_provider") and self.responses_provider is not None:
+                self.responses_provider.close()
+        except Exception:
+            # Suppress errors during cleanup
+            pass
+
+        try:
+            # Close base OpenAI client from OpenAICompatibleProvider
+            if hasattr(self, "client") and self.client is not None:
+                self.client.close()
+        except Exception:
+            # Suppress errors during cleanup
+            pass
+
+    def __del__(self):
+        """Ensure all clients are closed when provider is garbage collected."""
+        try:
+            self.close()
+        except Exception:
+            # Suppress all errors during garbage collection
+            pass
+
     def generate_content(
         self,
         prompt: str,
