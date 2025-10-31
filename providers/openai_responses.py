@@ -36,13 +36,46 @@ class OpenAIResponsesProvider(ModelProvider):
             raise ValueError("OpenAI API key required for Responses API")
 
         super().__init__(api_key=api_key)
-        self.client = OpenAI(api_key=self.api_key)
+        self._client = None  # Lazy initialization via property
+
+    @property
+    def client(self):
+        """Lazy initialization of OpenAI client with test transport support.
+
+        Follows the same pattern as OpenAICompatibleProvider to support
+        HTTP transport injection for cassette recording/replay in tests.
+        """
+        if self._client is None:
+            import httpx
+
+            # Check for test transport injection (for cassette recording/replay)
+            if hasattr(self, "_test_transport"):
+                # Use custom transport for testing
+                http_client = httpx.Client(
+                    transport=self._test_transport,
+                    timeout=httpx.Timeout(30.0),
+                    follow_redirects=True,
+                )
+            else:
+                # Normal production client
+                http_client = httpx.Client(
+                    timeout=httpx.Timeout(30.0),
+                    follow_redirects=True,
+                )
+
+            # Create OpenAI client with custom httpx client
+            self._client = OpenAI(
+                api_key=self.api_key,
+                http_client=http_client,
+            )
+
+        return self._client
 
     def close(self):
         """Close the OpenAI client and release resources."""
         try:
-            if hasattr(self, "client") and self.client is not None:
-                self.client.close()
+            if hasattr(self, "_client") and self._client is not None:
+                self._client.close()
         except Exception:
             # Suppress errors during cleanup
             pass
@@ -296,14 +329,63 @@ class OpenAIResponsesProvider(ModelProvider):
         Returns:
             Usage dict with token counts
         """
+        def _safe_int(value) -> Optional[int]:
+            """Safely extract integer value, returning None for Mock objects or invalid types."""
+            if value is None:
+                return None
+            # Check if it's a real number (not a Mock)
+            if isinstance(value, (int, float)):
+                return int(value)
+            # Try to convert string to int
+            if isinstance(value, str):
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return None
+            # If it's a Mock or other object, return None
+            return None
+
         usage = {}
 
-        if hasattr(response, "input_tokens"):
-            usage["input_tokens"] = response.input_tokens
+        # Try to extract from response.usage
+        if hasattr(response, "usage") and response.usage is not None:
+            usage_obj = response.usage
 
-        if hasattr(response, "output_tokens"):
-            usage["output_tokens"] = response.output_tokens
+            # Handle Pydantic models (real API responses) - check for model_dump method
+            if hasattr(usage_obj, "model_dump"):
+                try:
+                    usage_dict = usage_obj.model_dump()
+                    input_val = _safe_int(usage_dict.get("input_tokens"))
+                    output_val = _safe_int(usage_dict.get("output_tokens"))
+                    if input_val is not None:
+                        usage["input_tokens"] = input_val
+                    if output_val is not None:
+                        usage["output_tokens"] = output_val
+                except Exception:
+                    pass  # Fall through to other methods
 
+            # Handle dict objects (mock tests)
+            elif isinstance(usage_obj, dict):
+                input_val = _safe_int(usage_obj.get("input_tokens"))
+                output_val = _safe_int(usage_obj.get("output_tokens"))
+                if input_val is not None:
+                    usage["input_tokens"] = input_val
+                if output_val is not None:
+                    usage["output_tokens"] = output_val
+
+        # Try to extract from top-level attributes (Responses API style)
+        # Only if not already extracted from usage object
+        if "input_tokens" not in usage and hasattr(response, "input_tokens"):
+            input_val = _safe_int(response.input_tokens)
+            if input_val is not None:
+                usage["input_tokens"] = input_val
+
+        if "output_tokens" not in usage and hasattr(response, "output_tokens"):
+            output_val = _safe_int(response.output_tokens)
+            if output_val is not None:
+                usage["output_tokens"] = output_val
+
+        # Calculate total only if both values are valid integers
         if "input_tokens" in usage and "output_tokens" in usage:
             usage["total_tokens"] = usage["input_tokens"] + usage["output_tokens"]
 
