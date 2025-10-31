@@ -70,8 +70,10 @@ class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider)
 
         try:
             # Close base OpenAI client from OpenAICompatibleProvider
-            if hasattr(self, "client") and self.client is not None:
-                self.client.close()
+            # Check _client directly to avoid triggering lazy initialization
+            if hasattr(self, "_client") and self._client is not None:
+                self._client.close()
+                self._client = None
         except Exception:
             # Suppress errors during cleanup
             pass
@@ -156,6 +158,14 @@ class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider)
         # Route to appropriate API
         if use_responses_api:
             logger.debug(f"Routing {model_name} to Responses API")
+
+            # Pass default reasoning effort from capabilities if not explicitly provided
+            if capabilities is not None:
+                default_reasoning = getattr(capabilities, "default_reasoning_effort", None)
+                if default_reasoning and "reasoning_effort" not in kwargs:
+                    kwargs["reasoning_effort"] = default_reasoning
+                    logger.debug(f"Using default reasoning_effort={default_reasoning} from capabilities")
+
             try:
                 return self.responses_provider.generate_content(
                     prompt=prompt,
