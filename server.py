@@ -400,6 +400,7 @@ def configure_providers():
     from providers.openrouter import OpenRouterProvider
     from providers.shared import ProviderType
     from providers.xai import XAIModelProvider
+    from providers.zai import ZAIProvider
     from utils.model_restrictions import get_restriction_service
 
     valid_providers = []
@@ -462,6 +463,13 @@ def configure_providers():
         has_native_apis = True
         logger.info("DIAL API key found - DIAL models available")
 
+    # Check for Z.AI API key
+    zai_key = get_env("ZAI_API_KEY")
+    if zai_key and zai_key != "your_zai_api_key_here":
+        valid_providers.append("Z.AI")
+        has_native_apis = True
+        logger.info("Z.AI API key found - GLM models available")
+
     # Check for OpenRouter API key
     openrouter_key = get_env("OPENROUTER_API_KEY")
     logger.debug(f"OpenRouter key check: key={'[PRESENT]' if openrouter_key else '[MISSING]'}")
@@ -517,6 +525,10 @@ def configure_providers():
             ModelProviderRegistry.register_provider(ProviderType.DIAL, DIALModelProvider)
             registered_providers.append(ProviderType.DIAL.value)
             logger.debug(f"Registered provider: {ProviderType.DIAL.value}")
+        if zai_key and zai_key != "your_zai_api_key_here":
+            ModelProviderRegistry.register_provider(ProviderType.ZAI, ZAIProvider)
+            registered_providers.append(ProviderType.ZAI.value)
+            logger.debug(f"Registered provider: {ProviderType.ZAI.value}")
 
     # 2. Custom provider second (for local/private models)
     if has_custom:
