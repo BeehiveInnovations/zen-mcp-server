@@ -40,7 +40,7 @@ Removed GLM-4.6 from `conf/custom_models.json` since it's now handled by the ded
 
 Based on Z.AI API documentation (https://docs.z.ai/api-reference/introduction):
 
-- **Endpoint**: `https://api.z.ai/api/paas/v4/chat/completions`
+- **Endpoint**: `https://api.z.ai/api/coding/paas/v4/chat/completions`
 - **Authentication**: HTTP Bearer token via `ZAI_API_KEY`
 - **Supported Model**: `glm-4.6`
 - **Request Format**: OpenAI-compatible (messages, temperature, stream, etc.)
