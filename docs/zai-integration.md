@@ -102,7 +102,7 @@ The Z.AI provider differs from the generic Custom provider:
 
 | Feature | Z.AI Provider | Custom Provider |
 |---------|---------------|-----------------|
-| Endpoint | Fixed (`https://api.z.ai/api/paas/v4`) | Configurable (`CUSTOM_API_URL`) |
+| Endpoint | Fixed (`https://api.z.ai/api/coding/paas/v4`) | Configurable (`CUSTOM_API_URL`) |
 | Models | GLM models only | Any OpenAI-compatible model |
 | Configuration | Single `ZAI_API_KEY` | `CUSTOM_API_URL` + `CUSTOM_API_KEY` |
 | Registry | Built-in capabilities | `custom_models.json` definitions |
