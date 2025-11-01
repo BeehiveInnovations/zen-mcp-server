@@ -9,7 +9,7 @@ This document describes the Z.AI provider integration for the Zen MCP Server, wh
 ### 1. Created Z.AI Provider (`providers/zai.py`)
 
 A dedicated provider class extending `OpenAICompatibleProvider` that:
-- Uses the correct Z.AI endpoint: `https://api.z.ai/api/paas/v4`
+- Uses the correct Z.AI endpoint: `https://api.z.ai/api/coding/paas/v4`
 - Handles GLM model capabilities (GLM-4.6 with multimodal support)
 - Resolves model aliases (glm, glm-4, glm4.6 → glm-4.6)
 - Supports 128K context window with 8K max output tokens
