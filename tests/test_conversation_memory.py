@@ -32,7 +32,7 @@ class TestConversationMemory:
         mock_client = Mock()
         mock_storage.return_value = mock_client
 
-        thread_id = create_thread("chat", {"prompt": "Hello", "files": ["/test.py"]})
+        thread_id = create_thread("chat", {"prompt": "Hello", "absolute_file_paths": ["/test.py"]})
 
         assert thread_id is not None
         assert len(thread_id) == 36  # UUID4 length
@@ -174,6 +174,8 @@ class TestConversationMemory:
                 timestamp="2023-01-01T00:01:00Z",
                 files=[str(examples_dir)],  # Directory will be expanded to files
                 tool_name="chat",
+                model_name="gpt-5",
+                model_provider="openai",
             ),
         ]
 
@@ -195,8 +197,8 @@ class TestConversationMemory:
         assert f"Turn 2/{MAX_CONVERSATION_TURNS}" in history
 
         # Test speaker identification
-        assert "--- Turn 1 (Claude) ---" in history
-        assert "--- Turn 2 (Gemini using chat) ---" in history
+        assert "--- Turn 1 (Agent) ---" in history
+        assert "--- Turn 2 (gpt-5 using chat via openai) ---" in history
 
         # Test content
         assert "What is Python?" in history
@@ -507,7 +509,7 @@ class TestConversationFlow:
         mock_storage.return_value = mock_client
 
         # Start conversation with files using a simple tool
-        thread_id = create_thread("chat", {"prompt": "Analyze this codebase", "files": ["/project/src/"]})
+        thread_id = create_thread("chat", {"prompt": "Analyze this codebase", "absolute_file_paths": ["/project/src/"]})
 
         # Turn 1: Claude provides context with multiple files
         initial_context = ThreadContext(
@@ -516,7 +518,10 @@ class TestConversationFlow:
             last_updated_at="2023-01-01T00:00:00Z",
             tool_name="chat",
             turns=[],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={
+                "prompt": "Analyze this codebase",
+                "absolute_file_paths": ["/project/src/"],
+            },
         )
         mock_client.get.return_value = initial_context.model_dump_json()
 
@@ -527,6 +532,8 @@ class TestConversationFlow:
             "I've analyzed your codebase structure.",
             files=["/project/src/main.py", "/project/src/utils.py"],
             tool_name="analyze",
+            model_name="gemini-2.5-flash",
+            model_provider="google",
         )
         assert success is True
 
@@ -543,6 +550,8 @@ class TestConversationFlow:
                     timestamp="2023-01-01T00:00:30Z",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
+                    model_name="gemini-2.5-flash",
+                    model_provider="google",
                 )
             ],
             initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
@@ -586,6 +595,8 @@ class TestConversationFlow:
             "Test coverage analysis complete. Coverage is 85%.",
             files=["/project/tests/test_utils.py", "/project/coverage.html"],
             tool_name="analyze",
+            model_name="gemini-2.5-flash",
+            model_provider="google",
         )
         assert success is True
 
@@ -602,6 +613,8 @@ class TestConversationFlow:
                     timestamp="2023-01-01T00:00:30Z",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
+                    model_name="gemini-2.5-flash",
+                    model_provider="google",
                 ),
                 ConversationTurn(
                     role="user",
@@ -615,6 +628,8 @@ class TestConversationFlow:
                     timestamp="2023-01-01T00:02:30Z",
                     files=["/project/tests/test_utils.py", "/project/coverage.html"],
                     tool_name="analyze",
+                    model_name="gemini-2.5-flash",
+                    model_provider="google",
                 ),
             ],
             initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
@@ -623,9 +638,9 @@ class TestConversationFlow:
         history, tokens = build_conversation_history(final_context)
 
         # Verify chronological order and speaker identification
-        assert "--- Turn 1 (Gemini using analyze) ---" in history
-        assert "--- Turn 2 (Claude) ---" in history
-        assert "--- Turn 3 (Gemini using analyze) ---" in history
+        assert "--- Turn 1 (gemini-2.5-flash using analyze via google) ---" in history
+        assert "--- Turn 2 (Agent) ---" in history
+        assert "--- Turn 3 (gemini-2.5-flash using analyze via google) ---" in history
 
         # Verify all files are preserved in chronological order
         turn_1_files = "Files used in this turn: /project/src/main.py, /project/src/utils.py"
@@ -642,9 +657,9 @@ class TestConversationFlow:
         assert "Test coverage analysis complete. Coverage is 85%." in history
 
         # Verify chronological ordering (turn 1 appears before turn 2, etc.)
-        turn_1_pos = history.find("--- Turn 1 (Gemini using analyze) ---")
-        turn_2_pos = history.find("--- Turn 2 (Claude) ---")
-        turn_3_pos = history.find("--- Turn 3 (Gemini using analyze) ---")
+        turn_1_pos = history.find("--- Turn 1 (gemini-2.5-flash using analyze via google) ---")
+        turn_2_pos = history.find("--- Turn 2 (Agent) ---")
+        turn_3_pos = history.find("--- Turn 3 (gemini-2.5-flash using analyze via google) ---")
 
         assert turn_1_pos < turn_2_pos < turn_3_pos
 

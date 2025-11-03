@@ -1,42 +1,74 @@
-"""
-Test for the simple workflow tool prompt size validation fix.
+"""Integration tests for workflow step size validation.
 
-This test verifies that workflow tools now have basic size validation for the 'step' field
-to prevent oversized instructions. The fix is minimal - just prompts users to use shorter
-instructions and put detailed content in files.
+These tests exercise the debug workflow tool end-to-end to ensure that step size
+validation operates on the real execution path rather than mocked helpers.
 """
+
+from __future__ import annotations
+
+import json
+
+import pytest
 
 from config import MCP_PROMPT_SIZE_LIMIT
+from tools.debug import DebugIssueTool
+from tools.shared.exceptions import ToolExecutionError
 
 
-class TestWorkflowPromptSizeValidationSimple:
-    """Test that workflow tools have minimal size validation for step field"""
+def build_debug_arguments(**overrides) -> dict[str, object]:
+    """Create a minimal set of workflow arguments for DebugIssueTool."""
 
-    def test_workflow_tool_normal_step_content_works(self):
-        """Test that normal step content works fine"""
+    base_arguments: dict[str, object] = {
+        "step": "Investigate the authentication issue in the login module",
+        "step_number": 1,
+        "total_steps": 3,
+        "next_step_required": True,
+        "findings": "Initial observations about the login failure",
+        "files_checked": [],
+        "relevant_files": [],
+        "relevant_context": [],
+        "issues_found": [],
+        "confidence": "low",
+        "use_assistant_model": False,
+        # WorkflowRequest accepts optional fields; leave hypothesis/continuation unset
+    }
 
-        # Normal step content should be fine
-        normal_step = "Investigate the authentication issue in the login module"
+    base_arguments.update(overrides)
+    return base_arguments
 
-        assert len(normal_step) < MCP_PROMPT_SIZE_LIMIT, "Normal step should be under limit"
 
-    def test_workflow_tool_large_step_content_exceeds_limit(self):
-        """Test that very large step content would exceed the limit"""
+@pytest.mark.asyncio
+async def test_workflow_tool_accepts_normal_step_content() -> None:
+    """Verify a typical step executes through the real workflow path."""
 
-        # Create very large step content
-        large_step = "Investigate this issue: " + ("A" * (MCP_PROMPT_SIZE_LIMIT + 1000))
+    tool = DebugIssueTool()
+    arguments = build_debug_arguments()
 
-        assert len(large_step) > MCP_PROMPT_SIZE_LIMIT, "Large step should exceed limit"
+    responses = await tool.execute(arguments)
+    assert len(responses) == 1
 
-    def test_workflow_tool_size_validation_message(self):
-        """Test that the size validation gives helpful guidance"""
+    payload = json.loads(responses[0].text)
+    assert payload["status"] == "pause_for_investigation"
+    assert payload["step_number"] == 1
+    assert "error" not in payload
 
-        # The validation should tell users to:
-        # 1. Use shorter instructions
-        # 2. Put detailed content in files
 
-        expected_guidance = "use shorter instructions and provide detailed context via file paths"
+@pytest.mark.asyncio
+async def test_workflow_tool_rejects_oversized_step_with_guidance() -> None:
+    """Large step content should trigger the size safeguard with helpful guidance."""
 
-        # This is what the error message should contain
-        assert "shorter instructions" in expected_guidance.lower()
-        assert "file paths" in expected_guidance.lower()
+    oversized_step = "Investigate this issue: " + ("A" * (MCP_PROMPT_SIZE_LIMIT + 1000))
+    tool = DebugIssueTool()
+    arguments = build_debug_arguments(step=oversized_step)
+
+    with pytest.raises(ToolExecutionError) as exc_info:
+        await tool.execute(arguments)
+
+    output_payload = json.loads(exc_info.value.payload)
+
+    assert output_payload["status"] == "resend_prompt"
+    assert output_payload["metadata"]["prompt_size"] > MCP_PROMPT_SIZE_LIMIT
+
+    guidance = output_payload["content"].lower()
+    assert "shorter instructions" in guidance
+    assert "file paths" in guidance

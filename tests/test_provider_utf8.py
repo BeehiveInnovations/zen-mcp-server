@@ -10,9 +10,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
-from providers.openai_provider import OpenAIModelProvider
+from providers.openai import OpenAIModelProvider
+from providers.shared import ProviderType
 
 
 class TestProviderUTF8Encoding(unittest.TestCase):
@@ -177,7 +177,7 @@ class TestProviderUTF8Encoding(unittest.TestCase):
 
     def test_model_response_utf8_serialization(self):
         """Test UTF-8 serialization of model responses."""
-        from providers.base import ModelResponse
+        from providers.shared import ModelResponse
 
         response = ModelResponse(
             content="Development successful! Code generated successfully. 🎉✅",
@@ -353,10 +353,10 @@ class TestLocaleModelIntegration(unittest.TestCase):
         provider = OpenAIModelProvider(api_key="test")
         model_names = ["gpt-4", "gemini-2.5-flash", "anthropic/claude-opus-4.1", "o3-pro"]
         for model_name in model_names:
-            resolved = provider._resolve_model_name(model_name)
-            self.assertIsInstance(resolved, str)
+            resolved_model_name = provider._resolve_model_name(model_name)
+            self.assertIsInstance(resolved_model_name, str)
             model_data = {
-                "model": resolved,
+                "model": resolved_model_name,
                 "description": f"Model {model_name} - advanced development 🚀",
                 "capabilities": ["generation", "review", "creation"],
             }

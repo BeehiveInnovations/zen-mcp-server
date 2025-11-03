@@ -68,7 +68,6 @@ ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS = {
         "List methods/functions central to analysis findings, in 'ClassName.methodName' or 'functionName' format. "
         "Prioritize those demonstrating key patterns, architectural decisions, or improvement opportunities."
     ),
-    "backtrack_from_step": ("If an earlier finding needs revision, specify the step number to backtrack from."),
     "images": (
         "Optional absolute paths to architecture diagrams or visual references that help with analysis context."
     ),
@@ -108,11 +107,6 @@ class AnalyzeWorkflowRequest(WorkflowRequest):
         description="Issues or concerns identified during analysis, each with severity level (critical, high, medium, low)",
     )
 
-    # Optional backtracking field
-    backtrack_from_step: Optional[int] = Field(
-        None, description=ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"]
-    )
-
     # Optional images for visual context
     images: Optional[list[str]] = Field(default=None, description=ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["images"])
 
@@ -125,8 +119,7 @@ class AnalyzeWorkflowRequest(WorkflowRequest):
         "detailed", description=ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["output_format"]
     )
 
-    # Keep thinking_mode and use_websearch from original analyze tool
-    # temperature is inherited from WorkflowRequest
+    # Keep thinking_mode from original analyze tool; temperature is inherited from WorkflowRequest
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
@@ -223,11 +216,6 @@ class AnalyzeTool(WorkflowTool):
                 "type": "string",
                 "enum": ["exploring", "low", "medium", "high", "very_high", "almost_certain", "certain"],
                 "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["confidence"],
-            },
-            "backtrack_from_step": {
-                "type": "integer",
-                "minimum": 1,
-                "description": ANALYZE_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"],
             },
             "images": {
                 "type": "array",

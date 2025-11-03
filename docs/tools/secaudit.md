@@ -82,7 +82,6 @@ security remediation plan using planner
 - `relevant_context`: Methods/functions/classes central to security findings
 - `issues_found`: Security issues identified with severity levels
 - `confidence`: Confidence level in security assessment completeness (exploring/low/medium/high/certain)
-- `backtrack_from_step`: Step number to backtrack from (for revisions)
 - `images`: Architecture diagrams, security documentation, or visual references
 
 **Initial Security Configuration (used in step 1):**
@@ -94,7 +93,6 @@ security remediation plan using planner
 - `severity_filter`: critical|high|medium|low|all (default: all)
 - `temperature`: Temperature for analytical consistency (0-1, default 0.2)
 - `thinking_mode`: minimal|low|medium|high|max (default: medium, Gemini only)
-- `use_websearch`: Enable web search for security best practices and vulnerability databases (default: true)
 - `use_assistant_model`: Whether to use expert security analysis phase (default: true)
 - `continuation_id`: Continue previous security audit discussions
 

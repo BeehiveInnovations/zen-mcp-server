@@ -1,9 +1,11 @@
 """Tests for uvx path resolution functionality."""
 
+import json
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from providers.openrouter_registry import OpenRouterModelRegistry
+from providers.registries.openrouter import OpenRouterModelRegistry
 
 
 class TestUvxPathResolution:
@@ -18,8 +20,8 @@ class TestUvxPathResolution:
     def test_config_path_resolution(self):
         """Test that the config path resolution finds the config file in multiple locations."""
         # Check that the config file exists in the development location
-        config_file = Path(__file__).parent.parent / "conf" / "custom_models.json"
-        assert config_file.exists(), "Config file should exist in conf/custom_models.json"
+        config_file = Path(__file__).parent.parent / "conf" / "openrouter_models.json"
+        assert config_file.exists(), "Config file should exist in conf/openrouter_models.json"
 
         # Test that a registry can find and use the config
         registry = OpenRouterModelRegistry()
@@ -34,7 +36,7 @@ class TestUvxPathResolution:
 
     def test_explicit_config_path_override(self):
         """Test that explicit config path works correctly."""
-        config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
+        config_path = Path(__file__).parent.parent / "conf" / "openrouter_models.json"
 
         registry = OpenRouterModelRegistry(config_path=str(config_path))
 
@@ -44,41 +46,62 @@ class TestUvxPathResolution:
 
     def test_environment_variable_override(self):
         """Test that CUSTOM_MODELS_CONFIG_PATH environment variable works."""
-        config_path = Path(__file__).parent.parent / "conf" / "custom_models.json"
+        config_path = Path(__file__).parent.parent / "conf" / "openrouter_models.json"
 
-        with patch.dict("os.environ", {"CUSTOM_MODELS_CONFIG_PATH": str(config_path)}):
+        with patch.dict("os.environ", {"OPENROUTER_MODELS_CONFIG_PATH": str(config_path)}):
             registry = OpenRouterModelRegistry()
 
             # Should use environment path
             assert registry.config_path == config_path
             assert len(registry.list_models()) > 0
 
-    @patch("providers.openrouter_registry.importlib.resources.files")
-    @patch("pathlib.Path.exists")
-    def test_multiple_path_fallback(self, mock_exists, mock_files):
-        """Test that multiple path resolution works for different deployment scenarios."""
-        # Make resources loading fail to trigger file system fallback
+    @patch("providers.registries.base.importlib.resources.files")
+    def test_multiple_path_fallback(self, mock_files):
+        """Test that file-system fallback works when resource loading fails."""
         mock_files.side_effect = Exception("Resource loading failed")
 
-        # Simulate dev path failing, and working directory path succeeding
-        # The third `True` is for the check within `reload()`
-        mock_exists.side_effect = [False, True, True]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            conf_dir = temp_dir / "conf"
+            conf_dir.mkdir(parents=True, exist_ok=True)
+            config_path = conf_dir / "openrouter_models.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "models": [
+                            {
+                                "model_name": "test/model",
+                                "aliases": ["testalias"],
+                                "context_window": 1024,
+                                "max_output_tokens": 512,
+                            }
+                        ]
+                    },
+                    indent=2,
+                )
+            )
 
-        registry = OpenRouterModelRegistry()
+            original_exists = Path.exists
 
-        # Should have fallen back to file system mode
-        assert not registry.use_resources, "Should fall back to file system when resources fail"
+            def fake_exists(path_self):
+                if str(path_self).endswith("conf/openrouter_models.json") and path_self != config_path:
+                    return False
+                if path_self == config_path:
+                    return True
+                return original_exists(path_self)
 
-        # Assert that the registry fell back to the second potential path
-        assert registry.config_path == Path.cwd() / "conf" / "custom_models.json"
+            with patch("pathlib.Path.cwd", return_value=temp_dir), patch("pathlib.Path.exists", fake_exists):
+                registry = OpenRouterModelRegistry()
 
-        # Should load models successfully
-        assert len(registry.list_models()) > 0
+            assert not registry.use_resources
+            assert registry.config_path == config_path
+            assert "test/model" in registry.list_models()
 
     def test_missing_config_handling(self):
         """Test behavior when config file is missing."""
         # Use a non-existent path
-        registry = OpenRouterModelRegistry(config_path="/nonexistent/path/config.json")
+        with patch.dict("os.environ", {}, clear=True):
+            registry = OpenRouterModelRegistry(config_path="/nonexistent/path/config.json")
 
         # Should gracefully handle missing config
         assert len(registry.list_models()) == 0

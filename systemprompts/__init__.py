@@ -8,6 +8,7 @@ from .codereview_prompt import CODEREVIEW_PROMPT
 from .consensus_prompt import CONSENSUS_PROMPT
 from .debug_prompt import DEBUG_ISSUE_PROMPT
 from .docgen_prompt import DOCGEN_PROMPT
+from .generate_code_prompt import GENERATE_CODE_PROMPT
 from .planner_prompt import PLANNER_PROMPT
 from .precommit_prompt import PRECOMMIT_PROMPT
 from .refactor_prompt import REFACTOR_PROMPT
@@ -21,6 +22,7 @@ __all__ = [
     "CODEREVIEW_PROMPT",
     "DEBUG_ISSUE_PROMPT",
     "DOCGEN_PROMPT",
+    "GENERATE_CODE_PROMPT",
     "ANALYZE_PROMPT",
     "CHAT_PROMPT",
     "CONSENSUS_PROMPT",

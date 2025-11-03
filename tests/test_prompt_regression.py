@@ -66,6 +66,7 @@ class TestPromptIntegration:
             {
                 "prompt": "Explain Python decorators in one sentence",
                 "model": "local-llama",  # Use available model for integration tests
+                "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )
 
@@ -78,7 +79,7 @@ class TestPromptIntegration:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_chat_with_files(self):
-        """Test chat tool with files parameter using real API."""
+        """Test chat tool with absolute_file_paths parameter using real API."""
         skip_if_no_custom_api()
 
         tool = ChatTool()
@@ -99,7 +100,12 @@ if __name__ == "__main__":
 
         try:
             result = await tool.execute(
-                {"prompt": "What does this Python code do?", "files": [temp_file], "model": "local-llama"}
+                {
+                    "prompt": "What does this Python code do?",
+                    "absolute_file_paths": [temp_file],
+                    "model": "local-llama",
+                    "working_directory_absolute_path": tempfile.gettempdir(),
+                }
             )
 
             assert len(result) == 1
@@ -291,8 +297,14 @@ class UserController:
 
         tool = ChatTool()
 
-        # Test with no files parameter
-        result = await tool.execute({"prompt": "Hello", "model": "local-llama"})
+        # Test with no absolute_file_paths parameter
+        result = await tool.execute(
+            {
+                "prompt": "Hello",
+                "model": "local-llama",
+                "working_directory_absolute_path": tempfile.gettempdir(),
+            }
+        )
 
         assert len(result) == 1
         output = json.loads(result[0].text)
@@ -313,6 +325,7 @@ class UserController:
                 "thinking_mode": "low",
                 "temperature": 0.8,
                 "model": "local-llama",
+                "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )
 
@@ -334,7 +347,13 @@ class UserController:
         special_prompt = (
             'Test with "quotes" and\nnewlines\tand tabs. Please just respond with the number that is the answer to 1+1.'
         )
-        result = await tool.execute({"prompt": special_prompt, "model": "local-llama"})
+        result = await tool.execute(
+            {
+                "prompt": special_prompt,
+                "model": "local-llama",
+                "working_directory_absolute_path": tempfile.gettempdir(),
+            }
+        )
 
         assert len(result) == 1
         output = json.loads(result[0].text)
@@ -400,7 +419,13 @@ class UserController:
         tool = ChatTool()
 
         unicode_prompt = "Explain what these mean: 你好世界 (Chinese) and مرحبا بالعالم (Arabic)"
-        result = await tool.execute({"prompt": unicode_prompt, "model": "local-llama"})
+        result = await tool.execute(
+            {
+                "prompt": unicode_prompt,
+                "model": "local-llama",
+                "working_directory_absolute_path": tempfile.gettempdir(),
+            }
+        )
 
         assert len(result) == 1
         output = json.loads(result[0].text)

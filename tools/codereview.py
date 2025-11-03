@@ -35,36 +35,29 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for code review workflow
 CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS = {
     "step": (
-        "Review plan. Step 1: State strategy. Later: Report findings. "
-        "MUST examine quality, security, performance, architecture. Use 'relevant_files' for code. NO large snippets."
+        "Review narrative. Step 1: outline the review strategy. Later steps: report findings. MUST cover quality, security, "
+        "performance, and architecture. Reference code via `relevant_files`; avoid dumping large snippets."
     ),
-    "step_number": "Current step index in review sequence (starts at 1). Build upon previous steps.",
+    "step_number": "Current review step (starts at 1) – each step should build on the last.",
     "total_steps": (
-        "Estimated steps needed to complete the review. "
-        "IMPORTANT: For external validation, max 2 steps. For internal validation, use 1 step. "
-        "When continuation_id is provided (continuing a previous conversation), set to 2 max for external, 1 for internal."
+        "Number of review steps planned. External validation: two steps (analysis + summary). Internal validation: one step. "
+        "Use the same limits when continuing an existing review via continuation_id."
     ),
     "next_step_required": (
-        "True to continue with another step, False when review is complete. "
-        "CRITICAL for external validation: Set to True on step 1, then False on step 2. "
-        "For internal validation: Set to False immediately. "
-        "When continuation_id is provided: Follow the same rules based on validation type."
+        "True when another review step follows. External validation: step 1 → True, step 2 → False. Internal validation: set False immediately. "
+        "Apply the same rule on continuation flows."
     ),
-    "findings": (
-        "Discoveries: quality, security, performance, architecture. "
-        "Document positive+negative. Update in later steps."
-    ),
-    "files_checked": "All examined files (absolute paths), including ruled-out ones.",
-    "relevant_files": "Step 1: All files/dirs for review. Final: Subset with key findings (issues, patterns, decisions).",
-    "relevant_context": "Methods/functions central to findings: 'Class.method' or 'function'. Focus on issues/patterns.",
-    "issues_found": "Issues with 'severity' (critical/high/medium/low) and 'description'. Vulnerabilities, performance, quality.",
-    "review_validation_type": "'external' (default, expert model) or 'internal' (no expert). Default external unless user specifies.",
-    "backtrack_from_step": "Step number to backtrack from if revision needed.",
-    "images": "Optional diagrams, mockups, visuals for review context (absolute paths). Include if materially helpful.",
-    "review_type": "Review type: full, security, performance, quick.",
-    "focus_on": "Specific aspects or context for areas of concern.",
-    "standards": "Coding standards to enforce.",
-    "severity_filter": "Minimum severity to report.",
+    "findings": "Capture findings (positive and negative) across quality, security, performance, and architecture; update each step.",
+    "files_checked": "Absolute paths of every file reviewed, including those ruled out.",
+    "relevant_files": "Step 1: list all files/dirs under review. Must be absolute full non-abbreviated paths. Final step: narrow to files tied to key findings.",
+    "relevant_context": "Functions or methods central to findings (e.g. 'Class.method' or 'function_name').",
+    "issues_found": "Issues with severity (critical/high/medium/low) and descriptions.",
+    "review_validation_type": "Set 'external' (default) for expert follow-up or 'internal' for local-only review.",
+    "images": "Optional diagram or screenshot paths that clarify review context.",
+    "review_type": "Review focus: full, security, performance, or quick.",
+    "focus_on": "Optional note on areas to emphasise (e.g. 'threading', 'auth flow').",
+    "standards": "Coding standards or style guides to enforce.",
+    "severity_filter": "Lowest severity to include when reporting issues (critical/high/medium/low/all).",
 }
 
 
@@ -97,11 +90,6 @@ class CodeReviewRequest(WorkflowRequest):
         "external", description=CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS.get("review_validation_type", "")
     )
 
-    # Optional backtracking field
-    backtrack_from_step: Optional[int] = Field(
-        None, description=CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"]
-    )
-
     # Optional images for visual context
     images: Optional[list[str]] = Field(default=None, description=CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS["images"])
 
@@ -118,7 +106,6 @@ class CodeReviewRequest(WorkflowRequest):
     # Override inherited fields to exclude them from schema (except model which needs to be available)
     temperature: Optional[float] = Field(default=None, exclude=True)
     thinking_mode: Optional[str] = Field(default=None, exclude=True)
-    use_websearch: Optional[bool] = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
@@ -212,11 +199,6 @@ class CodeReviewTool(WorkflowTool):
                 "enum": ["external", "internal"],
                 "default": "external",
                 "description": CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS.get("review_validation_type", ""),
-            },
-            "backtrack_from_step": {
-                "type": "integer",
-                "minimum": 1,
-                "description": CODEREVIEW_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"],
             },
             "issues_found": {
                 "type": "array",

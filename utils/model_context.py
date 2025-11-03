@@ -73,8 +73,17 @@ class ModelContext:
         if self._provider is None:
             self._provider = ModelProviderRegistry.get_provider_for_model(self.model_name)
             if not self._provider:
-                available_models = ModelProviderRegistry.get_available_models()
-                raise ValueError(f"Model '{self.model_name}' is not available. Available models: {available_models}")
+                available_models = ModelProviderRegistry.get_available_model_names()
+                if available_models:
+                    available_text = ", ".join(available_models)
+                else:
+                    available_text = (
+                        "No models detected. Configure provider credentials or set DEFAULT_MODEL to a valid option."
+                    )
+
+                raise ValueError(
+                    f"Model '{self.model_name}' is not available with current API keys. Available models: {available_text}."
+                )
         return self._provider
 
     @property

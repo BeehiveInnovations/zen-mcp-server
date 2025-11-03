@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from providers.base import ProviderType
 from providers.registry import ModelProviderRegistry
+from providers.shared import ProviderType
 
 
 @pytest.mark.no_mock_provider

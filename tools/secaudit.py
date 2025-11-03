@@ -36,53 +36,23 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for security audit workflow
 SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS = {
     "step": (
-        "Audit plan. Step 1: State strategy. Later: Report findings. "
-        "MANDATORY: Systematic approach (OWASP Top 10, auth, validation). Use 'relevant_files'. NO large code."
+        "Step 1: outline the audit strategy (OWASP Top 10, auth, validation, etc.). Later steps: report findings. MANDATORY: use `relevant_files` for code references and avoid large snippets."
     ),
-    "step_number": "Current step in audit sequence (starts at 1).",
-    "total_steps": "Estimated steps for audit. Adjust as findings emerge.",
-    "next_step_required": ("True to continue. False when ALL threats uncovered, ready for validation."),
-    "findings": (
-        "Discoveries: vulnerabilities, auth issues, validation gaps, compliance. "
-        "Document positives and concerns. Update past findings."
-    ),
-    "files_checked": "All files examined (absolute paths). Include ruled-out files.",
-    "relevant_files": (
-        "Step 1: Files to audit (absolute paths). " "Final: Files with security issues, auth modules, config files."
-    ),
-    "relevant_context": (
-        "Security-critical methods/classes: 'ClassName.methodName'. "
-        "Focus on vulnerabilities, auth logic, security patterns."
-    ),
-    "issues_found": (
-        "Security issues as dict: 'severity' (critical/high/medium/low), 'description'. "
-        "Include vulnerabilities, auth flaws, injection, crypto weakness, config issues."
-    ),
-    "confidence": (
-        "exploring/low/medium/high/very_high/almost_certain/certain. "
-        "CRITICAL: 'certain' PREVENTS external validation."
-    ),
-    "backtrack_from_step": "Step number to backtrack from if revision needed.",
-    "images": (
-        "Optional: Architecture diagrams, security models, threat models (absolute paths). "
-        "Only if assists security assessment."
-    ),
-    "security_scope": (
-        "Security context (web/mobile/API/enterprise/cloud). "
-        "Include stack, user types, data sensitivity, threat landscape. "
-        "This helps focus the security assessment appropriately."
-    ),
-    "threat_level": (
-        "Assess the threat level based on application context: 'low' (internal tools, low-risk data), "
-        "'medium' (customer-facing, business data), 'high' (financial, healthcare, regulated industry), "
-        "'critical' (payment processing, sensitive personal data). This guides prioritization."
-    ),
-    "compliance_requirements": (
-        "List applicable compliance frameworks and security standards (SOC2, PCI DSS, HIPAA, GDPR, "
-        "ISO 27001, NIST). Include industry-specific requirements that affect security controls."
-    ),
-    "audit_focus": "Primary security focus areas for this audit (owasp, compliance, infrastructure, dependencies)",
-    "severity_filter": "Minimum severity level to report on the security issues found",
+    "step_number": "Current security-audit step number (starts at 1).",
+    "total_steps": "Expected number of audit steps; adjust as new risks surface.",
+    "next_step_required": "True while additional threat analysis remains; set False once you are ready to hand off for validation.",
+    "findings": "Summarize vulnerabilities, auth issues, validation gaps, compliance notes, and positives; update prior findings as needed.",
+    "files_checked": "Absolute paths for every file inspected, including rejected candidates.",
+    "relevant_files": "Absolute paths for security-relevant files (auth modules, configs, sensitive code).",
+    "relevant_context": "Security-critical classes/methods (e.g. 'AuthService.login', 'encryption_helper').",
+    "issues_found": "Security issues with severity (critical/high/medium/low) and descriptions (vulns, auth flaws, injection, crypto, config).",
+    "confidence": "exploring/low/medium/high/very_high/almost_certain/certain. 'certain' blocks external validation—use only when fully complete.",
+    "images": "Optional absolute paths to diagrams or threat models that inform the audit.",
+    "security_scope": "Security context (web, mobile, API, cloud, etc.) including stack, user types, data sensitivity, and threat landscape.",
+    "threat_level": "Assess the threat level: low (internal/low-risk), medium (customer-facing/business data), high (regulated or sensitive), critical (financial/healthcare/PII).",
+    "compliance_requirements": "Applicable compliance frameworks or standards (SOC2, PCI DSS, HIPAA, GDPR, ISO 27001, NIST, etc.).",
+    "audit_focus": "Primary focus area: owasp, compliance, infrastructure, dependencies, or comprehensive.",
+    "severity_filter": "Minimum severity to include when reporting security issues.",
 }
 
 
@@ -110,11 +80,6 @@ class SecauditRequest(WorkflowRequest):
         default_factory=list, description=SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS["issues_found"]
     )
     confidence: Optional[str] = Field("low", description=SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS["confidence"])
-
-    # Optional backtracking field
-    backtrack_from_step: Optional[int] = Field(
-        None, description=SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"]
-    )
 
     # Optional images for visual context
     images: Optional[list[str]] = Field(default=None, description=SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS["images"])
@@ -426,11 +391,6 @@ class SecauditTool(WorkflowTool):
                 "type": "string",
                 "enum": ["exploring", "low", "medium", "high", "very_high", "almost_certain", "certain"],
                 "description": SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS["confidence"],
-            },
-            "backtrack_from_step": {
-                "type": "integer",
-                "minimum": 1,
-                "description": SECAUDIT_WORKFLOW_FIELD_DESCRIPTIONS["backtrack_from_step"],
             },
             "issues_found": {
                 "type": "array",

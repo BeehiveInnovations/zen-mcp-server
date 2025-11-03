@@ -9,8 +9,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from providers.base import ProviderType
 from providers.registry import ModelProviderRegistry
+from providers.shared import ProviderType
 
 
 class TestIntelligentFallback:
@@ -39,7 +39,7 @@ class TestIntelligentFallback:
     def test_prefers_openai_o3_mini_when_available(self):
         """Test that gpt-5 is preferred when OpenAI API key is available (based on new preference order)"""
         # Register only OpenAI provider for this test
-        from providers.openai_provider import OpenAIModelProvider
+        from providers.openai import OpenAIModelProvider
 
         ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 
@@ -62,7 +62,7 @@ class TestIntelligentFallback:
         """Test that OpenAI is preferred when both API keys are available"""
         # Register both OpenAI and Gemini providers
         from providers.gemini import GeminiModelProvider
-        from providers.openai_provider import OpenAIModelProvider
+        from providers.openai import OpenAIModelProvider
 
         ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -75,7 +75,7 @@ class TestIntelligentFallback:
         """Test fallback behavior when no API keys are available"""
         # Register providers but with no API keys available
         from providers.gemini import GeminiModelProvider
-        from providers.openai_provider import OpenAIModelProvider
+        from providers.openai import OpenAIModelProvider
 
         ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -86,7 +86,7 @@ class TestIntelligentFallback:
     def test_available_providers_with_keys(self):
         """Test the get_available_providers_with_keys method"""
         from providers.gemini import GeminiModelProvider
-        from providers.openai_provider import OpenAIModelProvider
+        from providers.openai import OpenAIModelProvider
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False):
             # Clear and register providers
@@ -119,7 +119,7 @@ class TestIntelligentFallback:
             patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key", "GEMINI_API_KEY": ""}, clear=False),
         ):
             # Register only OpenAI provider for this test
-            from providers.openai_provider import OpenAIModelProvider
+            from providers.openai import OpenAIModelProvider
 
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 

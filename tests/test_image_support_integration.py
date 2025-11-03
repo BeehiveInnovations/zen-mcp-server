@@ -8,7 +8,6 @@ Tests the complete image support pipeline:
 - Cross-tool image context preservation
 """
 
-import json
 import os
 import tempfile
 import uuid
@@ -18,6 +17,7 @@ import pytest
 
 from tools.chat import ChatTool
 from tools.debug import DebugIssueTool
+from tools.shared.exceptions import ToolExecutionError
 from utils.conversation_memory import (
     ConversationTurn,
     ThreadContext,
@@ -26,6 +26,7 @@ from utils.conversation_memory import (
     get_conversation_image_list,
     get_thread,
 )
+from utils.model_context import ModelContext
 
 
 @pytest.mark.no_mock_provider
@@ -180,17 +181,18 @@ class TestImageSupportIntegration:
 
         try:
             # Test with an invalid model name that doesn't exist in any provider
-            result = tool._validate_image_limits(small_images, "non-existent-model-12345")
+            # Use model_context parameter name (not positional)
+            result = tool._validate_image_limits(small_images, model_context=ModelContext("non-existent-model-12345"))
             # Should return error because model not available or doesn't support images
             assert result is not None
             assert result["status"] == "error"
             assert "is not available" in result["content"] or "does not support image processing" in result["content"]
 
             # Test that empty/None images always pass regardless of model
-            result = tool._validate_image_limits([], "any-model")
+            result = tool._validate_image_limits([], model_context=ModelContext("gemini-2.5-pro"))
             assert result is None
 
-            result = tool._validate_image_limits(None, "any-model")
+            result = tool._validate_image_limits(None, model_context=ModelContext("gemini-2.5-pro"))
             assert result is None
 
         finally:
@@ -215,7 +217,7 @@ class TestImageSupportIntegration:
                 small_image_path = temp_file.name
 
             # Test with the default model from test environment (gemini-2.5-flash)
-            result = tool._validate_image_limits([small_image_path], "gemini-2.5-flash")
+            result = tool._validate_image_limits([small_image_path], ModelContext("gemini-2.5-flash"))
             assert result is None  # Should pass for Gemini models
 
             # Create 150MB image (over typical limits)
@@ -223,7 +225,7 @@ class TestImageSupportIntegration:
                 temp_file.write(b"\x00" * (150 * 1024 * 1024))  # 150MB
                 large_image_path = temp_file.name
 
-            result = tool._validate_image_limits([large_image_path], "gemini-2.5-flash")
+            result = tool._validate_image_limits([large_image_path], ModelContext("gemini-2.5-flash"))
             # Large images should fail validation
             assert result is not None
             assert result["status"] == "error"
@@ -274,31 +276,28 @@ class TestImageSupportIntegration:
             tool = ChatTool()
 
             # Test with real provider resolution
-            try:
-                result = await tool.execute(
-                    {"prompt": "What do you see in this image?", "images": [temp_image_path], "model": "gpt-4o"}
-                )
+            with tempfile.TemporaryDirectory() as working_directory:
+                with pytest.raises(ToolExecutionError) as exc_info:
+                    await tool.execute(
+                        {
+                            "prompt": "What do you see in this image?",
+                            "images": [temp_image_path],
+                            "model": "gpt-4o",
+                            "working_directory_absolute_path": working_directory,
+                        }
+                    )
 
-                # If we get here, check the response format
-                assert len(result) == 1
-                # Should be a valid JSON response
-                output = json.loads(result[0].text)
-                assert "status" in output
-                # Test passed - provider accepted images parameter
+            error_msg = exc_info.value.payload if hasattr(exc_info.value, "payload") else str(exc_info.value)
 
-            except Exception as e:
-                # Expected: API call will fail with fake key
-                error_msg = str(e)
-                # Should NOT be a mock-related error
-                assert "MagicMock" not in error_msg
-                assert "'<' not supported between instances" not in error_msg
+            # Should NOT be a mock-related error
+            assert "MagicMock" not in error_msg
+            assert "'<' not supported between instances" not in error_msg
 
-                # Should be a real provider error (API key or network)
-                assert any(
-                    phrase in error_msg
-                    for phrase in ["API", "key", "authentication", "provider", "network", "connection", "401", "403"]
-                )
-                # Test passed - provider processed images parameter before failing on auth
+            # Should be a real provider error (API key or network)
+            assert any(
+                phrase in error_msg
+                for phrase in ["API", "key", "authentication", "provider", "network", "connection", "401", "403"]
+            )
 
         finally:
             # Clean up temp file
@@ -429,14 +428,14 @@ class TestImageSupportIntegration:
         images = [data_url]
 
         # Test with a dummy model that doesn't exist in any provider
-        result = tool._validate_image_limits(images, "test-dummy-model-name")
+        result = tool._validate_image_limits(images, ModelContext("test-dummy-model-name"))
         # Should return error because model not available or doesn't support images
         assert result is not None
         assert result["status"] == "error"
         assert "is not available" in result["content"] or "does not support image processing" in result["content"]
 
         # Test with another non-existent model to check error handling
-        result = tool._validate_image_limits(images, "another-dummy-model")
+        result = tool._validate_image_limits(images, ModelContext("another-dummy-model"))
         # Should return error because model not available
         assert result is not None
         assert result["status"] == "error"
@@ -446,11 +445,11 @@ class TestImageSupportIntegration:
         tool = ChatTool()
 
         # Empty list should not fail validation (no need for provider setup)
-        result = tool._validate_image_limits([], "test_model")
+        result = tool._validate_image_limits([], ModelContext("gemini-2.5-pro"))
         assert result is None
 
         # None should not fail validation (no need for provider setup)
-        result = tool._validate_image_limits(None, "test_model")
+        result = tool._validate_image_limits(None, ModelContext("gemini-2.5-pro"))
         assert result is None
 
     @patch("utils.conversation_memory.get_storage")

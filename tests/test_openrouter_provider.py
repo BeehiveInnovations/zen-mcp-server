@@ -5,9 +5,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from providers.base import ProviderType
 from providers.openrouter import OpenRouterProvider
 from providers.registry import ModelProviderRegistry
+from providers.shared import ProviderType
 
 
 class TestOpenRouterProvider:
@@ -42,12 +42,16 @@ class TestOpenRouterProvider:
         """Test model validation."""
         provider = OpenRouterProvider(api_key="test-key")
 
-        # Should accept any model - OpenRouter handles validation
-        assert provider.validate_model_name("gpt-4") is True
-        assert provider.validate_model_name("claude-4-opus") is True
-        assert provider.validate_model_name("any-model-name") is True
-        assert provider.validate_model_name("GPT-4") is True
-        assert provider.validate_model_name("unknown-model") is True
+        # OpenRouter accepts models with provider prefixes or known models
+        assert provider.validate_model_name("openai/gpt-4") is True
+        assert provider.validate_model_name("anthropic/claude-3-opus") is True
+        assert provider.validate_model_name("google/any-model-name") is True
+        assert provider.validate_model_name("groq/llama-3.1-8b") is True
+        assert provider.validate_model_name("grok-4") is True
+
+        # Unknown models without provider prefix are rejected
+        assert provider.validate_model_name("gpt-4") is False
+        assert provider.validate_model_name("unknown-model") is False
 
     def test_get_capabilities(self):
         """Test capability generation."""
@@ -59,10 +63,14 @@ class TestOpenRouterProvider:
         assert caps.model_name == "openai/o3"  # Resolved name
         assert caps.friendly_name == "OpenRouter (openai/o3)"
 
-        # Test with a model not in registry - should get generic capabilities
-        caps = provider.get_capabilities("unknown-model")
+        # Test with a model not in registry - should raise error
+        with pytest.raises(ValueError, match="Unsupported model 'unknown-model' for provider openrouter"):
+            provider.get_capabilities("unknown-model")
+
+        # Test with model that has provider prefix - should get generic capabilities
+        caps = provider.get_capabilities("provider/unknown-model")
         assert caps.provider == ProviderType.OPENROUTER
-        assert caps.model_name == "unknown-model"
+        assert caps.model_name == "provider/unknown-model"
         assert caps.context_window == 32_768  # Safe default
         assert hasattr(caps, "_is_generic") and caps._is_generic is True
 
@@ -72,22 +80,26 @@ class TestOpenRouterProvider:
 
         # Test alias resolution
         assert provider._resolve_model_name("opus") == "anthropic/claude-opus-4.1"
-        assert provider._resolve_model_name("sonnet") == "anthropic/claude-sonnet-4.1"
+        assert provider._resolve_model_name("sonnet") == "anthropic/claude-sonnet-4.5"
+        assert provider._resolve_model_name("sonnet4.1") == "anthropic/claude-sonnet-4.1"
         assert provider._resolve_model_name("o3") == "openai/o3"
         assert provider._resolve_model_name("o3-mini") == "openai/o3-mini"
         assert provider._resolve_model_name("o3mini") == "openai/o3-mini"
         assert provider._resolve_model_name("o4-mini") == "openai/o4-mini"
         assert provider._resolve_model_name("o4-mini") == "openai/o4-mini"
-        assert provider._resolve_model_name("claude") == "anthropic/claude-sonnet-4.1"
+        assert provider._resolve_model_name("haiku") == "anthropic/claude-3.5-haiku"
         assert provider._resolve_model_name("mistral") == "mistralai/mistral-large-2411"
+        assert provider._resolve_model_name("grok-4") == "x-ai/grok-4"
+        assert provider._resolve_model_name("grok4") == "x-ai/grok-4"
+        assert provider._resolve_model_name("grok") == "x-ai/grok-4"
         assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-r1-0528"
         assert provider._resolve_model_name("r1") == "deepseek/deepseek-r1-0528"
 
         # Test case-insensitive
         assert provider._resolve_model_name("OPUS") == "anthropic/claude-opus-4.1"
+        assert provider._resolve_model_name("SONNET") == "anthropic/claude-sonnet-4.5"
         assert provider._resolve_model_name("O3") == "openai/o3"
         assert provider._resolve_model_name("Mistral") == "mistralai/mistral-large-2411"
-        assert provider._resolve_model_name("CLAUDE") == "anthropic/claude-sonnet-4.1"
 
         # Test direct model names (should pass through unchanged)
         assert provider._resolve_model_name("anthropic/claude-opus-4.1") == "anthropic/claude-opus-4.1"
@@ -150,7 +162,7 @@ class TestOpenRouterAutoMode:
         os.environ["DEFAULT_MODEL"] = "auto"
 
         mock_registry = Mock()
-        mock_registry.list_models.return_value = [
+        model_names = [
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
             "openai/o3",
@@ -158,6 +170,19 @@ class TestOpenRouterAutoMode:
             "anthropic/claude-opus-4.1",
             "anthropic/claude-sonnet-4.1",
         ]
+        mock_registry.list_models.return_value = model_names
+
+        # Mock resolve to return a ModelCapabilities-like object for each model
+        def mock_resolve(model_name):
+            if model_name in model_names:
+                mock_config = Mock()
+                mock_config.provider = ProviderType.OPENROUTER
+                mock_config.aliases = []  # Empty list of aliases
+                mock_config.get_effective_capability_rank = Mock(return_value=50)  # Add ranking method
+                return mock_config
+            return None
+
+        mock_registry.resolve.side_effect = mock_resolve
 
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
 
@@ -170,8 +195,7 @@ class TestOpenRouterAutoMode:
         assert len(available_models) > 0, "Should find OpenRouter models in auto mode"
         assert all(provider_type == ProviderType.OPENROUTER for provider_type in available_models.values())
 
-        expected_models = mock_registry.list_models.return_value
-        for model in expected_models:
+        for model in model_names:
             assert model in available_models, f"Model {model} should be available"
 
     @pytest.mark.no_mock_provider
@@ -201,6 +225,7 @@ class TestOpenRouterAutoMode:
         # Mock the resolve method to return model configs with aliases
         mock_model_config = Mock()
         mock_model_config.aliases = []  # Empty aliases for simplicity
+        mock_model_config.get_effective_capability_rank = Mock(return_value=50)  # Add ranking method
         mock_registry.resolve.return_value = mock_model_config
 
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
@@ -239,9 +264,10 @@ class TestOpenRouterAutoMode:
         os.environ["DEFAULT_MODEL"] = "auto"
 
         mock_provider_class = Mock()
-        mock_provider_instance = Mock(spec=["get_provider_type", "list_models"])
+        mock_provider_instance = Mock(spec=["get_provider_type", "list_models", "get_all_model_capabilities"])
         mock_provider_instance.get_provider_type.return_value = ProviderType.OPENROUTER
         mock_provider_instance.list_models.return_value = []
+        mock_provider_instance.get_all_model_capabilities.return_value = {}
         mock_provider_class.return_value = mock_provider_instance
 
         ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, mock_provider_class)
@@ -256,7 +282,7 @@ class TestOpenRouterRegistry:
 
     def test_registry_loading(self):
         """Test registry loads models from config."""
-        from providers.openrouter_registry import OpenRouterModelRegistry
+        from providers.registries.openrouter import OpenRouterModelRegistry
 
         registry = OpenRouterModelRegistry()
 
@@ -271,11 +297,11 @@ class TestOpenRouterRegistry:
         assert len(aliases) > 0
         assert "opus" in aliases
         assert "o3" in aliases
-        assert "claude" in aliases
+        assert "sonnet" in aliases
 
     def test_registry_capabilities(self):
         """Test registry provides correct capabilities."""
-        from providers.openrouter_registry import OpenRouterModelRegistry
+        from providers.registries.openrouter import OpenRouterModelRegistry
 
         registry = OpenRouterModelRegistry()
 
@@ -296,16 +322,21 @@ class TestOpenRouterRegistry:
 
     def test_multiple_aliases_same_model(self):
         """Test multiple aliases pointing to same model."""
-        from providers.openrouter_registry import OpenRouterModelRegistry
+        from providers.registries.openrouter import OpenRouterModelRegistry
 
         registry = OpenRouterModelRegistry()
 
-        # All these should resolve to Claude Sonnet
-        sonnet_aliases = ["sonnet", "claude", "claude-sonnet", "claude-4.1-sonnet"]
-        for alias in sonnet_aliases:
+        # All these should resolve to Claude Sonnet 4.5
+        sonnet_45_aliases = ["sonnet", "sonnet4.5"]
+        for alias in sonnet_45_aliases:
             config = registry.resolve(alias)
             assert config is not None
-            assert config.model_name == "anthropic/claude-sonnet-4.1"
+            assert config.model_name == "anthropic/claude-sonnet-4.5"
+
+        # Test Sonnet 4.1 alias
+        config = registry.resolve("sonnet4.1")
+        assert config is not None
+        assert config.model_name == "anthropic/claude-sonnet-4.1"
 
 
 class TestOpenRouterFunctionality:

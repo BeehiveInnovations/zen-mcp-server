@@ -68,6 +68,7 @@ class TestListModelsTool:
             assert "`flash` → `gemini-2.5-flash`" in content
             assert "`pro` → `gemini-2.5-pro`" in content
             assert "1M context" in content
+            assert "Supports structured code generation" in content
 
             # Check summary
             assert "**Configured Providers**: 1" in content

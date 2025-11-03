@@ -17,15 +17,15 @@ if TYPE_CHECKING:
 
 from config import TEMPERATURE_ANALYTICAL
 from tools.shared.base_models import ToolRequest
+from tools.shared.exceptions import ToolExecutionError
 
 from .simple.base import SimpleTool
 
 # Field descriptions for the Challenge tool
 CHALLENGE_FIELD_DESCRIPTIONS = {
     "prompt": (
-        "The user's message or statement to analyze critically. "
-        "When manually invoked with 'challenge', exclude that prefix - just pass the actual content. "
-        "For automatic invocations (see tool description for conditions), pass the user's complete message unchanged."
+        "Statement to scrutinize. If you invoke `challenge` manually, strip the word 'challenge' and pass just the statement. "
+        "Automatic invocations send the full user message as-is; do not modify it."
     ),
 }
 
@@ -54,9 +54,8 @@ class ChallengeTool(SimpleTool):
 
     def get_description(self) -> str:
         return (
-            "Prevents reflexive agreement when users challenge responses by forcing critical thinking and reasoned analysis. "
-            "Trigger automatically when users critically question, disagree with, or appear to challenge previous statements in ongoing conversations. "
-            "Promotes truth-seeking over compliance by ensuring thoughtful evaluation rather than automatic agreement."
+            "Prevents reflexive agreement by forcing critical thinking and reasoned analysis when a statement is challenged. "
+            "Trigger automatically when a user critically questions, disagrees or appears to push back on earlier answers, and use it manually to sanity-check contentious claims."
         )
 
     def get_system_prompt(self) -> str:
@@ -140,6 +139,8 @@ class ChallengeTool(SimpleTool):
 
             return [TextContent(type="text", text=json.dumps(response_data, indent=2, ensure_ascii=False))]
 
+        except ToolExecutionError:
+            raise
         except Exception as e:
             import logging
 
@@ -152,7 +153,7 @@ class ChallengeTool(SimpleTool):
                 "content": f"Failed to create challenge prompt: {str(e)}",
             }
 
-            return [TextContent(type="text", text=json.dumps(error_data, ensure_ascii=False))]
+            raise ToolExecutionError(json.dumps(error_data, ensure_ascii=False)) from e
 
     def _wrap_prompt_for_challenge(self, prompt: str) -> str:
         """

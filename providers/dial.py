@@ -1,195 +1,36 @@
 """DIAL (Data & AI Layer) model provider implementation."""
 
 import logging
-import os
 import threading
-import time
-from typing import Optional
+from typing import ClassVar, Optional
 
-from .base import ModelCapabilities, ModelResponse, ProviderType, create_temperature_constraint
+from utils.env import get_env
+
 from .openai_compatible import OpenAICompatibleProvider
+from .registries.dial import DialModelRegistry
+from .registry_provider_mixin import RegistryBackedProviderMixin
+from .shared import ModelCapabilities, ModelResponse, ProviderType
 
 logger = logging.getLogger(__name__)
 
 
-class DIALModelProvider(OpenAICompatibleProvider):
-    """DIAL provider using OpenAI-compatible API.
+class DIALModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
+    """Client for the DIAL (Data & AI Layer) aggregation service.
 
-    DIAL provides access to various AI models through a unified API interface.
-    Supports GPT, Claude, Gemini, and other models via DIAL deployments.
+    DIAL exposes several third-party models behind a single OpenAI-compatible
+    endpoint.  This provider wraps the service, publishes capability metadata
+    for the known deployments, and centralises retry/backoff settings tailored
+    to DIAL's latency characteristics.
     """
 
     FRIENDLY_NAME = "DIAL"
 
+    REGISTRY_CLASS = DialModelRegistry
+    MODEL_CAPABILITIES: ClassVar[dict[str, ModelCapabilities]] = {}
+
     # Retry configuration for API calls
     MAX_RETRIES = 4
     RETRY_DELAYS = [1, 3, 5, 8]  # seconds
-
-    # Model configurations using ModelCapabilities objects
-    SUPPORTED_MODELS = {
-        "o3-2025-04-16": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="o3-2025-04-16",
-            friendly_name="DIAL (O3)",
-            context_window=200_000,
-            max_output_tokens=100_000,
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # DIAL may not expose function calling
-            supports_json_mode=True,
-            supports_images=True,
-            max_image_size_mb=20.0,
-            supports_temperature=False,  # O3 models don't accept temperature
-            temperature_constraint=create_temperature_constraint("fixed"),
-            description="OpenAI O3 via DIAL - Strong reasoning model",
-            aliases=["o3"],
-        ),
-        "o4-mini-2025-04-16": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="o4-mini-2025-04-16",
-            friendly_name="DIAL (O4-mini)",
-            context_window=200_000,
-            max_output_tokens=100_000,
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # DIAL may not expose function calling
-            supports_json_mode=True,
-            supports_images=True,
-            max_image_size_mb=20.0,
-            supports_temperature=False,  # O4 models don't accept temperature
-            temperature_constraint=create_temperature_constraint("fixed"),
-            description="OpenAI O4-mini via DIAL - Fast reasoning model",
-            aliases=["o4-mini"],
-        ),
-        "anthropic.claude-sonnet-4.1-20250805-v1:0": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="anthropic.claude-sonnet-4.1-20250805-v1:0",
-            friendly_name="DIAL (Sonnet 4.1)",
-            context_window=200_000,
-            max_output_tokens=64_000,
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # Claude doesn't have function calling
-            supports_json_mode=False,  # Claude doesn't have JSON mode
-            supports_images=True,
-            max_image_size_mb=5.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Claude Sonnet 4.1 via DIAL - Balanced performance",
-            aliases=["sonnet-4.1", "sonnet-4"],
-        ),
-        "anthropic.claude-sonnet-4.1-20250805-v1:0-with-thinking": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="anthropic.claude-sonnet-4.1-20250805-v1:0-with-thinking",
-            friendly_name="DIAL (Sonnet 4.1 Thinking)",
-            context_window=200_000,
-            max_output_tokens=64_000,
-            supports_extended_thinking=True,  # Thinking mode variant
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # Claude doesn't have function calling
-            supports_json_mode=False,  # Claude doesn't have JSON mode
-            supports_images=True,
-            max_image_size_mb=5.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Claude Sonnet 4.1 with thinking mode via DIAL",
-            aliases=["sonnet-4.1-thinking", "sonnet-4-thinking"],
-        ),
-        "anthropic.claude-opus-4.1-20250805-v1:0": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="anthropic.claude-opus-4.1-20250805-v1:0",
-            friendly_name="DIAL (Opus 4.1)",
-            context_window=200_000,
-            max_output_tokens=64_000,
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # Claude doesn't have function calling
-            supports_json_mode=False,  # Claude doesn't have JSON mode
-            supports_images=True,
-            max_image_size_mb=5.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Claude Opus 4.1 via DIAL - Most capable Claude model",
-            aliases=["opus-4.1", "opus-4"],
-        ),
-        "anthropic.claude-opus-4.1-20250805-v1:0-with-thinking": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="anthropic.claude-opus-4.1-20250805-v1:0-with-thinking",
-            friendly_name="DIAL (Opus 4.1 Thinking)",
-            context_window=200_000,
-            max_output_tokens=64_000,
-            supports_extended_thinking=True,  # Thinking mode variant
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # Claude doesn't have function calling
-            supports_json_mode=False,  # Claude doesn't have JSON mode
-            supports_images=True,
-            max_image_size_mb=5.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Claude Opus 4.1 with thinking mode via DIAL",
-            aliases=["opus-4.1-thinking", "opus-4-thinking"],
-        ),
-        "gemini-2.5-pro-preview-03-25-google-search": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="gemini-2.5-pro-preview-03-25-google-search",
-            friendly_name="DIAL (Gemini 2.5 Pro Search)",
-            context_window=1_000_000,
-            max_output_tokens=65_536,
-            supports_extended_thinking=False,  # DIAL doesn't expose thinking mode
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # DIAL may not expose function calling
-            supports_json_mode=True,
-            supports_images=True,
-            max_image_size_mb=20.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Gemini 2.5 Pro with Google Search via DIAL",
-            aliases=["gemini-2.5-pro-search"],
-        ),
-        "gemini-2.5-pro-preview-05-06": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="gemini-2.5-pro-preview-05-06",
-            friendly_name="DIAL (Gemini 2.5 Pro)",
-            context_window=1_000_000,
-            max_output_tokens=65_536,
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # DIAL may not expose function calling
-            supports_json_mode=True,
-            supports_images=True,
-            max_image_size_mb=20.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Gemini 2.5 Pro via DIAL - Deep reasoning",
-            aliases=["gemini-2.5-pro"],
-        ),
-        "gemini-2.5-flash-preview-05-20": ModelCapabilities(
-            provider=ProviderType.DIAL,
-            model_name="gemini-2.5-flash-preview-05-20",
-            friendly_name="DIAL (Gemini Flash 2.5)",
-            context_window=1_000_000,
-            max_output_tokens=65_536,
-            supports_extended_thinking=False,
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=False,  # DIAL may not expose function calling
-            supports_json_mode=True,
-            supports_images=True,
-            max_image_size_mb=20.0,
-            supports_temperature=True,
-            temperature_constraint=create_temperature_constraint("range"),
-            description="Gemini 2.5 Flash via DIAL - Ultra-fast",
-            aliases=["gemini-2.5-flash"],
-        ),
-    }
 
     def __init__(self, api_key: str, **kwargs):
         """Initialize DIAL provider with API key and host.
@@ -198,8 +39,9 @@ class DIALModelProvider(OpenAICompatibleProvider):
             api_key: DIAL API key for authentication
             **kwargs: Additional configuration options
         """
+        self._ensure_registry()
         # Get DIAL API host from environment or kwargs
-        dial_host = kwargs.get("base_url") or os.getenv("DIAL_API_HOST") or "https://core.dialx.ai"
+        dial_host = kwargs.get("base_url") or get_env("DIAL_API_HOST") or "https://core.dialx.ai"
 
         # DIAL uses /openai endpoint for OpenAI-compatible API
         if not dial_host.endswith("/openai"):
@@ -208,7 +50,7 @@ class DIALModelProvider(OpenAICompatibleProvider):
         kwargs["base_url"] = dial_host
 
         # Get API version from environment or use default
-        self.api_version = os.getenv("DIAL_API_VERSION", "2024-12-01-preview")
+        self.api_version = get_env("DIAL_API_VERSION", "2024-12-01-preview") or "2024-12-01-preview"
 
         # Add DIAL-specific headers
         # DIAL uses Api-Key header instead of Authorization: Bearer
@@ -259,67 +101,9 @@ class DIALModelProvider(OpenAICompatibleProvider):
 
         logger.info(f"Initialized DIAL provider with host: {dial_host} and api-version: {self.api_version}")
 
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        """Get capabilities for a specific model.
-
-        Args:
-            model_name: Name of the model (can be shorthand)
-
-        Returns:
-            ModelCapabilities object
-
-        Raises:
-            ValueError: If model is not supported or not allowed
-        """
-        resolved_name = self._resolve_model_name(model_name)
-
-        if resolved_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Unsupported DIAL model: {model_name}")
-
-        # Check restrictions
-        from utils.model_restrictions import get_restriction_service
-
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.DIAL, resolved_name, model_name):
-            raise ValueError(f"Model '{model_name}' is not allowed by restriction policy.")
-
-        # Return the ModelCapabilities object directly from SUPPORTED_MODELS
-        return self.SUPPORTED_MODELS[resolved_name]
-
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
         return ProviderType.DIAL
-
-    def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported.
-
-        Args:
-            model_name: Model name to validate
-
-        Returns:
-            True if model is supported and allowed, False otherwise
-        """
-        resolved_name = self._resolve_model_name(model_name)
-
-        if resolved_name not in self.SUPPORTED_MODELS:
-            return False
-
-        # Check against base class allowed_models if configured
-        if self.allowed_models is not None:
-            # Check both original and resolved names (case-insensitive)
-            if model_name.lower() not in self.allowed_models and resolved_name.lower() not in self.allowed_models:
-                logger.debug(f"DIAL model '{model_name}' -> '{resolved_name}' not in allowed_models list")
-                return False
-
-        # Also check restrictions via ModelRestrictionService
-        from utils.model_restrictions import get_restriction_service
-
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.DIAL, resolved_name, model_name):
-            logger.debug(f"DIAL model '{model_name}' -> '{resolved_name}' blocked by restrictions")
-            return False
-
-        return True
 
     def _get_deployment_client(self, deployment: str):
         """Get or create a cached client for a specific deployment.
@@ -381,22 +165,25 @@ class DIALModelProvider(OpenAICompatibleProvider):
         /openai/deployments/{deployment}/chat/completions
 
         Args:
-            prompt: User prompt
-            model_name: Model name or alias
-            system_prompt: Optional system prompt
-            temperature: Sampling temperature
-            max_output_tokens: Maximum tokens to generate
-            **kwargs: Additional provider-specific parameters
+            prompt: The main user prompt/query to send to the model
+            model_name: Model name or alias (e.g., "o3", "sonnet-4.1", "gemini-2.5-pro")
+            system_prompt: Optional system instructions to prepend to the prompt for context/behavior
+            temperature: Sampling temperature for randomness (0.0=deterministic, 1.0=creative), default 0.3
+                        Note: O3/O4 models don't support temperature and will ignore this parameter
+            max_output_tokens: Optional maximum number of tokens to generate in the response
+            images: Optional list of image paths or data URLs to include with the prompt (for vision-capable models)
+            **kwargs: Additional OpenAI-compatible parameters (top_p, frequency_penalty, presence_penalty, seed, stop)
 
         Returns:
-            ModelResponse with generated content and metadata
+            ModelResponse: Contains the generated content, token usage stats, model metadata, and finish reason
         """
         # Validate model name against allow-list
         if not self.validate_model_name(model_name):
             raise ValueError(f"Model '{model_name}' not in allowed models list. Allowed models: {self.allowed_models}")
 
-        # Validate parameters
+        # Validate parameters and fetch capabilities
         self.validate_parameters(model_name, temperature)
+        capabilities = self.get_capabilities(model_name)
 
         # Prepare messages
         messages = []
@@ -407,7 +194,7 @@ class DIALModelProvider(OpenAICompatibleProvider):
         if prompt:
             user_message_content.append({"type": "text", "text": prompt})
 
-        if images and self._supports_vision(model_name):
+        if images and capabilities.supports_images:
             for img_path in images:
                 processed_image = self._process_image(img_path)
                 if processed_image:
@@ -428,15 +215,11 @@ class DIALModelProvider(OpenAICompatibleProvider):
         completion_params = {
             "model": resolved_model,
             "messages": messages,
+            "stream": False,
         }
 
-        # Check model capabilities
-        try:
-            capabilities = self.get_capabilities(model_name)
-            supports_temperature = capabilities.supports_temperature
-        except Exception as e:
-            logger.debug(f"Failed to check temperature support for {model_name}: {e}")
-            supports_temperature = True
+        # Determine temperature support from capabilities
+        supports_temperature = capabilities.supports_temperature
 
         # Add temperature parameter if supported
         if supports_temperature:
@@ -449,81 +232,51 @@ class DIALModelProvider(OpenAICompatibleProvider):
         # Add additional parameters
         for key, value in kwargs.items():
             if key in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "stream"]:
-                if not supports_temperature and key in ["top_p", "frequency_penalty", "presence_penalty"]:
+                if not supports_temperature and key in ["top_p", "frequency_penalty", "presence_penalty", "stream"]:
                     continue
                 completion_params[key] = value
 
         # DIAL-specific: Get cached client for deployment endpoint
         deployment_client = self._get_deployment_client(resolved_model)
 
-        # Retry logic with progressive delays
-        last_exception = None
+        attempt_counter = {"value": 0}
 
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                # Generate completion using deployment-specific client
-                response = deployment_client.chat.completions.create(**completion_params)
+        def _attempt() -> ModelResponse:
+            attempt_counter["value"] += 1
+            response = deployment_client.chat.completions.create(**completion_params)
 
-                # Extract content and usage
-                content = response.choices[0].message.content
-                usage = self._extract_usage(response)
+            content = response.choices[0].message.content
+            usage = self._extract_usage(response)
 
-                return ModelResponse(
-                    content=content,
-                    usage=usage,
-                    model_name=model_name,
-                    friendly_name=self.FRIENDLY_NAME,
-                    provider=self.get_provider_type(),
-                    metadata={
-                        "finish_reason": response.choices[0].finish_reason,
-                        "model": response.model,
-                        "id": response.id,
-                        "created": response.created,
-                    },
-                )
+            return ModelResponse(
+                content=content,
+                usage=usage,
+                model_name=model_name,
+                friendly_name=self.FRIENDLY_NAME,
+                provider=self.get_provider_type(),
+                metadata={
+                    "finish_reason": response.choices[0].finish_reason,
+                    "model": response.model,
+                    "id": response.id,
+                    "created": response.created,
+                },
+            )
 
-            except Exception as e:
-                last_exception = e
+        try:
+            return self._run_with_retries(
+                operation=_attempt,
+                max_attempts=self.MAX_RETRIES,
+                delays=self.RETRY_DELAYS,
+                log_prefix=f"DIAL API ({resolved_model})",
+            )
+        except Exception as exc:
+            attempts = max(attempt_counter["value"], 1)
+            if attempts == 1:
+                raise ValueError(f"DIAL API error for model {resolved_model}: {exc}") from exc
 
-                # Check if this is a retryable error
-                is_retryable = self._is_error_retryable(e)
+            raise ValueError(f"DIAL API error for model {resolved_model} after {attempts} attempts: {exc}") from exc
 
-                if not is_retryable:
-                    # Non-retryable error, raise immediately
-                    raise ValueError(f"DIAL API error for model {model_name}: {str(e)}")
-
-                # If this isn't the last attempt and error is retryable, wait and retry
-                if attempt < self.MAX_RETRIES - 1:
-                    delay = self.RETRY_DELAYS[attempt]
-                    logger.info(
-                        f"DIAL API error (attempt {attempt + 1}/{self.MAX_RETRIES}), " f"retrying in {delay}s: {str(e)}"
-                    )
-                    time.sleep(delay)
-                    continue
-
-        # All retries exhausted
-        raise ValueError(
-            f"DIAL API error for model {model_name} after {self.MAX_RETRIES} attempts: {str(last_exception)}"
-        )
-
-    def _supports_vision(self, model_name: str) -> bool:
-        """Check if the model supports vision (image processing).
-
-        Args:
-            model_name: Model name to check
-
-        Returns:
-            True if model supports vision, False otherwise
-        """
-        resolved_name = self._resolve_model_name(model_name)
-
-        if resolved_name in self.SUPPORTED_MODELS:
-            return self.SUPPORTED_MODELS[resolved_name].supports_images
-
-        # Fall back to parent implementation for unknown models
-        return super()._supports_vision(model_name)
-
-    def close(self):
+    def close(self) -> None:
         """Clean up HTTP clients when provider is closed."""
         logger.info("Closing DIAL provider HTTP clients...")
 

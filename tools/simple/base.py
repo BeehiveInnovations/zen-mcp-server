@@ -3,7 +3,7 @@ Base class for simple MCP tools.
 
 Simple tools follow a straightforward pattern:
 1. Receive request
-2. Prepare prompt (with files, context, etc.)
+2. Prepare prompt (with absolute file paths, context, etc.)
 3. Call AI model
 4. Format and return response
 
@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from tools.shared.base_models import ToolRequest
 from tools.shared.base_tool import BaseTool
+from tools.shared.exceptions import ToolExecutionError
 from tools.shared.schema_builders import SchemaBuilder
 
 
@@ -49,7 +50,7 @@ class SimpleTool(BaseTool):
                         "type": "string",
                         "description": "Your question or idea...",
                     },
-                    "files": SimpleTool.FILES_FIELD,
+                    "absolute_file_paths": SimpleTool.FILES_FIELD,
                 }
 
             def get_required_fields(self) -> List[str]:
@@ -57,7 +58,7 @@ class SimpleTool(BaseTool):
     """
 
     # Common field definitions that simple tools can reuse
-    FILES_FIELD = SchemaBuilder.SIMPLE_FIELD_SCHEMAS["files"]
+    FILES_FIELD = SchemaBuilder.SIMPLE_FIELD_SCHEMAS["absolute_file_paths"]
     IMAGES_FIELD = SchemaBuilder.COMMON_FIELD_SCHEMAS["images"]
 
     @abstractmethod
@@ -78,7 +79,7 @@ class SimpleTool(BaseTool):
                     "type": "string",
                     "description": "The user's question or request",
                 },
-                "files": SimpleTool.FILES_FIELD,  # Reuse common field
+                "absolute_file_paths": SimpleTool.FILES_FIELD,  # Reuse common field
                 "max_tokens": {
                     "type": "integer",
                     "minimum": 1,
@@ -148,9 +149,10 @@ class SimpleTool(BaseTool):
         Returns:
             Complete JSON schema for the tool
         """
+        required_fields = list(self.get_required_fields())
         return SchemaBuilder.build_schema(
             tool_specific_fields=self.get_tool_fields(),
-            required_fields=self.get_required_fields(),
+            required_fields=required_fields,
             model_field_schema=self.get_model_field_schema(),
             auto_mode=self.is_effective_auto_mode(),
         )
@@ -228,18 +230,14 @@ class SimpleTool(BaseTool):
             return None
 
     def get_request_files(self, request) -> list:
-        """Get files from request. Override for custom file handling."""
+        """Get absolute file paths from request. Override for custom file handling."""
         try:
-            return request.files if request.files is not None else []
+            files = request.absolute_file_paths
         except AttributeError:
+            files = None
+        if files is None:
             return []
-
-    def get_request_use_websearch(self, request) -> bool:
-        """Get use_websearch from request. Override for custom websearch handling."""
-        try:
-            return request.use_websearch if request.use_websearch is not None else True
-        except AttributeError:
-            return True
+        return files
 
     def get_request_as_dict(self, request) -> dict:
         """Convert request to dictionary. Override for custom serialization."""
@@ -255,11 +253,10 @@ class SimpleTool(BaseTool):
                 return {"prompt": self.get_request_prompt(request)}
 
     def set_request_files(self, request, files: list) -> None:
-        """Set files on request. Override for custom file setting."""
+        """Set absolute file paths on request. Override for custom file setting."""
         try:
-            request.files = files
+            request.absolute_file_paths = files
         except AttributeError:
-            # If request doesn't support file setting, ignore silently
             pass
 
     def get_actually_processed_files(self) -> list:
@@ -275,7 +272,6 @@ class SimpleTool(BaseTool):
 
         This method replicates the proven execution pattern while using SimpleTool hooks.
         """
-        import json
         import logging
 
         from mcp.types import TextContent
@@ -304,7 +300,8 @@ class SimpleTool(BaseTool):
                     content=path_error,
                     content_type="text",
                 )
-                return [TextContent(type="text", text=error_output.model_dump_json())]
+                logger.error("Path validation failed for %s: %s", self.get_name(), path_error)
+                raise ToolExecutionError(error_output.model_dump_json())
 
             # Handle model resolution like old base.py
             model_name = self.get_request_model_name(request)
@@ -395,7 +392,15 @@ class SimpleTool(BaseTool):
                     images, model_context=self._model_context, continuation_id=continuation_id
                 )
                 if image_validation_error:
-                    return [TextContent(type="text", text=json.dumps(image_validation_error, ensure_ascii=False))]
+                    error_output = ToolOutput(
+                        status=image_validation_error.get("status", "error"),
+                        content=image_validation_error.get("content"),
+                        content_type=image_validation_error.get("content_type", "text"),
+                        metadata=image_validation_error.get("metadata"),
+                    )
+                    payload = error_output.model_dump_json()
+                    logger.error("Image validation failed for %s: %s", self.get_name(), payload)
+                    raise ToolExecutionError(payload)
 
             # Get and validate temperature against model constraints
             temperature, temp_warnings = self.get_validated_temperature(request, self._model_context)
@@ -410,11 +415,15 @@ class SimpleTool(BaseTool):
 
             # Get the provider from model context (clean OOP - no re-fetching)
             provider = self._model_context.provider
+            capabilities = self._model_context.capabilities
 
             # Get system prompt for this tool
             base_system_prompt = self.get_system_prompt()
+            capability_augmented_prompt = self._augment_system_prompt_with_capabilities(
+                base_system_prompt, capabilities
+            )
             language_instruction = self.get_language_instruction()
-            system_prompt = language_instruction + base_system_prompt
+            system_prompt = language_instruction + capability_augmented_prompt
 
             # Generate AI response using the provider
             logger.info(f"Sending request to {provider.get_provider_type().value} API for {self.get_name()}")
@@ -428,13 +437,16 @@ class SimpleTool(BaseTool):
             estimated_tokens = estimate_tokens(prompt)
             logger.debug(f"Prompt length: {len(prompt)} characters (~{estimated_tokens:,} tokens)")
 
+            # Resolve model capabilities for feature gating
+            supports_thinking = capabilities.supports_extended_thinking
+
             # Generate content with provider abstraction
             model_response = provider.generate_content(
                 prompt=prompt,
                 model_name=self._current_model_name,
                 system_prompt=system_prompt,
                 temperature=temperature,
-                thinking_mode=thinking_mode if provider.supports_thinking_mode(self._current_model_name) else None,
+                thinking_mode=thinking_mode if supports_thinking else None,
                 images=images if images else None,
             )
 
@@ -491,9 +503,7 @@ class SimpleTool(BaseTool):
                                 model_name=self._current_model_name,
                                 system_prompt=system_prompt,
                                 temperature=temperature,
-                                thinking_mode=(
-                                    thinking_mode if provider.supports_thinking_mode(self._current_model_name) else None
-                                ),
+                                thinking_mode=thinking_mode if supports_thinking else None,
                                 images=images if images else None,
                             )
 
@@ -553,15 +563,21 @@ class SimpleTool(BaseTool):
                             content_type="text",
                         )
 
-            # Return the tool output as TextContent
-            return [TextContent(type="text", text=tool_output.model_dump_json())]
+            # Return the tool output as TextContent, marking protocol errors appropriately
+            payload = tool_output.model_dump_json()
+            if tool_output.status == "error":
+                logger.error("%s reported error status - raising ToolExecutionError", self.get_name())
+                raise ToolExecutionError(payload)
+            return [TextContent(type="text", text=payload)]
 
+        except ToolExecutionError:
+            raise
         except Exception as e:
             # Special handling for MCP size check errors
             if str(e).startswith("MCP_SIZE_CHECK:"):
                 # Extract the JSON content after the prefix
                 json_content = str(e)[len("MCP_SIZE_CHECK:") :]
-                return [TextContent(type="text", text=json_content)]
+                raise ToolExecutionError(json_content)
 
             logger.error(f"Error in {self.get_name()}: {str(e)}")
             error_output = ToolOutput(
@@ -569,7 +585,7 @@ class SimpleTool(BaseTool):
                 content=f"Error in {self.get_name()}: {str(e)}",
                 content_type="text",
             )
-            return [TextContent(type="text", text=error_output.model_dump_json())]
+            raise ToolExecutionError(error_output.model_dump_json()) from e
 
     def _parse_response(self, raw_text: str, request, model_info: Optional[dict] = None):
         """
@@ -586,44 +602,7 @@ class SimpleTool(BaseTool):
         # Handle conversation continuation like old base.py
         continuation_id = self.get_request_continuation_id(request)
         if continuation_id:
-            # Add turn to conversation memory
-            from utils.conversation_memory import add_turn
-
-            # Extract model metadata for conversation tracking
-            model_provider = None
-            model_name = None
-            model_metadata = None
-
-            if model_info:
-                provider = model_info.get("provider")
-                if provider:
-                    # Handle both provider objects and string values
-                    if isinstance(provider, str):
-                        model_provider = provider
-                    else:
-                        try:
-                            model_provider = provider.get_provider_type().value
-                        except AttributeError:
-                            # Fallback if provider doesn't have get_provider_type method
-                            model_provider = str(provider)
-                model_name = model_info.get("model_name")
-                model_response = model_info.get("model_response")
-                if model_response:
-                    model_metadata = {"usage": model_response.usage, "metadata": model_response.metadata}
-
-            # Only add the assistant's response to the conversation
-            # The user's turn is handled elsewhere (when thread is created/continued)
-            add_turn(
-                continuation_id,  # thread_id as positional argument
-                "assistant",  # role as positional argument
-                raw_text,  # content as positional argument
-                files=self.get_request_files(request),
-                images=self.get_request_images(request),
-                tool_name=self.get_name(),
-                model_provider=model_provider,
-                model_name=model_name,
-                model_metadata=model_metadata,
-            )
+            self._record_assistant_turn(continuation_id, raw_text, request, model_info)
 
         # Create continuation offer like old base.py
         continuation_data = self._create_continuation_offer(request, model_info)
@@ -676,7 +655,7 @@ class SimpleTool(BaseTool):
                     return {
                         "continuation_id": continuation_id,
                         "remaining_turns": remaining_turns,
-                        "note": f"Claude can continue this conversation for {remaining_turns} more exchanges.",
+                        "note": f"You can continue this conversation for {remaining_turns} more exchanges.",
                     }
             else:
                 # New conversation - create thread and offer continuation
@@ -700,7 +679,7 @@ class SimpleTool(BaseTool):
                 return {
                     "continuation_id": new_thread_id,
                     "remaining_turns": MAX_CONVERSATION_TURNS - 1,
-                    "note": f"Claude can continue this conversation for {MAX_CONVERSATION_TURNS - 1} more exchanges.",
+                    "note": f"You can continue this conversation for {MAX_CONVERSATION_TURNS - 1} more exchanges.",
                 }
         except Exception:
             return None
@@ -712,6 +691,14 @@ class SimpleTool(BaseTool):
         from tools.models import ContinuationOffer, ToolOutput
 
         try:
+            if not self.get_request_continuation_id(request):
+                self._record_assistant_turn(
+                    continuation_data["continuation_id"],
+                    content,
+                    request,
+                    model_info,
+                )
+
             continuation_offer = ContinuationOffer(
                 continuation_id=continuation_data["continuation_id"],
                 note=continuation_data["note"],
@@ -747,6 +734,47 @@ class SimpleTool(BaseTool):
             # Fallback to simple success if continuation offer fails
             return ToolOutput(status="success", content=content, content_type="text")
 
+    def _record_assistant_turn(
+        self, continuation_id: str, response_text: str, request, model_info: Optional[dict]
+    ) -> None:
+        """Persist an assistant response in conversation memory."""
+
+        if not continuation_id:
+            return
+
+        from utils.conversation_memory import add_turn
+
+        model_provider = None
+        model_name = None
+        model_metadata = None
+
+        if model_info:
+            provider = model_info.get("provider")
+            if provider:
+                if isinstance(provider, str):
+                    model_provider = provider
+                else:
+                    try:
+                        model_provider = provider.get_provider_type().value
+                    except AttributeError:
+                        model_provider = str(provider)
+            model_name = model_info.get("model_name")
+            model_response = model_info.get("model_response")
+            if model_response:
+                model_metadata = {"usage": model_response.usage, "metadata": model_response.metadata}
+
+        add_turn(
+            continuation_id,
+            "assistant",
+            response_text,
+            files=self.get_request_files(request),
+            images=self.get_request_images(request),
+            tool_name=self.get_name(),
+            model_provider=model_provider,
+            model_name=model_name,
+            model_metadata=model_metadata,
+        )
+
     # Convenience methods for common tool patterns
 
     def build_standard_prompt(
@@ -770,7 +798,11 @@ class SimpleTool(BaseTool):
         Returns:
             Complete formatted prompt ready for the AI model
         """
-        # Add context files if provided
+        # Check size limits against raw user input before enriching with internal context
+        content_to_validate = self.get_prompt_content_for_size_validation(user_content)
+        self._validate_token_limit(content_to_validate, "Content")
+
+        # Add context files if provided (does not affect MCP boundary enforcement)
         files = self.get_request_files(request)
         if files:
             file_content, processed_files = self._prepare_file_content_for_prompt(
@@ -783,15 +815,8 @@ class SimpleTool(BaseTool):
             if file_content:
                 user_content = f"{user_content}\n\n=== {file_context_title} ===\n{file_content}\n=== END CONTEXT ===="
 
-        # Check token limits - only validate original user prompt, not conversation history
-        content_to_validate = self.get_prompt_content_for_size_validation(user_content)
-        self._validate_token_limit(content_to_validate, "Content")
-
-        # Add web search instruction if enabled
-        websearch_instruction = ""
-        use_websearch = self.get_request_use_websearch(request)
-        if use_websearch:
-            websearch_instruction = self.get_websearch_instruction(use_websearch, self.get_websearch_guidance())
+        # Add standardized web search guidance
+        websearch_instruction = self.get_websearch_instruction(self.get_websearch_guidance())
 
         # Combine system prompt with user content
         full_prompt = f"""{system_prompt}{websearch_instruction}
@@ -859,7 +884,7 @@ Please provide a thoughtful, comprehensive response:"""
         Raises:
             ValueError: If prompt is too large for MCP transport
         """
-        # Check for prompt.txt in files
+        # Check for prompt.txt in provided absolute file paths
         files = self.get_request_files(request)
         if files:
             prompt_content, updated_files = self.handle_prompt_file(files)
@@ -927,7 +952,7 @@ Please provide a thoughtful, comprehensive response:"""
         """
         import os
 
-        # Check if request has 'files' attribute (used by most tools)
+        # Check if request has absolute file paths attribute (legacy tools may still provide 'files')
         files = self.get_request_files(request)
         if files:
             for file_path in files:
@@ -976,5 +1001,11 @@ Please provide a thoughtful, comprehensive response:"""
         finally:
             # Restore original guidance method
             self.get_websearch_guidance = original_guidance
+
+        if system_prompt:
+            marker = "\n\n=== USER REQUEST ===\n"
+            if marker in full_prompt:
+                _, user_section = full_prompt.split(marker, 1)
+                return f"=== USER REQUEST ===\n{user_section}"
 
         return full_prompt

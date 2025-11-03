@@ -3,8 +3,8 @@ Conversation Memory for AI-to-AI Multi-turn Discussions
 
 This module provides conversation persistence and context reconstruction for
 stateless MCP (Model Context Protocol) environments. It enables multi-turn
-conversations between Claude and Gemini by storing conversation state in memory
-across independent request cycles.
+conversations between the agent and downstream models by storing conversation
+state in memory across independent request cycles.
 
 CRITICAL ARCHITECTURAL REQUIREMENT:
 This conversation memory system is designed for PERSISTENT MCP SERVER PROCESSES.
@@ -97,7 +97,7 @@ Collection Phase (Newest-First Priority):
 - Excludes: Turn 2, Turn 1 (oldest, dropped due to token limits)
 
 Presentation Phase (Chronological Order):
-- LLM sees: "--- Turn 3 (Claude) ---", "--- Turn 4 (Gemini) ---", "--- Turn 5 (Claude) ---"
+- LLM sees: "--- Turn 3 (Agent) ---", "--- Turn 4 (Model) ---", "--- Turn 5 (Agent) ---"
 - Natural conversation flow maintained despite prioritizing recent context
 
 This enables true AI-to-AI collaboration across the entire tool ecosystem with optimal
@@ -112,24 +112,28 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from utils.env import get_env
+
 logger = logging.getLogger(__name__)
 
 # Configuration constants
 # Get max conversation turns from environment, default to 20 turns (10 exchanges)
 try:
-    MAX_CONVERSATION_TURNS = int(os.getenv("MAX_CONVERSATION_TURNS", "20"))
+    max_turns_raw = (get_env("MAX_CONVERSATION_TURNS", "50") or "50").strip()
+    MAX_CONVERSATION_TURNS = int(max_turns_raw)
     if MAX_CONVERSATION_TURNS <= 0:
-        logger.warning(f"Invalid MAX_CONVERSATION_TURNS value ({MAX_CONVERSATION_TURNS}), using default of 20 turns")
-        MAX_CONVERSATION_TURNS = 20
+        logger.warning(f"Invalid MAX_CONVERSATION_TURNS value ({MAX_CONVERSATION_TURNS}), using default of 50 turns")
+        MAX_CONVERSATION_TURNS = 50
 except ValueError:
     logger.warning(
-        f"Invalid MAX_CONVERSATION_TURNS value ('{os.getenv('MAX_CONVERSATION_TURNS')}'), using default of 20 turns"
+        f"Invalid MAX_CONVERSATION_TURNS value ('{get_env('MAX_CONVERSATION_TURNS')}'), using default of 50 turns"
     )
-    MAX_CONVERSATION_TURNS = 20
+    MAX_CONVERSATION_TURNS = 50
 
 # Get conversation timeout from environment (in hours), default to 3 hours
 try:
-    CONVERSATION_TIMEOUT_HOURS = int(os.getenv("CONVERSATION_TIMEOUT_HOURS", "3"))
+    timeout_raw = (get_env("CONVERSATION_TIMEOUT_HOURS", "3") or "3").strip()
+    CONVERSATION_TIMEOUT_HOURS = int(timeout_raw)
     if CONVERSATION_TIMEOUT_HOURS <= 0:
         logger.warning(
             f"Invalid CONVERSATION_TIMEOUT_HOURS value ({CONVERSATION_TIMEOUT_HOURS}), using default of 3 hours"
@@ -137,7 +141,7 @@ try:
         CONVERSATION_TIMEOUT_HOURS = 3
 except ValueError:
     logger.warning(
-        f"Invalid CONVERSATION_TIMEOUT_HOURS value ('{os.getenv('CONVERSATION_TIMEOUT_HOURS')}'), using default of 3 hours"
+        f"Invalid CONVERSATION_TIMEOUT_HOURS value ('{get_env('CONVERSATION_TIMEOUT_HOURS')}'), using default of 3 hours"
     )
     CONVERSATION_TIMEOUT_HOURS = 3
 
@@ -152,7 +156,7 @@ class ConversationTurn(BaseModel):
     the content and metadata needed for cross-tool continuation.
 
     Attributes:
-        role: "user" (Claude) or "assistant" (Gemini/O3/etc)
+        role: "user" (Agent request) or "assistant" (model response)
         content: The actual message content/response
         timestamp: ISO timestamp when this turn was created
         files: List of file paths referenced in this specific turn
@@ -321,7 +325,7 @@ def add_turn(
 
     Args:
         thread_id: UUID of the conversation thread
-        role: "user" (Claude) or "assistant" (Gemini/O3/etc)
+        role: "user" (Agent request) or "assistant" (model response)
         content: The actual message/response content
         files: Optional list of files referenced in this turn
         images: Optional list of images referenced in this turn
@@ -707,7 +711,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
         <turn_content>
 
-        --- Turn 2 (Gemini using analyze via google/gemini-2.5-flash) ---
+        --- Turn 2 (gemini-2.5-flash using analyze via google) ---
         Files used in this turn: file3.py
 
         <turn_content>
@@ -921,7 +925,11 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     for idx in range(len(all_turns) - 1, -1, -1):
         turn = all_turns[idx]
         turn_num = idx + 1
-        role_label = "Claude" if turn.role == "user" else "Gemini"
+
+        if turn.role == "user":
+            role_label = "Agent"
+        else:
+            role_label = turn.model_name or "Assistant"
 
         # Build the complete turn content
         turn_parts = []
@@ -932,8 +940,13 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
             turn_header += f" using {turn.tool_name}"
 
         # Add model info if available
-        if turn.model_provider and turn.model_name:
-            turn_header += f" via {turn.model_provider}/{turn.model_name}"
+        if turn.model_provider:
+            provider_descriptor = turn.model_provider
+            if turn.model_name and turn.model_name != role_label:
+                provider_descriptor += f"/{turn.model_name}"
+            turn_header += f" via {provider_descriptor}"
+        elif turn.model_name and turn.model_name != role_label:
+            turn_header += f" via {turn.model_name}"
 
         turn_header += ") ---"
         turn_parts.append(turn_header)
@@ -970,7 +983,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     turn_entries.reverse()
 
     # Add the turns in chronological order for natural LLM comprehension
-    # The LLM will see: "--- Turn 1 (Claude) ---" followed by "--- Turn 2 (Gemini) ---" etc.
+    # The LLM will see: "--- Turn 1 (Agent) ---" followed by "--- Turn 2 (Model) ---" etc.
     for _, turn_content in turn_entries:
         history_parts.append(turn_content)
 

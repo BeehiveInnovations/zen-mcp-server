@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock
 
-from providers.base import ModelCapabilities, ProviderType, RangeTemperatureConstraint
+from providers.shared import ModelCapabilities, ProviderType, RangeTemperatureConstraint
 
 
 def create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576):
@@ -25,7 +25,6 @@ def create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576
 
     mock_provider.get_capabilities.return_value = mock_capabilities
     mock_provider.get_provider_type.return_value = ProviderType.GOOGLE
-    mock_provider.supports_thinking_mode.return_value = False
     mock_provider.validate_model_name.return_value = True
 
     # Set up generate_content response

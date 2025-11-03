@@ -115,14 +115,9 @@ class TracerRequest(WorkflowRequest):
     # Exclude fields not relevant to tracing workflow
     issues_found: list[dict] = Field(default_factory=list, exclude=True, description="Tracing doesn't track issues")
     hypothesis: Optional[str] = Field(default=None, exclude=True, description="Tracing doesn't use hypothesis")
-    backtrack_from_step: Optional[int] = Field(
-        default=None, exclude=True, description="Tracing doesn't use backtracking"
-    )
-
     # Exclude other non-tracing fields
     temperature: Optional[float] = Field(default=None, exclude=True)
     thinking_mode: Optional[str] = Field(default=None, exclude=True)
-    use_websearch: Optional[bool] = Field(default=None, exclude=True)
     use_assistant_model: Optional[bool] = Field(default=False, exclude=True, description="Tracing is self-contained")
 
     @field_validator("step_number")
@@ -221,15 +216,13 @@ class TracerTool(WorkflowTool):
         excluded_workflow_fields = [
             "issues_found",  # Tracing doesn't track issues
             "hypothesis",  # Tracing doesn't use hypothesis
-            "backtrack_from_step",  # Tracing doesn't use backtracking
         ]
 
         # Exclude common fields that tracing doesn't need
         excluded_common_fields = [
             "temperature",  # Tracing doesn't need temperature control
             "thinking_mode",  # Tracing doesn't need thinking mode
-            "use_websearch",  # Tracing doesn't need web search
-            "files",  # Tracing uses relevant_files instead
+            "absolute_file_paths",  # Tracing uses relevant_files instead
         ]
 
         return WorkflowSchemaBuilder.build_schema(

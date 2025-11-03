@@ -75,7 +75,7 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
         # Mock provider with more complete setup (same as codereview test)
         mock_provider = Mock()
         mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.get_capabilities.return_value = Mock(supports_extended_thinking=False)
         mock_provider.generate_content = AsyncMock(
             return_value=Mock(
                 content=json.dumps(
@@ -93,6 +93,7 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
         # Use the same provider for both contexts
         mock_get_provider.return_value = mock_provider
         mock_context_instance.provider = mock_provider
+        mock_context_instance.capabilities = Mock(supports_extended_thinking=False)
         mock_model_context.return_value = mock_context_instance
 
         # Test the tool
@@ -131,7 +132,7 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
         # Mock with analysis in French
         mock_provider = Mock()
         mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.get_capabilities.return_value = Mock(supports_extended_thinking=False)
         mock_provider.generate_content = AsyncMock(
             return_value=Mock(
                 content=json.dumps(
@@ -204,7 +205,7 @@ class TestWorkflowToolsUTF8(unittest.IsolatedAsyncioTestCase):
         # Mock provider
         mock_provider = Mock()
         mock_provider.get_provider_type.return_value = Mock(value="test")
-        mock_provider.supports_thinking_mode.return_value = False
+        mock_provider.get_capabilities.return_value = Mock(supports_extended_thinking=False)
         mock_provider.generate_content = AsyncMock(
             return_value=Mock(
                 content=json.dumps(

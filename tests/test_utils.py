@@ -34,8 +34,8 @@ class TestFileUtils:
         # In the new security model, safe files like /etc/passwd
         # can be read as they're not in the dangerous paths list
         content, tokens = read_file_content("/etc/passwd")
-        # Should successfully read the file
-        assert "--- BEGIN FILE: /etc/passwd ---" in content
+        # Should successfully read the file (with timestamp in header)
+        assert "--- BEGIN FILE: /etc/passwd (Last modified:" in content
         assert "--- END FILE: /etc/passwd ---" in content
         assert tokens > 0
 

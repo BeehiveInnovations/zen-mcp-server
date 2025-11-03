@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from tools.chat import ChatTool
+from tools.shared.exceptions import ToolExecutionError
 
 
 class TestAutoMode:
@@ -53,7 +54,7 @@ class TestAutoMode:
         for provider_type in enabled_provider_types:
             provider = ModelProviderRegistry.get_provider(provider_type)
             if provider:
-                for model_name, config in provider.SUPPORTED_MODELS.items():
+                for model_name, config in provider.MODEL_CAPABILITIES.items():
                     # Skip alias entries (string values)
                     if isinstance(config, str):
                         continue
@@ -92,9 +93,9 @@ class TestAutoMode:
 
             # Model field should have detailed descriptions
             model_schema = schema["properties"]["model"]
-            assert "enum" in model_schema
-            assert "flash" in model_schema["enum"]
-            assert "select the most suitable model" in model_schema["description"]
+            assert "enum" not in model_schema
+            assert "auto mode" in model_schema["description"].lower()
+            assert "listmodels" in model_schema["description"]
 
         finally:
             # Restore
@@ -106,22 +107,38 @@ class TestAutoMode:
 
     def test_tool_schema_in_normal_mode(self):
         """Test that tool schemas don't require model in normal mode"""
-        # This test uses the default from conftest.py which sets non-auto mode
-        # The conftest.py mock_provider_availability fixture ensures the model is available
-        tool = ChatTool()
-        schema = tool.get_input_schema()
+        # Save original
+        original = os.environ.get("DEFAULT_MODEL", "")
 
-        # Model should not be required
-        assert "model" not in schema["required"]
+        try:
+            # Set to a specific model (not auto mode)
+            os.environ["DEFAULT_MODEL"] = "gemini-2.5-flash"
+            import config
 
-        # Model field should have simpler description
-        model_schema = schema["properties"]["model"]
-        assert "enum" not in model_schema
-        assert "Native models:" in model_schema["description"]
-        assert "Defaults to" in model_schema["description"]
+            importlib.reload(config)
+
+            tool = ChatTool()
+            schema = tool.get_input_schema()
+
+            # Model should not be required when default model is configured
+            assert "model" not in schema["required"]
+
+            # Model field should have simpler description
+            model_schema = schema["properties"]["model"]
+            assert "enum" not in model_schema
+            assert "listmodels" in model_schema["description"]
+            assert "default model" in model_schema["description"].lower()
+
+        finally:
+            # Restore
+            if original:
+                os.environ["DEFAULT_MODEL"] = original
+            else:
+                os.environ.pop("DEFAULT_MODEL", None)
+            importlib.reload(config)
 
     @pytest.mark.asyncio
-    async def test_auto_mode_requires_model_parameter(self):
+    async def test_auto_mode_requires_model_parameter(self, tmp_path):
         """Test that auto mode enforces model parameter"""
         # Save original
         original = os.environ.get("DEFAULT_MODEL", "")
@@ -137,14 +154,14 @@ class TestAutoMode:
 
             # Mock the provider to avoid real API calls
             with patch.object(tool, "get_model_provider"):
-                # Execute without model parameter
-                result = await tool.execute({"prompt": "Test prompt"})
+                # Execute without model parameter and expect protocol error
+                with pytest.raises(ToolExecutionError) as exc_info:
+                    await tool.execute({"prompt": "Test prompt", "working_directory_absolute_path": str(tmp_path)})
 
-            # Should get error
-            assert len(result) == 1
-            response = result[0].text
-            assert "error" in response
-            assert "Model parameter is required" in response or "Model 'auto' is not available" in response
+            # Should get error payload mentioning model requirement
+            error_payload = getattr(exc_info.value, "payload", str(exc_info.value))
+            assert "Model" in error_payload
+            assert "auto" in error_payload
 
         finally:
             # Restore
@@ -191,7 +208,7 @@ class TestAutoMode:
             try:
                 result = await tool.execute(
                     {
-                        "files": ["/tmp/test.py"],
+                        "absolute_file_paths": ["/tmp/test.py"],
                         "prompt": "Analyze this",
                         "model": "nonexistent-model-xyz",  # This model definitely doesn't exist
                     }
@@ -287,19 +304,10 @@ class TestAutoMode:
             importlib.reload(config)
 
             schema = tool.get_model_field_schema()
-            assert "enum" in schema
-            # Test that some basic models are available (those that should be available with dummy keys)
-            available_models = schema["enum"]
-            # Check for models that should be available with basic provider setup
-            expected_basic_models = ["flash", "pro"]  # Gemini models from conftest.py
-            for model in expected_basic_models:
-                if model not in available_models:
-                    print(f"Missing expected model: {model}")
-                    print(f"Available models: {available_models}")
-            assert any(
-                model in available_models for model in expected_basic_models
-            ), f"None of {expected_basic_models} found in {available_models}"
-            assert "select the most suitable model" in schema["description"]
+            assert "enum" not in schema
+            assert schema["type"] == "string"
+            assert "auto mode" in schema["description"].lower()
+            assert "listmodels" in schema["description"]
 
             # Test normal mode
             os.environ["DEFAULT_MODEL"] = "pro"
@@ -307,10 +315,9 @@ class TestAutoMode:
 
             schema = tool.get_model_field_schema()
             assert "enum" not in schema
-            # Check for the new schema format
-            assert "Model to use." in schema["description"]
+            assert schema["type"] == "string"
             assert "'pro'" in schema["description"]
-            assert "Defaults to" in schema["description"]
+            assert "listmodels" in schema["description"]
 
         finally:
             # Restore

@@ -17,12 +17,18 @@ from typing import TYPE_CHECKING, Any, Optional
 from mcp.types import TextContent
 
 if TYPE_CHECKING:
+    from providers.shared import ModelCapabilities
     from tools.models import ToolModelCategory
 
 from config import MCP_PROMPT_SIZE_LIMIT
 from providers import ModelProvider, ModelProviderRegistry
-from utils import check_token_limit
-from utils.conversation_memory import ConversationTurn, get_conversation_file_list, get_thread
+from utils import estimate_tokens
+from utils.conversation_memory import (
+    ConversationTurn,
+    get_conversation_file_list,
+    get_thread,
+)
+from utils.env import get_env
 from utils.file_utils import read_file_content, read_files
 
 # Import models from tools.models for compatibility
@@ -77,17 +83,28 @@ class BaseTool(ABC):
 
     # Class-level cache for OpenRouter registry to avoid multiple loads
     _openrouter_registry_cache = None
+    _custom_registry_cache = None
 
     @classmethod
     def _get_openrouter_registry(cls):
         """Get cached OpenRouter registry instance, creating if needed."""
         # Use BaseTool class directly to ensure cache is shared across all subclasses
         if BaseTool._openrouter_registry_cache is None:
-            from providers.openrouter_registry import OpenRouterModelRegistry
+            from providers.registries.openrouter import OpenRouterModelRegistry
 
             BaseTool._openrouter_registry_cache = OpenRouterModelRegistry()
             logger.debug("Created cached OpenRouter registry instance")
         return BaseTool._openrouter_registry_cache
+
+    @classmethod
+    def _get_custom_registry(cls):
+        """Get cached custom-endpoint registry instance."""
+        if BaseTool._custom_registry_cache is None:
+            from providers.registries.custom import CustomEndpointModelRegistry
+
+            BaseTool._custom_registry_cache = CustomEndpointModelRegistry()
+            logger.debug("Created cached Custom registry instance")
+        return BaseTool._custom_registry_cache
 
     def __init__(self):
         # Cache tool metadata at initialization to avoid repeated calls
@@ -114,7 +131,7 @@ class BaseTool(ABC):
         """
         Return a detailed description of what this tool does.
 
-        This description is shown to MCP clients (like Claude) to help them
+        This description is shown to MCP clients (like Claude / Codex / Gemini) to help them
         understand when and how to use the tool. It should be comprehensive
         and include trigger phrases.
 
@@ -148,6 +165,42 @@ class BaseTool(ABC):
             str: System prompt with role definition and instructions
         """
         pass
+
+    def get_capability_system_prompts(self, capabilities: Optional["ModelCapabilities"]) -> list[str]:
+        """Return additional system prompt snippets gated on model capabilities.
+
+        Subclasses can override this hook to append capability-specific
+        instructions (for example, enabling code-generation exports when a
+        model advertises support). The default implementation returns an empty
+        list so no extra instructions are appended.
+
+        Args:
+            capabilities: The resolved capabilities for the active model.
+
+        Returns:
+            List of prompt fragments to append after the base system prompt.
+        """
+
+        return []
+
+    def _augment_system_prompt_with_capabilities(
+        self, base_prompt: str, capabilities: Optional["ModelCapabilities"]
+    ) -> str:
+        """Merge capability-driven prompt addenda with the base system prompt."""
+
+        additions: list[str] = []
+        if capabilities is not None:
+            additions = [fragment.strip() for fragment in self.get_capability_system_prompts(capabilities) if fragment]
+
+        if not additions:
+            return base_prompt
+
+        addition_text = "\n\n".join(additions)
+        if not base_prompt:
+            return addition_text
+
+        suffix = "" if base_prompt.endswith("\n\n") else "\n\n"
+        return f"{base_prompt}{suffix}{addition_text}"
 
     def get_annotations(self) -> Optional[dict[str, Any]]:
         """
@@ -201,10 +254,10 @@ class BaseTool(ABC):
 
     def _should_require_model_selection(self, model_name: str) -> bool:
         """
-        Check if we should require Claude to select a model at runtime.
+        Check if we should require the CLI to select a model at runtime.
 
         This is called during request execution to determine if we need
-        to return an error asking Claude to provide a model parameter.
+        to return an error asking the CLI to provide a model parameter.
 
         Args:
             model_name: The model name from the request or DEFAULT_MODEL
@@ -233,7 +286,7 @@ class BaseTool(ABC):
 
         Only returns models from providers that have valid API keys configured.
         This fixes the namespace collision bug where models from disabled providers
-        were shown to Claude, causing routing conflicts.
+        were shown to the CLI, causing routing conflicts.
 
         Returns:
             List of model names from enabled providers only
@@ -244,7 +297,7 @@ class BaseTool(ABC):
         all_models = ModelProviderRegistry.get_available_model_names()
 
         # Add OpenRouter models if OpenRouter is configured
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        openrouter_key = get_env("OPENROUTER_API_KEY")
         if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
             try:
                 registry = self._get_openrouter_registry()
@@ -258,17 +311,13 @@ class BaseTool(ABC):
                 logging.debug(f"Failed to add OpenRouter models to enum: {e}")
 
         # Add custom models if custom API is configured
-        custom_url = os.getenv("CUSTOM_API_URL")
+        custom_url = get_env("CUSTOM_API_URL")
         if custom_url:
             try:
-                registry = self._get_openrouter_registry()
-                # Find all custom models (is_custom=true)
+                registry = self._get_custom_registry()
                 for alias in registry.list_aliases():
-                    config = registry.resolve(alias)
-                    # Check if this is a custom model that requires custom endpoints
-                    if config and config.is_custom:
-                        if alias not in all_models:
-                            all_models.append(alias)
+                    if alias not in all_models:
+                        all_models.append(alias)
             except Exception as e:
                 import logging
 
@@ -284,6 +333,196 @@ class BaseTool(ABC):
 
         return unique_models
 
+    def _format_available_models_list(self) -> str:
+        """Return a human-friendly list of available models or guidance when none found."""
+
+        summaries, total, has_restrictions = self._get_ranked_model_summaries()
+        if not summaries:
+            return (
+                "No models detected. Configure provider credentials or set DEFAULT_MODEL to a valid option. "
+                "If the user requested a specific model, respond with this notice instead of substituting another model."
+            )
+        display = "; ".join(summaries)
+        remainder = total - len(summaries)
+        if remainder > 0:
+            display = f"{display}; +{remainder} more (use the `listmodels` tool for the full roster)"
+        return display
+
+    @staticmethod
+    def _format_context_window(tokens: int) -> Optional[str]:
+        """Convert a raw context window into a short display string."""
+
+        if not tokens or tokens <= 0:
+            return None
+
+        if tokens >= 1_000_000:
+            if tokens % 1_000_000 == 0:
+                return f"{tokens // 1_000_000}M ctx"
+            return f"{tokens / 1_000_000:.1f}M ctx"
+
+        if tokens >= 1_000:
+            if tokens % 1_000 == 0:
+                return f"{tokens // 1_000}K ctx"
+            return f"{tokens / 1_000:.1f}K ctx"
+
+        return f"{tokens} ctx"
+
+    def _collect_ranked_capabilities(self) -> list[tuple[int, str, Any]]:
+        """Gather available model capabilities sorted by capability rank."""
+
+        from providers.registry import ModelProviderRegistry
+
+        ranked: list[tuple[int, str, Any]] = []
+        available = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+
+        for model_name, provider_type in available.items():
+            provider = ModelProviderRegistry.get_provider(provider_type)
+            if not provider:
+                continue
+
+            try:
+                capabilities = provider.get_capabilities(model_name)
+            except ValueError:
+                continue
+
+            rank = capabilities.get_effective_capability_rank()
+            ranked.append((rank, model_name, capabilities))
+
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        return ranked
+
+    @staticmethod
+    def _normalize_model_identifier(name: str) -> str:
+        """Normalize model names for deduplication across providers."""
+
+        normalized = name.lower()
+        if ":" in normalized:
+            normalized = normalized.split(":", 1)[0]
+        if "/" in normalized:
+            normalized = normalized.split("/", 1)[-1]
+        return normalized
+
+    def _get_ranked_model_summaries(self, limit: int = 5) -> tuple[list[str], int, bool]:
+        """Return formatted, ranked model summaries and restriction status."""
+
+        ranked = self._collect_ranked_capabilities()
+
+        # Build allowlist map (provider -> lowercase names) when restrictions are active
+        allowed_map: dict[Any, set[str]] = {}
+        try:
+            from utils.model_restrictions import get_restriction_service
+
+            restriction_service = get_restriction_service()
+            if restriction_service:
+                from providers.shared import ProviderType
+
+                for provider_type in ProviderType:
+                    allowed = restriction_service.get_allowed_models(provider_type)
+                    if allowed:
+                        allowed_map[provider_type] = {name.lower() for name in allowed if name}
+        except Exception:
+            allowed_map = {}
+
+        filtered: list[tuple[int, str, Any]] = []
+        seen_normalized: set[str] = set()
+
+        for rank, model_name, capabilities in ranked:
+            canonical_name = getattr(capabilities, "model_name", model_name)
+            canonical_lower = canonical_name.lower()
+            alias_lower = model_name.lower()
+            provider_type = getattr(capabilities, "provider", None)
+
+            if allowed_map:
+                if provider_type not in allowed_map:
+                    continue
+                allowed_set = allowed_map[provider_type]
+                if canonical_lower not in allowed_set and alias_lower not in allowed_set:
+                    continue
+
+            normalized = self._normalize_model_identifier(canonical_name)
+            if normalized in seen_normalized:
+                continue
+
+            seen_normalized.add(normalized)
+            filtered.append((rank, canonical_name, capabilities))
+
+        summaries: list[str] = []
+        for rank, canonical_name, capabilities in filtered[:limit]:
+            details: list[str] = []
+
+            context_str = self._format_context_window(capabilities.context_window)
+            if context_str:
+                details.append(context_str)
+
+            if capabilities.supports_extended_thinking:
+                details.append("thinking")
+
+            if capabilities.allow_code_generation:
+                details.append("code-gen")
+
+            base = f"{canonical_name} (score {rank}"
+            if details:
+                base = f"{base}, {', '.join(details)}"
+            summaries.append(f"{base})")
+
+        return summaries, len(filtered), bool(allowed_map)
+
+    def _get_restriction_note(self) -> Optional[str]:
+        """Return a string describing active per-provider allowlists, if any."""
+
+        env_labels = {
+            "OPENAI_ALLOWED_MODELS": "OpenAI",
+            "GOOGLE_ALLOWED_MODELS": "Google",
+            "XAI_ALLOWED_MODELS": "X.AI",
+            "OPENROUTER_ALLOWED_MODELS": "OpenRouter",
+            "DIAL_ALLOWED_MODELS": "DIAL",
+        }
+
+        notes: list[str] = []
+        for env_var, label in env_labels.items():
+            raw = get_env(env_var)
+            if not raw:
+                continue
+
+            models = sorted({token.strip() for token in raw.split(",") if token.strip()})
+            if not models:
+                continue
+
+            notes.append(f"{label}: {', '.join(models)}")
+
+        if not notes:
+            return None
+
+        return "Policy allows only → " + "; ".join(notes)
+
+    def _build_model_unavailable_message(self, model_name: str) -> str:
+        """Compose a consistent error message for unavailable model scenarios."""
+
+        tool_category = self.get_model_category()
+        suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
+        available_models_text = self._format_available_models_list()
+
+        return (
+            f"Model '{model_name}' is not available with current API keys. "
+            f"Available models: {available_models_text}. "
+            f"Suggested model for {self.get_name()}: '{suggested_model}' "
+            f"(category: {tool_category.value}). If the user explicitly requested a model, you MUST use that exact name or report this error back—do not substitute another model."
+        )
+
+    def _build_auto_mode_required_message(self) -> str:
+        """Compose the auto-mode prompt when an explicit model selection is required."""
+
+        tool_category = self.get_model_category()
+        suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
+        available_models_text = self._format_available_models_list()
+
+        return (
+            "Model parameter is required in auto mode. "
+            f"Available models: {available_models_text}. "
+            f"Suggested model for {self.get_name()}: '{suggested_model}' "
+            f"(category: {tool_category.value}). When the user names a model, relay that exact name—never swap in another option."
+        )
+
     def get_model_field_schema(self) -> dict[str, Any]:
         """
         Generate the model field schema based on auto mode configuration.
@@ -294,120 +533,59 @@ class BaseTool(ABC):
         Returns:
             Dict containing the model field JSON schema
         """
-        import os
 
         from config import DEFAULT_MODEL
 
-        # Check if OpenRouter is configured
-        has_openrouter = bool(
-            os.getenv("OPENROUTER_API_KEY") and os.getenv("OPENROUTER_API_KEY") != "your_openrouter_api_key_here"
-        )
-
         # Use the centralized effective auto mode check
         if self.is_effective_auto_mode():
-            # In auto mode, model is required and we provide detailed descriptions
-            model_desc_parts = [
-                "IMPORTANT: Use the model specified by the user if provided, OR select the most suitable model "
-                "for this specific task based on the requirements and capabilities listed below:"
-            ]
+            description = (
+                "Currently in auto model selection mode. CRITICAL: When the user names a model, you MUST use that exact name unless the server rejects it. "
+                "If no model is provided, you may use the `listmodels` tool to review options and select an appropriate match."
+            )
+            summaries, total, restricted = self._get_ranked_model_summaries()
+            remainder = max(0, total - len(summaries))
+            if summaries:
+                top_line = "; ".join(summaries)
+                if remainder > 0:
+                    label = "Allowed models" if restricted else "Top models"
+                    top_line = f"{label}: {top_line}; +{remainder} more via `listmodels`."
+                else:
+                    label = "Allowed models" if restricted else "Top models"
+                    top_line = f"{label}: {top_line}."
+                description = f"{description} {top_line}"
 
-            # Get descriptions from enabled providers
-            from providers.base import ProviderType
-            from providers.registry import ModelProviderRegistry
-
-            # Map provider types to readable names
-            provider_names = {
-                ProviderType.GOOGLE: "Gemini models",
-                ProviderType.OPENAI: "OpenAI models",
-                ProviderType.XAI: "X.AI GROK models",
-                ProviderType.DIAL: "DIAL models",
-                ProviderType.CUSTOM: "Custom models",
-                ProviderType.OPENROUTER: "OpenRouter models",
-            }
-
-            # Streamlined provider descriptions to reduce context usage
-            native_models = ModelProviderRegistry.get_available_model_names()
-            if native_models:
-                model_desc_parts.append(f"\nNative models: {', '.join(sorted(native_models[:5]))}{'...' if len(native_models) > 5 else ''}")
-
-            # Add custom models if custom API is configured - streamlined
-            custom_url = os.getenv("CUSTOM_API_URL")
-            if custom_url:
-                model_desc_parts.append(f"\nCustom models: Available via {custom_url}")
-
-            if has_openrouter:
-                # Add OpenRouter models with descriptions
-                try:
-                    import logging
-
-                    registry = self._get_openrouter_registry()
-
-                    # Group models by their model_name to avoid duplicates
-                    seen_models = set()
-                    model_configs = []
-
-                    for alias in registry.list_aliases():
-                        config = registry.resolve(alias)
-                        if config and config.model_name not in seen_models:
-                            seen_models.add(config.model_name)
-                            model_configs.append((alias, config))
-
-                    # Sort by context window (descending) then by alias
-                    model_configs.sort(key=lambda x: (-x[1].context_window, x[0]))
-
-                    if model_configs:
-                        # Streamlined OpenRouter models - removed verbose descriptions to reduce context usage
-                        total_models = len(model_configs)
-                        model_desc_parts.append(f"\nOpenRouter models: {total_models} models available - see enum for complete list")
-                except Exception as e:
-                    # Log for debugging but don't fail
-                    import logging
-
-                    logging.debug(f"Failed to load OpenRouter model descriptions: {e}")
-                    # Fallback to simple message
-                    model_desc_parts.append(
-                        "\nOpenRouter models: If configured, you can also use ANY model available on OpenRouter."
-                    )
-
-            # Get all available models for the enum
-            all_models = self._get_available_models()
-
-            return {
-                "type": "string",
-                "description": "\n".join(model_desc_parts),
-                "enum": all_models,
-            }
-        else:
-            # Normal mode - model is optional with default
-            available_models = self._get_available_models()
-            models_str = ", ".join(f"'{m}'" for m in available_models)  # Show ALL models so Claude can choose
-
-            description = f"Model to use. Native models: {models_str}."
-            if has_openrouter:
-                # Add OpenRouter aliases
-                try:
-                    registry = self._get_openrouter_registry()
-                    aliases = registry.list_aliases()
-
-                    # Show ALL aliases from the configuration
-                    if aliases:
-                        # Show all aliases so Claude knows every option available
-                        all_aliases = sorted(aliases)
-                        alias_list = ", ".join(f"'{a}'" for a in all_aliases)
-                        description += f" OpenRouter aliases: {alias_list}."
-                    else:
-                        description += " OpenRouter: Any model available on openrouter.ai."
-                except Exception:
-                    description += (
-                        " OpenRouter: Any model available on openrouter.ai "
-                        "(e.g., 'gpt-4', 'claude-4-opus', 'mistral-large')."
-                    )
-            description += f" Defaults to '{DEFAULT_MODEL}' if not specified."
-
+            restriction_note = self._get_restriction_note()
+            if restriction_note and (remainder > 0 or not summaries):
+                description = f"{description} {restriction_note}."
             return {
                 "type": "string",
                 "description": description,
             }
+
+        description = (
+            f"The default model is '{DEFAULT_MODEL}'. Override only when the user explicitly requests a different model, and use that exact name. "
+            "If the requested model fails validation, surface the server error instead of substituting another model. When unsure, use the `listmodels` tool for details."
+        )
+        summaries, total, restricted = self._get_ranked_model_summaries()
+        remainder = max(0, total - len(summaries))
+        if summaries:
+            top_line = "; ".join(summaries)
+            if remainder > 0:
+                label = "Allowed models" if restricted else "Preferred alternatives"
+                top_line = f"{label}: {top_line}; +{remainder} more via `listmodels`."
+            else:
+                label = "Allowed models" if restricted else "Preferred alternatives"
+                top_line = f"{label}: {top_line}."
+            description = f"{description} {top_line}"
+
+        restriction_note = self._get_restriction_note()
+        if restriction_note and (remainder > 0 or not summaries):
+            description = f"{description} {restriction_note}."
+
+        return {
+            "type": "string",
+            "description": description,
+        }
 
     def get_default_temperature(self) -> float:
         """
@@ -489,7 +667,7 @@ class BaseTool(ABC):
         """
         # Only validate files/paths if they exist in the request
         file_fields = [
-            "files",
+            "absolute_file_paths",
             "file",
             "path",
             "directory",
@@ -517,22 +695,38 @@ class BaseTool(ABC):
 
     def _validate_token_limit(self, content: str, content_type: str = "Content") -> None:
         """
-        Validate that content doesn't exceed the MCP prompt size limit.
+        Validate that user-provided content doesn't exceed the MCP prompt size limit.
+
+        This enforcement is strictly for text crossing the MCP transport boundary
+        (i.e., user input). Internal prompt construction may exceed this size and is
+        governed by model-specific token limits.
 
         Args:
-            content: The content to validate
+            content: The user-originated content to validate
             content_type: Description of the content type for error messages
 
         Raises:
-            ValueError: If content exceeds size limit
+            ValueError: If content exceeds the character size limit
         """
-        is_valid, token_count = check_token_limit(content, MCP_PROMPT_SIZE_LIMIT)
-        if not is_valid:
-            error_msg = f"~{token_count:,} tokens. Maximum is {MCP_PROMPT_SIZE_LIMIT:,} tokens."
+        if not content:
+            logger.debug(f"{self.name} tool {content_type.lower()} validation skipped (no content)")
+            return
+
+        char_count = len(content)
+        if char_count > MCP_PROMPT_SIZE_LIMIT:
+            token_estimate = estimate_tokens(content)
+            error_msg = (
+                f"{char_count:,} characters (~{token_estimate:,} tokens). "
+                f"Maximum is {MCP_PROMPT_SIZE_LIMIT:,} characters."
+            )
             logger.error(f"{self.name} tool {content_type.lower()} validation failed: {error_msg}")
             raise ValueError(f"{content_type} too large: {error_msg}")
 
-        logger.debug(f"{self.name} tool {content_type.lower()} token validation passed: {token_count:,} tokens")
+        token_estimate = estimate_tokens(content)
+        logger.debug(
+            f"{self.name} tool {content_type.lower()} validation passed: "
+            f"{char_count:,} characters (~{token_estimate:,} tokens)"
+        )
 
     def get_model_provider(self, model_name: str) -> ModelProvider:
         """
@@ -554,8 +748,7 @@ class BaseTool(ABC):
             provider = ModelProviderRegistry.get_provider_for_model(model_name)
             if not provider:
                 logger.error(f"No provider found for model '{model_name}' in {self.name} tool")
-                available_models = ModelProviderRegistry.get_available_models()
-                raise ValueError(f"Model '{model_name}' is not available. Available models: {available_models}")
+                raise ValueError(self._build_model_unavailable_message(model_name))
 
             return provider
         except Exception as e:
@@ -692,17 +885,17 @@ class BaseTool(ABC):
 
     def handle_prompt_file(self, files: Optional[list[str]]) -> tuple[Optional[str], Optional[list[str]]]:
         """
-        Check for and handle prompt.txt in the files list.
+        Check for and handle prompt.txt in the absolute file paths list.
 
         If prompt.txt is found, reads its content and removes it from the files list.
         This file is treated specially as the main prompt, not as an embedded file.
 
         This mechanism allows us to work around MCP's ~25K token limit by having
-        Claude save large prompts to a file, effectively using the file transfer
+        the CLI save large prompts to a file, effectively using the file transfer
         mechanism to bypass token constraints while preserving response capacity.
 
         Args:
-            files: List of file paths (will be translated for current environment)
+            files: List of absolute file paths (will be translated for current environment)
 
         Returns:
             tuple: (prompt_content, updated_files_list)
@@ -774,7 +967,7 @@ class BaseTool(ABC):
         Check if USER INPUT text is too large for MCP transport boundary.
 
         IMPORTANT: This method should ONLY be used to validate user input that crosses
-        the Claude CLI ↔ MCP Server transport boundary. It should NOT be used to limit
+        the CLI ↔ MCP Server transport boundary. It should NOT be used to limit
         internal MCP Server operations.
 
         Args:
@@ -790,7 +983,7 @@ class BaseTool(ABC):
                     f"MANDATORY ACTION REQUIRED: The prompt is too large for MCP's token limits (>{MCP_PROMPT_SIZE_LIMIT:,} characters). "
                     "YOU MUST IMMEDIATELY save the prompt text to a temporary file named 'prompt.txt' in the working directory. "
                     "DO NOT attempt to shorten or modify the prompt. SAVE IT AS-IS to 'prompt.txt'. "
-                    "Then resend the request with the absolute file path to 'prompt.txt' in the files parameter (must be FULL absolute path - DO NOT SHORTEN), "
+                    "Then resend the request, passing the absolute file path to 'prompt.txt' as part of the tool call, "
                     "along with any other files you wish to share as context. Leave the prompt text itself empty or very brief in the new request. "
                     "This is the ONLY way to handle large prompts - you MUST follow these exact steps."
                 ),
@@ -798,7 +991,7 @@ class BaseTool(ABC):
                 "metadata": {
                     "prompt_size": len(text),
                     "limit": MCP_PROMPT_SIZE_LIMIT,
-                    "instructions": "MANDATORY: Save prompt to 'prompt.txt' in current folder and include absolute path in files parameter. DO NOT modify or shorten the prompt.",
+                    "instructions": "MANDATORY: Save prompt to 'prompt.txt' in current folder and provide full path when recalling this tool.",
                 },
             }
         return None
@@ -970,25 +1163,22 @@ class BaseTool(ABC):
         )
         return result, actually_processed_files
 
-    def get_websearch_instruction(self, use_websearch: bool, tool_specific: Optional[str] = None) -> str:
+    def get_websearch_instruction(self, tool_specific: Optional[str] = None) -> str:
         """
-        Generate standardized web search instruction based on the use_websearch parameter.
+        Generate standardized web search instruction.
 
         Args:
-            use_websearch: Whether web search is enabled
             tool_specific: Optional tool-specific search guidance
 
         Returns:
-            str: Web search instruction to append to prompt, or empty string
+            str: Web search instruction to append to prompt
         """
-        if not use_websearch:
-            return ""
 
         base_instruction = """
 
-WEB SEARCH CAPABILITY: You can request Claude to perform web searches to enhance your analysis with current information!
+WEB SEARCH CAPABILITY: You can request the calling agent to perform web searches to enhance your analysis with current information!
 
-IMPORTANT: When you identify areas where web searches would significantly improve your response (such as checking current documentation, finding recent solutions, verifying best practices, or gathering community insights), you MUST explicitly instruct Claude to perform specific web searches and then respond back using the continuation_id from this response to continue the analysis.
+IMPORTANT: When you identify areas where web searches would significantly improve your response (such as checking current documentation, finding recent solutions, verifying best practices, or gathering community insights), you MUST explicitly instruct the agent to perform specific web searches and then respond back using the continuation_id from this response to continue the analysis.
 
 Use clear, direct language based on the value of the search:
 
@@ -1018,7 +1208,7 @@ Consider requesting searches for:
 - Security advisories and patches
 - Performance benchmarks and optimizations
 
-When recommending searches, be specific about what information you need and why it would improve your analysis. Always remember to instruct Claude to use the continuation_id from this response when providing search results."""
+When recommending searches, be specific about what information you need and why it would improve your analysis. Always remember to instruct agent to use the continuation_id from this response when providing search results."""
 
     def get_language_instruction(self) -> str:
         """
@@ -1029,10 +1219,9 @@ When recommending searches, be specific about what information you need and why 
                  no locale set
         """
         # Read LOCALE directly from environment to support dynamic changes
-        # This allows tests to modify os.environ["LOCALE"] and see the changes
-        import os
+        # Tests can monkeypatch LOCALE via the environment helper (or .env when override is enforced)
 
-        locale = os.getenv("LOCALE", "").strip()
+        locale = (get_env("LOCALE", "") or "").strip()
 
         if not locale:
             return ""
@@ -1093,10 +1282,10 @@ When recommending searches, be specific about what information you need and why 
 
     def _should_require_model_selection(self, model_name: str) -> bool:
         """
-        Check if we should require Claude to select a model at runtime.
+        Check if we should require the CLI to select a model at runtime.
 
         This is called during request execution to determine if we need
-        to return an error asking Claude to provide a model parameter.
+        to return an error asking the CLI to provide a model parameter.
 
         Args:
             model_name: The model name from the request or DEFAULT_MODEL
@@ -1124,7 +1313,7 @@ When recommending searches, be specific about what information you need and why 
 
         Only returns models from providers that have valid API keys configured.
         This fixes the namespace collision bug where models from disabled providers
-        were shown to Claude, causing routing conflicts.
+        were shown to the CLI, causing routing conflicts.
 
         Returns:
             List of model names from enabled providers only
@@ -1134,17 +1323,42 @@ When recommending searches, be specific about what information you need and why 
         # Get models from enabled providers only (those with valid API keys)
         all_models = ModelProviderRegistry.get_available_model_names()
 
-        # Add OpenRouter models if OpenRouter is configured
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        # Add OpenRouter models and their aliases when OpenRouter is configured
+        openrouter_key = get_env("OPENROUTER_API_KEY")
         if openrouter_key and openrouter_key != "your_openrouter_api_key_here":
             try:
-                from config import OPENROUTER_MODELS
+                registry = self._get_openrouter_registry()
 
-                all_models.extend(OPENROUTER_MODELS)
-            except ImportError:
-                pass
+                for alias in registry.list_aliases():
+                    if alias not in all_models:
+                        all_models.append(alias)
+            except Exception as exc:  # pragma: no cover - logged for observability
+                import logging
 
-        return sorted(set(all_models))
+                logging.debug(f"Failed to add OpenRouter models to enum: {exc}")
+
+        # Add custom models (and their aliases) when a custom endpoint is available
+        custom_url = get_env("CUSTOM_API_URL")
+        if custom_url:
+            try:
+                registry = self._get_custom_registry()
+                for alias in registry.list_aliases():
+                    if alias not in all_models:
+                        all_models.append(alias)
+            except Exception as exc:  # pragma: no cover - logged for observability
+                import logging
+
+                logging.debug(f"Failed to add custom models to enum: {exc}")
+
+        # Remove duplicates while preserving insertion order
+        seen: set[str] = set()
+        unique_models: list[str] = []
+        for model in all_models:
+            if model not in seen:
+                seen.add(model)
+                unique_models.append(model)
+
+        return unique_models
 
     def _resolve_model_context(self, arguments: dict, request) -> tuple[str, Any]:
         """
@@ -1183,29 +1397,11 @@ When recommending searches, be specific about what information you need and why 
 
             # For tests: Check if we should require model selection (auto mode)
             if self._should_require_model_selection(model_name):
-                # Get suggested model based on tool category
-                from providers.registry import ModelProviderRegistry
-
-                tool_category = self.get_model_category()
-                suggested_model = ModelProviderRegistry.get_preferred_fallback_model(tool_category)
-
                 # Build error message based on why selection is required
                 if model_name.lower() == "auto":
-                    error_message = (
-                        f"Model parameter is required in auto mode. "
-                        f"Suggested model for {self.get_name()}: '{suggested_model}' "
-                        f"(category: {tool_category.value})"
-                    )
+                    error_message = self._build_auto_mode_required_message()
                 else:
-                    # Model was specified but not available
-                    available_models = self._get_available_models()
-
-                    error_message = (
-                        f"Model '{model_name}' is not available with current API keys. "
-                        f"Available models: {', '.join(available_models)}. "
-                        f"Suggested model for {self.get_name()}: '{suggested_model}' "
-                        f"(category: {tool_category.value})"
-                    )
+                    error_message = self._build_model_unavailable_message(model_name)
                 raise ValueError(error_message)
 
             # Create model context for tests
@@ -1278,31 +1474,6 @@ When recommending searches, be specific about what information you need and why 
         import base64
         from pathlib import Path
 
-        # Handle legacy calls (positional model_name string)
-        if isinstance(model_context, str):
-            # Legacy call: _validate_image_limits(images, "model-name")
-            logger.warning(
-                "Legacy _validate_image_limits call with model_name string. Use model_context object instead."
-            )
-            try:
-                from utils.model_context import ModelContext
-
-                model_context = ModelContext(model_context)
-            except Exception as e:
-                logger.warning(f"Failed to create model context from legacy model_name: {e}")
-                # Generic error response for any unavailable model
-                return {
-                    "status": "error",
-                    "content": f"Model '{model_context}' is not available. {str(e)}",
-                    "content_type": "text",
-                    "metadata": {
-                        "error_type": "validation_error",
-                        "model_name": model_context,
-                        "supports_images": None,  # Unknown since model doesn't exist
-                        "image_count": len(images) if images else 0,
-                    },
-                }
-
         if not model_context:
             # Get from tool's stored context as fallback
             model_context = getattr(self, "_model_context", None)
@@ -1320,7 +1491,7 @@ When recommending searches, be specific about what information you need and why 
             model_name = getattr(model_context, "model_name", "unknown")
             return {
                 "status": "error",
-                "content": f"Model '{model_name}' is not available. {str(e)}",
+                "content": self._build_model_unavailable_message(model_name),
                 "content_type": "text",
                 "metadata": {
                     "error_type": "validation_error",
@@ -1397,7 +1568,7 @@ When recommending searches, be specific about what information you need and why 
         # Apply 40MB cap for custom models if needed
         effective_limit_mb = max_size_mb
         try:
-            from providers.base import ProviderType
+            from providers.shared import ProviderType
 
             # ModelCapabilities dataclass has provider field defined
             if capabilities.provider == ProviderType.CUSTOM:

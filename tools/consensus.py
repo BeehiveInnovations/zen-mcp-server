@@ -28,8 +28,8 @@ from mcp.types import TextContent
 
 from config import TEMPERATURE_ANALYTICAL
 from systemprompts import CONSENSUS_PROMPT
-from tools.shared.base_models import WorkflowRequest
-from utils.model_context import ModelContext
+from tools.shared.base_models import ConsolidatedFindings, WorkflowRequest
+from utils.conversation_memory import MAX_CONVERSATION_TURNS, create_thread, get_thread
 
 from .workflow.base import WorkflowTool
 
@@ -38,45 +38,24 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions for consensus workflow
 CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS = {
     "step": (
-        "The core question for consensus. Step 1: Provide the EXACT proposal for all models to evaluate. "
-        "CRITICAL: This text is sent to all models and must be a clear question, not a self-referential statement "
-        "(e.g., use 'Evaluate...' not 'I will evaluate...'). Steps 2+: Internal notes on the last model's response; this is NOT sent to other models."
+        "Consensus prompt. Step 1: write the exact proposal/question every model will see (use 'Evaluate…', not meta commentary). "
+        "Steps 2+: capture internal notes about the latest model response—these notes are NOT sent to other models."
     ),
-    "step_number": (
-        "The index of the current step in the consensus workflow, beginning at 1. Step 1 is your analysis, "
-        "steps 2+ are for processing individual model responses."
-    ),
-    "total_steps": (
-        "Total number of steps needed. This equals the number of models to consult. "
-        "Step 1 includes your analysis + first model consultation on return of the call. Final step includes "
-        "last model consultation + synthesis."
-    ),
-    "next_step_required": ("Set to true if more models need to be consulted. False when ready for final synthesis."),
+    "step_number": "Current step index (starts at 1). Step 1 is your analysis; steps 2+ handle each model response.",
+    "total_steps": "Total steps = number of models consulted plus the final synthesis step.",
+    "next_step_required": "True if more model consultations remain; set false when ready to synthesize.",
     "findings": (
-        "Your analysis of the consensus topic. Step 1: Your independent, comprehensive analysis of the proposal. "
-        "CRITICAL: This is for the final synthesis and is NOT sent to the other models. "
-        "Steps 2+: A summary of the key points from the most recent model's response."
+        "Step 1: your independent analysis for later synthesis (not shared with other models). Steps 2+: summarize the newest model response."
     ),
-    "relevant_files": (
-        "Files that are relevant to the consensus analysis. Include files that help understand the proposal, "
-        "provide context, or contain implementation details."
-    ),
+    "relevant_files": "Optional supporting files that help the consensus analysis. Must be absolute full, non-abbreviated paths.",
     "models": (
-        "List of model configurations to consult. Each can have a model name, stance (for/against/neutral), "
-        "and optional custom stance prompt. The same model can be used multiple times with different stances, "
-        "but each model + stance combination must be unique. "
-        "Example: [{'model': 'o3', 'stance': 'for'}, {'model': 'o3', 'stance': 'against'}, "
-        "{'model': 'flash', 'stance': 'neutral'}]"
+        "User-specified list of models to consult (provide at least two entries). "
+        "Each entry may include model, stance (for/against/neutral), and stance_prompt. "
+        "Each (model, stance) pair must be unique, e.g. [{'model':'gpt5','stance':'for'}, {'model':'pro','stance':'against'}]."
     ),
-    "current_model_index": (
-        "Internal tracking of which model is being consulted (0-based index). Used to determine which model "
-        "to call next."
-    ),
-    "model_responses": ("Accumulated responses from models consulted so far. Internal field for tracking progress."),
-    "images": (
-        "Optional list of image paths or base64 data URLs for visual context. Useful for UI/UX discussions, "
-        "architecture diagrams, mockups, or any visual references that help inform the consensus analysis."
-    ),
+    "current_model_index": "0-based index of the next model to consult (managed internally).",
+    "model_responses": "Internal log of responses gathered so far.",
+    "images": "Optional absolute image paths or base64 references that add helpful visual context.",
 }
 
 
@@ -116,14 +95,12 @@ class ConsensusRequest(WorkflowRequest):
     # Override inherited fields to exclude them from schema
     temperature: float | None = Field(default=None, exclude=True)
     thinking_mode: str | None = Field(default=None, exclude=True)
-    use_websearch: bool | None = Field(default=None, exclude=True)
 
     # Not used in consensus workflow
     files_checked: list[str] | None = Field(default_factory=list, exclude=True)
     relevant_context: list[str] | None = Field(default_factory=list, exclude=True)
     issues_found: list[dict] | None = Field(default_factory=list, exclude=True)
     hypothesis: str | None = Field(None, exclude=True)
-    backtrack_from_step: int | None = Field(None, exclude=True)
 
     @model_validator(mode="after")
     def validate_step_one_requirements(self):
@@ -257,7 +234,11 @@ of the evidence, even when it strongly points in one direction.""",
                     },
                     "required": ["model"],
                 },
-                "description": CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["models"],
+                "description": (
+                    "User-specified roster of models to consult (provide at least two entries). "
+                    + CONSENSUS_WORKFLOW_FIELD_DESCRIPTIONS["models"]
+                ),
+                "minItems": 2,
             },
             "current_model_index": {
                 "type": "integer",
@@ -276,13 +257,41 @@ of the evidence, even when it strongly points in one direction.""",
             },
         }
 
+        # Provide guidance on available models similar to single-model tools
+        model_description = (
+            "When the user names a model, you MUST use that exact value or report the "
+            "provider error—never swap in another option. Use the `listmodels` tool for the full roster."
+        )
+
+        summaries, total, restricted = self._get_ranked_model_summaries()
+        remainder = max(0, total - len(summaries))
+        if summaries:
+            label = "Allowed models" if restricted else "Top models"
+            top_line = "; ".join(summaries)
+            if remainder > 0:
+                top_line = f"{label}: {top_line}; +{remainder} more via `listmodels`."
+            else:
+                top_line = f"{label}: {top_line}."
+            model_description = f"{model_description} {top_line}"
+        else:
+            model_description = (
+                f"{model_description} No models detected—configure provider credentials or use the `listmodels` tool "
+                "to inspect availability."
+            )
+
+        restriction_note = self._get_restriction_note()
+        if restriction_note and (remainder > 0 or not summaries):
+            model_description = f"{model_description} {restriction_note}."
+
+        existing_models_desc = consensus_field_overrides["models"]["description"]
+        consensus_field_overrides["models"]["description"] = f"{existing_models_desc} {model_description}"
+
         # Define excluded fields for consensus workflow
         excluded_workflow_fields = [
             "files_checked",  # Not used in consensus workflow
             "relevant_context",  # Not used in consensus workflow
             "issues_found",  # Not used in consensus workflow
             "hypothesis",  # Not used in consensus workflow
-            "backtrack_from_step",  # Not used in consensus workflow
             "confidence",  # Not used in consensus workflow
         ]
 
@@ -290,20 +299,21 @@ of the evidence, even when it strongly points in one direction.""",
             "model",  # Consensus uses 'models' field instead
             "temperature",  # Not used in consensus workflow
             "thinking_mode",  # Not used in consensus workflow
-            "use_websearch",  # Not used in consensus workflow
         ]
 
-        # Build schema with proper field exclusion
-        # Include model field for compatibility but don't require it
-        schema = WorkflowSchemaBuilder.build_schema(
+        requires_model = self.requires_model()
+        model_field_schema = self.get_model_field_schema() if requires_model else None
+        auto_mode = self.is_effective_auto_mode() if requires_model else False
+
+        return WorkflowSchemaBuilder.build_schema(
             tool_specific_fields=consensus_field_overrides,
-            model_field_schema=self.get_model_field_schema(),
-            auto_mode=False,  # Consensus doesn't require model at MCP boundary
+            model_field_schema=model_field_schema,
+            auto_mode=auto_mode,
             tool_name=self.get_name(),
             excluded_workflow_fields=excluded_workflow_fields,
             excluded_common_fields=excluded_common_fields,
+            require_model=requires_model,
         )
-        return schema
 
     def get_required_actions(
         self, step_number: int, confidence: str, findings: str, total_steps: int, request=None
@@ -432,11 +442,21 @@ of the evidence, even when it strongly points in one direction.""",
         # Validate request
         request = self.get_workflow_request_model()(**arguments)
 
-        # On first step, store the models to consult
+        # Resolve existing continuation_id or create a new one on first step
+        continuation_id = request.continuation_id
+
         if request.step_number == 1:
+            if not continuation_id:
+                clean_args = {k: v for k, v in arguments.items() if k not in ["_model_context", "_resolved_model_name"]}
+                continuation_id = create_thread(self.get_name(), clean_args)
+                request.continuation_id = continuation_id
+                arguments["continuation_id"] = continuation_id
+                self.work_history = []
+                self.consolidated_findings = ConsolidatedFindings()
+
             # Store the original proposal from step 1 - this is what all models should see
-            self.original_proposal = request.step
-            self.initial_prompt = request.step  # Keep for backward compatibility
+            self.store_initial_issue(request.step)
+            self.initial_request = request.step
             self.models_to_consult = request.models or []
             self.accumulated_responses = []
             # Set total steps: len(models) (each step includes consultation + response)
@@ -448,6 +468,11 @@ of the evidence, even when it strongly points in one direction.""",
             model_idx = request.step_number - 1  # 0-based index
 
             if model_idx < len(self.models_to_consult):
+                # Track workflow state for conversation memory
+                step_data = self.prepare_step_data(request)
+                self.work_history.append(step_data)
+                self._update_consolidated_findings(step_data)
+
                 # Consult the model for this step
                 model_response = await self._consult_model(self.models_to_consult[model_idx], request)
 
@@ -502,30 +527,62 @@ of the evidence, even when it strongly points in one direction.""",
                         f"- findings: Summarize key points from this model's response"
                     )
 
-                # Add accumulated responses for tracking
-                response_data["accumulated_responses"] = self.accumulated_responses
+                # Add continuation information and workflow customization
+                response_data = self.customize_workflow_response(response_data, request)
 
-                # Add metadata (since we're bypassing the base class metadata addition)
-                model_name = self.get_request_model_name(request)
-                provider = self.get_model_provider(model_name)
-                response_data["metadata"] = {
-                    "tool_name": self.get_name(),
-                    "model_name": model_name,
-                    "model_used": model_name,
-                    "provider_used": provider.get_provider_type().value,
-                }
+                # Ensure consensus-specific metadata is attached
+                self._add_workflow_metadata(response_data, arguments)
+
+                if continuation_id:
+                    self.store_conversation_turn(continuation_id, response_data, request)
+                    continuation_offer = self._build_continuation_offer(continuation_id)
+                    if continuation_offer:
+                        response_data["continuation_offer"] = continuation_offer
 
                 return [TextContent(type="text", text=json.dumps(response_data, indent=2, ensure_ascii=False))]
 
         # Otherwise, use standard workflow execution
         return await super().execute_workflow(arguments)
 
+    def _build_continuation_offer(self, continuation_id: str) -> dict[str, Any] | None:
+        """Create a continuation offer without exposing prior model responses."""
+        try:
+            from tools.models import ContinuationOffer
+
+            thread = get_thread(continuation_id)
+            if thread and thread.turns:
+                remaining_turns = max(0, MAX_CONVERSATION_TURNS - len(thread.turns))
+            else:
+                remaining_turns = MAX_CONVERSATION_TURNS - 1
+
+            # Provide a neutral note specific to consensus workflow
+            note = (
+                f"Consensus workflow can continue for {remaining_turns} more exchanges."
+                if remaining_turns > 0
+                else "Consensus workflow continuation limit reached."
+            )
+
+            continuation_offer = ContinuationOffer(
+                continuation_id=continuation_id,
+                note=note,
+                remaining_turns=remaining_turns,
+            )
+            return continuation_offer.model_dump()
+        except Exception:
+            return None
+
     async def _consult_model(self, model_config: dict, request) -> dict:
         """Consult a single model and return its response."""
         try:
+            # Import and create ModelContext once at the beginning
+            from utils.model_context import ModelContext
+
             # Get the provider for this model
             model_name = model_config["model"]
             provider = self.get_model_provider(model_name)
+
+            # Create model context once and reuse for both file processing and temperature validation
+            model_context = ModelContext(model_name=model_name)
 
             # Prepare the prompt with any relevant files
             # Use continuation_id=None for blinded consensus - each model should only see
@@ -538,6 +595,7 @@ of the evidence, even when it strongly points in one direction.""",
                     request.relevant_files,
                     None,  # Use None instead of request.continuation_id for blinded consensus
                     "Context files",
+                    model_context=model_context,
                 )
                 if file_content:
                     prompt = f"{prompt}\n\n=== CONTEXT FILES ===\n{file_content}\n=== END CONTEXT ==="
@@ -546,9 +604,6 @@ of the evidence, even when it strongly points in one direction.""",
             stance = model_config.get("stance", "neutral")
             stance_prompt = model_config.get("stance_prompt")
             system_prompt = self._get_stance_enhanced_prompt(stance, stance_prompt)
-
-            # Get model context for temperature validation
-            model_context = ModelContext(model_name=model_name)
 
             # Validate temperature against model constraints (respects supports_temperature)
             validated_temperature, temp_warnings = self.validate_and_correct_temperature(

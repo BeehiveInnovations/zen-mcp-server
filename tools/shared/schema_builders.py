@@ -32,11 +32,6 @@ class SchemaBuilder:
             "enum": ["minimal", "low", "medium", "high", "max"],
             "description": COMMON_FIELD_DESCRIPTIONS["thinking_mode"],
         },
-        "use_websearch": {
-            "type": "boolean",
-            "description": COMMON_FIELD_DESCRIPTIONS["use_websearch"],
-            "default": True,
-        },
         "continuation_id": {
             "type": "string",
             "description": COMMON_FIELD_DESCRIPTIONS["continuation_id"],
@@ -50,10 +45,10 @@ class SchemaBuilder:
 
     # Simple tool-specific field schemas (workflow tools use relevant_files instead)
     SIMPLE_FIELD_SCHEMAS = {
-        "files": {
+        "absolute_file_paths": {
             "type": "array",
             "items": {"type": "string"},
-            "description": COMMON_FIELD_DESCRIPTIONS["files"],
+            "description": COMMON_FIELD_DESCRIPTIONS["absolute_file_paths"],
         },
     }
 
@@ -63,6 +58,7 @@ class SchemaBuilder:
         required_fields: list[str] = None,
         model_field_schema: dict[str, Any] = None,
         auto_mode: bool = False,
+        require_model: bool = False,
     ) -> dict[str, Any]:
         """
         Build complete schema for simple tools.
@@ -93,8 +89,8 @@ class SchemaBuilder:
             properties.update(tool_specific_fields)
 
         # Build required fields list
-        required = required_fields or []
-        if auto_mode and "model" not in required:
+        required = list(required_fields) if required_fields else []
+        if (auto_mode or require_model) and "model" not in required:
             required.append("model")
 
         # Build the complete schema

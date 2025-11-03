@@ -71,13 +71,6 @@ class ThinkDeepWorkflowRequest(WorkflowRequest):
         description="exploring/low/medium/high/very_high/almost_certain/certain. CRITICAL: 'certain' PREVENTS external validation.",
     )
 
-    # Advanced workflow features
-    backtrack_from_step: Optional[int] = Field(
-        default=None,
-        description="Step number to backtrack from if revision needed.",
-        ge=1,
-    )
-
     # Expert analysis configuration - keep these fields available for configuring the final assistant model
     # in expert analysis (commented out exclude=True)
     temperature: Optional[float] = Field(
@@ -90,11 +83,6 @@ class ThinkDeepWorkflowRequest(WorkflowRequest):
         default=None,
         description="Depth: minimal/low/medium/high/max. Default 'high'.",
     )
-    use_websearch: Optional[bool] = Field(
-        default=None,
-        description="Enable web search for docs, brainstorming, architecture, solutions.",
-    )
-
     # Context files and investigation scope
     problem_context: Optional[str] = Field(
         default=None,
@@ -199,11 +187,6 @@ class ThinkDeepTool(WorkflowTool):
             self.stored_request_params["thinking_mode"] = request.thinking_mode
         except AttributeError:
             self.stored_request_params["thinking_mode"] = None
-
-        try:
-            self.stored_request_params["use_websearch"] = request.use_websearch
-        except AttributeError:
-            self.stored_request_params["use_websearch"] = None
 
         # Add thinking-specific context to response
         response_data.update(
@@ -348,16 +331,6 @@ but also acknowledge strong insights and valid conclusions.
         except AttributeError:
             pass
         return super().get_request_thinking_mode(request)
-
-    def get_request_use_websearch(self, request) -> bool:
-        """Use stored use_websearch from initial request."""
-        try:
-            stored_params = self.stored_request_params
-            if stored_params and stored_params.get("use_websearch") is not None:
-                return stored_params["use_websearch"]
-        except AttributeError:
-            pass
-        return super().get_request_use_websearch(request)
 
     def _get_problem_context(self, request) -> str:
         """Get problem context from request. Override for custom context handling."""

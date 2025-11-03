@@ -4,6 +4,7 @@ This test file ensures our pip detection improvements work correctly
 and don't break existing functionality.
 """
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -98,6 +99,29 @@ class TestPipDetectionFix:
 
         for pattern in expected_diagnostic_patterns:
             assert pattern in content, f"Enhanced diagnostic pattern '{pattern}' should be in script"
+
+    def test_setup_env_file_does_not_create_bsd_backup(self, tmp_path):
+        """Ensure setup_env_file avoids creating .env'' artifacts (BSD sed behavior)."""
+        script_path = Path("./run-server.sh").resolve()
+
+        # Prepare temp workspace with example env
+        env_example = Path(".env.example").read_text()
+        target_example = tmp_path / ".env.example"
+        target_example.write_text(env_example)
+
+        # Run setup_env_file inside isolated shell session
+        command = f"""
+        set -e
+        cd "{tmp_path}"
+        source "{script_path}"
+        setup_env_file
+        """
+        env = os.environ.copy()
+        subprocess.run(["bash", "-lc", command], check=True, env=env, text=True)
+
+        artifacts = {p.name for p in tmp_path.glob(".env*")}
+        assert ".env''" not in artifacts, "setup_env_file should not create BSD sed backup artifacts"
+        assert ".env" in artifacts, ".env should be created from .env.example"
 
 
 if __name__ == "__main__":

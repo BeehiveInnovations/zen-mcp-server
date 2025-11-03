@@ -12,6 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from tools.challenge import ChallengeRequest, ChallengeTool
+from tools.shared.exceptions import ToolExecutionError
 
 
 class TestChallengeTool:
@@ -26,7 +27,7 @@ class TestChallengeTool:
         assert self.tool.get_name() == "challenge"
         assert "reflexive agreement" in self.tool.get_description()
         assert "critical thinking" in self.tool.get_description()
-        assert "thoughtful evaluation" in self.tool.get_description()
+        assert "reasoned analysis" in self.tool.get_description()
         assert self.tool.get_default_temperature() == 0.2  # TEMPERATURE_ANALYTICAL
 
     def test_requires_model(self):
@@ -54,7 +55,6 @@ class TestChallengeTool:
         assert "model" not in properties
         assert "temperature" not in properties
         assert "thinking_mode" not in properties
-        assert "use_websearch" not in properties
         assert "continuation_id" not in properties
 
     def test_request_model_validation(self):
@@ -111,10 +111,10 @@ class TestChallengeTool:
         """Test error handling in execute method"""
         # Test with invalid arguments (non-dict)
         with patch.object(self.tool, "get_request_model", side_effect=Exception("Test error")):
-            result = await self.tool.execute({"prompt": "test"})
+            with pytest.raises(ToolExecutionError) as exc_info:
+                await self.tool.execute({"prompt": "test"})
 
-        assert len(result) == 1
-        response_data = json.loads(result[0].text)
+        response_data = json.loads(exc_info.value.payload)
         assert response_data["status"] == "error"
         assert "Test error" in response_data["error"]
 
@@ -154,8 +154,8 @@ class TestChallengeTool:
 
         assert "prompt" in fields
         assert fields["prompt"]["type"] == "string"
-        assert "message or statement" in fields["prompt"]["description"]
-        assert "analyze critically" in fields["prompt"]["description"]
+        assert "Statement to scrutinize" in fields["prompt"]["description"]
+        assert "strip the word 'challenge'" in fields["prompt"]["description"]
 
     def test_required_fields_list(self):
         """Test required fields list"""

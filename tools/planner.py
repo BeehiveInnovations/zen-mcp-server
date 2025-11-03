@@ -39,18 +39,18 @@ logger = logging.getLogger(__name__)
 # Tool-specific field descriptions matching original planner tool
 PLANNER_FIELD_DESCRIPTIONS = {
     "step": (
-        "Your current planning step content. Step 1: Describe the task/problem to plan in detail for breakdown. "
-        "Subsequent steps: Provide planning content (steps, revisions, questions, approach changes, etc.)."
+        "Planning content for this step. Step 1: describe the task, problem and scope. Later steps: capture updates, "
+        "revisions, branches, or open questions that shape the plan."
     ),
-    "step_number": "Current step number in the planning sequence (starts at 1)",
-    "total_steps": "Current estimate of total steps needed (can be adjusted up/down as planning progresses)",
-    "next_step_required": "Whether another planning step is required after this one",
-    "is_step_revision": "True if this step revises/replaces a previous step",
-    "revises_step_number": "If is_step_revision is true, which step number is being revised",
-    "is_branch_point": "True if this step branches from a previous step to explore alternatives",
-    "branch_from_step": "If is_branch_point is true, which step number is the branching point",
-    "branch_id": "Identifier for the current branch (e.g., 'approach-A', 'microservices-path')",
-    "more_steps_needed": "True if more steps are needed beyond the initial estimate",
+    "step_number": "Current planning step number (starts at 1).",
+    "total_steps": "Estimated number of planning steps; adjust as the plan evolves.",
+    "next_step_required": "Set true when another planning step will follow after this one.",
+    "is_step_revision": "Set true when you are replacing a previously recorded step.",
+    "revises_step_number": "Step number being replaced when revising.",
+    "is_branch_point": "True when this step creates a new branch to explore an alternative path.",
+    "branch_from_step": "If branching, the step number that this branch starts from.",
+    "branch_id": "Name for this branch (e.g. 'approach-A', 'migration-path').",
+    "more_steps_needed": "True when you now expect to add additional steps beyond the prior estimate.",
 }
 
 
@@ -83,12 +83,10 @@ class PlannerRequest(WorkflowRequest):
     issues_found: list[dict] = Field(default_factory=list, exclude=True, description="Planning doesn't find issues")
     confidence: str = Field(default="planning", exclude=True, description="Planning uses different confidence model")
     hypothesis: str | None = Field(default=None, exclude=True, description="Planning doesn't use hypothesis")
-    backtrack_from_step: int | None = Field(default=None, exclude=True, description="Planning uses revision instead")
 
     # Exclude other non-planning fields
     temperature: float | None = Field(default=None, exclude=True)
     thinking_mode: str | None = Field(default=None, exclude=True)
-    use_websearch: bool | None = Field(default=None, exclude=True)
     use_assistant_model: bool | None = Field(default=False, exclude=True, description="Planning is self-contained")
     images: list | None = Field(default=None, exclude=True, description="Planning doesn't use images")
 
@@ -212,15 +210,13 @@ class PlannerTool(WorkflowTool):
             "issues_found",  # Planning doesn't find issues
             "confidence",  # Planning uses different confidence model
             "hypothesis",  # Planning doesn't use hypothesis
-            "backtrack_from_step",  # Planning uses revision instead
         ]
 
         excluded_common_fields = [
             "temperature",  # Planning doesn't need temperature control
             "thinking_mode",  # Planning doesn't need thinking mode
-            "use_websearch",  # Planning doesn't need web search
             "images",  # Planning doesn't use images
-            "files",  # Planning doesn't use files
+            "absolute_file_paths",  # Planning doesn't use file attachments
         ]
 
         # Build schema with proper field exclusion (following consensus pattern)

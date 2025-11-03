@@ -32,6 +32,20 @@ The system employs a sophisticated **"newest-first"** approach that ensures opti
 - **Presentation Phase**: Reverses to chronological order for natural LLM flow
 - When token budget is tight, **older turns are excluded first**
 
+**Show Case**:
+
+The following video demonstartes `continuation` via a casual `continue with gemini...` prompt and the slash command `/continue`.
+
+* We ask Claude code to pick one, then `chat` with `gemini` to make a final decision
+* Gemini responds, confirming choice. We use `continuation` to ask another question using the same conversation thread
+* Gemini responds with explanation. We use continuation again, using `/zen:continue (MCP)` command the second time
+
+<div style="center">
+  
+[Chat With Gemini_web.webm](https://github.com/user-attachments/assets/37bd57ca-e8a6-42f7-b5fb-11de271e95db)
+
+</div>
+
 ## Real-World Context Revival Example
 
 Here's how this works in practice with a modern AI/ML workflow:

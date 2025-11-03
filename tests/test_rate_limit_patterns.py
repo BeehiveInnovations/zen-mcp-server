@@ -3,7 +3,7 @@ Test to verify structured error code-based retry logic.
 """
 
 from providers.gemini import GeminiModelProvider
-from providers.openai_provider import OpenAIModelProvider
+from providers.openai import OpenAIModelProvider
 
 
 def test_openai_structured_error_retry_logic():

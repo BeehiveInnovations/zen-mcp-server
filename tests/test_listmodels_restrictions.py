@@ -5,8 +5,9 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from providers.base import ModelProvider, ProviderType
+from providers.base import ModelProvider
 from providers.registry import ModelProviderRegistry
+from providers.shared import ModelCapabilities, ProviderType
 from tools.listmodels import ListModelsTool
 
 
@@ -22,10 +23,63 @@ class TestListModelsRestrictions(unittest.TestCase):
         self.mock_openrouter = MagicMock(spec=ModelProvider)
         self.mock_openrouter.provider_type = ProviderType.OPENROUTER
 
+        def make_capabilities(
+            canonical: str, friendly: str, *, aliases=None, context: int = 200_000
+        ) -> ModelCapabilities:
+            return ModelCapabilities(
+                provider=ProviderType.OPENROUTER,
+                model_name=canonical,
+                friendly_name=friendly,
+                intelligence_score=20,
+                description=friendly,
+                aliases=aliases or [],
+                context_window=context,
+                max_output_tokens=context,
+                supports_extended_thinking=True,
+            )
+
+        opus_caps = make_capabilities(
+            "anthropic/claude-opus-4-20240229",
+            "Claude Opus",
+            aliases=["opus"],
+        )
+        sonnet_caps = make_capabilities(
+            "anthropic/claude-sonnet-4-20240229",
+            "Claude Sonnet",
+            aliases=["sonnet"],
+        )
+        deepseek_caps = make_capabilities(
+            "deepseek/deepseek-r1-0528:free",
+            "DeepSeek R1",
+            aliases=[],
+        )
+        qwen_caps = make_capabilities(
+            "qwen/qwen3-235b-a22b-04-28:free",
+            "Qwen3",
+            aliases=[],
+        )
+
+        self._openrouter_caps_map = {
+            "anthropic/claude-opus-4": opus_caps,
+            "opus": opus_caps,
+            "anthropic/claude-opus-4-20240229": opus_caps,
+            "anthropic/claude-sonnet-4": sonnet_caps,
+            "sonnet": sonnet_caps,
+            "anthropic/claude-sonnet-4-20240229": sonnet_caps,
+            "deepseek/deepseek-r1-0528:free": deepseek_caps,
+            "qwen/qwen3-235b-a22b-04-28:free": qwen_caps,
+        }
+
+        self.mock_openrouter.get_capabilities.side_effect = self._openrouter_caps_map.__getitem__
+        self.mock_openrouter.get_capabilities_by_rank.return_value = []
+        self.mock_openrouter.list_models.return_value = []
+
         # Create mock Gemini provider for comparison
         self.mock_gemini = MagicMock(spec=ModelProvider)
         self.mock_gemini.provider_type = ProviderType.GOOGLE
         self.mock_gemini.list_models.return_value = ["gemini-2.5-flash", "gemini-2.5-pro"]
+        self.mock_gemini.get_capabilities_by_rank.return_value = []
+        self.mock_gemini.get_capabilities_by_rank.return_value = []
 
     def tearDown(self):
         """Clean up after tests."""
@@ -43,7 +97,7 @@ class TestListModelsRestrictions(unittest.TestCase):
         },
     )
     @patch("utils.model_restrictions.get_restriction_service")
-    @patch("providers.openrouter_registry.OpenRouterModelRegistry")
+    @patch("providers.registries.openrouter.OpenRouterModelRegistry")
     @patch.object(ModelProviderRegistry, "get_available_models")
     @patch.object(ModelProviderRegistry, "get_provider")
     def test_listmodels_respects_openrouter_restrictions(
@@ -69,11 +123,25 @@ class TestListModelsRestrictions(unittest.TestCase):
                 config = MagicMock()
                 config.model_name = "anthropic/claude-opus-4-20240229"
                 config.context_window = 200000
+                config.get_effective_capability_rank.return_value = 90  # High rank for Opus
                 return config
             elif "sonnet" in model_name.lower():
                 config = MagicMock()
                 config.model_name = "anthropic/claude-sonnet-4-20240229"
                 config.context_window = 200000
+                config.get_effective_capability_rank.return_value = 80  # Lower rank for Sonnet
+                return config
+            elif "deepseek" in model_name.lower():
+                config = MagicMock()
+                config.model_name = "deepseek/deepseek-r1-0528:free"
+                config.context_window = 100000
+                config.get_effective_capability_rank.return_value = 70
+                return config
+            elif "qwen" in model_name.lower():
+                config = MagicMock()
+                config.model_name = "qwen/qwen3-235b-a22b-04-28:free"
+                config.context_window = 100000
+                config.get_effective_capability_rank.return_value = 60
                 return config
             return None  # No config for models without aliases
 
@@ -88,6 +156,9 @@ class TestListModelsRestrictions(unittest.TestCase):
             return None
 
         mock_get_provider.side_effect = get_provider_side_effect
+
+        # Ensure registry is cleared before test
+        ModelProviderRegistry._registry = {}
 
         # Mock available models
         mock_get_models.return_value = {
@@ -130,6 +201,9 @@ class TestListModelsRestrictions(unittest.TestCase):
         # Parse the output
         lines = result.split("\n")
 
+        # Debug: print the actual result for troubleshooting
+        # print(f"DEBUG: Full result:\n{result}")
+
         # Check that OpenRouter section exists
         openrouter_section_found = False
         openrouter_models = []
@@ -138,31 +212,34 @@ class TestListModelsRestrictions(unittest.TestCase):
         for line in lines:
             if "OpenRouter" in line and "✅" in line:
                 openrouter_section_found = True
-            elif "Available Models" in line and openrouter_section_found:
+            elif ("Models (policy restricted)" in line or "Available Models" in line) and openrouter_section_found:
                 in_openrouter_section = True
-            elif in_openrouter_section and line.strip().startswith("- "):
-                # Extract model name from various line formats:
-                # - `model-name` → `full-name` (context)
-                # - `model-name`
-                line_content = line.strip()[2:]  # Remove "- "
-                if "`" in line_content:
-                    # Extract content between first pair of backticks
-                    model_name = line_content.split("`")[1]
-                    openrouter_models.append(model_name)
+            elif in_openrouter_section:
+                # Check for lines with model names in backticks
+                # Format: - `model-name` (score X)
+                if line.strip().startswith("- ") and "`" in line:
+                    # Extract model name between backticks
+                    parts = line.split("`")
+                    if len(parts) >= 2:
+                        model_name = parts[1]
+                        openrouter_models.append(model_name)
+                # Stop parsing when we hit the next section
+                elif "##" in line and in_openrouter_section:
+                    break
 
         self.assertTrue(openrouter_section_found, "OpenRouter section not found")
         self.assertEqual(
             len(openrouter_models), 4, f"Expected 4 models, got {len(openrouter_models)}: {openrouter_models}"
         )
 
-        # Verify list_models was called with respect_restrictions=True
-        self.mock_openrouter.list_models.assert_called_with(respect_restrictions=True)
+        # Verify we did not fall back to unrestricted listing
+        self.mock_openrouter.list_models.assert_not_called()
 
         # Check for restriction note
-        self.assertIn("Restricted to models matching:", result)
+        self.assertIn("OpenRouter models restricted by", result)
 
     @patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key", "GEMINI_API_KEY": "gemini-test-key"}, clear=True)
-    @patch("providers.openrouter_registry.OpenRouterModelRegistry")
+    @patch("providers.registries.openrouter.OpenRouterModelRegistry")
     @patch.object(ModelProviderRegistry, "get_provider")
     def test_listmodels_shows_all_models_without_restrictions(self, mock_get_provider, mock_registry_class):
         """Test that listmodels shows all models when no restrictions are set."""
