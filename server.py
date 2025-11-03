@@ -164,18 +164,15 @@ try:
     if not log_dir:
         raise RuntimeError("Could not find writable log directory")
 
-    # Use the determined log_dir for subsequent configuration
-    log_dir.mkdir(parents=True, exist_ok=True)
-
     # Write log directory location marker inside the log directory itself
     # This allows run-server.sh and test utilities to find the active log location
     # by checking candidate directories for this marker file
     try:
         log_location_marker = log_dir / ".zen_log_marker"
         log_location_marker.write_text(str(log_dir))
-    except Exception:
-        # Non-critical if we can't write the marker file
-        pass
+    except (PermissionError, OSError) as e:
+        # Non-critical if we can't write the marker file, but log for debugging
+        root_logger.debug(f"Could not write log marker file: {e}")
 
     # Main server log with size-based rotation (20MB max per file)
     # This ensures logs don't grow indefinitely and are properly managed

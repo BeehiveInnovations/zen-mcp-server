@@ -6,17 +6,19 @@ used across multiple simulator test files to reduce code duplication.
 """
 
 import logging
+import os
 import re
 import subprocess
+from pathlib import Path
 from typing import Optional, Union
 
 
 class LogUtils:
     """Centralized logging utilities for simulator tests."""
 
-    # Log file paths (defaults, may be overridden by server's actual location)
-    MAIN_LOG_FILE = "logs/mcp_server.log"
-    ACTIVITY_LOG_FILE = "logs/mcp_activity.log"
+    # Log file names (without directory path - use _get_log_path() to get full path)
+    MAIN_LOG_FILE = "mcp_server.log"
+    ACTIVITY_LOG_FILE = "mcp_activity.log"
 
     @classmethod
     def _get_actual_log_dir(cls) -> str:
@@ -29,10 +31,6 @@ class LogUtils:
         Returns:
             Actual log directory path, or "logs" as fallback
         """
-        # Check candidate directories in same order as server.py
-        import os
-        from pathlib import Path
-
         candidates = []
 
         # Priority 1: Environment variable (if set)
@@ -58,7 +56,7 @@ class LogUtils:
             if marker_file.exists():
                 try:
                     return str(candidate_dir)
-                except Exception:
+                except (PermissionError, OSError):
                     pass
 
         # Fallback to default
@@ -67,8 +65,6 @@ class LogUtils:
     @classmethod
     def _get_log_path(cls, log_file: str) -> str:
         """Get full path to a log file."""
-        from pathlib import Path
-
         actual_log_dir = cls._get_actual_log_dir()
         return str(Path(actual_log_dir) / log_file)
 
@@ -89,7 +85,7 @@ class LogUtils:
 
             # Read main server log (use dynamic path)
             try:
-                main_log_path = cls._get_log_path("mcp_server.log")
+                main_log_path = cls._get_log_path(cls.MAIN_LOG_FILE)
                 with open(main_log_path) as f:
                     main_logs = f.read()
             except FileNotFoundError:
@@ -97,7 +93,7 @@ class LogUtils:
 
             # Read activity log (use dynamic path)
             try:
-                activity_log_path = cls._get_log_path("mcp_activity.log")
+                activity_log_path = cls._get_log_path(cls.ACTIVITY_LOG_FILE)
                 with open(activity_log_path) as f:
                     activity_logs = f.read()
             except FileNotFoundError:
@@ -120,7 +116,7 @@ class LogUtils:
         Returns:
             Recent log content as string
         """
-        main_log_path = cls._get_log_path("mcp_server.log")
+        main_log_path = cls._get_log_path(cls.MAIN_LOG_FILE)
         try:
             with open(main_log_path) as f:
                 all_lines = f.readlines()
@@ -144,7 +140,7 @@ class LogUtils:
         Returns:
             Recent log content as string
         """
-        main_log_path = cls._get_log_path("mcp_server.log")
+        main_log_path = cls._get_log_path(cls.MAIN_LOG_FILE)
         try:
             result = subprocess.run(
                 ["tail", "-n", str(lines), main_log_path], capture_output=True, text=True, timeout=10

@@ -2344,12 +2344,13 @@ show_version() {
     echo "$version"
 }
 
-# Follow logs
-follow_logs() {
-    local actual_log_dir="$LOG_DIR"
+# Find actual log directory by checking for marker file
+# Returns the directory path where logs are actually written
+find_log_directory() {
+    local base_log_dir="${1:-logs}"  # Default to "logs" if not specified
+    local result_dir="$base_log_dir"
 
-    # Check candidate directories for log marker (same order as server.py)
-    # This allows us to find logs even in read-only environments
+    # Build candidates list with same priority as server.py
     local candidates=()
 
     # Priority 1: Environment variable (if set)
@@ -2358,17 +2359,17 @@ follow_logs() {
     fi
 
     # Priority 2: Default project directory
-    candidates+=("$LOG_DIR")
+    candidates+=("$base_log_dir")
 
     # Priority 3: Platform-native cache directory
-    # Detect platform and use appropriate cache directory
     local cache_dir
     case "$(uname -s)" in
         Darwin*)
             cache_dir="$HOME/Library/Caches/zen-mcp/logs"
             ;;
         MINGW*|MSYS*|CYGWIN*)
-            cache_dir="${LOCALAPPDATA:-$HOME/AppData/Local}/zen-mcp/logs"
+            # platformdirs adds 'Cache' subdirectory on Windows when opinion=True (default)
+            cache_dir="${LOCALAPPDATA:-$HOME/AppData/Local}/zen-mcp/Cache/logs"
             ;;
         *)
             cache_dir="$HOME/.cache/zen-mcp/logs"
@@ -2376,13 +2377,25 @@ follow_logs() {
     esac
     candidates+=("$cache_dir")
 
+    # Check each candidate for the marker file
     for candidate_dir in "${candidates[@]}"; do
         if [[ -f "$candidate_dir/.zen_log_marker" ]]; then
-            actual_log_dir="$candidate_dir"
-            print_info "Found server logs in: $actual_log_dir"
+            result_dir="$candidate_dir"
             break
         fi
     done
+
+    echo "$result_dir"
+}
+
+# Follow logs
+follow_logs() {
+    # Use shared function to find actual log directory
+    local actual_log_dir=$(find_log_directory "$LOG_DIR")
+
+    if [[ "$actual_log_dir" != "$LOG_DIR" ]]; then
+        print_info "Found server logs in: $actual_log_dir"
+    fi
 
     local log_path="$actual_log_dir/$LOG_FILE"
 
@@ -2518,39 +2531,8 @@ main() {
 
     # Step 13: Display log information
     echo ""
-    # Check candidate directories for log marker (same priority order as server.py)
-    local actual_log_dir="$script_dir/$LOG_DIR"
-    local candidates=()
-
-    # Priority 1: Environment variable
-    if [[ -n "${ZEN_MCP_LOG_DIR:-}" ]]; then
-        candidates+=("${ZEN_MCP_LOG_DIR}")
-    fi
-
-    # Priority 2: Default project directory
-    candidates+=("$script_dir/$LOG_DIR")
-
-    # Priority 3: Platform-native cache directory
-    local cache_dir
-    case "$(uname -s)" in
-        Darwin*)
-            cache_dir="$HOME/Library/Caches/zen-mcp/logs"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            cache_dir="${LOCALAPPDATA:-$HOME/AppData/Local}/zen-mcp/logs"
-            ;;
-        *)
-            cache_dir="$HOME/.cache/zen-mcp/logs"
-            ;;
-    esac
-    candidates+=("$cache_dir")
-
-    for candidate_dir in "${candidates[@]}"; do
-        if [[ -f "$candidate_dir/.zen_log_marker" ]]; then
-            actual_log_dir="$candidate_dir"
-            break
-        fi
-    done
+    # Use shared function to find actual log directory
+    local actual_log_dir=$(find_log_directory "$script_dir/$LOG_DIR")
     echo "Logs will be written to: $actual_log_dir/$LOG_FILE"
     echo "(Location may vary based on directory permissions)"
     echo ""
