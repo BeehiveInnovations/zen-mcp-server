@@ -8,9 +8,9 @@ The `layered_consensus` tool implements a realistic organizational hierarchy app
 
 This tool **consolidates and replaces** the previous individual consensus tools:
 
-- ✅ **Replaces `basic_consensus`** → Use `layered_consensus` with `org_level="junior"`
-- ✅ **Replaces `review_consensus`** → Use `layered_consensus` with `org_level="senior"`  
-- ✅ **Replaces `critical_consensus`** → Use `layered_consensus` with `org_level="executive"`
+- ✅ **Replaces `basic_consensus`** → Use `layered_consensus` with `org_level="startup"`
+- ✅ **Replaces `review_consensus`** → Use `layered_consensus` with `org_level="scaleup"`  
+- ✅ **Replaces `critical_consensus`** → Use `layered_consensus` with `org_level="enterprise"`
 
 **Benefits of consolidation:**
 - Single tool with consistent interface
@@ -30,7 +30,7 @@ Layered consensus automatically selects from a tiered model approach based on th
 
 Layered consensus provides hierarchical organizational analysis through an incremental approach:
 
-1. **Layered model selection**: Automatically builds model selection from junior through specified tier
+1. **Layered model selection**: Automatically builds model selection from startup through specified tier
 2. **Incremental role assignment**: Assigns appropriate roles for each organizational level
 3. **Cost-efficient escalation**: Higher tiers include all lower-tier analysis for comprehensive coverage
 4. **Hierarchical consensus orchestration**: Uses the core consensus engine with layered parameters
@@ -38,42 +38,42 @@ Layered consensus provides hierarchical organizational analysis through an incre
 
 ## Organizational Structure
 
-### Junior Level (3 models)
+### Startup Level (3 models)
 - **Models**: 3 free models for cost optimization
 - **Roles**: Basic analysis roles (Code Reviewer, Security Checker, Technical Validator)
 - **Cost**: $0.00-0.50 (free models preferred)
 - **Authority**: Entry-level development decisions
 
-### Senior Level (6 models)
-- **Models**: 3 junior + 3 professional value models
+### Scaleup Level (6 models)
+- **Models**: 3 startup + 3 professional value models
 - **Roles**: Basic + professional analysis roles (+ Security Engineer, Senior Developer, System Architect)
-- **Cost**: $1.00-5.00 (junior costs + professional models)
+- **Cost**: $1.00-5.00 (startup costs + professional models)
 - **Authority**: Production decisions and architecture reviews
 
-### Executive Level (8 models)
-- **Models**: 3 junior + 3 senior + 2 premium models
+### Enterprise Level (8 models)
+- **Models**: 3 startup + 3 scaleup + 2 premium models
 - **Roles**: Basic + professional + strategic roles (+ Lead Architect, Technical Director)
-- **Cost**: $5.00-25.00 (junior + senior costs + premium models)
+-- **Cost**: $5.00-25.00 (startup + scaleup costs + premium models)
 - **Authority**: Strategic decisions and enterprise architecture
 
 ## Example Prompts
 
-**Junior Level Analysis:**
+**Startup Level Analysis:**
 ```
-zen layered_consensus "Should we use React or Vue for our new component library?" --org-level junior
-```
-
-**Senior Level Analysis:**
-```
-zen layered_consensus "Should we migrate our monolith to microservices?" --org-level senior
+zen layered_consensus "Should we use React or Vue for our new component library?" --org-level startup
 ```
 
-**Executive Level Analysis:**
+**Scaleup Level Analysis:**
 ```
-zen layered_consensus "Should we adopt a cloud-native architecture strategy?" --org-level executive
+zen layered_consensus "Should we migrate our monolith to microservices?" --org-level scaleup
 ```
 
-**Default Senior Analysis:**
+**Enterprise Level Analysis:**
+```
+zen layered_consensus "Should we adopt a cloud-native architecture strategy?" --org-level enterprise
+```
+
+**Default Scaleup Analysis:**
 ```
 zen layered_consensus "Evaluate this new framework for production use"
 ```
@@ -85,7 +85,7 @@ zen layered_consensus "Evaluate this new framework for production use"
 - **Comprehensive coverage**: Ensures all organizational perspectives are included in higher-tier analysis
 - **Flexible tier selection**: Choose appropriate organizational level based on decision importance
 - **Transparent cost structure**: Clear breakdown of costs across organizational levels
-- **Incremental complexity**: Simple decisions can use junior level, complex decisions get full hierarchy
+- **Incremental complexity**: Simple decisions can use startup level, complex decisions get full hierarchy
 - **Real-world modeling**: Reflects how actual organizations make technology decisions
 - **Budget optimization**: Maximizes analysis depth while controlling costs through appropriate tier selection
 
@@ -95,7 +95,7 @@ zen layered_consensus "Evaluate this new framework for production use"
 - `proposal`: The question or proposal to analyze via layered consensus (required)
 
 **Optional:**
-- `org_level`: Organizational level - "junior", "senior", or "executive" (defaults to "senior")
+- `org_level`: Organizational level - "startup", "scaleup", or "enterprise" (defaults to "scaleup")
 
 **Automatic Configuration:**
 - Models: Layered selection based on organizational level
@@ -104,7 +104,7 @@ zen layered_consensus "Evaluate this new framework for production use"
 
 ## Organizational Level Details
 
-### Junior Level (org_level: "junior")
+### Startup Level (org_level: "startup")
 
 **Model Strategy:**
 - 3 free models for zero-cost basic analysis
@@ -122,15 +122,15 @@ zen layered_consensus "Evaluate this new framework for production use"
 - Entry-level technical validation
 - Frequent decision support without budget concerns
 
-### Senior Level (org_level: "senior")
+### Scaleup Level (org_level: "scaleup")
 
 **Model Strategy:**
-- 3 junior-level free models + 3 professional value models
+- 3 startup-level free models + 3 professional value models
 - Balanced cost/performance for production decisions
 - Professional-grade analysis within reasonable budget
 
 **Role Coverage:**
-- **Junior Tier**: Code Reviewer, Security Checker, Technical Validator
+- **Startup Tier**: Code Reviewer, Security Checker, Technical Validator
 - **Professional Tier**: Security Engineer, Senior Developer, System Architect, DevOps Engineer, QA Engineer
 
 **Decision Scope:**
@@ -139,15 +139,15 @@ zen layered_consensus "Evaluate this new framework for production use"
 - System design and scalability planning
 - Professional-level technical analysis
 
-### Executive Level (org_level: "executive")
+### Enterprise Level (org_level: "enterprise")
 
 **Model Strategy:**
-- 3 junior-level + 3 senior-level + 2 premium executive models
+- 3 startup-level + 3 scaleup-level + 2 premium executive models
 - Maximum capability for strategic decisions
 - Comprehensive analysis across all organizational levels
 
 **Role Coverage:**
-- **Junior Tier**: Code Reviewer, Security Checker, Technical Validator
+- **Startup Tier**: Code Reviewer, Security Checker, Technical Validator
 - **Professional Tier**: Security Engineer, Senior Developer, System Architect, DevOps Engineer, QA Engineer
 - **Executive Tier**: Lead Architect, Technical Director, Security Chief, Research Lead, Risk Analysis Specialist, IT Director
 
@@ -159,43 +159,43 @@ zen layered_consensus "Evaluate this new framework for production use"
 
 ## Usage Examples
 
-**Development Framework Decision (Junior Level):**
+**Development Framework Decision (Startup Level):**
 ```
-zen layered_consensus "Should we adopt TypeScript for our JavaScript project?" --org-level junior
+zen layered_consensus "Should we adopt TypeScript for our JavaScript project?" --org-level startup
 
 # Expected layered analysis:
-# Junior Level (3 free models):
+# Startup Level (3 free models):
 # - Code Reviewer: Evaluates code quality and maintainability benefits
 # - Security Checker: Considers type safety security implications  
 # - Technical Validator: Assesses learning curve and development impact
 ```
 
-**Production Migration Decision (Senior Level):**
+**Production Migration Decision (Scaleup Level):**
 ```
-zen layered_consensus "Should we migrate from MySQL to PostgreSQL?" --org-level senior
+zen layered_consensus "Should we migrate from MySQL to PostgreSQL?" --org-level scaleup
 
 # Expected layered analysis:
-# Junior Level (3 models): Basic feasibility and implementation concerns
+# Startup Level (3 models): Basic feasibility and implementation concerns
 # + Professional Level (3 models): Production impact and professional assessment
-# Total: 6 models across junior + professional tiers
+# Total: 6 models across startup + professional tiers
 ```
 
-**Enterprise Strategy Decision (Executive Level):**
+**Enterprise Strategy Decision (Enterprise Level):**
 ```
-zen layered_consensus "Should we adopt a cloud-native microservices architecture?" --org-level executive
+zen layered_consensus "Should we adopt a cloud-native microservices architecture?" --org-level enterprise
 
 # Expected layered analysis:
-# Junior Level (3 models): Implementation and development considerations
+# Startup Level (3 models): Implementation and development considerations
 # + Professional Level (3 models): Production, security, and operational analysis
 # + Executive Level (2 models): Strategic vision and enterprise-wide impact
 # Total: 8 models across all organizational tiers
 ```
 
-**Technology Evaluation (Default Senior):**
+**Technology Evaluation (Default Scaleup):**
 ```
 zen layered_consensus "Should we implement GraphQL for our API architecture?"
 
-# Defaults to senior level - gets junior + professional perspectives
+# Defaults to scaleup level - gets startup + professional perspectives
 # Balanced analysis appropriate for most production decisions
 ```
 
@@ -205,18 +205,18 @@ zen layered_consensus "Should we implement GraphQL for our API architecture?"
 
 Layered consensus optimizes costs through incremental tier building:
 
-**Junior Level Cost ($0.00-0.50):**
+**Startup Level Cost ($0.00-0.50):**
 - 3 free models for basic analysis
 - Zero or minimal cost for frequent decisions
 - Entry-level budget appropriate for development choices
 
-**Senior Level Cost ($1.00-5.00):**
-- Junior costs + 3 professional value models
+**Scaleup Level Cost ($1.00-5.00):**
+- Startup costs + 3 professional value models
 - Professional-grade analysis within reasonable budget
 - Cost-effective for production decisions
 
-**Executive Level Cost ($5.00-25.00):**
-- Junior + Senior costs + 2 premium models
+**Enterprise Level Cost ($5.00-25.00):**
+- Startup + Scaleup costs + 2 premium models
 - Strategic analysis for enterprise decisions
 - Maximum capability when decisions matter most
 
@@ -225,22 +225,22 @@ Layered consensus optimizes costs through incremental tier building:
 ```
 LAYERED CONSENSUS COMPLETE
 
-Organizational Approach: Layered Senior Level Analysis
+Organizational Approach: Layered Scaleup Level Analysis
 Total Models: 6 models across organizational tiers
-Model Breakdown: ~3 junior + ~3 senior models (basic + professional)
+Model Breakdown: ~3 startup + ~3 scaleup models (basic + professional)
 Estimated Cost: $3.50
 Architecture: Cost-efficient layered approach (basic → professional → strategic)
 Tool: layered_consensus
 
 TIER BREAKDOWN:
-Junior Tier (Free): deepseek/deepseek-r1-distill-llama-70b:free, meta-llama/llama-3.1-405b-instruct:free, qwen/qwen-2.5-coder-32b-instruct:free
+Startup Tier (Free): deepseek/deepseek-r1-distill-llama-70b:free, meta-llama/llama-3.1-405b-instruct:free, qwen/qwen-2.5-coder-32b-instruct:free
 Professional Tier (Value): anthropic/claude-sonnet-4, openai/gpt-5-mini, google/gemini-2.5-flash
 ```
 
 ## Best Practices
 
-- **Match decision importance**: Use junior for development, senior for production, executive for strategy
-- **Optimize for frequent use**: Junior level enables regular decision support without budget concerns
+- **Match decision importance**: Use startup for development, scaleup for production, enterprise for strategy
+- **Optimize for frequent use**: Startup level enables regular decision support without budget concerns
 - **Escalate appropriately**: Start with lower tiers and escalate to higher tiers for complex decisions
 - **Consider time sensitivity**: Higher tiers provide more comprehensive analysis but may take longer
 - **Budget planning**: Use layered approach to control costs while ensuring appropriate analysis depth
@@ -252,14 +252,14 @@ Professional Tier (Value): anthropic/claude-sonnet-4, openai/gpt-5-mini, google/
 ### Progressive Decision Making
 
 ```bash
-# Start with junior level for initial validation
-zen layered_consensus "Is this approach technically feasible?" --org-level junior
+# Start with startup level for initial validation
+zen layered_consensus "Is this approach technically feasible?" --org-level startup
 
-# Escalate to senior level for production readiness
-zen layered_consensus "Is this ready for production deployment?" --org-level senior
+# Escalate to scaleup level for production readiness
+zen layered_consensus "Is this ready for production deployment?" --org-level scaleup
 
-# Executive level for strategic implications
-zen layered_consensus "Should this become our standard approach?" --org-level executive
+# Enterprise level for strategic implications
+zen layered_consensus "Should this become our standard approach?" --org-level enterprise
 ```
 
 ### Workflow Integration
@@ -269,22 +269,22 @@ zen layered_consensus "Should this become our standard approach?" --org-level ex
 - name: Development decision validation
   run: |
     zen layered_consensus "Should we proceed with this code change?" \
-      --org-level junior --files changed_files.txt
+      --org-level startup --files changed_files.txt
 
 - name: Production deployment gate
   run: |
     zen layered_consensus "Is this change ready for production?" \
-      --org-level senior --files deployment_plan.md
+      --org-level scaleup --files deployment_plan.md
 ```
 
 ### Budget-Conscious Development
 
 ```bash
 # Free analysis for frequent development decisions
-zen layered_consensus "Should we refactor this component?" --org-level junior
+zen layered_consensus "Should we refactor this component?" --org-level startup
 
 # Professional analysis for architecture decisions
-zen layered_consensus "Should we adopt this new architecture pattern?" --org-level senior
+zen layered_consensus "Should we adopt this new architecture pattern?" --org-level scaleup
 ```
 
 ## Error Handling and Fallbacks
@@ -307,9 +307,9 @@ zen layered_consensus "Should we adopt this new architecture pattern?" --org-lev
 ## When to Use Layered Consensus vs Other Tools
 
 - **Use `layered_consensus`** for: Comprehensive analysis requiring multiple organizational perspectives, budget-conscious comprehensive coverage
-- **Use `basic_consensus`** for: Simple development decisions, cost-optimized analysis, junior-level authority
-- **Use `review_consensus`** for: Professional production decisions, senior staff authority level
-- **Use `critical_consensus`** for: Strategic decisions, maximum capability analysis, executive authority
+- **Use `basic_consensus`** for: Simple development decisions, cost-optimized analysis, startup-level authority
+- **Use `review_consensus`** for: Professional production decisions, scaleup staff authority level
+- **Use `critical_consensus`** for: Strategic decisions, maximum capability analysis, enterprise authority
 - **Use `quickreview`** for: Quick validation without comprehensive organizational analysis
 
 ## Organizational Hierarchy Benefits
@@ -319,14 +319,14 @@ zen layered_consensus "Should we adopt this new architecture pattern?" --org-lev
 Layered consensus mirrors real organizational structures:
 
 **Bottom-Up Perspective:**
-- Junior level identifies implementation concerns and practical challenges
+- Startup level identifies implementation concerns and practical challenges
 - Professional level adds production experience and operational considerations
 - Executive level provides strategic vision and enterprise-wide impact assessment
 
 **Comprehensive Coverage:**
-- Technical feasibility (junior perspective)
+- Technical feasibility (startup perspective)
 - Production readiness (professional perspective)  
-- Strategic alignment (executive perspective)
+- Strategic alignment (enterprise perspective)
 - Risk assessment across all organizational levels
 
 ### Cost-Effective Escalation
@@ -337,7 +337,7 @@ Layered consensus mirrors real organizational structures:
 - Ensure comprehensive coverage for important decisions through layered approach
 
 **Budget Optimization:**
-- Junior decisions use free models for zero cost
+- Startup decisions use free models for zero cost
 - Professional decisions add value models for balanced cost/capability
 - Strategic decisions include premium models for maximum insight
 
@@ -348,9 +348,9 @@ Layered consensus mirrors real organizational structures:
 The tool uses the dynamic model selector's layered approach:
 
 ```python
-# Example layered selection for senior level
+# Example layered selection for scaleup level
 layered_models = {
-    "junior": ["free_model_1", "free_model_2", "free_model_3"],
+    "startup": ["free_model_1", "free_model_2", "free_model_3"],
     "professional": ["value_model_1", "value_model_2", "value_model_3"]
 }
 ```
@@ -359,7 +359,7 @@ layered_models = {
 
 Each tier gets appropriate roles for their organizational level:
 
-**Junior Roles**: Basic technical validation and obvious issue identification
+**Startup Roles**: Basic technical validation and obvious issue identification
 **Professional Roles**: Production concerns, security analysis, architectural considerations  
 **Executive Roles**: Strategic vision, innovation opportunities, enterprise risk assessment
 

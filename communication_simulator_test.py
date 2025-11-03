@@ -37,6 +37,10 @@ Available tests:
     refactor_validation         - Refactor tool validation with codesmells
     debug_validation            - Debug tool validation with actual bugs
     conversation_chain_validation - Conversation chain continuity validation
+    smart_consensus_config_validation - Smart Consensus configuration validation
+    smart_consensus_error_recovery - Smart Consensus error recovery testing
+    smart_consensus_integration - Smart Consensus system integration testing
+    smart_consensus_streaming   - Smart Consensus streaming and optimization testing
 
 Quick Test Mode (for time-limited testing):
     Use --quick to run the essential 6 tests that provide maximum coverage:

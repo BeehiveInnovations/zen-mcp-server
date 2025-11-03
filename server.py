@@ -77,7 +77,6 @@ from tools import (  # noqa: E402
     TracerTool,
     VersionTool,
 )
-from tools.custom.layered_consensus import LayeredConsensusTool  # noqa: E402
 from tools.models import ToolOutput  # noqa: E402
 
 # Plugin system for extensions (safe for upstream pulls)
@@ -272,7 +271,6 @@ TOOLS = {
     "thinkdeep": ThinkDeepTool(),  # Step-by-step deep thinking workflow with expert analysis
     "planner": PlannerTool(),  # Interactive sequential planner using workflow architecture
     "consensus": ConsensusTool(),  # Step-by-step consensus workflow with multi-model analysis
-    "layered_consensus": LayeredConsensusTool(),  # Sophisticated multi-model consensus with layered analysis
     "codereview": CodeReviewTool(),  # Comprehensive step-by-step code review workflow with expert analysis
     "precommit": PrecommitTool(),  # Step-by-step pre-commit validation workflow
     "debug": DebugIssueTool(),  # Root cause analysis and debugging assistance

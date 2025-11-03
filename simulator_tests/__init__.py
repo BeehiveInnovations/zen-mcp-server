@@ -36,6 +36,10 @@ from .test_prompt_size_limit_bug import PromptSizeLimitBugTest
 # Redis validation test removed - no longer needed for standalone server
 from .test_refactor_validation import RefactorValidationTest
 from .test_secaudit_validation import SecauditValidationTest
+from .test_smart_consensus_config_validation import SmartConsensusConfigValidationTest
+from .test_smart_consensus_error_recovery import SmartConsensusErrorRecoveryTest
+from .test_smart_consensus_integration import SmartConsensusIntegrationTest
+from .test_smart_consensus_streaming import SmartConsensusStreamingTest
 from .test_testgen_validation import TestGenValidationTest
 from .test_thinkdeep_validation import ThinkDeepWorkflowValidationTest
 from .test_token_allocation_validation import TokenAllocationValidationTest
@@ -78,6 +82,11 @@ TEST_REGISTRY = {
     "analyze_validation": AnalyzeValidationTest,
     "prompt_size_limit_bug": PromptSizeLimitBugTest,
     # "o3_pro_expensive": O3ProExpensiveTest,  # COMMENTED OUT - too expensive to run by default
+    # Smart Consensus tests (Phase 3)
+    "smart_consensus_config_validation": SmartConsensusConfigValidationTest,
+    "smart_consensus_error_recovery": SmartConsensusErrorRecoveryTest,
+    "smart_consensus_integration": SmartConsensusIntegrationTest,
+    "smart_consensus_streaming": SmartConsensusStreamingTest,
 }
 
 __all__ = [
@@ -115,5 +124,9 @@ __all__ = [
     "TestConsensusThreeModels",
     "AnalyzeValidationTest",
     "PromptSizeLimitBugTest",
+    "SmartConsensusConfigValidationTest",
+    "SmartConsensusErrorRecoveryTest",
+    "SmartConsensusIntegrationTest",
+    "SmartConsensusStreamingTest",
     "TEST_REGISTRY",
 ]

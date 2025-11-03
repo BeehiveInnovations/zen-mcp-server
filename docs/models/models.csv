@@ -33,3 +33,4 @@ rank,model,provider,tier,status,context,input_cost,output_cost,org_level,special
 26,mistralai/mistral-nemo:free,mistral,free_tier,free,128K,0.0,0.0,junior,general,technical_validator,european,64.0,52.0,https://openrouter.ai/mistralai/mistral-nemo:free,2025-08-11
 27,openrouter/cypher-alpha:free,openrouter,free_tier,free,131K,0.0,0.0,junior,experimental,technical_validator,experimental,60.0,48.0,https://openrouter.ai/openrouter/cypher-alpha:free,2025-08-11
 28,tngtech/deepseek-r1t-chimera:free,tngtech,free_tier,free,131K,0.0,0.0,junior,experimental,technical_validator,hybrid,58.0,46.0,https://openrouter.ai/tngtech/deepseek-r1t-chimera:free,2025-08-11
+9,google/gemini-2.5-flash-lite,google,value_tier,paid,1048K,0.10,0.40,senior,general,senior_developer,speed,76.0,62.0,https://openrouter.ai/google/gemini-2.5-flash-lite,2025-01-15

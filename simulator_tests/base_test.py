@@ -158,8 +158,8 @@ class Calculator:
             # Join with newlines as MCP expects
             input_data = "\n".join(messages) + "\n"
 
-            # Call the standalone MCP server directly
-            server_cmd = [self.python_path, "server.py"]
+            # Call the standalone MCP server using the wrapper script to ensure proper environment
+            server_cmd = ["./run_tests_with_env.sh", "python", "server.py"]
 
             self.logger.debug(f"Calling MCP tool {tool_name} with proper initialization")
 
