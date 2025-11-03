@@ -43,8 +43,15 @@ class LogUtils:
         # Priority 2: Default project directory
         candidates.append(Path(__file__).parent.parent / "logs")
 
-        # Priority 3: User cache directory
-        candidates.append(Path.home() / ".cache" / "zen-mcp" / "logs")
+        # Priority 3: Platform-native cache directory (or fallback)
+        try:
+            from platformdirs import user_cache_dir
+
+            platform_cache_dir = Path(user_cache_dir("zen-mcp", appauthor=False)) / "logs"
+            candidates.append(platform_cache_dir)
+        except ImportError:
+            # Fallback if platformdirs not available
+            candidates.append(Path.home() / ".cache" / "zen-mcp" / "logs")
 
         for candidate_dir in candidates:
             marker_file = candidate_dir / ".zen_log_marker"

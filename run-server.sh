@@ -2360,8 +2360,21 @@ follow_logs() {
     # Priority 2: Default project directory
     candidates+=("$LOG_DIR")
 
-    # Priority 3: User cache directory
-    candidates+=("$HOME/.cache/zen-mcp/logs")
+    # Priority 3: Platform-native cache directory
+    # Detect platform and use appropriate cache directory
+    local cache_dir
+    case "$(uname -s)" in
+        Darwin*)
+            cache_dir="$HOME/Library/Caches/zen-mcp/logs"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            cache_dir="${LOCALAPPDATA:-$HOME/AppData/Local}/zen-mcp/logs"
+            ;;
+        *)
+            cache_dir="$HOME/.cache/zen-mcp/logs"
+            ;;
+    esac
+    candidates+=("$cache_dir")
 
     for candidate_dir in "${candidates[@]}"; do
         if [[ -f "$candidate_dir/.zen_log_marker" ]]; then
@@ -2517,8 +2530,20 @@ main() {
     # Priority 2: Default project directory
     candidates+=("$script_dir/$LOG_DIR")
 
-    # Priority 3: User cache directory
-    candidates+=("$HOME/.cache/zen-mcp/logs")
+    # Priority 3: Platform-native cache directory
+    local cache_dir
+    case "$(uname -s)" in
+        Darwin*)
+            cache_dir="$HOME/Library/Caches/zen-mcp/logs"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            cache_dir="${LOCALAPPDATA:-$HOME/AppData/Local}/zen-mcp/logs"
+            ;;
+        *)
+            cache_dir="$HOME/.cache/zen-mcp/logs"
+            ;;
+    esac
+    candidates+=("$cache_dir")
 
     for candidate_dir in "${candidates[@]}"; do
         if [[ -f "$candidate_dir/.zen_log_marker" ]]; then

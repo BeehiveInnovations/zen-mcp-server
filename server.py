@@ -129,7 +129,18 @@ try:
     candidates.append((Path(__file__).parent / "logs", "default project directory"))
 
     # Priority 3: User cache directory (read-only fallback)
-    candidates.append((Path.home() / ".cache" / "zen-mcp" / "logs", "user cache directory (read-only fallback)"))
+    # Use platformdirs for platform-native cache paths:
+    # - Linux: ~/.cache/zen-mcp/logs
+    # - macOS: ~/Library/Caches/zen-mcp/logs
+    # - Windows: %LOCALAPPDATA%\zen-mcp\logs
+    try:
+        from platformdirs import user_cache_dir
+
+        platform_cache_dir = Path(user_cache_dir("zen-mcp", appauthor=False)) / "logs"
+        candidates.append((platform_cache_dir, "platform-native cache directory (read-only fallback)"))
+    except ImportError:
+        # Fallback if platformdirs not available
+        candidates.append((Path.home() / ".cache" / "zen-mcp" / "logs", "user cache directory (read-only fallback)"))
 
     # Try each candidate path until we find a writable one
     for candidate_path, source in candidates:
