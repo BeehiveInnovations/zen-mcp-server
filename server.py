@@ -112,9 +112,15 @@ root_logger.setLevel(getattr(logging, log_level, logging.INFO))
 # Add rotating file handler for local log monitoring
 
 try:
-    # Create logs directory in project root
-    log_dir = Path(__file__).parent / "logs"
-    log_dir.mkdir(exist_ok=True)
+    # Use user cache directory for logs to avoid permission issues in read-only environments
+    # Priority: ZEN_MCP_LOG_DIR env var > user cache directory (~/.cache/zen-mcp/logs)
+    log_dir_override = get_env("ZEN_MCP_LOG_DIR")
+    if log_dir_override:
+        log_dir = Path(log_dir_override)
+    else:
+        # Fallback to user cache directory (cross-platform)
+        log_dir = Path.home() / ".cache" / "zen-mcp" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     # Main server log with size-based rotation (20MB max per file)
     # This ensures logs don't grow indefinitely and are properly managed
