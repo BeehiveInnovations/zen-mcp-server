@@ -14,9 +14,56 @@ from typing import Optional, Union
 class LogUtils:
     """Centralized logging utilities for simulator tests."""
 
-    # Log file paths
+    # Log file paths (defaults, may be overridden by server's actual location)
     MAIN_LOG_FILE = "logs/mcp_server.log"
     ACTIVITY_LOG_FILE = "logs/mcp_activity.log"
+
+    @classmethod
+    def _get_actual_log_dir(cls) -> str:
+        """
+        Get the actual log directory used by the server.
+
+        Checks candidate directories for .zen_log_marker file (same order as server.py)
+        to discover where logs are actually being written.
+
+        Returns:
+            Actual log directory path, or "logs" as fallback
+        """
+        # Check candidate directories in same order as server.py
+        import os
+        from pathlib import Path
+
+        candidates = []
+
+        # Priority 1: Environment variable (if set)
+        env_log_dir = os.environ.get("ZEN_MCP_LOG_DIR")
+        if env_log_dir and env_log_dir.strip():
+            candidates.append(Path(env_log_dir.strip()).expanduser().resolve())
+
+        # Priority 2: Default project directory
+        candidates.append(Path(__file__).parent.parent / "logs")
+
+        # Priority 3: User cache directory
+        candidates.append(Path.home() / ".cache" / "zen-mcp" / "logs")
+
+        for candidate_dir in candidates:
+            marker_file = candidate_dir / ".zen_log_marker"
+            if marker_file.exists():
+                try:
+                    return str(candidate_dir)
+                except Exception:
+                    pass
+
+        # Fallback to default
+        return "logs"
+
+    @classmethod
+    def _get_log_path(cls, log_file: str) -> str:
+        """Get full path to a log file."""
+        from pathlib import Path
+
+        actual_log_dir = cls._get_actual_log_dir()
+        return str(Path(actual_log_dir) / log_file)
 
     @classmethod
     def get_server_logs_since(cls, since_time: Optional[str] = None) -> str:
@@ -33,16 +80,18 @@ class LogUtils:
             main_logs = ""
             activity_logs = ""
 
-            # Read main server log
+            # Read main server log (use dynamic path)
             try:
-                with open(cls.MAIN_LOG_FILE) as f:
+                main_log_path = cls._get_log_path("mcp_server.log")
+                with open(main_log_path) as f:
                     main_logs = f.read()
             except FileNotFoundError:
                 pass
 
-            # Read activity log
+            # Read activity log (use dynamic path)
             try:
-                with open(cls.ACTIVITY_LOG_FILE) as f:
+                activity_log_path = cls._get_log_path("mcp_activity.log")
+                with open(activity_log_path) as f:
                     activity_logs = f.read()
             except FileNotFoundError:
                 pass
@@ -64,13 +113,14 @@ class LogUtils:
         Returns:
             Recent log content as string
         """
+        main_log_path = cls._get_log_path("mcp_server.log")
         try:
-            with open(cls.MAIN_LOG_FILE) as f:
+            with open(main_log_path) as f:
                 all_lines = f.readlines()
                 recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
                 return "".join(recent_lines)
         except FileNotFoundError:
-            logging.warning(f"Log file {cls.MAIN_LOG_FILE} not found")
+            logging.warning(f"Log file {main_log_path} not found")
             return ""
         except Exception as e:
             logging.warning(f"Failed to read recent server logs: {e}")
@@ -87,9 +137,10 @@ class LogUtils:
         Returns:
             Recent log content as string
         """
+        main_log_path = cls._get_log_path("mcp_server.log")
         try:
             result = subprocess.run(
-                ["tail", "-n", str(lines), cls.MAIN_LOG_FILE], capture_output=True, text=True, timeout=10
+                ["tail", "-n", str(lines), main_log_path], capture_output=True, text=True, timeout=10
             )
             return result.stdout + result.stderr
         except Exception as e:

@@ -2346,14 +2346,47 @@ show_version() {
 
 # Follow logs
 follow_logs() {
-    local log_path="$LOG_DIR/$LOG_FILE"
+    local actual_log_dir="$LOG_DIR"
+
+    # Check candidate directories for log marker (same order as server.py)
+    # This allows us to find logs even in read-only environments
+    local candidates=()
+
+    # Priority 1: Environment variable (if set)
+    if [[ -n "${ZEN_MCP_LOG_DIR:-}" ]]; then
+        candidates+=("${ZEN_MCP_LOG_DIR}")
+    fi
+
+    # Priority 2: Default project directory
+    candidates+=("$LOG_DIR")
+
+    # Priority 3: User cache directory
+    candidates+=("$HOME/.cache/zen-mcp/logs")
+
+    for candidate_dir in "${candidates[@]}"; do
+        if [[ -f "$candidate_dir/.zen_log_marker" ]]; then
+            actual_log_dir="$candidate_dir"
+            print_info "Found server logs in: $actual_log_dir"
+            break
+        fi
+    done
+
+    local log_path="$actual_log_dir/$LOG_FILE"
 
     echo "Following server logs (Ctrl+C to stop)..."
     echo ""
 
     # Create logs directory and file if they don't exist
-    mkdir -p "$LOG_DIR"
-    touch "$log_path"
+    mkdir -p "$actual_log_dir" 2>/dev/null || true
+    touch "$log_path" 2>/dev/null || true
+
+    # Check if log file exists and is readable
+    if [[ ! -r "$log_path" ]]; then
+        print_warning "Log file not found or not readable: $log_path"
+        echo "The server may not have started yet, or logs may be in a different location."
+        echo "Try starting the server first, then run: ./run-server.sh -f"
+        return 1
+    fi
 
     # Follow the log file
     tail -f "$log_path"
@@ -2472,7 +2505,29 @@ main() {
 
     # Step 13: Display log information
     echo ""
-    echo "Logs will be written to: $script_dir/$LOG_DIR/$LOG_FILE"
+    # Check candidate directories for log marker (same priority order as server.py)
+    local actual_log_dir="$script_dir/$LOG_DIR"
+    local candidates=()
+
+    # Priority 1: Environment variable
+    if [[ -n "${ZEN_MCP_LOG_DIR:-}" ]]; then
+        candidates+=("${ZEN_MCP_LOG_DIR}")
+    fi
+
+    # Priority 2: Default project directory
+    candidates+=("$script_dir/$LOG_DIR")
+
+    # Priority 3: User cache directory
+    candidates+=("$HOME/.cache/zen-mcp/logs")
+
+    for candidate_dir in "${candidates[@]}"; do
+        if [[ -f "$candidate_dir/.zen_log_marker" ]]; then
+            actual_log_dir="$candidate_dir"
+            break
+        fi
+    done
+    echo "Logs will be written to: $actual_log_dir/$LOG_FILE"
+    echo "(Location may vary based on directory permissions)"
     echo ""
 
     # Step 14: Handle command line arguments

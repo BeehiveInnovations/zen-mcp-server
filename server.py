@@ -112,15 +112,59 @@ root_logger.setLevel(getattr(logging, log_level, logging.INFO))
 # Add rotating file handler for local log monitoring
 
 try:
-    # Use user cache directory for logs to avoid permission issues in read-only environments
-    # Priority: ZEN_MCP_LOG_DIR env var > user cache directory (~/.cache/zen-mcp/logs)
-    log_dir_override = get_env("ZEN_MCP_LOG_DIR")
-    if log_dir_override:
-        log_dir = Path(log_dir_override)
-    else:
-        # Fallback to user cache directory (cross-platform)
-        log_dir = Path.home() / ".cache" / "zen-mcp" / "logs"
+    # Log directory priority (from highest to lowest):
+    # 1. ZEN_MCP_LOG_DIR env var (explicit user override)
+    # 2. ./logs (original path, maintains backward compatibility)
+    # 3. ~/.cache/zen-mcp/logs (fallback for read-only environments)
+
+    log_dir = None
+    candidates = []
+
+    # Priority 1: Environment variable override
+    env_override = get_env("ZEN_MCP_LOG_DIR")
+    if env_override and env_override.strip():
+        candidates.append((Path(env_override.strip()).expanduser().resolve(), "ZEN_MCP_LOG_DIR environment variable"))
+
+    # Priority 2: Original path (backward compatibility)
+    candidates.append((Path(__file__).parent / "logs", "default project directory"))
+
+    # Priority 3: User cache directory (read-only fallback)
+    candidates.append((Path.home() / ".cache" / "zen-mcp" / "logs", "user cache directory (read-only fallback)"))
+
+    # Try each candidate path until we find a writable one
+    for candidate_path, source in candidates:
+        try:
+            candidate_path.mkdir(parents=True, exist_ok=True)
+
+            # Test write permission
+            test_file = candidate_path / ".write_test"
+            test_file.touch()
+            test_file.unlink()
+
+            # Success! Use this path
+            log_dir = candidate_path
+            print(f"Using log directory: {log_dir} (from {source})", file=sys.stderr)
+            break
+
+        except (PermissionError, OSError):
+            # This path is not writable, try next candidate
+            continue
+
+    if not log_dir:
+        raise RuntimeError("Could not find writable log directory")
+
+    # Use the determined log_dir for subsequent configuration
     log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write log directory location marker inside the log directory itself
+    # This allows run-server.sh and test utilities to find the active log location
+    # by checking candidate directories for this marker file
+    try:
+        log_location_marker = log_dir / ".zen_log_marker"
+        log_location_marker.write_text(str(log_dir))
+    except Exception:
+        # Non-critical if we can't write the marker file
+        pass
 
     # Main server log with size-based rotation (20MB max per file)
     # This ensures logs don't grow indefinitely and are properly managed
