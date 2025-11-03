@@ -10,6 +10,39 @@ if TYPE_CHECKING:
 from google import genai
 from google.genai import types
 
+# LocalTokenizer import kept for backward compatibility with tests
+# Token estimation logic has been refactored to utils/gemini_token_estimator.py
+try:
+    from google.genai.local_tokenizer import LocalTokenizer  # noqa: F401
+
+    _HAS_LOCAL_TOKENIZER = True
+except ImportError:
+    _HAS_LOCAL_TOKENIZER = False
+
+# Optional dependencies kept for backward compatibility with tests
+try:
+    import imagesize  # noqa: F401
+
+    _HAS_IMAGESIZE = True
+except ImportError:
+    _HAS_IMAGESIZE = False
+
+try:
+    import pypdf  # noqa: F401
+
+    _HAS_PYPDF = True
+except ImportError:
+    _HAS_PYPDF = False
+
+try:
+    from tinytag import TinyTag  # noqa: F401
+
+    _HAS_TINYTAG = True
+except ImportError:
+    _HAS_TINYTAG = False
+
+from config import GEMINI_MEDIA_RESOLUTION
+from utils import gemini_token_estimator
 from utils.env import get_env
 from utils.image_utils import validate_image
 
@@ -32,6 +65,16 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
     REGISTRY_CLASS = GeminiModelRegistry
     MODEL_CAPABILITIES: ClassVar[dict[str, ModelCapabilities]] = {}
 
+    # Media resolution mapping for video token estimation
+    _RESOLUTION_MAP = {
+        "LOW": types.MediaResolution.MEDIA_RESOLUTION_LOW,
+        "MEDIUM": types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+        "HIGH": types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+    }
+
+    # Legacy model aliases without version numbers (map to 1.0)
+    _LEGACY_MODEL_ALIASES = {"gemini-pro", "gemini-pro-vision"}
+
     # Thinking mode configurations - percentages of model's max_thinking_tokens
     # These percentages work across all models that support thinking
     THINKING_BUDGETS = {
@@ -49,6 +92,10 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         "gemini-2.5-flash": 24576,  # Flash 2.5 thinking budget limit
         "gemini-2.5-pro": 32768,  # Pro 2.5 thinking budget limit
     }
+
+    # Retry configuration for API calls
+    MAX_RETRIES = 4
+    RETRY_DELAYS = [1, 3, 5, 8]  # seconds
 
     def __init__(self, api_key: str, **kwargs):
         """Initialize Gemini provider with API key and optional base URL."""
@@ -200,9 +247,14 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
+        # Add media resolution configuration
+        # Supports LOW (saves 62-75% tokens), MEDIUM (default), HIGH (quality)
+        media_resolution = kwargs.get("media_resolution") or GEMINI_MEDIA_RESOLUTION
+        resolution_enum = self._RESOLUTION_MAP.get(media_resolution.upper())
+        if resolution_enum:
+            generation_config.media_resolution = resolution_enum
+
         # Retry logic with progressive delays
-        max_retries = 4  # Total of 4 attempts
-        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
         attempt_counter = {"value": 0}
 
         def _attempt() -> ModelResponse:
@@ -297,8 +349,8 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         try:
             return self._run_with_retries(
                 operation=_attempt,
-                max_attempts=max_retries,
-                delays=retry_delays,
+                max_attempts=self.MAX_RETRIES,
+                delays=self.RETRY_DELAYS,
                 log_prefix=f"Gemini API ({resolved_model_name})",
             )
         except Exception as exc:
@@ -451,6 +503,44 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return None
+
+    def _calculate_text_tokens(self, model_name: str, content: str) -> int:
+        """Delegates to shared gemini_token_estimator utility."""
+        return gemini_token_estimator.calculate_text_tokens(model_name, content)
+
+    def _calculate_image_tokens(self, file_path: str, model_name: str = "gemini-2.5-flash") -> int:
+        """Delegates to shared gemini_token_estimator utility."""
+        return gemini_token_estimator.estimate_image_tokens(file_path, model_name)
+
+    def _calculate_pdf_tokens(self, file_path: str) -> int:
+        """Delegates to shared gemini_token_estimator utility."""
+        return gemini_token_estimator.estimate_pdf_tokens(file_path)
+
+    def _calculate_video_tokens(self, file_path: str) -> int:
+        """Delegates to shared gemini_token_estimator utility."""
+        return gemini_token_estimator.estimate_video_tokens(file_path, GEMINI_MEDIA_RESOLUTION)
+
+    def _calculate_audio_tokens(self, file_path: str) -> int:
+        """Delegates to shared gemini_token_estimator utility."""
+        return gemini_token_estimator.estimate_audio_tokens(file_path)
+
+    def estimate_tokens_for_files(self, model_name: str, files: list[dict]) -> int:
+        """Estimate token count for files using offline calculation.
+
+        Delegates to the shared gemini_token_estimator utility for accurate,
+        multimodal token counting based on official Gemini API formulas.
+
+        Args:
+            model_name: The model to estimate tokens for
+            files: List of file dicts with 'path' and 'mime_type' keys
+
+        Returns:
+            Estimated token count
+
+        Raises:
+            ValueError: If a file cannot be accessed or has an unsupported mime type
+        """
+        return gemini_token_estimator.estimate_tokens_for_files(model_name, files, GEMINI_MEDIA_RESOLUTION)
 
     def get_preferred_model(self, category: "ToolModelCategory", allowed_models: list[str]) -> Optional[str]:
         """Get Gemini's preferred model for a given category from allowed models.
