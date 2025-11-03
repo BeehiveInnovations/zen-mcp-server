@@ -3,8 +3,6 @@
 import os
 from unittest.mock import Mock, patch
 
-import pytest
-
 from providers.shared import ModelCapabilities, ModelResponse, ProviderType
 from providers.zhipu import ZhipuModelProvider
 
@@ -18,6 +16,9 @@ class TestZhipuProvider:
         import utils.model_restrictions
 
         utils.model_restrictions._restriction_service = None
+
+        # Force reload registry for clean state
+        ZhipuModelProvider._ensure_registry(force_reload=True)
 
     def teardown_method(self):
         """Clean up after each test to avoid singleton issues."""
@@ -187,7 +188,7 @@ class TestZhipuProvider:
     def test_model_capabilities_dict(self):
         """Test model capabilities dictionary."""
         provider = ZhipuModelProvider("test-zhipu-key")
-        assert hasattr(provider, 'MODEL_CAPABILITIES')
+        assert hasattr(provider, "MODEL_CAPABILITIES")
         assert isinstance(provider.MODEL_CAPABILITIES, dict)
         assert "glm-4.5" in provider.MODEL_CAPABILITIES
         assert "glm-4.6" in provider.MODEL_CAPABILITIES

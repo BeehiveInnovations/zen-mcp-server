@@ -1,4 +1,4 @@
-"""Registry loader for GLM model capabilities."""
+"""Registry loader for Zhipu AI provider capabilities."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from .base import CapabilityModelRegistry
 
 
 class ZhipuModelRegistry(CapabilityModelRegistry):
-    """Capability registry backed by `conf/zhipu_models.json`."""
+    """Capability registry backed by ``conf/zhipu_models.json``."""
 
     def __init__(self, config_path: str | None = None) -> None:
         super().__init__(
