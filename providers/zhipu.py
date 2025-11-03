@@ -1,6 +1,5 @@
 """GLM (Zhipu AI) model provider implementation using OpenAI-compatible API."""
 
-import logging
 from typing import TYPE_CHECKING, ClassVar, Optional
 
 if TYPE_CHECKING:
@@ -45,6 +44,3 @@ class ZhipuModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
 
         # Fall back to first allowed model
         return allowed_models[0] if allowed_models else None
-
-
-logger = logging.getLogger(__name__)
