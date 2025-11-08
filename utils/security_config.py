@@ -17,7 +17,8 @@ DANGEROUS_PATHS = {
     "/bin",
     "/sbin",
     "/root",
-    "/home",
+    # Note: /home itself is removed to allow user directories
+    # Only root home directories should be blocked
     "/boot",
     "/dev",
     "/proc",
@@ -140,6 +141,24 @@ def is_dangerous_path(path: Path) -> bool:
         if "\x00" in path_str or "%00" in path_str:
             return True
 
+        # Platform-independent check for Windows paths
+        # Check the raw path string for Windows patterns
+        path_str_normalized = path_str.replace("\\", "/").lower()
+        windows_dangerous = [
+            "c:/windows",
+            "c:/program files",
+            "c:/programdata",
+            "c:/users",
+            "d:/windows",  # Also check D: drive
+            "e:/windows",  # And E: drive
+            "/windows",  # Unix-style Windows path
+            "/program files",
+            "/users",
+        ]
+        for win_path in windows_dangerous:
+            if path_str_normalized.startswith(win_path):
+                return True
+                
         # Now resolve the path (follows symlinks)
         resolved = path.resolve()
         resolved_str = str(resolved)
@@ -148,13 +167,49 @@ def is_dangerous_path(path: Path) -> bool:
         if resolved.parent == resolved:
             return True
 
-        # Check against all dangerous paths
+        # Check for specific safe paths that should always be allowed
+        safe_prefixes = [
+            "/tmp",
+            "/var/tmp",
+            "/home",  # Allow user home directories
+            "/private/tmp",  # macOS temp directory
+            "/private/var/tmp",  # macOS var/tmp
+            "/System/Volumes/Data/home",  # macOS home
+        ]
+        
+        for safe_prefix in safe_prefixes:
+            try:
+                safe_path = Path(safe_prefix).resolve()
+                resolved.relative_to(safe_path)
+                # This is under a safe directory, allow it
+                return False
+            except ValueError:
+                # Not under this safe directory, continue checking
+                pass
+                
+        # Use the recommended approach from #293: relative_to() method
         for dangerous in DANGEROUS_PATHS:
-            dangerous_normalized = str(Path(dangerous).resolve())
-            # Check exact match or if dangerous path is a parent
-            if resolved_str == dangerous_normalized or resolved_str.startswith(dangerous_normalized + os.sep):
+            try:
+                # Skip root directory check if path is in safe locations
+                if dangerous == "/":
+                    # For root, only block if it's actually the root
+                    if resolved == Path("/").resolve():
+                        return True
+                    # Skip the relative_to check for root
+                    continue
+                    
+                # Try to create a relative path from the dangerous directory
+                danger_path = Path(dangerous).resolve()
+                resolved.relative_to(danger_path)
+                # If successful, the path is under a dangerous directory
                 return True
-
+            except ValueError:
+                # Path is not relative to this dangerous directory
+                continue
+            except Exception:
+                # Handle any other errors safely
+                continue
+                
         return False
 
     except Exception:
