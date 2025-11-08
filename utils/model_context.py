@@ -63,11 +63,12 @@ class ModelContext:
     """
 
     # MIME type mapping for common file extensions
+    # Note: GIF removed as Gemini doesn't support it
+    # Reference: https://ai.google.dev/gemini-api/docs/vision
     _MIME_MAP = {
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
         ".png": "image/png",
-        ".gif": "image/gif",
         ".webp": "image/webp",
         ".pdf": "application/pdf",
         ".mp4": "video/mp4",
