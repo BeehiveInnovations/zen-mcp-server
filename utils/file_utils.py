@@ -790,16 +790,19 @@ def read_file_safely(file_path: str, max_size: int = 10 * 1024 * 1024) -> Option
         File content as string, or None if file too large or unreadable
     """
     try:
-        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+        # Validate path security first
+        path = resolve_and_validate_path(file_path)
+
+        if not path.exists() or not path.is_file():
             return None
 
-        file_size = os.path.getsize(file_path)
+        file_size = path.stat().st_size
         if file_size > max_size:
             return None
 
-        with open(file_path, encoding="utf-8", errors="ignore") as f:
+        with open(path, encoding="utf-8", errors="ignore") as f:
             return f.read()
-    except OSError:
+    except (OSError, ValueError, PermissionError):
         return None
 
 

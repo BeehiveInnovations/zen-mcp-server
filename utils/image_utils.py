@@ -67,14 +67,25 @@ def _validate_data_url(image_data_url: str, max_size_mb: float) -> tuple[bytes, 
 def _validate_file_path(file_path: str, max_size_mb: float) -> tuple[bytes, str]:
     """Validate an image loaded from the filesystem."""
     try:
-        with open(file_path, "rb") as handle:
+        # Import here to avoid circular dependency
+        from .file_utils import resolve_and_validate_path
+
+        # Validate path security first
+        path = resolve_and_validate_path(file_path)
+
+        with open(path, "rb") as handle:
             image_bytes = handle.read()
     except FileNotFoundError:
         raise ValueError(f"Image file not found: {file_path}")
+    except PermissionError as exc:
+        raise ValueError(f"Access denied to image file: {exc}")
+    except ValueError as exc:
+        # Re-raise ValueError from path validation
+        raise exc
     except OSError as exc:
         raise ValueError(f"Failed to read image file: {exc}")
 
-    ext = os.path.splitext(file_path)[1].lower()
+    ext = os.path.splitext(str(path))[1].lower()
     if ext not in IMAGES:
         raise ValueError(
             "Unsupported image format: {ext}. Supported formats: {supported}".format(
