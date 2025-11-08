@@ -5,7 +5,6 @@ This module contains security-related constants and configurations
 for file access control.
 """
 
-import os
 from pathlib import Path
 
 # Dangerous paths that should never be scanned
@@ -158,10 +157,9 @@ def is_dangerous_path(path: Path) -> bool:
         for win_path in windows_dangerous:
             if path_str_normalized.startswith(win_path):
                 return True
-                
+
         # Now resolve the path (follows symlinks)
         resolved = path.resolve()
-        resolved_str = str(resolved)
 
         # Check if resolved path is root
         if resolved.parent == resolved:
@@ -176,7 +174,7 @@ def is_dangerous_path(path: Path) -> bool:
             "/private/var/tmp",  # macOS var/tmp
             "/System/Volumes/Data/home",  # macOS home
         ]
-        
+
         for safe_prefix in safe_prefixes:
             try:
                 safe_path = Path(safe_prefix).resolve()
@@ -186,7 +184,7 @@ def is_dangerous_path(path: Path) -> bool:
             except ValueError:
                 # Not under this safe directory, continue checking
                 pass
-                
+
         # Use the recommended approach from #293: relative_to() method
         for dangerous in DANGEROUS_PATHS:
             try:
@@ -197,7 +195,7 @@ def is_dangerous_path(path: Path) -> bool:
                         return True
                     # Skip the relative_to check for root
                     continue
-                    
+
                 # Try to create a relative path from the dangerous directory
                 danger_path = Path(dangerous).resolve()
                 resolved.relative_to(danger_path)
@@ -209,7 +207,7 @@ def is_dangerous_path(path: Path) -> bool:
             except Exception:
                 # Handle any other errors safely
                 continue
-                
+
         return False
 
     except Exception:
