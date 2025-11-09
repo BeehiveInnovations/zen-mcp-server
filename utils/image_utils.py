@@ -8,8 +8,6 @@ from collections.abc import Iterable
 from utils.file_types import (
     IMAGES,
     IMAGES_GEMINI_AI_STUDIO,
-    IMAGE_MIME_TYPES,
-    IMAGE_MIME_TYPES_GEMINI_AI_STUDIO,
     get_image_mime_type,
 )
 
