@@ -4,11 +4,20 @@ import base64
 import logging
 from typing import TYPE_CHECKING, ClassVar, Optional
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    genai = None  # type: ignore
+    types = None  # type: ignore
+    logger.warning("Google Gemini SDK not available. Install with: pip install google-genai")
 
 from utils.env import get_env
 from utils.image_utils import validate_image
