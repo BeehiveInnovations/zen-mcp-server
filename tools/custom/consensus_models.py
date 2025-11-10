@@ -217,6 +217,48 @@ class TierManager:
 
         return available
 
+    def get_failover_candidates(self, level: int, target: int = 3) -> Tuple[List[str], List[str]]:
+        """
+        Get primary models and failover candidates for smart retry.
+
+        When primary free models fail, this provides economy models as fallbacks
+        to ensure users get real AI responses instead of simulation.
+
+        Args:
+            level: Organizational level (1, 2, or 3)
+            target: Target number of models per tier
+
+        Returns:
+            Tuple of (primary_models, fallback_models)
+            - primary_models: Expected models for this level
+            - fallback_models: Additional candidates to try if primary fails
+        """
+        if level == 1:
+            # Level 1: Free models with economy fallbacks
+            free_candidates = self.band_selector.get_models_by_cost_tier("free", limit=10)
+            economy_fallbacks = self.band_selector.get_models_by_cost_tier("economy", limit=5)
+
+            # Primary: top 3 free models
+            primary = free_candidates[:target]
+            # Fallback: remaining free + economy
+            fallback = free_candidates[target:] + economy_fallbacks
+
+            return (primary, fallback)
+
+        elif level == 2:
+            # Level 2: Already includes economy, premium as fallback
+            primary = self.get_tier_models(level)
+            premium_fallbacks = self.band_selector.get_models_by_cost_tier("premium", limit=3)
+            return (primary, premium_fallbacks)
+
+        else:  # level == 3
+            # Level 3: Already includes premium, use more premium as fallback
+            primary = self.get_tier_models(level)
+            premium_fallbacks = self.band_selector.get_models_by_cost_tier("premium", limit=5)
+            # Remove models already in primary
+            fallback = [m for m in premium_fallbacks if m not in primary]
+            return (primary, fallback)
+
     def _get_economy_models(self, target: int) -> List[str]:
         """
         Get economy tier models (should be stable, no failover).

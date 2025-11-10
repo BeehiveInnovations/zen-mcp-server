@@ -222,7 +222,11 @@ class TieredConsensusTool(WorkflowTool):
         models = self.tier_manager.get_tier_models(request.level)
         roles = self.role_assigner.get_roles_for_level(request.level, request.domain)
 
+        # Get failover candidates for smart retry
+        primary_models, fallback_models = self.tier_manager.get_failover_candidates(request.level)
+
         logger.info(f"Selected {len(models)} models and {len(roles)} roles")
+        logger.debug(f"Failover pool: {len(fallback_models)} additional candidates available")
 
         # Workflow step 1: Initial setup
         if request.step_number == 1:
@@ -256,30 +260,31 @@ class TieredConsensusTool(WorkflowTool):
             # Create role-specific prompt
             role_prompt = create_role_prompt(current_role, request.prompt)
 
-            # Call the model with role-specific prompt
-            try:
-                model_response, response_cost = await self._call_model(
-                    model_name=current_model,
-                    role=current_role,
-                    prompt=role_prompt,
-                )
-                logger.info(f"✅ Model call successful: {current_model} (cost: ${response_cost:.4f})")
-            except Exception as e:
-                logger.error(f"❌ Model call failed for {current_model}: {e}")
-                # Use simulated response as fallback
-                logger.warning(f"Using simulated response for {current_model} as fallback")
-                model_response = self._simulate_model_response(current_model, current_role, request.prompt)
-                response_cost = 0.0
+            # Call the model with smart failover
+            model_response, response_cost, actual_model, failover_used = await self._call_model_with_failover(
+                primary_model=current_model,
+                fallback_candidates=fallback_models,
+                role=current_role,
+                prompt=role_prompt,
+                level=request.level,
+            )
+
+            # Track if failover was used
+            if failover_used:
+                logger.info(f"✅ Failover successful: {actual_model} (replaced {current_model})")
+                # Note: We still track as current_model for consistency in output
+            else:
+                logger.info(f"✅ Model call successful: {actual_model} (cost: ${response_cost:.4f})")
 
             # Add perspective to synthesis engine
             self.synthesis_engine.add_perspective(
                 role=current_role,
-                model=current_model,
+                model=actual_model,  # Use actual model that succeeded
                 analysis=model_response,
                 cost=response_cost,
             )
 
-            logger.info(f"Collected perspective from {current_model} as {current_role}")
+            logger.info(f"Collected perspective from {actual_model} as {current_role}")
 
             # Progress update
             progress = (
@@ -324,6 +329,104 @@ class TieredConsensusTool(WorkflowTool):
         return self._create_text_content(
             f"Error: Unexpected step number {request.step_number}/{request.total_steps}"
         )
+
+    async def _call_model_with_failover(
+        self,
+        primary_model: str,
+        fallback_candidates: List[str],
+        role: str,
+        prompt: str,
+        level: int,
+        max_failover_attempts: int = 5,
+    ) -> tuple[str, float, str, bool]:
+        """
+        Call model with smart failover to alternative candidates.
+
+        When primary model fails, tries fallback candidates before
+        resorting to simulation. For Level 1, automatically tries
+        economy models if all free models fail.
+
+        Args:
+            primary_model: Primary model to try first
+            fallback_candidates: List of fallback models to try
+            role: Professional role for this consultation
+            prompt: The prompt to send
+            level: Tier level (for cost warnings)
+            max_failover_attempts: Maximum number of fallback attempts
+
+        Returns:
+            Tuple of (response, cost, actual_model_used, failover_was_used)
+        """
+        # Try primary model first
+        try:
+            response, cost = await self._call_model(
+                model_name=primary_model,
+                role=role,
+                prompt=prompt,
+            )
+            return (response, cost, primary_model, False)
+        except Exception as e:
+            logger.warning(f"Primary model {primary_model} failed: {e}")
+            logger.info(f"Attempting failover from {len(fallback_candidates)} candidates...")
+
+        # Try fallback candidates
+        tried_models = [primary_model]
+        free_exhausted = False
+
+        for attempt, fallback_model in enumerate(fallback_candidates[:max_failover_attempts], 1):
+            # Skip if already tried
+            if fallback_model in tried_models:
+                continue
+
+            tried_models.append(fallback_model)
+
+            # Check if switching from free to paid (Level 1 only)
+            is_paid_fallback = (
+                level == 1
+                and ":free" not in fallback_model
+                and not free_exhausted
+            )
+
+            if is_paid_fallback:
+                free_exhausted = True
+                logger.warning(
+                    f"⚠️ All free models exhausted. Falling back to economy model: {fallback_model}"
+                )
+
+            try:
+                response, cost = await self._call_model(
+                    model_name=fallback_model,
+                    role=role,
+                    prompt=prompt,
+                )
+
+                # Success! Log failover details
+                if is_paid_fallback:
+                    logger.info(
+                        f"✅ Failover to paid model successful: {fallback_model} "
+                        f"(cost: ${cost:.4f}, attempt {attempt}/{max_failover_attempts})"
+                    )
+                else:
+                    logger.info(
+                        f"✅ Failover successful: {fallback_model} "
+                        f"(attempt {attempt}/{max_failover_attempts})"
+                    )
+
+                return (response, cost, fallback_model, True)
+
+            except Exception as e:
+                logger.warning(
+                    f"Failover attempt {attempt} failed for {fallback_model}: {e}"
+                )
+                continue
+
+        # All failover attempts exhausted - use simulation as last resort
+        logger.error(
+            f"❌ All models failed (tried {len(tried_models)}). "
+            f"Using simulation as last resort."
+        )
+        simulation_response = self._simulate_model_response(primary_model, role, prompt)
+        return (simulation_response, 0.0, primary_model, False)
 
     async def _call_model(
         self,
