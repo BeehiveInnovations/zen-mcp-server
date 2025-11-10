@@ -200,16 +200,19 @@ class TieredConsensusTool(WorkflowTool):
         """
         return ""
 
-    async def execute(self, request: TieredConsensusRequest) -> List[Dict[str, Any]]:
+    async def execute(self, arguments: dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Execute consensus analysis workflow.
 
         Args:
-            request: Consensus request with prompt, level, domain
+            arguments: Dictionary of arguments from MCP protocol
 
         Returns:
             List of MCP text content blocks with consensus analysis
         """
+        # Parse arguments into request model for validation
+        request = TieredConsensusRequest(**arguments)
+
         logger.info(
             f"Starting consensus analysis - Level {request.level}, "
             f"Domain: {request.domain}, Step: {request.step_number}/{request.total_steps}"
