@@ -1,6 +1,17 @@
 # Current Configured Models Analysis
 
-This document provides a comprehensive analysis of the 24 AI models currently configured in the Zen MCP Server for LLM selection and optimization.
+This document provides a comprehensive analysis of the AI models currently configured in the Zen MCP Server for LLM selection and optimization.
+
+## 📋 Important Notes
+
+### Provider Attribution
+OpenRouter routes models through multiple infrastructure providers for redundancy, cost optimization, and load balancing. You may see Anthropic models showing "Google" as the provider in API responses - this is normal OpenRouter behavior and does not affect model capabilities or quality. The routing is transparent and ensures high availability.
+
+### Recent Configuration Changes (2025-11-10)
+- **Removed**: Claude Opus 4.1 ($75/M - eliminated ultra-premium tier)
+- **Added**: 4 new high-value models including Qwen VL 235B for OCR, Grok Code Fast for coding, Qwen Coder for budget development, and GLM 4.6 for provider diversification
+- **Current Count**: 24 models (was 21)
+- **Cost Savings**: ~$50/M by removing Opus 4.1 and adding cost-efficient alternatives
 
 ## Model Selection Summary
 
