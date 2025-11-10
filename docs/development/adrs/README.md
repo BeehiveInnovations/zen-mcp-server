@@ -4,9 +4,14 @@ This directory contains Architecture Decision Records for custom tool developmen
 
 ## Contents
 
+### Foundational ADRs
+- **`centralized-model-registry.md`** - ✅ IMPLEMENTED (Partial) - **CRITICAL** - Data-driven model management architecture
+- **`dynamic-model-availability.md`** - ✅ IMPLEMENTED - **CRITICAL** - Free model failover and paid model deprecation patterns
+- **`tiered-consensus-implementation.md`** - ✅ IMPLEMENTED - Unified consensus tool with additive tier architecture
+
 ### Active ADRs
 - **`quickreview.md`** - ✅ IMPLEMENTED - Basic validation tool using free models
-- **`review.md`** - 📋 PLANNED - Peer review tool using value tier models  
+- **`review.md`** - 📋 PLANNED - Peer review tool using value tier models
 - **`criticalreview.md`** - 📋 PLANNED - Executive analysis using premium models
 - **`future.md`** - 🔮 FUTURE - Long-term enhancements and extensions
 - **`prepare-pr.md`** - 📋 ACTIVE - PR preparation checklist and validation
@@ -14,6 +19,7 @@ This directory contains Architecture Decision Records for custom tool developmen
 ## Purpose
 
 These ADRs document architectural decisions for the custom tools system, including:
+- **Foundational architecture** (centralized model registry - READ FIRST)
 - Tool design rationales and trade-offs
 - Model selection strategies
 - Implementation approaches
