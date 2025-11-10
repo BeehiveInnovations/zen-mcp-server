@@ -50,8 +50,8 @@
       "target_allocation": "6 models (24%)"
     },
     "premium": {
-      "min_cost": 10.01,
-      "description": "High-cost flagship models ($10.01+ per million tokens)",
+      "min_cost": 5.0,
+      "description": "High-cost flagship models ($5.00+ per million tokens)",
       "target_allocation": "6 models (24%)"
     }
   },

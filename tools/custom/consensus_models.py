@@ -437,8 +437,8 @@ def get_level_description(level: int) -> str:
     """
     descriptions = {
         1: "Foundation (3 free models, $0 cost) - Quick validation and initial review",
-        2: "Professional (6 models: 3 free + 3 economy, ~$0.50 cost) - Standard development decisions",
-        3: "Executive (8 models: 3 free + 3 economy + 2 premium, ~$5 cost) - Critical architectural decisions",
+        2: "Professional (6 models: 3 free + 3 economy, ~$0.01 cost) - Standard development decisions",
+        3: "Executive (8 models: 3 free + 3 economy + 2 premium, ~$0.10 cost) - Critical architectural decisions",
     }
 
     return descriptions.get(level, f"Unknown level: {level}")
