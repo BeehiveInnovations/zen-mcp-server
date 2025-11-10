@@ -415,9 +415,24 @@ class TieredConsensusTool(WorkflowTool):
                 return (response, cost, fallback_model, True)
 
             except Exception as e:
-                logger.warning(
-                    f"Failover attempt {attempt} failed for {fallback_model}: {e}"
-                )
+                # Distinguish between data policy errors (needs configuration)
+                # vs true unavailability (model deprecated)
+                error_str = str(e).lower()
+
+                if "data policy" in error_str:
+                    logger.info(
+                        f"⚙️  Model {fallback_model} requires OpenRouter data policy opt-in. "
+                        f"Skipping (valid model, needs user configuration)."
+                    )
+                elif "no endpoints found for" in error_str:
+                    logger.warning(
+                        f"⚠️  Model {fallback_model} not found on OpenRouter (may be deprecated). "
+                        f"Skipping."
+                    )
+                else:
+                    logger.warning(
+                        f"Failover attempt {attempt} failed for {fallback_model}: {e}"
+                    )
                 continue
 
         # All failover attempts exhausted - use simulation as last resort
