@@ -24,6 +24,7 @@ class Perspective:
     key_points: List[str]
     concerns: List[str]
     recommendations: List[str]
+    cost: float = 0.0  # Cost of this perspective (in USD)
 
 
 @dataclass
@@ -63,6 +64,7 @@ class SynthesisEngine:
         role: str,
         model: str,
         analysis: str,
+        cost: float = 0.0,
         key_points: Optional[List[str]] = None,
         concerns: Optional[List[str]] = None,
         recommendations: Optional[List[str]] = None,
@@ -74,6 +76,7 @@ class SynthesisEngine:
             role: Professional role name
             model: Model name that provided the analysis
             analysis: Full analysis text
+            cost: Cost of this model call (in USD)
             key_points: Key points identified (extracted if None)
             concerns: Concerns raised (extracted if None)
             recommendations: Recommendations provided (extracted if None)
@@ -93,6 +96,7 @@ class SynthesisEngine:
             key_points=key_points,
             concerns=concerns,
             recommendations=recommendations,
+            cost=cost,
         )
 
         self.perspectives.append(perspective)

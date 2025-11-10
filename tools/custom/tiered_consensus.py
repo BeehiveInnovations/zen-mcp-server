@@ -180,6 +180,26 @@ class TieredConsensusTool(WorkflowTool):
         """
         return False
 
+    def get_request_model(self):
+        """Return the Pydantic model for request validation."""
+        return TieredConsensusRequest
+
+    def get_system_prompt(self) -> str:
+        """Return system prompt for this tool (not used in consensus)."""
+        return ""
+
+    async def prepare_prompt(self, request) -> str:
+        """
+        Prepare prompt for model call (not used - we handle prompts internally).
+
+        Args:
+            request: Tool request object
+
+        Returns:
+            Empty string (prompts are built per-model in execute())
+        """
+        return ""
+
     async def execute(self, request: TieredConsensusRequest) -> List[Dict[str, Any]]:
         """
         Execute consensus analysis workflow.
