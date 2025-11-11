@@ -121,12 +121,12 @@ clink with gemini codegen to implement a user authentication module with JWT tok
 
 **Complex Feature Implementation:**
 ```
-"Use clink with codegen role to create a complete payment processing system with Stripe integration, webhook handling, and transaction logging"
+clink with codex codegen to create a complete payment processing system with Stripe integration, webhook handling, and transaction logging
 ```
 
 **Major Refactoring:**
 ```
-clink codegen with claude to refactor the database layer from SQLAlchemy to async SQLModel with proper migrations
+clink with claude codegen to refactor the database layer from SQLAlchemy to async SQLModel with proper migrations
 ```
 
 **Quick Research Question:**
