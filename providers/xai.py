@@ -54,8 +54,10 @@ class XAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
             return None
 
         if category == ToolModelCategory.EXTENDED_REASONING:
-            # Prefer GROK-4 for advanced reasoning with thinking mode
-            if "grok-4" in allowed_models:
+            # Prefer GROK-4-Fast-Reasoning for cost-efficient reasoning, then GROK-4
+            if "grok-4-fast-reasoning" in allowed_models:
+                return "grok-4-fast-reasoning"
+            elif "grok-4" in allowed_models:
                 return "grok-4"
             elif "grok-3" in allowed_models:
                 return "grok-3"
@@ -63,8 +65,10 @@ class XAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
             return allowed_models[0]
 
         elif category == ToolModelCategory.FAST_RESPONSE:
-            # Prefer GROK-3-Fast for speed, then GROK-4
-            if "grok-3-fast" in allowed_models:
+            # Prefer GROK-4-Fast-Non-Reasoning for fastest responses, then GROK-3-Fast
+            if "grok-4-fast-non-reasoning" in allowed_models:
+                return "grok-4-fast-non-reasoning"
+            elif "grok-3-fast" in allowed_models:
                 return "grok-3-fast"
             elif "grok-4" in allowed_models:
                 return "grok-4"
@@ -75,6 +79,10 @@ class XAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
             # Prefer GROK-4 for balanced use (best overall capabilities)
             if "grok-4" in allowed_models:
                 return "grok-4"
+            elif "grok-code-fast-1" in allowed_models:
+                return "grok-code-fast-1"
+            elif "grok-4-fast-reasoning" in allowed_models:
+                return "grok-4-fast-reasoning"
             elif "grok-3" in allowed_models:
                 return "grok-3"
             elif "grok-3-fast" in allowed_models:
