@@ -82,6 +82,67 @@
       "supports_json_mode": false,
       "supports_images": false,
       "supports_temperature": true
+    },
+    {
+      "model_name": "grok-4-fast",
+      "friendly_name": "X.AI (Grok 4 Fast Reasoning)",
+      "aliases": [
+        "grok-4-fast-reasoning",
+        "grok4fast",
+        "grok-4-fast-reasoning-latest"
+      ],
+      "intelligence_score": 15,
+      "description": "GROK-4 Fast Reasoning (2M context) - Cost-efficient reasoning model with frontier-level performance and exceptional token efficiency",
+      "context_window": 2000000,
+      "max_output_tokens": 2000000,
+      "supports_extended_thinking": true,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_json_mode": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "max_image_size_mb": 20.0
+    },
+    {
+      "model_name": "grok-4-fast-non-reasoning",
+      "friendly_name": "X.AI (Grok 4 Fast Non-Reasoning)",
+      "aliases": [
+        "grok-4-fast-non-reasoning",
+        "grok4fast-non-reasoning"
+      ],
+      "intelligence_score": 13,
+      "description": "GROK-4 Fast Non-Reasoning (2M context) - Ultra-fast text-to-text generation optimized for speed and stability without advanced reasoning",
+      "context_window": 2000000,
+      "max_output_tokens": 2000000,
+      "supports_extended_thinking": false,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_json_mode": true,
+      "supports_images": false,
+      "supports_temperature": true
+    },
+    {
+      "model_name": "grok-code-fast-1",
+      "friendly_name": "X.AI (Grok Code Fast 1)",
+      "aliases": [
+        "grok-code-fast",
+        "grok-code-fast-1-0825",
+        "grokcodefast"
+      ],
+      "intelligence_score": 14,
+      "description": "GROK Code Fast 1 (256K context) - Speedy and economical reasoning model specialized for agentic coding workflows",
+      "context_window": 256000,
+      "max_output_tokens": 256000,
+      "supports_extended_thinking": true,
+      "supports_system_prompts": true,
+      "supports_streaming": true,
+      "supports_function_calling": true,
+      "supports_json_mode": true,
+      "supports_images": false,
+      "supports_temperature": true,
+      "allow_code_generation": true
     }
   ]
 }

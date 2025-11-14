@@ -450,6 +450,45 @@
       "temperature_constraint": "range",
       "description": "xAI's Grok 4 via OpenRouter with vision and advanced reasoning",
       "intelligence_score": 15
+    },
+    {
+      "model_name": "x-ai/grok-4-fast",
+      "aliases": [
+        "grok-4-fast",
+        "grok4fast",
+        "grok-4-fast-reasoning"
+      ],
+      "context_window": 2000000,
+      "max_output_tokens": 2000000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "supports_temperature": true,
+      "temperature_constraint": "range",
+      "description": "xAI's Grok 4 Fast via OpenRouter - Cost-efficient reasoning model with 2M context window",
+      "intelligence_score": 15
+    },
+    {
+      "model_name": "x-ai/grok-code-fast-1",
+      "aliases": [
+        "grok-code-fast",
+        "grok-code-fast-1",
+        "grokcodefast"
+      ],
+      "context_window": 256000,
+      "max_output_tokens": 256000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": false,
+      "max_image_size_mb": 0.0,
+      "supports_temperature": true,
+      "temperature_constraint": "range",
+      "allow_code_generation": true,
+      "description": "xAI's Grok Code Fast 1 via OpenRouter - Speedy and economical reasoning model specialized for agentic coding",
+      "intelligence_score": 14
     }
   ]
 }
