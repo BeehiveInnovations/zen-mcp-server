@@ -183,6 +183,7 @@ CLAUDE.local.md
 .docker_cleaned
 logs/
 *.backup
+*.backup-*.json
 /.desktop_configured
 
 /worktrees/

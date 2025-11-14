@@ -54,6 +54,9 @@ class TestSupportedModelsAliases:
         assert "o3mini" in provider.MODEL_CAPABILITIES["o3-mini"].aliases
         assert "o3pro" in provider.MODEL_CAPABILITIES["o3-pro"].aliases
         assert "gpt4.1" in provider.MODEL_CAPABILITIES["gpt-4.1"].aliases
+        assert "gpt5.1" in provider.MODEL_CAPABILITIES["gpt-5.1"].aliases
+        assert "gpt5.1-codex" in provider.MODEL_CAPABILITIES["gpt-5.1-codex"].aliases
+        assert "codex-mini" in provider.MODEL_CAPABILITIES["gpt-5.1-codex-mini"].aliases
 
         # Test alias resolution
         assert provider._resolve_model_name("mini") == "gpt-5-mini"  # mini -> gpt-5-mini now
@@ -61,10 +64,14 @@ class TestSupportedModelsAliases:
         assert provider._resolve_model_name("o3pro") == "o3-pro"  # o3pro resolves to o3-pro
         assert provider._resolve_model_name("o4mini") == "o4-mini"
         assert provider._resolve_model_name("gpt4.1") == "gpt-4.1"  # gpt4.1 resolves to gpt-4.1
+        assert provider._resolve_model_name("gpt5.1") == "gpt-5.1"
+        assert provider._resolve_model_name("gpt5.1-codex") == "gpt-5.1-codex"
+        assert provider._resolve_model_name("codex-mini") == "gpt-5.1-codex-mini"
 
         # Test case insensitive resolution
         assert provider._resolve_model_name("Mini") == "gpt-5-mini"  # mini -> gpt-5-mini now
         assert provider._resolve_model_name("O3MINI") == "o3-mini"
+        assert provider._resolve_model_name("Gpt5.1") == "gpt-5.1"
 
     def test_xai_provider_aliases(self):
         """Test XAI provider's alias structure."""
