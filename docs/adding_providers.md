@@ -1,118 +1,119 @@
 # Adding a New Provider
 
-This guide explains how to add support for a new AI model provider to the Zen MCP Server. Follow these steps to integrate providers like Anthropic, Cohere, or any API that provides AI model access.
+This guide explains how to add support for a new AI model provider to the Zen MCP Server. The provider system is designed to be extensible and follows a simple pattern.
 
 ## Overview
 
-The provider system in Zen MCP Server is designed to be extensible. Each provider:
-- Inherits from a base class (`ModelProvider` or `OpenAICompatibleProvider`)
-- Implements required methods for model interaction
-- Is registered in the provider registry by the server
-- Has its API key configured via environment variables
+Each provider:
+- Inherits from `ModelProvider` (base class) or `OpenAICompatibleProvider` (for OpenAI-compatible APIs)
+- Defines supported models using `ModelCapabilities` objects
+- Implements the minimal abstract hooks (`get_provider_type()` and `generate_content()`)
+- Gets wired into `configure_providers()` so environment variables control activation
+- Can leverage helper subclasses (e.g., `AzureOpenAIProvider`) when only client wiring differs
 
-## Implementation Paths
+### Intelligence score cheatsheet
 
-You have two options when implementing a new provider:
+Set `intelligence_score` (1–20) when you want deterministic ordering in auto
+mode or the `listmodels` output. The runtime rank starts from this human score
+and adds smaller bonuses for context window, extended thinking, and other
+features ([details here](model_ranking.md)).
 
-### Option A: Native Provider (Full Implementation)
-Inherit from `ModelProvider` when:
-- Your API has unique features not compatible with OpenAI's format
-- You need full control over the implementation
-- You want to implement custom features like extended thinking
+## Choose Your Implementation Path
 
-### Option B: OpenAI-Compatible Provider (Simplified)
-Inherit from `OpenAICompatibleProvider` when:
-- Your API follows OpenAI's chat completion format
-- You want to reuse existing implementation for most functionality
-- You only need to define model capabilities and validation
+**Option A: Full Provider (`ModelProvider`)**
+- For APIs with unique features or custom authentication
+- Complete control over API calls and response handling
+- Populate `MODEL_CAPABILITIES`, implement `generate_content()` and `get_provider_type()`, and only override `get_all_model_capabilities()` / `_lookup_capabilities()` when your catalogue comes from a registry or remote source (override `count_tokens()` only when you have a provider-accurate tokenizer)
 
-⚠️ **CRITICAL**: If your provider has model aliases (shorthands), you **MUST** override `generate_content()` to resolve aliases before API calls. See implementation example below.
+**Option B: OpenAI-Compatible (`OpenAICompatibleProvider`)**
+- For APIs that follow OpenAI's chat completion format
+- Supply `MODEL_CAPABILITIES`, override `get_provider_type()`, and optionally adjust configuration (the base class handles alias resolution, validation, and request wiring)
+- Inherits all API handling automatically
+
+⚠️ **Important**: If you implement a custom `generate_content()`, call `_resolve_model_name()` before invoking the SDK so aliases (e.g. `"gpt"` → `"gpt-4"`) resolve correctly. The shared implementations already do this for you.
+
+**Option C: Azure OpenAI (`AzureOpenAIProvider`)**
+- For Azure-hosted deployments of OpenAI models
+- Reuses the OpenAI-compatible pipeline but swaps in the `AzureOpenAI` client and a deployment mapping (canonical model → deployment ID)
+- Define deployments in [`conf/azure_models.json`](../conf/azure_models.json) (or the file referenced by `AZURE_MODELS_CONFIG_PATH`).
+- Entries follow the [`ModelCapabilities`](../providers/shared/model_capabilities.py) schema and must include a `deployment` identifier.
+  See [Azure OpenAI Configuration](azure_openai.md) for a step-by-step walkthrough.
 
 ## Step-by-Step Guide
 
-### 1. Add Provider Type to Enum
+### 1. Add Provider Type
 
-First, add your provider to the `ProviderType` enum in `providers/base.py`:
+Add your provider to the `ProviderType` enum in `providers/shared/provider_type.py`:
 
 ```python
 class ProviderType(Enum):
-    """Supported model provider types."""
-    
     GOOGLE = "google"
     OPENAI = "openai"
-    OPENROUTER = "openrouter"
-    CUSTOM = "custom"
-    EXAMPLE = "example"  # Add your provider here
+    EXAMPLE = "example"  # Add this
 ```
 
 ### 2. Create the Provider Implementation
 
-#### Option A: Native Provider Implementation
+#### Option A: Full Provider (Native Implementation)
 
-Create a new file in the `providers/` directory (e.g., `providers/example.py`):
+Create `providers/example.py`:
 
 ```python
 """Example model provider implementation."""
 
 import logging
 from typing import Optional
-from .base import (
+
+from .base import ModelProvider
+from .shared import (
     ModelCapabilities,
-    ModelProvider,
     ModelResponse,
     ProviderType,
     RangeTemperatureConstraint,
 )
-from utils.model_restrictions import get_restriction_service
 
 logger = logging.getLogger(__name__)
 
 
 class ExampleModelProvider(ModelProvider):
     """Example model provider implementation."""
-    
-    SUPPORTED_MODELS = {
-        "example-large-v1": {
-            "context_window": 100_000,
-            "supports_extended_thinking": False,
-        },
-        "example-small-v1": {
-            "context_window": 50_000,
-            "supports_extended_thinking": False,
-        },
-        # Shorthands
-        "large": "example-large-v1",
-        "small": "example-small-v1",
+
+    MODEL_CAPABILITIES = {
+        "example-large": ModelCapabilities(
+            provider=ProviderType.EXAMPLE,
+            model_name="example-large",
+            friendly_name="Example Large",
+            intelligence_score=18,
+            context_window=100_000,
+            max_output_tokens=50_000,
+            supports_extended_thinking=False,
+            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
+            description="Large model for complex tasks",
+            aliases=["large", "big"],
+        ),
+        "example-small": ModelCapabilities(
+            provider=ProviderType.EXAMPLE,
+            model_name="example-small",
+            friendly_name="Example Small",
+            intelligence_score=14,
+            context_window=32_000,
+            max_output_tokens=16_000,
+            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
+            description="Fast model for simple tasks",
+            aliases=["small", "fast"],
+        ),
     }
-    
+
     def __init__(self, api_key: str, **kwargs):
         super().__init__(api_key, **kwargs)
         # Initialize your API client here
-    
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        resolved_name = self._resolve_model_name(model_name)
-        
-        if resolved_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Unsupported model: {model_name}")
-        
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
-            raise ValueError(f"Model '{model_name}' is not allowed by restriction policy.")
-        
-        config = self.SUPPORTED_MODELS[resolved_name]
-        
-        return ModelCapabilities(
-            provider=ProviderType.EXAMPLE,
-            model_name=resolved_name,
-            friendly_name="Example",
-            context_window=config["context_window"],
-            supports_extended_thinking=config["supports_extended_thinking"],
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=True,
-            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
-        )
-    
+
+    def get_all_model_capabilities(self) -> dict[str, ModelCapabilities]:
+        return dict(self.MODEL_CAPABILITIES)
+
+    def get_provider_type(self) -> ProviderType:
+        return ProviderType.EXAMPLE
+
     def generate_content(
         self,
         prompt: str,
@@ -123,697 +124,190 @@ class ExampleModelProvider(ModelProvider):
         **kwargs,
     ) -> ModelResponse:
         resolved_name = self._resolve_model_name(model_name)
-        self.validate_parameters(resolved_name, temperature)
-        
-        # Call your API here
-        # response = your_api_call(...)
-        
+
+        # Your API call logic here
+        # response = your_api_client.generate(...)
+
         return ModelResponse(
-            content="",  # From API response
-            usage={
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "total_tokens": 0,
-            },
+            content="Generated response",
+            usage={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
             model_name=resolved_name,
             friendly_name="Example",
             provider=ProviderType.EXAMPLE,
         )
-    
-    def count_tokens(self, text: str, model_name: str) -> int:
-        # Implement your tokenization or use estimation
-        return len(text) // 4
-    
-    def get_provider_type(self) -> ProviderType:
-        return ProviderType.EXAMPLE
-    
-    def validate_model_name(self, model_name: str) -> bool:
-        resolved_name = self._resolve_model_name(model_name)
-        
-        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
-            return False
-        
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
-            logger.debug(f"Example model '{model_name}' -> '{resolved_name}' blocked by restrictions")
-            return False
-        
-        return True
-    
-    def supports_thinking_mode(self, model_name: str) -> bool:
-        capabilities = self.get_capabilities(model_name)
-        return capabilities.supports_extended_thinking
-    
-    def _resolve_model_name(self, model_name: str) -> str:
-        shorthand_value = self.SUPPORTED_MODELS.get(model_name)
-        if isinstance(shorthand_value, str):
-            return shorthand_value
-        return model_name
 ```
 
-#### Option B: OpenAI-Compatible Provider Implementation
+`ModelProvider.get_capabilities()` automatically resolves aliases, enforces the
+shared restriction service, and returns the correct `ModelCapabilities`
+instance. Override `_lookup_capabilities()` only when you source capabilities
+from a registry or remote API. `ModelProvider.count_tokens()` uses a simple
+4-characters-per-token estimate so providers work out of the box—override it
+only when you can call the provider's real tokenizer (for example, the
+OpenAI-compatible base class integrates `tiktoken`).
 
-For providers with OpenAI-compatible APIs, the implementation is much simpler:
+#### Option B: OpenAI-Compatible Provider (Simplified)
+
+For OpenAI-compatible APIs:
 
 ```python
-"""Example provider using OpenAI-compatible interface."""
+"""Example OpenAI-compatible provider."""
 
-import logging
 from typing import Optional
 
-from .base import (
+from .openai_compatible import OpenAICompatibleProvider
+from .shared import (
     ModelCapabilities,
     ModelResponse,
     ProviderType,
     RangeTemperatureConstraint,
 )
-from .openai_compatible import OpenAICompatibleProvider
-
-logger = logging.getLogger(__name__)
 
 
 class ExampleProvider(OpenAICompatibleProvider):
-    """Example provider using OpenAI-compatible API."""
+    """Example OpenAI-compatible provider."""
     
     FRIENDLY_NAME = "Example"
     
-    # Define supported models
-    SUPPORTED_MODELS = {
-        "example-model-large": {
-            "context_window": 128_000,
-            "supports_extended_thinking": False,
-        },
-        "example-model-small": {
-            "context_window": 32_000,
-            "supports_extended_thinking": False,
-        },
-        # Shorthands
-        "large": "example-model-large",
-        "small": "example-model-small",
+    # Define models using ModelCapabilities (consistent with other providers)
+    MODEL_CAPABILITIES = {
+        "example-model-large": ModelCapabilities(
+            provider=ProviderType.EXAMPLE,
+            model_name="example-model-large",
+            friendly_name="Example Large",
+            context_window=128_000,
+            max_output_tokens=64_000,
+            temperature_constraint=RangeTemperatureConstraint(0.0, 2.0, 0.7),
+            aliases=["large", "big"],
+        ),
     }
     
     def __init__(self, api_key: str, **kwargs):
-        """Initialize provider with API key."""
-        # Set your API base URL
         kwargs.setdefault("base_url", "https://api.example.com/v1")
         super().__init__(api_key, **kwargs)
-    
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        """Get capabilities for a specific model."""
-        resolved_name = self._resolve_model_name(model_name)
-        
-        if resolved_name not in self.SUPPORTED_MODELS:
-            raise ValueError(f"Unsupported model: {model_name}")
-        
-        # Check restrictions
-        from utils.model_restrictions import get_restriction_service
-        
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
-            raise ValueError(f"Model '{model_name}' is not allowed by restriction policy.")
-        
-        config = self.SUPPORTED_MODELS[resolved_name]
-        
-        return ModelCapabilities(
-            provider=ProviderType.EXAMPLE,
-            model_name=resolved_name,
-            friendly_name=self.FRIENDLY_NAME,
-            context_window=config["context_window"],
-            supports_extended_thinking=config["supports_extended_thinking"],
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=True,
-            temperature_constraint=RangeTemperatureConstraint(0.0, 1.0, 0.7),
-        )
-    
+
     def get_provider_type(self) -> ProviderType:
-        """Get the provider type."""
         return ProviderType.EXAMPLE
-    
-    def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported."""
-        resolved_name = self._resolve_model_name(model_name)
-        
-        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
-            return False
-        
-        # Check restrictions
-        from utils.model_restrictions import get_restriction_service
-        
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
-            return False
-        
-        return True
-    
-    def _resolve_model_name(self, model_name: str) -> str:
-        """Resolve model shorthand to full name."""
-        shorthand_value = self.SUPPORTED_MODELS.get(model_name)
-        if isinstance(shorthand_value, str):
-            return shorthand_value
-        return model_name
-    
-    def generate_content(
-        self,
-        prompt: str,
-        model_name: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.7,
-        max_output_tokens: Optional[int] = None,
-        **kwargs,
-    ) -> ModelResponse:
-        """Generate content using API with proper model name resolution."""
-        # CRITICAL: Resolve model alias before making API call
-        # This ensures aliases like "large" get sent as "example-model-large" to the API
-        resolved_model_name = self._resolve_model_name(model_name)
-        
-        # Call parent implementation with resolved model name
-        return super().generate_content(
-            prompt=prompt,
-            model_name=resolved_model_name,
-            system_prompt=system_prompt,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens,
-            **kwargs,
-        )
-    
-    # Note: count_tokens is inherited from OpenAICompatibleProvider
 ```
 
-### 3. Update Registry Configuration
+`OpenAICompatibleProvider` already exposes the declared models via
+`MODEL_CAPABILITIES`, resolves aliases through the shared base pipeline, and
+enforces restrictions. Most subclasses only need to provide the class metadata
+shown above.
 
-#### 3.1. Add Environment Variable Mapping
+### 3. Register Your Provider
 
-Update `providers/registry.py` to map your provider's API key:
+Add environment variable mapping in `providers/registry.py`:
 
 ```python
-@classmethod
-def _get_api_key_for_provider(cls, provider_type: ProviderType) -> Optional[str]:
-    """Get API key for a provider from environment variables."""
-    key_mapping = {
-        ProviderType.GOOGLE: "GEMINI_API_KEY",
-        ProviderType.OPENAI: "OPENAI_API_KEY",
-        ProviderType.OPENROUTER: "OPENROUTER_API_KEY",
-        ProviderType.CUSTOM: "CUSTOM_API_KEY",
-        ProviderType.EXAMPLE: "EXAMPLE_API_KEY",  # Add this line
-    }
-    # ... rest of the method
+# In _get_api_key_for_provider (providers/registry.py), add:
+    ProviderType.EXAMPLE: "EXAMPLE_API_KEY",
 ```
 
-### 4. Configure Docker Environment Variables
+Add to `server.py`:
 
-**CRITICAL**: You must add your provider's environment variables to `docker-compose.yml` for them to be available in the Docker container.
-
-Add your API key and restriction variables to the `environment` section:
-
-```yaml
-services:
-  zen-mcp:
-    # ... other configuration ...
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - EXAMPLE_API_KEY=${EXAMPLE_API_KEY:-}  # Add this line
-      # OpenRouter support
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      # ... other variables ...
-      # Model usage restrictions
-      - OPENAI_ALLOWED_MODELS=${OPENAI_ALLOWED_MODELS:-}
-      - GOOGLE_ALLOWED_MODELS=${GOOGLE_ALLOWED_MODELS:-}
-      - EXAMPLE_ALLOWED_MODELS=${EXAMPLE_ALLOWED_MODELS:-}  # Add this line
-```
-
-⚠️ **Without this step**, the Docker container won't have access to your environment variables, and your provider won't be registered even if the API key is set in your `.env` file.
-
-### 5. Register Provider in server.py
-
-The `configure_providers()` function in `server.py` handles provider registration. You need to:
-
-**Note**: The provider priority is hardcoded in `registry.py`. If you're adding a new native provider (like Example), you'll need to update the `PROVIDER_PRIORITY_ORDER` in `get_provider_for_model()`:
-
-```python
-# In providers/registry.py
-PROVIDER_PRIORITY_ORDER = [
-    ProviderType.GOOGLE,      # Direct Gemini access
-    ProviderType.OPENAI,      # Direct OpenAI access
-    ProviderType.EXAMPLE,     # Add your native provider here
-    ProviderType.CUSTOM,      # Local/self-hosted models
-    ProviderType.OPENROUTER,  # Catch-all (must stay last)
-]
-```
-
-Native providers should be placed BEFORE CUSTOM and OPENROUTER to ensure they get priority for their models.
-
-1. **Import your provider class** at the top of `server.py`:
+1. **Import your provider**:
 ```python
 from providers.example import ExampleModelProvider
 ```
 
-2. **Add API key checking** in the `configure_providers()` function:
+2. **Add to `configure_providers()` function**:
 ```python
-def configure_providers():
-    """Configure and validate AI providers based on available API keys."""
-    # ... existing code ...
-    
-    # Check for Example API key
-    example_key = os.getenv("EXAMPLE_API_KEY")
-    if example_key and example_key != "your_example_api_key_here":
-        valid_providers.append("Example")
-        has_native_apis = True
-        logger.info("Example API key found - Example models available")
+# Check for Example API key
+example_key = os.getenv("EXAMPLE_API_KEY")
+if example_key:
+    ModelProviderRegistry.register_provider(ProviderType.EXAMPLE, ExampleModelProvider)
+    logger.info("Example API key found - Example models available")
 ```
 
-3. **Register the provider** in the appropriate section:
-```python
-    # Register providers in priority order:
-    # 1. Native APIs first (most direct and efficient)
-    if has_native_apis:
-        if gemini_key and gemini_key != "your_gemini_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-        if openai_key and openai_key != "your_openai_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
-        if example_key and example_key != "your_example_api_key_here":
-            ModelProviderRegistry.register_provider(ProviderType.EXAMPLE, ExampleModelProvider)
+3. **Add to provider priority** (edit `ModelProviderRegistry.PROVIDER_PRIORITY_ORDER` in `providers/registry.py`): insert your provider in the list at the appropriate point in the cascade of native → custom → catch-all providers.
+
+### 4. Environment Configuration
+
+Add to your `.env` file:
+```bash
+# Your provider's API key
+EXAMPLE_API_KEY=your_api_key_here
+
+# Optional: Disable specific tools
+DISABLED_TOOLS=debug,tracer
+
+# Optional (OpenAI-compatible providers): Restrict accessible models
+EXAMPLE_ALLOWED_MODELS=example-model-large,example-model-small
 ```
 
-4. **Update error message** to include your provider:
-```python
-    if not valid_providers:
-        raise ValueError(
-            "At least one API configuration is required. Please set either:\n"
-            "- GEMINI_API_KEY for Gemini models\n"
-            "- OPENAI_API_KEY for OpenAI o3 model\n"
-            "- EXAMPLE_API_KEY for Example models\n"  # Add this
-            "- OPENROUTER_API_KEY for OpenRouter (multiple models)\n"
-            "- CUSTOM_API_URL for local models (Ollama, vLLM, etc.)"
-        )
+For Azure OpenAI deployments:
+
+```bash
+AZURE_OPENAI_API_KEY=your_azure_openai_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+# Models are defined in conf/azure_models.json (or AZURE_MODELS_CONFIG_PATH)
+# AZURE_OPENAI_API_VERSION=2024-02-15-preview
+# AZURE_OPENAI_ALLOWED_MODELS=gpt-4o,gpt-4o-mini
+# AZURE_MODELS_CONFIG_PATH=/absolute/path/to/custom_azure_models.json
 ```
 
-### 6. Add Model Capabilities for Auto Mode
+You can also define Azure models in [`conf/azure_models.json`](../conf/azure_models.json) (the bundled file is empty so you can copy it safely). Each entry mirrors the `ModelCapabilities` schema and must include a `deployment` field. Set `AZURE_MODELS_CONFIG_PATH` if you maintain a custom copy outside the repository.
 
-Update `config.py` to add your models to `MODEL_CAPABILITIES_DESC`:
+**Note**: The `description` field in `ModelCapabilities` helps Claude choose the best model in auto mode.
 
-```python
-MODEL_CAPABILITIES_DESC = {
-    # ... existing models ...
-    
-    # Example models - Available when EXAMPLE_API_KEY is configured
-    "large": "Example Large (100K context) - High capacity model for complex tasks",
-    "small": "Example Small (50K context) - Fast model for simple tasks",
-    # Full model names
-    "example-large-v1": "Example Large (100K context) - High capacity model",
-    "example-small-v1": "Example Small (50K context) - Fast lightweight model",
-}
-```
+### 5. Test Your Provider
 
-### 7. Update Documentation
-
-#### 7.1. Update README.md
-
-Add your provider to the quickstart section:
-
-```markdown
-### 1. Get API Keys (at least one required)
-
-**Option B: Native APIs**
-- **Gemini**: Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-- **OpenAI**: Visit [OpenAI Platform](https://platform.openai.com/api-keys)
-- **Example**: Visit [Example API Console](https://example.com/api-keys)  # Add this
-```
-
-Also update the .env file example:
-
-```markdown
-# Edit .env to add your API keys
-# GEMINI_API_KEY=your-gemini-api-key-here
-# OPENAI_API_KEY=your-openai-api-key-here
-# EXAMPLE_API_KEY=your-example-api-key-here  # Add this
-```
-
-### 8. Write Tests
-
-#### 8.1. Unit Tests
-
-Create `tests/test_example_provider.py`:
+Create basic tests to verify your implementation:
 
 ```python
-"""Tests for Example provider implementation."""
-
-import os
-from unittest.mock import patch
-import pytest
-
-from providers.example import ExampleModelProvider
-from providers.base import ProviderType
-
-
-class TestExampleProvider:
-    """Test Example provider functionality."""
-    
-    @patch.dict(os.environ, {"EXAMPLE_API_KEY": "test-key"})
-    def test_initialization(self):
-        """Test provider initialization."""
-        provider = ExampleModelProvider("test-key")
-        assert provider.api_key == "test-key"
-        assert provider.get_provider_type() == ProviderType.EXAMPLE
-    
-    def test_model_validation(self):
-        """Test model name validation."""
-        provider = ExampleModelProvider("test-key")
-        
-        # Test valid models
-        assert provider.validate_model_name("large") is True
-        assert provider.validate_model_name("example-large-v1") is True
-        
-        # Test invalid model
-        assert provider.validate_model_name("invalid-model") is False
-    
-    def test_resolve_model_name(self):
-        """Test model name resolution."""
-        provider = ExampleModelProvider("test-key")
-        
-        # Test shorthand resolution
-        assert provider._resolve_model_name("large") == "example-large-v1"
-        assert provider._resolve_model_name("small") == "example-small-v1"
-        
-        # Test full name passthrough
-        assert provider._resolve_model_name("example-large-v1") == "example-large-v1"
-    
-    def test_get_capabilities(self):
-        """Test getting model capabilities."""
-        provider = ExampleModelProvider("test-key")
-        
-        capabilities = provider.get_capabilities("large")
-        assert capabilities.model_name == "example-large-v1"
-        assert capabilities.friendly_name == "Example"
-        assert capabilities.context_window == 100_000
-        assert capabilities.provider == ProviderType.EXAMPLE
-        
-        # Test temperature range
-        assert capabilities.temperature_constraint.min_temp == 0.0
-        assert capabilities.temperature_constraint.max_temp == 2.0
+# Test capabilities
+provider = ExampleModelProvider("test-key")
+capabilities = provider.get_capabilities("large")
+assert capabilities.context_window > 0
+assert capabilities.provider == ProviderType.EXAMPLE
 ```
 
-#### 8.2. Simulator Tests (Real-World Validation)
-
-Create a simulator test to validate that your provider works correctly in real-world scenarios. Create `simulator_tests/test_example_models.py`:
-
-```python
-"""
-Example Provider Model Tests
-
-Tests that verify Example provider functionality including:
-- Model alias resolution
-- API integration
-- Conversation continuity
-- Error handling
-"""
-
-from .base_test import BaseSimulatorTest
 
 
-class TestExampleModels(BaseSimulatorTest):
-    """Test Example provider functionality"""
+## Key Concepts
 
-    @property
-    def test_name(self) -> str:
-        return "example_models"
+### Provider Priority
+When a user requests a model, providers are checked in priority order:
+1. **Native providers** (Gemini, OpenAI, Example) - handle their specific models
+2. **Custom provider** - handles local/self-hosted models  
+3. **OpenRouter** - catch-all for everything else
 
-    @property
-    def test_description(self) -> str:
-        return "Example provider model functionality and integration"
+### Model Validation
+`ModelProvider.validate_model_name()` delegates to `get_capabilities()` so most
+providers can rely on the shared implementation. Override it only when you need
+to opt out of that pipeline—for example, `CustomProvider` declines OpenRouter
+models so they fall through to the dedicated OpenRouter provider.
 
-    def run_test(self) -> bool:
-        """Test Example provider models"""
-        try:
-            self.logger.info("Test: Example provider functionality")
+### Model Aliases
+Aliases declared on `ModelCapabilities` are applied automatically via
+`_resolve_model_name()`, and both the validation and request flows call it
+before touching your SDK. Override `generate_content()` only when your provider
+needs additional alias handling beyond the shared behaviour.
 
-            # Check if Example API key is configured
-            check_result = self.check_env_var("EXAMPLE_API_KEY")
-            if not check_result:
-                self.logger.info("  ⚠️  Example API key not configured - skipping test")
-                return True  # Skip, not fail
-
-            # Test 1: Shorthand alias mapping
-            self.logger.info("  1: Testing 'large' alias mapping")
-            
-            response1, continuation_id = self.call_mcp_tool(
-                "chat",
-                {
-                    "prompt": "Say 'Hello from Example Large model!' and nothing else.",
-                    "model": "large",  # Should map to example-large-v1
-                    "temperature": 0.1,
-                }
-            )
-
-            if not response1:
-                self.logger.error("  ❌ Large alias test failed")
-                return False
-
-            self.logger.info("  ✅ Large alias call completed")
-
-            # Test 2: Direct model name
-            self.logger.info("  2: Testing direct model name (example-small-v1)")
-            
-            response2, _ = self.call_mcp_tool(
-                "chat",
-                {
-                    "prompt": "Say 'Hello from Example Small model!' and nothing else.",
-                    "model": "example-small-v1",
-                    "temperature": 0.1,
-                }
-            )
-
-            if not response2:
-                self.logger.error("  ❌ Direct model name test failed")
-                return False
-
-            self.logger.info("  ✅ Direct model name call completed")
-
-            # Test 3: Conversation continuity
-            self.logger.info("  3: Testing conversation continuity")
-            
-            response3, new_continuation_id = self.call_mcp_tool(
-                "chat",
-                {
-                    "prompt": "Remember this number: 99. What number did I just tell you?",
-                    "model": "large",
-                    "temperature": 0.1,
-                }
-            )
-
-            if not response3 or not new_continuation_id:
-                self.logger.error("  ❌ Failed to start conversation")
-                return False
-
-            # Continue conversation
-            response4, _ = self.call_mcp_tool(
-                "chat",
-                {
-                    "prompt": "What was the number I told you earlier?",
-                    "model": "large",
-                    "continuation_id": new_continuation_id,
-                    "temperature": 0.1,
-                }
-            )
-
-            if not response4:
-                self.logger.error("  ❌ Failed to continue conversation")
-                return False
-
-            if "99" in response4:
-                self.logger.info("  ✅ Conversation continuity working")
-            else:
-                self.logger.warning("  ⚠️  Model may not have remembered the number")
-
-            # Test 4: Check logs for proper provider usage
-            self.logger.info("  4: Validating Example provider usage in logs")
-            logs = self.get_recent_server_logs()
-
-            # Look for evidence of Example provider usage
-            example_logs = [line for line in logs.split("\n") if "example" in line.lower()]
-            model_resolution_logs = [
-                line for line in logs.split("\n") 
-                if "Resolved model" in line and "example" in line.lower()
-            ]
-
-            self.logger.info(f"   Example-related logs: {len(example_logs)}")
-            self.logger.info(f"   Model resolution logs: {len(model_resolution_logs)}")
-
-            # Success criteria
-            api_used = len(example_logs) > 0
-            models_resolved = len(model_resolution_logs) > 0
-
-            if api_used and models_resolved:
-                self.logger.info("  ✅ Example provider tests passed")
-                return True
-            else:
-                self.logger.error("  ❌ Example provider tests failed")
-                return False
-
-        except Exception as e:
-            self.logger.error(f"Example provider test failed: {e}")
-            return False
-
-
-def main():
-    """Run the Example provider tests"""
-    import sys
-
-    verbose = "--verbose" in sys.argv or "-v" in sys.argv
-    test = TestExampleModels(verbose=verbose)
-
-    success = test.run_test()
-    sys.exit(0 if success else 1)
-
-
-if __name__ == "__main__":
-    main()
-```
-
-The simulator test is crucial because it:
-- Validates your provider works in the actual Docker environment
-- Tests real API integration, not just mocked behavior
-- Verifies model name resolution works correctly
-- Checks conversation continuity across requests
-- Examines server logs to ensure proper provider selection
-
-See `simulator_tests/test_openrouter_models.py` for a complete real-world example.
-
-## Model Name Mapping and Provider Priority
-
-### How Model Name Resolution Works
-
-When a user requests a model (e.g., "pro", "o3", "example-large-v1"), the system:
-
-1. **Checks providers in priority order** (defined in `registry.py`):
-   ```python
-   PROVIDER_PRIORITY_ORDER = [
-       ProviderType.GOOGLE,      # Native Gemini API
-       ProviderType.OPENAI,      # Native OpenAI API  
-       ProviderType.CUSTOM,      # Local/self-hosted
-       ProviderType.OPENROUTER,  # Catch-all for everything else
-   ]
-   ```
-
-2. **For each provider**, calls `validate_model_name()`:
-   - Native providers (Gemini, OpenAI) return `true` only for their specific models
-   - OpenRouter returns `true` for ANY model (it's the catch-all)
-   - First provider that validates the model handles the request
-
-### Example: Model "gemini-2.5-pro"
-
-1. **Gemini provider** checks: YES, it's in my SUPPORTED_MODELS → Gemini handles it
-2. OpenAI skips (Gemini already handled it)
-3. OpenRouter never sees it
-
-### Example: Model "claude-3-opus" 
-
-1. **Gemini provider** checks: NO, not my model → skip
-2. **OpenAI provider** checks: NO, not my model → skip  
-3. **Custom provider** checks: NO, not configured → skip
-4. **OpenRouter provider** checks: YES, I accept all models → OpenRouter handles it
-
-### Implementing Model Name Validation
-
-Your provider's `validate_model_name()` should:
-
-```python
-def validate_model_name(self, model_name: str) -> bool:
-    resolved_name = self._resolve_model_name(model_name)
-    
-    # Only accept models you explicitly support
-    if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
-        return False
-    
-    # Check restrictions
-    restriction_service = get_restriction_service()
-    if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
-        logger.debug(f"Example model '{model_name}' -> '{resolved_name}' blocked by restrictions")
-        return False
-    
-    return True
-```
-
-**Important**: Native providers should ONLY return `true` for models they explicitly support. This ensures they get priority over proxy providers like OpenRouter.
-
-### Model Shorthands
-
-Each provider can define shorthands in their SUPPORTED_MODELS:
-
-```python
-SUPPORTED_MODELS = {
-    "example-large-v1": { ... },  # Full model name
-    "large": "example-large-v1",   # Shorthand mapping
-}
-```
-
-The `_resolve_model_name()` method handles this mapping automatically.
-
-## Critical Implementation Requirements
-
-### Alias Resolution for OpenAI-Compatible Providers
-
-If you inherit from `OpenAICompatibleProvider` and define model aliases, you **MUST** override `generate_content()` to resolve aliases before API calls. This is because:
-
-1. **The base `OpenAICompatibleProvider.generate_content()`** sends the original model name directly to the API
-2. **Your API expects the full model name**, not the alias
-3. **Without resolution**, requests like `model="large"` will fail with 404/400 errors
-
-**Examples of providers that need this:**
-- XAI provider: `"grok"` → `"grok-3"`
-- OpenAI provider: `"mini"` → `"o4-mini"`
-- Custom provider: `"fast"` → `"llama-3.1-8b-instruct"`
-
-**Example implementation pattern:**
-```python
-def generate_content(self, prompt: str, model_name: str, **kwargs) -> ModelResponse:
-    # CRITICAL: Resolve alias before API call
-    resolved_model_name = self._resolve_model_name(model_name)
-    
-    # Pass resolved name to parent
-    return super().generate_content(prompt=prompt, model_name=resolved_model_name, **kwargs)
-```
-
-**Providers that DON'T need this:**
-- Gemini provider (has its own generate_content implementation)
-- OpenRouter provider (already implements this pattern)
-- Providers without aliases
+## Important Notes
 
 ## Best Practices
 
-1. **Always validate model names** against supported models and restrictions
-2. **Be specific in validation** - only accept models you actually support
-3. **Handle API errors gracefully** with proper error messages
-4. **Include retry logic** for transient errors (see `gemini.py` for example)
-5. **Log important events** for debugging (initialization, model resolution, errors)
-6. **Support model shorthands** for better user experience
-7. **Document supported models** clearly in your provider class
-8. **Test thoroughly** including error cases and edge conditions
+- **Be specific in model validation** - only accept models you actually support
+- **Use ModelCapabilities objects** consistently (like Gemini provider)
+- **Include descriptive aliases** for better user experience  
+- **Add error handling** and logging for debugging
+- **Test with real API calls** to verify everything works
+- **Follow the existing patterns** in `providers/gemini.py` and `providers/custom.py`
 
-## Checklist
+## Quick Checklist
 
-Before submitting your PR:
+- [ ] Added to `ProviderType` enum in `providers/shared/provider_type.py`
+- [ ] Created provider class with all required methods
+- [ ] Added API key mapping in `providers/registry.py`
+- [ ] Added to provider priority order in `registry.py`
+- [ ] Imported and registered in `server.py`
+- [ ] Basic tests verify model validation and capabilities
+- [ ] Tested with real API calls
 
-- [ ] Provider type added to `ProviderType` enum in `providers/base.py`
-- [ ] Provider implementation complete with all required methods
-- [ ] API key mapping added to `_get_api_key_for_provider()` in `providers/registry.py`
-- [ ] Provider added to `PROVIDER_PRIORITY_ORDER` in `registry.py` (if native provider)
-- [ ] **Environment variables added to `docker-compose.yml`** (API key and restrictions)
-- [ ] Provider imported and registered in `server.py`'s `configure_providers()`
-- [ ] API key checking added to `configure_providers()` function
-- [ ] Error message updated to include new provider
-- [ ] Model capabilities added to `config.py` for auto mode
-- [ ] Documentation updated (README.md)
-- [ ] Unit tests written and passing (`tests/test_<provider>.py`)
-- [ ] Simulator tests written and passing (`simulator_tests/test_<provider>_models.py`)
-- [ ] Integration tested with actual API calls
-- [ ] Code follows project style (run linting)
-- [ ] PR follows the template requirements
+## Examples
 
-## Need Help?
-
-- Look at existing providers (`gemini.py`, `openai.py`) for examples
-- Check the base classes for method signatures and requirements
-- Run tests frequently during development
-- Ask questions in GitHub issues if stuck
+See existing implementations:
+- **Full provider**: `providers/gemini.py`
+- **OpenAI-compatible**: `providers/custom.py`
+- **Base classes**: `providers/base.py`

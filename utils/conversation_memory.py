@@ -3,15 +3,29 @@ Conversation Memory for AI-to-AI Multi-turn Discussions
 
 This module provides conversation persistence and context reconstruction for
 stateless MCP (Model Context Protocol) environments. It enables multi-turn
-conversations between Claude and Gemini by storing conversation state in Redis
-across independent request cycles.
+conversations between the agent and downstream models by storing conversation
+state in memory across independent request cycles.
+
+CRITICAL ARCHITECTURAL REQUIREMENT:
+This conversation memory system is designed for PERSISTENT MCP SERVER PROCESSES.
+It uses in-memory storage that persists only within a single Python process.
+
+⚠️  IMPORTANT: This system will NOT work correctly if MCP tool calls are made
+    as separate subprocess invocations (each subprocess starts with empty memory).
+
+    WORKING SCENARIO: Claude Desktop with persistent MCP server process
+    FAILING SCENARIO: Simulator tests calling server.py as individual subprocesses
+
+    Root cause of test failures: Each subprocess call loses the conversation
+    state from previous calls because memory is process-specific, not shared
+    across subprocess boundaries.
 
 ARCHITECTURE OVERVIEW:
 The MCP protocol is inherently stateless - each tool request is independent
 with no memory of previous interactions. This module bridges that gap by:
 
 1. Creating persistent conversation threads with unique UUIDs
-2. Storing complete conversation context (turns, files, metadata) in Redis
+2. Storing complete conversation context (turns, files, metadata) in memory
 3. Reconstructing conversation history when tools are called with continuation_id
 4. Supporting cross-tool continuation - seamlessly switch between different tools
    while maintaining full conversation context and file references
@@ -35,9 +49,9 @@ Key Features:
   most recent file context is preserved when token limits require exclusions.
 - Automatic turn limiting (20 turns max) to prevent runaway conversations
 - Context reconstruction for stateless request continuity
-- Redis-based persistence with automatic expiration (3 hour TTL)
+- In-memory persistence with automatic expiration (3 hour TTL)
 - Thread-safe operations for concurrent access
-- Graceful degradation when Redis is unavailable
+- Graceful degradation when storage is unavailable
 
 DUAL PRIORITIZATION STRATEGY (Files & Conversations):
 The conversation memory system implements sophisticated prioritization for both files and
@@ -83,7 +97,7 @@ Collection Phase (Newest-First Priority):
 - Excludes: Turn 2, Turn 1 (oldest, dropped due to token limits)
 
 Presentation Phase (Chronological Order):
-- LLM sees: "--- Turn 3 (Claude) ---", "--- Turn 4 (Gemini) ---", "--- Turn 5 (Claude) ---"
+- LLM sees: "--- Turn 3 (Agent) ---", "--- Turn 4 (Model) ---", "--- Turn 5 (Agent) ---"
 - Natural conversation flow maintained despite prioritizing recent context
 
 This enables true AI-to-AI collaboration across the entire tool ecosystem with optimal
@@ -98,24 +112,28 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from utils.env import get_env
+
 logger = logging.getLogger(__name__)
 
 # Configuration constants
 # Get max conversation turns from environment, default to 20 turns (10 exchanges)
 try:
-    MAX_CONVERSATION_TURNS = int(os.getenv("MAX_CONVERSATION_TURNS", "20"))
+    max_turns_raw = (get_env("MAX_CONVERSATION_TURNS", "50") or "50").strip()
+    MAX_CONVERSATION_TURNS = int(max_turns_raw)
     if MAX_CONVERSATION_TURNS <= 0:
-        logger.warning(f"Invalid MAX_CONVERSATION_TURNS value ({MAX_CONVERSATION_TURNS}), using default of 20 turns")
-        MAX_CONVERSATION_TURNS = 20
+        logger.warning(f"Invalid MAX_CONVERSATION_TURNS value ({MAX_CONVERSATION_TURNS}), using default of 50 turns")
+        MAX_CONVERSATION_TURNS = 50
 except ValueError:
     logger.warning(
-        f"Invalid MAX_CONVERSATION_TURNS value ('{os.getenv('MAX_CONVERSATION_TURNS')}'), using default of 20 turns"
+        f"Invalid MAX_CONVERSATION_TURNS value ('{get_env('MAX_CONVERSATION_TURNS')}'), using default of 50 turns"
     )
-    MAX_CONVERSATION_TURNS = 20
+    MAX_CONVERSATION_TURNS = 50
 
 # Get conversation timeout from environment (in hours), default to 3 hours
 try:
-    CONVERSATION_TIMEOUT_HOURS = int(os.getenv("CONVERSATION_TIMEOUT_HOURS", "3"))
+    timeout_raw = (get_env("CONVERSATION_TIMEOUT_HOURS", "3") or "3").strip()
+    CONVERSATION_TIMEOUT_HOURS = int(timeout_raw)
     if CONVERSATION_TIMEOUT_HOURS <= 0:
         logger.warning(
             f"Invalid CONVERSATION_TIMEOUT_HOURS value ({CONVERSATION_TIMEOUT_HOURS}), using default of 3 hours"
@@ -123,7 +141,7 @@ try:
         CONVERSATION_TIMEOUT_HOURS = 3
 except ValueError:
     logger.warning(
-        f"Invalid CONVERSATION_TIMEOUT_HOURS value ('{os.getenv('CONVERSATION_TIMEOUT_HOURS')}'), using default of 3 hours"
+        f"Invalid CONVERSATION_TIMEOUT_HOURS value ('{get_env('CONVERSATION_TIMEOUT_HOURS')}'), using default of 3 hours"
     )
     CONVERSATION_TIMEOUT_HOURS = 3
 
@@ -138,14 +156,14 @@ class ConversationTurn(BaseModel):
     the content and metadata needed for cross-tool continuation.
 
     Attributes:
-        role: "user" (Claude) or "assistant" (Gemini/O3/etc)
+        role: "user" (Agent request) or "assistant" (model response)
         content: The actual message content/response
         timestamp: ISO timestamp when this turn was created
         files: List of file paths referenced in this specific turn
         images: List of image paths referenced in this specific turn
         tool_name: Which tool generated this turn (for cross-tool tracking)
         model_provider: Provider used (e.g., "google", "openai")
-        model_name: Specific model used (e.g., "gemini-2.5-flash-preview-05-20", "o3-mini")
+        model_name: Specific model used (e.g., "gemini-2.5-flash", "o3-mini")
         model_metadata: Additional model-specific metadata (e.g., thinking mode, token usage)
     """
 
@@ -187,26 +205,16 @@ class ThreadContext(BaseModel):
     initial_context: dict[str, Any]  # Original request parameters
 
 
-def get_redis_client():
+def get_storage():
     """
-    Get Redis client from environment configuration
-
-    Creates a Redis client using the REDIS_URL environment variable.
-    Defaults to localhost:6379/0 if not specified.
+    Get in-memory storage backend for conversation persistence.
 
     Returns:
-        redis.Redis: Configured Redis client with decode_responses=True
-
-    Raises:
-        ValueError: If redis package is not installed
+        InMemoryStorage: Thread-safe in-memory storage backend
     """
-    try:
-        import redis
+    from .storage_backend import get_storage_backend
 
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        return redis.from_url(redis_url, decode_responses=True)
-    except ImportError:
-        raise ValueError("redis package required. Install with: pip install redis")
+    return get_storage_backend()
 
 
 def create_thread(tool_name: str, initial_request: dict[str, Any], parent_thread_id: Optional[str] = None) -> str:
@@ -251,10 +259,10 @@ def create_thread(tool_name: str, initial_request: dict[str, Any], parent_thread
         initial_context=filtered_context,
     )
 
-    # Store in Redis with configurable TTL to prevent indefinite accumulation
-    client = get_redis_client()
+    # Store in memory with configurable TTL to prevent indefinite accumulation
+    storage = get_storage()
     key = f"thread:{thread_id}"
-    client.setex(key, CONVERSATION_TIMEOUT_SECONDS, context.model_dump_json())
+    storage.setex(key, CONVERSATION_TIMEOUT_SECONDS, context.model_dump_json())
 
     logger.debug(f"[THREAD] Created new thread {thread_id} with parent {parent_thread_id}")
 
@@ -263,7 +271,7 @@ def create_thread(tool_name: str, initial_request: dict[str, Any], parent_thread
 
 def get_thread(thread_id: str) -> Optional[ThreadContext]:
     """
-    Retrieve thread context from Redis
+    Retrieve thread context from in-memory storage
 
     Fetches complete conversation context for cross-tool continuation.
     This is the core function that enables tools to access conversation
@@ -278,22 +286,22 @@ def get_thread(thread_id: str) -> Optional[ThreadContext]:
 
     Security:
         - Validates UUID format to prevent injection attacks
-        - Handles Redis connection failures gracefully
+        - Handles storage connection failures gracefully
         - No error information leakage on failure
     """
     if not thread_id or not _is_valid_uuid(thread_id):
         return None
 
     try:
-        client = get_redis_client()
+        storage = get_storage()
         key = f"thread:{thread_id}"
-        data = client.get(key)
+        data = storage.get(key)
 
         if data:
             return ThreadContext.model_validate_json(data)
         return None
     except Exception:
-        # Silently handle errors to avoid exposing Redis details
+        # Silently handle errors to avoid exposing storage details
         return None
 
 
@@ -313,18 +321,17 @@ def add_turn(
 
     Appends a new conversation turn to an existing thread. This is the core
     function for building conversation history and enabling cross-tool
-    continuation. Each turn preserves the tool and model that generated it,
-    and tracks file reception order using atomic Redis counters.
+    continuation. Each turn preserves the tool and model that generated it.
 
     Args:
         thread_id: UUID of the conversation thread
-        role: "user" (Claude) or "assistant" (Gemini/O3/etc)
+        role: "user" (Agent request) or "assistant" (model response)
         content: The actual message/response content
         files: Optional list of files referenced in this turn
         images: Optional list of images referenced in this turn
         tool_name: Name of the tool adding this turn (for attribution)
         model_provider: Provider used (e.g., "google", "openai")
-        model_name: Specific model used (e.g., "gemini-2.5-flash-preview-05-20", "o3-mini")
+        model_name: Specific model used (e.g., "gemini-2.5-flash", "o3-mini")
         model_metadata: Additional model info (e.g., thinking mode, token usage)
 
     Returns:
@@ -333,7 +340,7 @@ def add_turn(
     Failure cases:
         - Thread doesn't exist or expired
         - Maximum turn limit reached
-        - Redis connection failure
+        - Storage connection failure
 
     Note:
         - Refreshes thread TTL to configured timeout on successful update
@@ -370,14 +377,14 @@ def add_turn(
     context.turns.append(turn)
     context.last_updated_at = datetime.now(timezone.utc).isoformat()
 
-    # Save back to Redis and refresh TTL
+    # Save back to storage and refresh TTL
     try:
-        client = get_redis_client()
+        storage = get_storage()
         key = f"thread:{thread_id}"
-        client.setex(key, CONVERSATION_TIMEOUT_SECONDS, context.model_dump_json())  # Refresh TTL to configured timeout
+        storage.setex(key, CONVERSATION_TIMEOUT_SECONDS, context.model_dump_json())  # Refresh TTL to configured timeout
         return True
     except Exception as e:
-        logger.debug(f"[FLOW] Failed to save turn to Redis: {type(e).__name__}")
+        logger.debug(f"[FLOW] Failed to save turn to storage: {type(e).__name__}")
         return False
 
 
@@ -591,11 +598,9 @@ def _plan_file_inclusion_by_size(all_files: list[str], max_file_tokens: int) -> 
 
     for file_path in all_files:
         try:
-            from utils.file_utils import estimate_file_tokens, translate_path_for_environment
+            from utils.file_utils import estimate_file_tokens
 
-            translated_path = translate_path_for_environment(file_path)
-
-            if os.path.exists(translated_path) and os.path.isfile(translated_path):
+            if os.path.exists(file_path) and os.path.isfile(file_path):
                 # Use centralized token estimation for consistency
                 estimated_tokens = estimate_file_tokens(file_path)
 
@@ -613,7 +618,7 @@ def _plan_file_inclusion_by_size(all_files: list[str], max_file_tokens: int) -> 
             else:
                 files_to_skip.append(file_path)
                 # More descriptive message for missing files
-                if not os.path.exists(translated_path):
+                if not os.path.exists(file_path):
                     logger.debug(
                         f"[FILES] Skipping {file_path} - file no longer exists (may have been moved/deleted since conversation)"
                     )
@@ -706,7 +711,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
 
         <turn_content>
 
-        --- Turn 2 (Gemini using analyze via google/gemini-2.5-flash) ---
+        --- Turn 2 (gemini-2.5-flash using analyze via google) ---
         Files used in this turn: file3.py
 
         <turn_content>
@@ -724,7 +729,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     Performance Characteristics:
         - O(n) file collection with newest-first prioritization
         - Intelligent token budgeting prevents context window overflow
-        - Redis-based persistence with automatic TTL management
+        - In-memory persistence with automatic TTL management
         - Graceful degradation when files are inaccessible or too large
     """
     # Get the complete thread chain
@@ -851,10 +856,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                     except Exception as e:
                         # More descriptive error handling for missing files
                         try:
-                            from utils.file_utils import translate_path_for_environment
-
-                            translated_path = translate_path_for_environment(file_path)
-                            if not os.path.exists(translated_path):
+                            if not os.path.exists(file_path):
                                 logger.info(
                                     f"File no longer accessible for conversation history: {file_path} - file was moved/deleted since conversation (marking as excluded)"
                                 )
@@ -884,7 +886,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
                     history_parts.append("(No accessible files found)")
                     logger.debug(f"[FILES] No accessible files found from {len(files_to_include)} planned files")
             else:
-                # Fallback to original read_files function for backward compatibility
+                # Fallback to original read_files function
                 files_content = read_files_func(all_files)
                 if files_content:
                     # Add token validation for the combined file content
@@ -923,7 +925,11 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     for idx in range(len(all_turns) - 1, -1, -1):
         turn = all_turns[idx]
         turn_num = idx + 1
-        role_label = "Claude" if turn.role == "user" else "Gemini"
+
+        if turn.role == "user":
+            role_label = "Agent"
+        else:
+            role_label = turn.model_name or "Assistant"
 
         # Build the complete turn content
         turn_parts = []
@@ -934,20 +940,21 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
             turn_header += f" using {turn.tool_name}"
 
         # Add model info if available
-        if turn.model_provider and turn.model_name:
-            turn_header += f" via {turn.model_provider}/{turn.model_name}"
+        if turn.model_provider:
+            provider_descriptor = turn.model_provider
+            if turn.model_name and turn.model_name != role_label:
+                provider_descriptor += f"/{turn.model_name}"
+            turn_header += f" via {provider_descriptor}"
+        elif turn.model_name and turn.model_name != role_label:
+            turn_header += f" via {turn.model_name}"
 
         turn_header += ") ---"
         turn_parts.append(turn_header)
 
-        # Add files context if present - but just reference which files were used
-        # (the actual contents are already embedded above)
-        if turn.files:
-            turn_parts.append(f"Files used in this turn: {', '.join(turn.files)}")
-            turn_parts.append("")  # Empty line for readability
-
-        # Add the actual content
-        turn_parts.append(turn.content)
+        # Get tool-specific formatting if available
+        # This includes file references and the actual content
+        tool_formatted_content = _get_tool_formatted_content(turn)
+        turn_parts.extend(tool_formatted_content)
 
         # Calculate tokens for this turn
         turn_content = "\n".join(turn_parts)
@@ -976,7 +983,7 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     turn_entries.reverse()
 
     # Add the turns in chronological order for natural LLM comprehension
-    # The LLM will see: "--- Turn 1 (Claude) ---" followed by "--- Turn 2 (Gemini) ---" etc.
+    # The LLM will see: "--- Turn 1 (Agent) ---" followed by "--- Turn 2 (Model) ---" etc.
     for _, turn_content in turn_entries:
         history_parts.append(turn_content)
 
@@ -1017,6 +1024,68 @@ def build_conversation_history(context: ThreadContext, model_context=None, read_
     )
 
     return complete_history, total_conversation_tokens
+
+
+def _get_tool_formatted_content(turn: ConversationTurn) -> list[str]:
+    """
+    Get tool-specific formatting for a conversation turn.
+
+    This function attempts to use the tool's custom formatting method if available,
+    falling back to default formatting if the tool cannot be found or doesn't
+    provide custom formatting.
+
+    Args:
+        turn: The conversation turn to format
+
+    Returns:
+        list[str]: Formatted content lines for this turn
+    """
+    if turn.tool_name:
+        try:
+            # Dynamically import to avoid circular dependencies
+            from server import TOOLS
+
+            tool = TOOLS.get(turn.tool_name)
+            if tool:
+                # Use inheritance pattern - try to call the method directly
+                # If it doesn't exist or raises AttributeError, fall back to default
+                try:
+                    return tool.format_conversation_turn(turn)
+                except AttributeError:
+                    # Tool doesn't implement format_conversation_turn - use default
+                    pass
+        except Exception as e:
+            # Log but don't fail - fall back to default formatting
+            logger.debug(f"[HISTORY] Could not get tool-specific formatting for {turn.tool_name}: {e}")
+
+    # Default formatting
+    return _default_turn_formatting(turn)
+
+
+def _default_turn_formatting(turn: ConversationTurn) -> list[str]:
+    """
+    Default formatting for conversation turns.
+
+    This provides the standard formatting when no tool-specific
+    formatting is available.
+
+    Args:
+        turn: The conversation turn to format
+
+    Returns:
+        list[str]: Default formatted content lines
+    """
+    parts = []
+
+    # Add files context if present
+    if turn.files:
+        parts.append(f"Files used in this turn: {', '.join(turn.files)}")
+        parts.append("")  # Empty line for readability
+
+    # Add the actual content
+    parts.append(turn.content)
+
+    return parts
 
 
 def _is_valid_uuid(val: str) -> bool:

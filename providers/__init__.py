@@ -1,17 +1,20 @@
 """Model provider abstractions for supporting multiple AI providers."""
 
-from .base import ModelCapabilities, ModelProvider, ModelResponse
+from .azure_openai import AzureOpenAIProvider
+from .base import ModelProvider
 from .gemini import GeminiModelProvider
 from .openai import OpenAIModelProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openrouter import OpenRouterProvider
 from .registry import ModelProviderRegistry
+from .shared import ModelCapabilities, ModelResponse
 
 __all__ = [
     "ModelProvider",
     "ModelResponse",
     "ModelCapabilities",
     "ModelProviderRegistry",
+    "AzureOpenAIProvider",
     "GeminiModelProvider",
     "OpenAIModelProvider",
     "OpenAICompatibleProvider",

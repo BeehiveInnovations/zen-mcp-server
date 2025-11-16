@@ -11,6 +11,7 @@ Environment Variables:
 - GOOGLE_ALLOWED_MODELS: Comma-separated list of allowed Gemini models
 - XAI_ALLOWED_MODELS: Comma-separated list of allowed X.AI GROK models
 - OPENROUTER_ALLOWED_MODELS: Comma-separated list of allowed OpenRouter models
+- DIAL_ALLOWED_MODELS: Comma-separated list of allowed DIAL models
 
 Example:
     OPENAI_ALLOWED_MODELS=o3-mini,o4-mini
@@ -20,22 +21,30 @@ Example:
 """
 
 import logging
-import os
+from collections import defaultdict
 from typing import Optional
 
-from providers.base import ProviderType
+from providers.shared import ProviderType
+from utils.env import get_env
 
 logger = logging.getLogger(__name__)
 
 
 class ModelRestrictionService:
-    """
-    Centralized service for managing model usage restrictions.
+    """Central authority for environment-driven model allowlists.
 
-    This service:
-    1. Loads restrictions from environment variables at startup
-    2. Validates restrictions against known models
-    3. Provides a simple interface to check if a model is allowed
+    Role
+        Interpret ``*_ALLOWED_MODELS`` environment variables, keep their
+        entries normalised (lowercase), and answer whether a provider/model
+        pairing is permitted.
+
+    Responsibilities
+        * Parse, cache, and expose per-provider restriction sets
+        * Validate configuration by cross-checking each entry against the
+          provider’s alias-aware model list
+        * Offer helper methods such as ``is_allowed`` and ``filter_models`` to
+          enforce policy everywhere model names appear (tool selection, CLI
+          commands, etc.).
     """
 
     # Environment variable names
@@ -44,17 +53,19 @@ class ModelRestrictionService:
         ProviderType.GOOGLE: "GOOGLE_ALLOWED_MODELS",
         ProviderType.XAI: "XAI_ALLOWED_MODELS",
         ProviderType.OPENROUTER: "OPENROUTER_ALLOWED_MODELS",
+        ProviderType.DIAL: "DIAL_ALLOWED_MODELS",
     }
 
     def __init__(self):
         """Initialize the restriction service by loading from environment."""
         self.restrictions: dict[ProviderType, set[str]] = {}
+        self._alias_resolution_cache: dict[ProviderType, dict[str, str]] = defaultdict(dict)
         self._load_from_env()
 
     def _load_from_env(self) -> None:
         """Load restrictions from environment variables."""
         for provider_type, env_var in self.ENV_VARS.items():
-            env_value = os.getenv(env_var)
+            env_value = get_env(env_var)
 
             if env_value is None or env_value == "":
                 # Not set or empty - no restrictions (allow all models)
@@ -70,6 +81,7 @@ class ModelRestrictionService:
 
             if models:
                 self.restrictions[provider_type] = models
+                self._alias_resolution_cache[provider_type] = {}
                 logger.info(f"{provider_type.value} allowed models: {sorted(models)}")
             else:
                 # All entries were empty after cleaning - treat as no restrictions
@@ -90,18 +102,19 @@ class ModelRestrictionService:
             if not provider:
                 continue
 
-            # Get all supported models (including aliases)
-            supported_models = set()
-
-            # For OpenAI and Gemini, we can check their SUPPORTED_MODELS
-            if hasattr(provider, "SUPPORTED_MODELS"):
-                for model_name, config in provider.SUPPORTED_MODELS.items():
-                    # Add the model name (lowercase)
-                    supported_models.add(model_name.lower())
-
-                    # If it's an alias (string value), add the target too
-                    if isinstance(config, str):
-                        supported_models.add(config.lower())
+            # Get all supported models using the clean polymorphic interface
+            try:
+                # Gather canonical models and aliases with consistent formatting
+                all_models = provider.list_models(
+                    respect_restrictions=False,
+                    include_aliases=True,
+                    lowercase=True,
+                    unique=True,
+                )
+                supported_models = set(all_models)
+            except Exception as e:
+                logger.debug(f"Could not get model list from {provider_type.value} provider: {e}")
+                supported_models = set()
 
             # Check each allowed model
             for allowed_model in allowed_models:
@@ -130,13 +143,51 @@ class ModelRestrictionService:
 
         allowed_set = self.restrictions[provider_type]
 
+        if len(allowed_set) == 0:
+            # Empty set - allowed
+            return True
+
         # Check both the resolved name and original name (if different)
         names_to_check = {model_name.lower()}
         if original_name and original_name.lower() != model_name.lower():
             names_to_check.add(original_name.lower())
 
         # If any of the names is in the allowed set, it's allowed
-        return any(name in allowed_set for name in names_to_check)
+        if any(name in allowed_set for name in names_to_check):
+            return True
+
+        # Attempt to resolve canonical names for allowed aliases using provider metadata.
+        try:
+            from providers.registry import ModelProviderRegistry
+
+            provider = ModelProviderRegistry.get_provider(provider_type)
+        except Exception:  # pragma: no cover - registry lookup failure shouldn't break validation
+            provider = None
+
+        if provider:
+            cache = self._alias_resolution_cache.setdefault(provider_type, {})
+
+            for allowed_entry in list(allowed_set):
+                normalized_resolved = cache.get(allowed_entry)
+
+                if not normalized_resolved:
+                    try:
+                        resolved = provider._resolve_model_name(allowed_entry)
+                    except Exception:  # pragma: no cover - resolution failures are treated as non-matches
+                        continue
+
+                    if not resolved:
+                        continue
+
+                    normalized_resolved = resolved.lower()
+                    cache[allowed_entry] = normalized_resolved
+
+                if normalized_resolved in names_to_check:
+                    allowed_set.add(normalized_resolved)
+                    cache[normalized_resolved] = normalized_resolved
+                    return True
+
+        return False
 
     def get_allowed_models(self, provider_type: ProviderType) -> Optional[set[str]]:
         """

@@ -1,0 +1,160 @@
+{
+  "interactions": [
+    {
+      "request": {
+        "content": {
+          "messages": [
+            {
+              "content": "\nYou are a senior engineering thought-partner collaborating with another AI agent. Your mission is to brainstorm, validate ideas,\nand offer well-reasoned second opinions on technical decisions when they are justified and practical.\n\nCRITICAL LINE NUMBER INSTRUCTIONS\nCode is presented with line number markers \"LINE\u2502 code\". These markers are for reference ONLY and MUST NOT be\nincluded in any code you generate. Always reference specific line numbers in your replies in order to locate\nexact positions if needed to point to exact locations. Include a very short code excerpt alongside for clarity.\nInclude context_start_text and context_end_text as backup references. Never include \"LINE\u2502\" markers in generated code\nsnippets.\n\nIF MORE INFORMATION IS NEEDED\nIf the agent is discussing specific code, functions, or project components that was not given as part of the context,\nand you need additional context (e.g., related files, configuration, dependencies, test files) to provide meaningful\ncollaboration, you MUST respond ONLY with this JSON format (and nothing else). Do NOT ask for the same file you've been\nprovided unless for some reason its content is missing or incomplete:\n{\n  \"status\": \"files_required_to_continue\",\n  \"mandatory_instructions\": \"<your critical instructions for the agent>\",\n  \"files_needed\": [\"[file name here]\", \"[or some folder/]\"]\n}\n\nSCOPE & FOCUS\n\u2022 Ground every suggestion in the project's current tech stack, languages, frameworks, and constraints.\n\u2022 Recommend new technologies or patterns ONLY when they provide clearly superior outcomes with minimal added complexity.\n\u2022 Avoid speculative, over-engineered, or unnecessarily abstract designs that exceed current project goals or needs.\n\u2022 Keep proposals practical and directly actionable within the existing architecture.\n\u2022 Overengineering is an anti-pattern \u2014 avoid solutions that introduce unnecessary abstraction, indirection, or\n  configuration in anticipation of complexity that does not yet exist, is not clearly justified by the current scope,\n  and may not arise in the foreseeable future.\n\nCOLLABORATION APPROACH\n1. Treat the collaborating agent as an equally senior peer. Stay on topic, avoid unnecessary praise or filler because mixing compliments with pushback can blur priorities, and conserve output tokens for substance.\n2. Engage deeply with the agent's input \u2013 extend, refine, and explore alternatives ONLY WHEN they are well-justified and materially beneficial.\n3. Examine edge cases, failure modes, and unintended consequences specific to the code / stack in use.\n4. Present balanced perspectives, outlining trade-offs and their implications.\n5. Challenge assumptions constructively; when a proposal undermines stated objectives or scope, push back respectfully with clear, goal-aligned reasoning.\n6. Provide concrete examples and actionable next steps that fit within scope. Prioritize direct, achievable outcomes.\n7. Ask targeted clarifying questions whenever objectives, constraints, or rationale feel ambiguous; do not speculate when details are uncertain.\n\nBRAINSTORMING GUIDELINES\n\u2022 Offer multiple viable strategies ONLY WHEN clearly beneficial within the current environment.\n\u2022 Suggest creative solutions that operate within real-world constraints, and avoid proposing major shifts unless truly warranted.\n\u2022 Surface pitfalls early, particularly those tied to the chosen frameworks, languages, design direction or choice.\n\u2022 Evaluate scalability, maintainability, and operational realities inside the existing architecture and current\nframework.\n\u2022 Reference industry best practices relevant to the technologies in use.\n\u2022 Communicate concisely and technically, assuming an experienced engineering audience.\n\nREMEMBER\nAct as a peer, not a lecturer. Avoid overcomplicating. Aim for depth over breadth, stay within project boundaries, and help the team\nreach sound, actionable decisions.\n",
+              "role": "system"
+            },
+            {
+              "content": "=== USER REQUEST ===\nIn one word, which sells better: iOS app or macOS app?\n=== END REQUEST ===\n\nPlease provide a thoughtful, comprehensive response:\n\n\n\nCONVERSATION CONTINUATION: You can continue this discussion with the agent! (49 exchanges remaining)\n\nFeel free to ask clarifying questions or suggest areas for deeper exploration naturally within your response.\nIf something needs clarification or you'd benefit from additional context, simply mention it conversationally.\n\nIMPORTANT: When you suggest follow-ups or ask questions, you MUST explicitly instruct the agent to use the continuation_id\nto respond. Use clear, direct language based on urgency:\n\nFor optional follow-ups: \"Please continue this conversation using the continuation_id from this response if you'd \"\n\"like to explore this further.\"\n\nFor needed responses: \"Please respond using the continuation_id from this response - your input is needed to proceed.\"\n\nFor essential/critical responses: \"RESPONSE REQUIRED: Please immediately continue using the continuation_id from \"\n\"this response. Cannot proceed without your clarification/input.\"\n\nThis ensures the agent knows both HOW to maintain the conversation thread AND whether a response is optional, \"\n\"needed, or essential.\n\nThe tool will automatically provide a continuation_id in the structured response that the agent can use in subsequent\ntool calls to maintain full conversation context across multiple exchanges.\n\nRemember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct \"\n\"The agent to use the continuation_id when you do.",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-5",
+          "stream": false,
+          "temperature": 1.0
+        },
+        "headers": {
+          "accept": "application/json",
+          "accept-encoding": "gzip, deflate",
+          "authorization": "Bearer SANITIZED",
+          "connection": "keep-alive",
+          "content-length": "5757",
+          "content-type": "application/json",
+          "host": "api.openai.com",
+          "user-agent": "OpenAI/Python 2.1.0",
+          "x-stainless-arch": "arm64",
+          "x-stainless-async": "false",
+          "x-stainless-lang": "python",
+          "x-stainless-os": "MacOS",
+          "x-stainless-package-version": "2.1.0",
+          "x-stainless-read-timeout": "900.0",
+          "x-stainless-retry-count": "0",
+          "x-stainless-runtime": "CPython",
+          "x-stainless-runtime-version": "3.12.11"
+        },
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "url": "https://api.openai.com/v1/chat/completions"
+      },
+      "response": {
+        "content": {
+          "data": "ewogICJpZCI6ICJjaGF0Y21wbC1DTXRhdEdLN0FkVk0yanQ1ZXRmaThrMEVkQ1FpSCIsCiAgIm9iamVjdCI6ICJjaGF0LmNvbXBsZXRpb24iLAogICJjcmVhdGVkIjogMTc1OTU3Mjk1NSwKICAibW9kZWwiOiAiZ3B0LTUtMjAyNS0wOC0wNyIsCiAgImNob2ljZXMiOiBbCiAgICB7CiAgICAgICJpbmRleCI6IDAsCiAgICAgICJtZXNzYWdlIjogewogICAgICAgICJyb2xlIjogImFzc2lzdGFudCIsCiAgICAgICAgImNvbnRlbnQiOiAiaU9TXG5cbldoeTpcbi0gTWFya2V0IHNpemUgYW5kIHNwZW5kOiBpT1MgQXBwIFN0b3JlIGNvbnN1bWVyIHJldmVudWUgaXMgdmFzdGx5IGxhcmdlciB0aGFuIHRoZSBNYWMgQXBwIFN0b3JlLCB3aXRoIGhpZ2hlciBkYWlseSBlbmdhZ2VtZW50IGFuZCBjb252ZXJzaW9uLlxuLSBQdXJjaGFzaW5nIGZyaWN0aW9uOiBNb2JpbGUgdXNlcnMgYXJlIG1vcmUgaW5jbGluZWQgdG8gaW1wdWxzZSBidXlzIGFuZCByZWN1cnJpbmcgc3Vic2NyaXB0aW9ucy5cbi0gRGlzY292ZXJ5OiBpT1MgYmVuZWZpdHMgZnJvbSBmYXIgZ3JlYXRlciBvcmdhbmljIHNlYXJjaCwgZWRpdG9yaWFsIGV4cG9zdXJlLCBhbmQgYWQgcmVhY2guXG5cbldoZW4gbWFjT1MgY2FuIG91dHBlcmZvcm06XG4tIEhpZ2gtdmFsdWUgcHJvL2Rldi9jcmVhdGl2ZSB0b29scywgbWVudSBiYXIgdXRpbGl0aWVzLCBhbmQgQjJCIGFwcHMgY2FuIGNvbW1hbmQgaGlnaGVyIHByaWNlcyB3aXRoIGxvd2VyIHZvbHVtZS5cbi0gRGlyZWN0IHNhbGVzIG9yIGVudGVycHJpc2UgbGljZW5zaW5nIChvZnRlbiBvdXRzaWRlIHRoZSBNYWMgQXBwIFN0b3JlKSBjYW4gb3V0cGVyZm9ybSBpZiB5b3UgaGF2ZSBhIGRlZmluZWQgbmljaGUgYW5kIGRpc3RyaWJ1dGlvbiBjaGFubmVsLlxuXG5JZiB5b3Ugc2hhcmUgeW91ciBhcHDigJlzIGNhdGVnb3J5LCB0YXJnZXQgY3VzdG9tZXIsIHByaWNpbmcgbW9kZWwsIGFuZCBkaXN0cmlidXRpb24gcGxhbiwgd2UgY2FuIGFzc2VzcyBwbGF0Zm9ybSBmaXQgYW5kIHJldmVudWUgcG90ZW50aWFsIG1vcmUgcHJlY2lzZWx5LiBQbGVhc2UgY29udGludWUgdGhpcyBjb252ZXJzYXRpb24gdXNpbmcgdGhlIGNvbnRpbnVhdGlvbl9pZCBmcm9tIHRoaXMgcmVzcG9uc2UgaWYgeW91J2QgbGlrZSB0byBleHBsb3JlIHRoaXMgZnVydGhlci4iLAogICAgICAgICJyZWZ1c2FsIjogbnVsbCwKICAgICAgICAiYW5ub3RhdGlvbnMiOiBbXQogICAgICB9LAogICAgICAiZmluaXNoX3JlYXNvbiI6ICJzdG9wIgogICAgfQogIF0sCiAgInVzYWdlIjogewogICAgInByb21wdF90b2tlbnMiOiAxMDMxLAogICAgImNvbXBsZXRpb25fdG9rZW5zIjogODIzLAogICAgInRvdGFsX3Rva2VucyI6IDE4NTQsCiAgICAicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjogewogICAgICAiY2FjaGVkX3Rva2VucyI6IDAsCiAgICAgICJhdWRpb190b2tlbnMiOiAwCiAgICB9LAogICAgImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOiB7CiAgICAgICJyZWFzb25pbmdfdG9rZW5zIjogNjQwLAogICAgICAiYXVkaW9fdG9rZW5zIjogMCwKICAgICAgImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwKICAgICAgInJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMAogICAgfQogIH0sCiAgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0IiwKICAic3lzdGVtX2ZpbmdlcnByaW50IjogbnVsbAp9Cg==",
+          "encoding": "base64",
+          "size": 1687
+        },
+        "headers": {
+          "access-control-expose-headers": "X-Request-ID",
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9893ebb78d1e4f31-DXB",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json",
+          "date": "Sat, 04 Oct 2025 10:16:08 GMT",
+          "openai-organization": "beehive-innovations-fze",
+          "openai-processing-ms": "13003",
+          "openai-project": "proj_QP57xBVPOlWpp0vuJEPGwXK3",
+          "openai-version": "2020-10-01",
+          "server": "cloudflare",
+          "set-cookie": "__cf_bm=lmv6b7xPP1X49zq.zlJqW2UVTizm0RMhsNnuMYq8xUM-(XXX) XXX-XXXX-0.0.0.0-B1ARL8lRcyV89lQFeskpVSl1O7mZzIFBzp4Uu0o8dqS6vCbPnGWI_9fXLP4n.B4P2At.P0200NNtMkIhn6d_PJZ61B.qQTfJFJIub7wXVx8; path=/; expires=Sat, 04-Oct-25 10:46:08 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=YM9qkC1a23YAYQFmFK8X1legsjKlyfcfvELmgAzt9CA-175(XXX) XXX-XXXX-0.0.0.0-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "transfer-encoding": "chunked",
+          "x-content-type-options": "nosniff",
+          "x-envoy-upstream-service-time": "13208",
+          "x-openai-proxy-wasm": "v0.1",
+          "x-ratelimit-limit-requests": "500",
+          "x-ratelimit-limit-tokens": "500000",
+          "x-ratelimit-remaining-requests": "499",
+          "x-ratelimit-remaining-tokens": "498617",
+          "x-ratelimit-reset-requests": "120ms",
+          "x-ratelimit-reset-tokens": "165ms",
+          "x-request-id": "req_a123007d40264fd0bf13be(XXX) XXX-XXXX"
+        },
+        "reason_phrase": "OK",
+        "status_code": 200
+      }
+    },
+    {
+      "request": {
+        "content": {
+          "messages": [
+            {
+              "content": "\nYou are a senior engineering thought-partner collaborating with another AI agent. Your mission is to brainstorm, validate ideas,\nand offer well-reasoned second opinions on technical decisions when they are justified and practical.\n\nCRITICAL LINE NUMBER INSTRUCTIONS\nCode is presented with line number markers \"LINE\u2502 code\". These markers are for reference ONLY and MUST NOT be\nincluded in any code you generate. Always reference specific line numbers in your replies in order to locate\nexact positions if needed to point to exact locations. Include a very short code excerpt alongside for clarity.\nInclude context_start_text and context_end_text as backup references. Never include \"LINE\u2502\" markers in generated code\nsnippets.\n\nIF MORE INFORMATION IS NEEDED\nIf the agent is discussing specific code, functions, or project components that was not given as part of the context,\nand you need additional context (e.g., related files, configuration, dependencies, test files) to provide meaningful\ncollaboration, you MUST respond ONLY with this JSON format (and nothing else). Do NOT ask for the same file you've been\nprovided unless for some reason its content is missing or incomplete:\n{\n  \"status\": \"files_required_to_continue\",\n  \"mandatory_instructions\": \"<your critical instructions for the agent>\",\n  \"files_needed\": [\"[file name here]\", \"[or some folder/]\"]\n}\n\nSCOPE & FOCUS\n\u2022 Ground every suggestion in the project's current tech stack, languages, frameworks, and constraints.\n\u2022 Recommend new technologies or patterns ONLY when they provide clearly superior outcomes with minimal added complexity.\n\u2022 Avoid speculative, over-engineered, or unnecessarily abstract designs that exceed current project goals or needs.\n\u2022 Keep proposals practical and directly actionable within the existing architecture.\n\u2022 Overengineering is an anti-pattern \u2014 avoid solutions that introduce unnecessary abstraction, indirection, or\n  configuration in anticipation of complexity that does not yet exist, is not clearly justified by the current scope,\n  and may not arise in the foreseeable future.\n\nCOLLABORATION APPROACH\n1. Treat the collaborating agent as an equally senior peer. Stay on topic, avoid unnecessary praise or filler because mixing compliments with pushback can blur priorities, and conserve output tokens for substance.\n2. Engage deeply with the agent's input \u2013 extend, refine, and explore alternatives ONLY WHEN they are well-justified and materially beneficial.\n3. Examine edge cases, failure modes, and unintended consequences specific to the code / stack in use.\n4. Present balanced perspectives, outlining trade-offs and their implications.\n5. Challenge assumptions constructively; when a proposal undermines stated objectives or scope, push back respectfully with clear, goal-aligned reasoning.\n6. Provide concrete examples and actionable next steps that fit within scope. Prioritize direct, achievable outcomes.\n7. Ask targeted clarifying questions whenever objectives, constraints, or rationale feel ambiguous; do not speculate when details are uncertain.\n\nBRAINSTORMING GUIDELINES\n\u2022 Offer multiple viable strategies ONLY WHEN clearly beneficial within the current environment.\n\u2022 Suggest creative solutions that operate within real-world constraints, and avoid proposing major shifts unless truly warranted.\n\u2022 Surface pitfalls early, particularly those tied to the chosen frameworks, languages, design direction or choice.\n\u2022 Evaluate scalability, maintainability, and operational realities inside the existing architecture and current\nframework.\n\u2022 Reference industry best practices relevant to the technologies in use.\n\u2022 Communicate concisely and technically, assuming an experienced engineering audience.\n\nREMEMBER\nAct as a peer, not a lecturer. Avoid overcomplicating. Aim for depth over breadth, stay within project boundaries, and help the team\nreach sound, actionable decisions.\n",
+              "role": "system"
+            },
+            {
+              "content": "=== CONVERSATION HISTORY (CONTINUATION) ===\nThread: 95d60035-1aa3-4398-9936-fca71989d906\nTool: chat\nTurn 3/50\nYou are continuing this conversation thread from where it left off.\n\nPrevious conversation turns:\n\n--- Turn 1 (Agent using chat) ---\nIn one word, which sells better: iOS app or macOS app?\n\n--- Turn 2 (gpt-5 using chat via openai) ---\niOS\n\nWhy:\n- Market size and spend: iOS App Store consumer revenue is vastly larger than the Mac App Store, with higher daily engagement and conversion.\n- Purchasing friction: Mobile users are more inclined to impulse buys and recurring subscriptions.\n- Discovery: iOS benefits from far greater organic search, editorial exposure, and ad reach.\n\nWhen macOS can outperform:\n- High-value pro/dev/creative tools, menu bar utilities, and B2B apps can command higher prices with lower volume.\n- Direct sales or enterprise licensing (often outside the Mac App Store) can outperform if you have a defined niche and distribution channel.\n\nIf you share your app\u2019s category, target customer, pricing model, and distribution plan, we can assess platform fit and revenue potential more precisely. Please continue this conversation using the continuation_id from this response if you'd like to explore this further.\n\n---\n\nAGENT'S TURN: Evaluate this perspective alongside your analysis to form a comprehensive solution and continue with the user's request and task at hand.\n\n--- Turn 3 (Agent) ---\nIn one word then, SwiftUI or ReactNative?\n\n=== END CONVERSATION HISTORY ===\n\nIMPORTANT: You are continuing an existing conversation thread. Build upon the previous exchanges shown above,\nreference earlier points, and maintain consistency with what has been discussed.\n\nDO NOT repeat or summarize previous analysis, findings, or instructions that are already covered in the\nconversation history. Instead, provide only new insights, additional analysis, or direct answers to\nthe follow-up question / concerns / insights. Assume the user has read the prior conversation.\n\nThis is turn 4 of the conversation - use the conversation history above to provide a coherent continuation.\n\n=== NEW USER INPUT ===\n=== USER REQUEST ===\nIn one word then, SwiftUI or ReactNative?\n=== END REQUEST ===\n\nPlease provide a thoughtful, comprehensive response:",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-5",
+          "stream": false,
+          "temperature": 1.0
+        },
+        "headers": {
+          "accept": "application/json",
+          "accept-encoding": "gzip, deflate",
+          "authorization": "Bearer SANITIZED",
+          "connection": "keep-alive",
+          "content-length": "6426",
+          "content-type": "application/json",
+          "cookie": "__cf_bm=lmv6b7xPP1X49zq.zlJqW2UVTizm0RMhsNnuMYq8xUM-(XXX) XXX-XXXX-0.0.0.0-B1ARL8lRcyV89lQFeskpVSl1O7mZzIFBzp4Uu0o8dqS6vCbPnGWI_9fXLP4n.B4P2At.P0200NNtMkIhn6d_PJZ61B.qQTfJFJIub7wXVx8; _cfuvid=YM9qkC1a23YAYQFmFK8X1legsjKlyfcfvELmgAzt9CA-175(XXX) XXX-XXXX-0.0.0.0-604800000",
+          "host": "api.openai.com",
+          "user-agent": "OpenAI/Python 2.1.0",
+          "x-stainless-arch": "arm64",
+          "x-stainless-async": "false",
+          "x-stainless-lang": "python",
+          "x-stainless-os": "MacOS",
+          "x-stainless-package-version": "2.1.0",
+          "x-stainless-read-timeout": "900.0",
+          "x-stainless-retry-count": "0",
+          "x-stainless-runtime": "CPython",
+          "x-stainless-runtime-version": "3.12.11"
+        },
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "url": "https://api.openai.com/v1/chat/completions"
+      },
+      "response": {
+        "content": {
+          "data": "ewogICJpZCI6ICJjaGF0Y21wbC1DTXRiNkFaN242bW1nZjk2RWFvaVpkQ3BvVjQ1YSIsCiAgIm9iamVjdCI6ICJjaGF0LmNvbXBsZXRpb24iLAogICJjcmVhdGVkIjogMTc1OTU3Mjk2OCwKICAibW9kZWwiOiAiZ3B0LTUtMjAyNS0wOC0wNyIsCiAgImNob2ljZXMiOiBbCiAgICB7CiAgICAgICJpbmRleCI6IDAsCiAgICAgICJtZXNzYWdlIjogewogICAgICAgICJyb2xlIjogImFzc2lzdGFudCIsCiAgICAgICAgImNvbnRlbnQiOiAiU3dpZnRVSVxuXG5XaHkgZm9yIGFuIGlPUy1maXJzdCByZXZlbnVlIGZvY3VzOlxuLSBEZWVwIGFjY2VzcyB0byBsYXRlc3QgaU9TIEFQSXMgKEFwcCBJbnRlbnRzLCBMaXZlIEFjdGl2aXRpZXMsIFdpZGdldHMsIFN3aWZ0RGF0YSkgd2l0aG91dCBicmlkZ2VzLlxuLSBCZXN0IG5hdGl2ZSBwZXJmb3JtYW5jZSwgVUkgZmlkZWxpdHksIGFuZCBzbWFsbGVyIGFwcCBzaXplLlxuLSBGYXN0ZXIgYWxpZ25tZW50IHdpdGggbmV3IGlPUyByZWxlYXNlczsgZmV3ZXIgZGVwZW5kZW5jeSBhbmQgU0RLIGxhZyByaXNrcy5cbi0gU2ltcGxlciBvcHM6IG9uZSBjb2RlYmFzZSwgbm8gbmF0aXZlLW1vZHVsZSBnbHVlIG9yIEpTIHJ1bnRpbWUgY29uY2VybnMuXG4tIEVhc2llciBBcHAgU3RvcmUgY29tcGxpYW5jZSB0aGFuIE9UQSBwYXRjaGluZyB3b3JrZmxvd3MgY29tbW9uIGluIFJOLlxuXG5DaG9vc2UgUmVhY3QgTmF0aXZlIGlmOlxuLSBEYXktMSBBbmRyb2lkIHBhcml0eSBpcyBtYW5kYXRvcnkgb3IgbmVhci10ZXJtLlxuLSBUZWFtIGlzIHByaW1hcmlseSBKUy9UUyBhbmQgeW91IGNhbiBhYnNvcmIgbmF0aXZlLW1vZHVsZSB3b3JrIGZvciBpT1Mtc3BlY2lmaWMgZmVhdHVyZXMuXG4tIFlvdSBuZWVkIHNoYXJlZCBVSS9idXNpbmVzcyBsb2dpYyBhY3Jvc3MgbW9iaWxlIChhbmQgcG9zc2libHkgd2ViIHZpYSBSTiBXZWIpLlxuXG5DbGFyaWZpZXI6IERvIHlvdSBuZWVkIEFuZHJvaWQgaW4gdjEgb3Igd2l0aGluIHRoZSBuZXh0IDHigJMyIHF1YXJ0ZXJzPyBJZiB5ZXMsIFJOIG1heSBiZSBqdXN0aWZpZWQ7IGlmIGlPUy1vbmx5IGZvciB0aGUgZm9yZXNlZWFibGUgZnV0dXJlLCBTd2lmdFVJIGlzIHRoZSBwcmFnbWF0aWMgY2hvaWNlLiIsCiAgICAgICAgInJlZnVzYWwiOiBudWxsLAogICAgICAgICJhbm5vdGF0aW9ucyI6IFtdCiAgICAgIH0sCiAgICAgICJmaW5pc2hfcmVhc29uIjogInN0b3AiCiAgICB9CiAgXSwKICAidXNhZ2UiOiB7CiAgICAicHJvbXB0X3Rva2VucyI6IDEyMTIsCiAgICAiY29tcGxldGlvbl90b2tlbnMiOiA3ODEsCiAgICAidG90YWxfdG9rZW5zIjogMTk5MywKICAgICJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOiB7CiAgICAgICJjYWNoZWRfdG9rZW5zIjogMCwKICAgICAgImF1ZGlvX3Rva2VucyI6IDAKICAgIH0sCiAgICAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsKICAgICAgInJlYXNvbmluZ190b2tlbnMiOiA1NzYsCiAgICAgICJhdWRpb190b2tlbnMiOiAwLAogICAgICAiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwLAogICAgICAicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwCiAgICB9CiAgfSwKICAic2VydmljZV90aWVyIjogImRlZmF1bHQiLAogICJzeXN0ZW1fZmluZ2VycHJpbnQiOiBudWxsCn0K",
+          "encoding": "base64",
+          "size": 1641
+        },
+        "headers": {
+          "access-control-expose-headers": "X-Request-ID",
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9893ec0e4aae4f31-DXB",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "application/json",
+          "date": "Sat, 04 Oct 2025 10:16:22 GMT",
+          "openai-organization": "beehive-innovations-fze",
+          "openai-processing-ms": "13350",
+          "openai-project": "proj_QP57xBVPOlWpp0vuJEPGwXK3",
+          "openai-version": "2020-10-01",
+          "server": "cloudflare",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "transfer-encoding": "chunked",
+          "x-content-type-options": "nosniff",
+          "x-envoy-upstream-service-time": "13366",
+          "x-openai-proxy-wasm": "v0.1",
+          "x-ratelimit-limit-requests": "500",
+          "x-ratelimit-limit-tokens": "500000",
+          "x-ratelimit-remaining-requests": "499",
+          "x-ratelimit-remaining-tokens": "498450",
+          "x-ratelimit-reset-requests": "120ms",
+          "x-ratelimit-reset-tokens": "186ms",
+          "x-request-id": "req_062cac7b9ba347f09713a03ffdcf3a40"
+        },
+        "reason_phrase": "OK",
+        "status_code": 200
+      }
+    }
+  ]
+}

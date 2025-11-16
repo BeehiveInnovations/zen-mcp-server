@@ -8,9 +8,7 @@ Thank you for your interest in contributing to Zen MCP Server! This guide will h
 2. **Clone your fork** locally
 3. **Set up the development environment**:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
+   ./run-server.sh
    ```
 4. **Create a feature branch** from `main`:
    ```bash
@@ -25,19 +23,24 @@ We maintain high code quality standards. **All contributions must pass our autom
 
 #### Required Code Quality Checks
 
-Before submitting any PR, run our automated quality check script:
-
+**Option 1 - Automated (Recommended):**
 ```bash
-# Activate virtual environment first
-source venv/bin/activate
+# Install pre-commit hooks (one-time setup)
+pre-commit install
 
+# Now linting runs automatically on every commit
+# Includes: ruff (with auto-fix), black, isort
+```
+
+**Option 2 - Manual:**
+```bash
 # Run the comprehensive quality checks script
 ./code_quality_checks.sh
 ```
 
 This script automatically runs:
 - Ruff linting with auto-fix
-- Black code formatting 
+- Black code formatting
 - Import sorting with isort
 - Complete unit test suite (361 tests)
 - Verification that all checks pass 100%
@@ -61,7 +64,7 @@ python -m pytest -xvs
 python communication_simulator_test.py
 ```
 
-**Important**: 
+**Important**:
 - **Every single test must pass** - we have zero tolerance for failing tests in CI
 - All linting must pass cleanly (ruff, black, isort)
 - Import sorting must be correct
@@ -74,12 +77,12 @@ python communication_simulator_test.py
 1. **New features MUST include tests**:
    - Add unit tests in `tests/` for new functions or classes
    - Test both success and error cases
-   
+
 2. **Tool changes require simulator tests**:
    - Add simulator tests in `simulator_tests/` for new or modified tools
    - Use realistic prompts that demonstrate the feature
-   - Validate output through Docker logs
-   
+   - Validate output through server logs
+
 3. **Bug fixes require regression tests**:
    - Add a test that would have caught the bug
    - Ensure the bug cannot reoccur
@@ -94,7 +97,7 @@ python communication_simulator_test.py
 
 Your PR title MUST follow one of these formats:
 
-**Version Bumping Prefixes** (trigger Docker build + version bump):
+**Version Bumping Prefixes** (trigger version bump):
 - `feat: <description>` - New features (MINOR version bump)
 - `fix: <description>` - Bug fixes (PATCH version bump)
 - `breaking: <description>` or `BREAKING CHANGE: <description>` - Breaking changes (MAJOR version bump)
@@ -108,10 +111,9 @@ Your PR title MUST follow one of these formats:
 - `ci: <description>` - CI/CD changes
 - `style: <description>` - Code style changes
 
-**Docker Build Options**:
-- `docker: <description>` - Force Docker build without version bump
-- `docs+docker: <description>` - Documentation + Docker build
-- `chore+docker: <description>` - Maintenance + Docker build
+**Other Options**:
+- `docs: <description>` - Documentation changes only
+- `chore: <description>` - Maintenance tasks
 
 #### PR Checklist
 
@@ -142,14 +144,14 @@ def process_model_response(
     max_tokens: Optional[int] = None
 ) -> ProcessedResult:
     """Process and validate model response.
-    
+
     Args:
         response: Raw response from the model provider
         max_tokens: Optional token limit for truncation
-        
+
     Returns:
         ProcessedResult with validated and formatted content
-        
+
     Raises:
         ValueError: If response is invalid or exceeds limits
     """
@@ -216,7 +218,7 @@ isort .
 ### Test Failures
 - Check test output for specific errors
 - Run individual tests for debugging: `pytest tests/test_specific.py -xvs`
-- Ensure Docker is running for simulator tests
+- Ensure server environment is set up for simulator tests
 
 ### Import Errors
 - Verify virtual environment is activated

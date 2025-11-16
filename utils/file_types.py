@@ -79,13 +79,14 @@ TEXT_DATA = {
     ".csv",  # CSV
     ".tsv",  # TSV
     ".gitignore",  # Git ignore
-    ".dockerfile",  # Docker
+    ".dockerfile",  # Dockerfile
     ".makefile",  # Make
     ".cmake",  # CMake
     ".gradle",  # Gradle
     ".sbt",  # SBT
     ".pom",  # Maven POM
     ".lock",  # Lock files
+    ".changeset",  # Precommit changeset
 }
 
 # Image file extensions - limited to what AI models actually support
@@ -221,7 +222,7 @@ TOKEN_ESTIMATION_RATIOS = {
     # Logs and data
     ".log": 4.5,  # Log files - timestamps, messages, stack traces
     ".csv": 3.1,  # CSV - data with delimiters
-    # Docker and infrastructure
+    # Infrastructure files
     ".dockerfile": 3.7,  # Dockerfile - commands and paths
     ".tf": 3.5,  # Terraform - infrastructure as code
 }

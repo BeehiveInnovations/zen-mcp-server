@@ -26,13 +26,13 @@ from utils.conversation_memory import (
 class TestConversationMemory:
     """Test the conversation memory system for stateless MCP requests"""
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_create_thread(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_create_thread(self, mock_storage):
         """Test creating a new thread"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
-        thread_id = create_thread("chat", {"prompt": "Hello", "files": ["/test.py"]})
+        thread_id = create_thread("chat", {"prompt": "Hello", "absolute_file_paths": ["/test.py"]})
 
         assert thread_id is not None
         assert len(thread_id) == 36  # UUID4 length
@@ -43,11 +43,11 @@ class TestConversationMemory:
         assert call_args[0][0] == f"thread:{thread_id}"  # key
         assert call_args[0][1] == CONVERSATION_TIMEOUT_SECONDS  # TTL from configuration
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_get_thread_valid(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_get_thread_valid(self, mock_storage):
         """Test retrieving an existing thread"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         test_uuid = "12345678-1234-1234-1234-123456789012"
 
@@ -69,27 +69,27 @@ class TestConversationMemory:
         assert context.tool_name == "chat"
         mock_client.get.assert_called_once_with(f"thread:{test_uuid}")
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_get_thread_invalid_uuid(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_get_thread_invalid_uuid(self, mock_storage):
         """Test handling invalid UUID"""
         context = get_thread("invalid-uuid")
         assert context is None
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_get_thread_not_found(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_get_thread_not_found(self, mock_storage):
         """Test handling thread not found"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
         mock_client.get.return_value = None
 
         context = get_thread("12345678-1234-1234-1234-123456789012")
         assert context is None
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_add_turn_success(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_add_turn_success(self, mock_storage):
         """Test adding a turn to existing thread"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         test_uuid = "12345678-1234-1234-1234-123456789012"
 
@@ -111,11 +111,11 @@ class TestConversationMemory:
         mock_client.get.assert_called_once()
         mock_client.setex.assert_called_once()
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_add_turn_max_limit(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_add_turn_max_limit(self, mock_storage):
         """Test turn limit enforcement"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         test_uuid = "12345678-1234-1234-1234-123456789012"
 
@@ -174,6 +174,8 @@ class TestConversationMemory:
                 timestamp="2023-01-01T00:01:00Z",
                 files=[str(examples_dir)],  # Directory will be expanded to files
                 tool_name="chat",
+                model_name="gpt-5",
+                model_provider="openai",
             ),
         ]
 
@@ -195,8 +197,8 @@ class TestConversationMemory:
         assert f"Turn 2/{MAX_CONVERSATION_TURNS}" in history
 
         # Test speaker identification
-        assert "--- Turn 1 (Claude) ---" in history
-        assert "--- Turn 2 (Gemini using chat) ---" in history
+        assert "--- Turn 1 (Agent) ---" in history
+        assert "--- Turn 2 (gpt-5 using chat via openai) ---" in history
 
         # Test content
         assert "What is Python?" in history
@@ -237,11 +239,11 @@ class TestConversationMemory:
 class TestConversationFlow:
     """Test complete conversation flows simulating stateless MCP requests"""
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_complete_conversation_cycle(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_complete_conversation_cycle(self, mock_storage):
         """Test a complete 5-turn conversation until limit reached"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         # Simulate independent MCP request cycles
 
@@ -341,13 +343,13 @@ class TestConversationFlow:
         success = add_turn(thread_id, "user", "This should be rejected")
         assert success is False  # CONVERSATION STOPS HERE
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_invalid_continuation_id_error(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_invalid_continuation_id_error(self, mock_storage):
         """Test that invalid continuation IDs raise proper error for restart"""
         from server import reconstruct_thread_context
 
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
         mock_client.get.return_value = None  # Thread not found
 
         arguments = {"continuation_id": "invalid-uuid-12345", "prompt": "Continue conversation"}
@@ -439,11 +441,11 @@ class TestConversationFlow:
         expected_remaining = MAX_CONVERSATION_TURNS - 1
         assert f"({expected_remaining} exchanges remaining)" in instructions
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_complete_conversation_with_dynamic_turns(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_complete_conversation_with_dynamic_turns(self, mock_storage):
         """Test complete conversation respecting MAX_CONVERSATION_TURNS dynamically"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         thread_id = create_thread("chat", {"prompt": "Start conversation"})
 
@@ -495,28 +497,31 @@ class TestConversationFlow:
         success = add_turn(thread_id, "user", "This should fail")
         assert success is False, f"Turn {MAX_CONVERSATION_TURNS + 1} should fail"
 
-    @patch("utils.conversation_memory.get_redis_client")
+    @patch("utils.conversation_memory.get_storage")
     @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "OPENAI_API_KEY": ""}, clear=False)
-    def test_conversation_with_files_and_context_preservation(self, mock_redis):
+    def test_conversation_with_files_and_context_preservation(self, mock_storage):
         """Test complete conversation flow with file tracking and context preservation"""
         from providers.registry import ModelProviderRegistry
 
         ModelProviderRegistry.clear_cache()
 
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
-        # Start conversation with files
-        thread_id = create_thread("analyze", {"prompt": "Analyze this codebase", "files": ["/project/src/"]})
+        # Start conversation with files using a simple tool
+        thread_id = create_thread("chat", {"prompt": "Analyze this codebase", "absolute_file_paths": ["/project/src/"]})
 
         # Turn 1: Claude provides context with multiple files
         initial_context = ThreadContext(
             thread_id=thread_id,
             created_at="2023-01-01T00:00:00Z",
             last_updated_at="2023-01-01T00:00:00Z",
-            tool_name="analyze",
+            tool_name="chat",
             turns=[],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={
+                "prompt": "Analyze this codebase",
+                "absolute_file_paths": ["/project/src/"],
+            },
         )
         mock_client.get.return_value = initial_context.model_dump_json()
 
@@ -527,6 +532,8 @@ class TestConversationFlow:
             "I've analyzed your codebase structure.",
             files=["/project/src/main.py", "/project/src/utils.py"],
             tool_name="analyze",
+            model_name="gemini-2.5-flash",
+            model_provider="google",
         )
         assert success is True
 
@@ -543,9 +550,11 @@ class TestConversationFlow:
                     timestamp="2023-01-01T00:00:30Z",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
+                    model_name="gemini-2.5-flash",
+                    model_provider="google",
                 )
             ],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
         mock_client.get.return_value = context_turn_1.model_dump_json()
 
@@ -576,7 +585,7 @@ class TestConversationFlow:
                     files=["/project/tests/", "/project/test_main.py"],
                 ),
             ],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
         mock_client.get.return_value = context_turn_2.model_dump_json()
 
@@ -586,6 +595,8 @@ class TestConversationFlow:
             "Test coverage analysis complete. Coverage is 85%.",
             files=["/project/tests/test_utils.py", "/project/coverage.html"],
             tool_name="analyze",
+            model_name="gemini-2.5-flash",
+            model_provider="google",
         )
         assert success is True
 
@@ -602,6 +613,8 @@ class TestConversationFlow:
                     timestamp="2023-01-01T00:00:30Z",
                     files=["/project/src/main.py", "/project/src/utils.py"],
                     tool_name="analyze",
+                    model_name="gemini-2.5-flash",
+                    model_provider="google",
                 ),
                 ConversationTurn(
                     role="user",
@@ -615,17 +628,19 @@ class TestConversationFlow:
                     timestamp="2023-01-01T00:02:30Z",
                     files=["/project/tests/test_utils.py", "/project/coverage.html"],
                     tool_name="analyze",
+                    model_name="gemini-2.5-flash",
+                    model_provider="google",
                 ),
             ],
-            initial_context={"prompt": "Analyze this codebase", "files": ["/project/src/"]},
+            initial_context={"prompt": "Analyze this codebase", "relevant_files": ["/project/src/"]},
         )
 
         history, tokens = build_conversation_history(final_context)
 
         # Verify chronological order and speaker identification
-        assert "--- Turn 1 (Gemini using analyze) ---" in history
-        assert "--- Turn 2 (Claude) ---" in history
-        assert "--- Turn 3 (Gemini using analyze) ---" in history
+        assert "--- Turn 1 (gemini-2.5-flash using analyze via google) ---" in history
+        assert "--- Turn 2 (Agent) ---" in history
+        assert "--- Turn 3 (gemini-2.5-flash using analyze via google) ---" in history
 
         # Verify all files are preserved in chronological order
         turn_1_files = "Files used in this turn: /project/src/main.py, /project/src/utils.py"
@@ -642,17 +657,17 @@ class TestConversationFlow:
         assert "Test coverage analysis complete. Coverage is 85%." in history
 
         # Verify chronological ordering (turn 1 appears before turn 2, etc.)
-        turn_1_pos = history.find("--- Turn 1 (Gemini using analyze) ---")
-        turn_2_pos = history.find("--- Turn 2 (Claude) ---")
-        turn_3_pos = history.find("--- Turn 3 (Gemini using analyze) ---")
+        turn_1_pos = history.find("--- Turn 1 (gemini-2.5-flash using analyze via google) ---")
+        turn_2_pos = history.find("--- Turn 2 (Agent) ---")
+        turn_3_pos = history.find("--- Turn 3 (gemini-2.5-flash using analyze via google) ---")
 
         assert turn_1_pos < turn_2_pos < turn_3_pos
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_stateless_request_isolation(self, mock_redis):
+    @patch("utils.conversation_memory.get_storage")
+    def test_stateless_request_isolation(self, mock_storage):
         """Test that each request cycle is independent but shares context via Redis"""
         mock_client = Mock()
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         # Simulate two different "processes" accessing same thread
         thread_id = "12345678-1234-1234-1234-123456789012"

@@ -39,14 +39,23 @@ This script automatically runs:
 - Ruff linting with auto-fix
 - Black code formatting
 - Import sorting with isort
-- Complete unit test suite (491 tests)
+- Complete unit test suite (excluding integration tests)
 - Verification that all checks pass 100%
+
+**Run Integration Tests (requires API keys):**
+```bash
+# Run integration tests that make real API calls
+./run_integration_tests.sh
+
+# Run integration tests + simulator tests
+./run_integration_tests.sh --with-simulator
+```
 
 ### Server Management
 
-#### Start/Restart the Server
+#### Setup/Update the Server
 ```bash
-# Start or restart the Docker containers
+# Run setup script (handles everything)
 ./run-server.sh
 
 # Start server and follow logs automatically
@@ -54,20 +63,19 @@ This script automatically runs:
 ```
 
 This script will:
-- Build/rebuild Docker images if needed
-- Start the MCP server container (`zen-mcp-server`)
-- Start the Redis container (`zen-mcp-redis`)
-- Set up proper networking and volumes
-- Display configuration for Claude Code/Desktop
+- Set up Python virtual environment
+- Install all dependencies
+- Create/update .env file
+- Configure MCP with Claude
+- Verify API keys
 
-#### Check Server Status
+#### View Logs
 ```bash
-# Check if containers are running
-docker ps
+# Follow logs in real-time
+./run-server.sh -f
 
-# Look for these containers:
-# - zen-mcp-server
-# - zen-mcp-redis
+# Or manually view logs
+tail -f logs/mcp_server.log
 ```
 
 ### Log Management
@@ -75,108 +83,63 @@ docker ps
 #### View Server Logs
 ```bash
 # View last 500 lines of server logs
-docker exec zen-mcp-server tail -n 500 /tmp/mcp_server.log
+tail -n 500 logs/mcp_server.log
 
 # Follow logs in real-time
-docker exec zen-mcp-server tail -f /tmp/mcp_server.log
+tail -f logs/mcp_server.log
 
-# View specific number of lines (replace 100 with desired count)
-docker exec zen-mcp-server tail -n 100 /tmp/mcp_server.log
+# View specific number of lines
+tail -n 100 logs/mcp_server.log
 
 # Search logs for specific patterns
-docker exec zen-mcp-server grep "ERROR" /tmp/mcp_server.log
-docker exec zen-mcp-server grep "tool_name" /tmp/mcp_server.log
+grep "ERROR" logs/mcp_server.log
+grep "tool_name" logs/mcp_activity.log
 ```
 
 #### Monitor Tool Executions Only
 ```bash
 # View tool activity log (focused on tool calls and completions)
-docker exec zen-mcp-server tail -n 100 /tmp/mcp_activity.log
+tail -n 100 logs/mcp_activity.log
 
 # Follow tool activity in real-time
-docker exec zen-mcp-server tail -f /tmp/mcp_activity.log
+tail -f logs/mcp_activity.log
 
-# Use the dedicated log monitor (shows tool calls, completions, errors)
-python log_monitor.py
+# Use simple tail commands to monitor logs
+tail -f logs/mcp_activity.log | grep -E "(TOOL_CALL|TOOL_COMPLETED|ERROR|WARNING)"
 ```
 
-The `log_monitor.py` script provides a real-time view of:
-- Tool calls and completions
-- Conversation resumptions and context
-- Errors and warnings from all log files
-- File rotation handling
+#### Available Log Files
 
-#### All Available Log Files
+**Current log files (with proper rotation):**
 ```bash
-# Main server log (all activity)
-docker exec zen-mcp-server tail -f /tmp/mcp_server.log
+# Main server log (all activity including debug info) - 20MB max, 10 backups
+tail -f logs/mcp_server.log
 
-# Tool activity only (TOOL_CALL, TOOL_COMPLETED, etc.)
-docker exec zen-mcp-server tail -f /tmp/mcp_activity.log
-
-# Debug information
-docker exec zen-mcp-server tail -f /tmp/gemini_debug.log
-
-# Overflow logs (when main log gets too large)
-docker exec zen-mcp-server tail -f /tmp/mcp_server_overflow.log
+# Tool activity only (TOOL_CALL, TOOL_COMPLETED, etc.) - 20MB max, 5 backups  
+tail -f logs/mcp_activity.log
 ```
 
-**Note**: Log files rotate automatically at 20MB to prevent disk space issues:
-- mcp_server.log: 10 backup files (200MB total)
-- mcp_activity.log: 5 backup files (100MB total)
+**For programmatic log analysis (used by tests):**
+```python
+# Import the LogUtils class from simulator tests
+from simulator_tests.log_utils import LogUtils
 
-#### Debug Container Issues
-```bash
-# Check container logs (Docker level)
-docker logs zen-mcp-server
+# Get recent logs
+recent_logs = LogUtils.get_recent_server_logs(lines=500)
 
-# Execute interactive shell in container
-docker exec -it zen-mcp-server /bin/bash
+# Check for errors
+errors = LogUtils.check_server_logs_for_errors()
 
-# Check Redis container logs
-docker logs zen-mcp-redis
-
-# Check Redis connection
-docker exec zen-mcp-redis redis-cli ping
+# Search for specific patterns
+matches = LogUtils.search_logs_for_pattern("TOOL_CALL.*debug")
 ```
 
 ### Testing
 
-Zen MCP Server has comprehensive test coverage with two test suites:
+Simulation tests are available to test the MCP server in a 'live' scenario, using your configured
+API keys to ensure the models are working and the server is able to communicate back and forth. 
 
-#### Unit Tests (491 tests)
-Test isolated components and functions:
-```bash
-# Run all unit tests with pytest
-python -m pytest tests/ -v
-
-# Run specific test file
-python -m pytest tests/test_refactor.py -v
-
-# Run specific test function
-python -m pytest tests/test_refactor.py::TestRefactorTool::test_format_response -v
-
-# Run tests with coverage report
-python -m pytest tests/ --cov=. --cov-report=html
-```
-
-**Unit test coverage includes**:
-- Provider functionality and API interactions
-- Tool operations and parameter validation
-- Conversation memory and threading
-- File handling and deduplication
-- Auto mode logic and fallback behavior
-- Model restrictions and configurations
-
-#### Simulator Tests (21 tests)
-
-Simulator tests validate real-world usage by simulating actual Claude CLI interactions with the MCP server running in Docker. These tests verify the complete end-to-end flow including MCP protocol communication, Docker container interactions, multi-turn conversations, and log output.
-
-**IMPORTANT**:
-- Simulator tests require your actual API keys to be configured in `.env`
-- Tests use real AI models and may incur API costs
-- Requires `LOG_LEVEL=DEBUG` in `.env` for log validation
-- Any time code is changed, you MUST restart the server with `./run-server.sh` OR pass `--rebuild` to the simulator test script
+**IMPORTANT**: After any code changes, restart your Claude session for the changes to take effect.
 
 **Run All Simulator Tests:**
 ```bash
@@ -185,12 +148,30 @@ python communication_simulator_test.py
 
 # Run tests with verbose output
 python communication_simulator_test.py --verbose
-
-# Force rebuild environment before testing
-python communication_simulator_test.py --rebuild
 ```
 
-**Run Individual Simulator Tests (Recommended):**
+#### Quick Test Mode (Recommended for Time-Limited Testing)
+```bash
+# Run quick test mode - 6 essential tests that provide maximum functionality coverage
+python communication_simulator_test.py --quick
+
+# Run quick test mode with verbose output
+python communication_simulator_test.py --quick --verbose
+```
+
+**Quick mode runs these 6 essential tests:**
+- `cross_tool_continuation` - Cross-tool conversation memory testing (chat, thinkdeep, codereview, analyze, debug)
+- `conversation_chain_validation` - Core conversation threading and memory validation
+- `consensus_workflow_accurate` - Consensus tool with flash model and stance testing
+- `codereview_validation` - CodeReview tool with flash model and multi-step workflows
+- `planner_validation` - Planner tool with flash model and complex planning workflows
+- `token_allocation_validation` - Token allocation and conversation history buildup testing
+
+**Why these 6 tests:** They cover the core functionality including conversation memory (`utils/conversation_memory.py`), chat tool functionality, file processing and deduplication, model selection (flash/flashlite/o3), and cross-tool conversation workflows. These tests validate the most critical parts of the system in minimal time.
+
+**Note:** Some workflow tools (analyze, codereview, planner, consensus, etc.) require specific workflow parameters and may need individual testing rather than quick mode testing.
+
+#### Run Individual Simulator Tests (For Detailed Testing)
 ```bash
 # List all available tests
 python communication_simulator_test.py --list-tests
@@ -199,17 +180,13 @@ python communication_simulator_test.py --list-tests
 python communication_simulator_test.py --individual basic_conversation
 python communication_simulator_test.py --individual content_validation
 python communication_simulator_test.py --individual cross_tool_continuation
-python communication_simulator_test.py --individual logs_validation
-python communication_simulator_test.py --individual redis_validation
+python communication_simulator_test.py --individual memory_validation
 
-# Run multiple specific tests (alternative approach)
+# Run multiple specific tests
 python communication_simulator_test.py --tests basic_conversation content_validation
 
 # Run individual test with verbose output for debugging
-python communication_simulator_test.py --individual logs_validation --verbose
-
-# Individual tests provide full Docker setup and teardown per test
-# This ensures clean state and better error isolation
+python communication_simulator_test.py --individual memory_validation --verbose
 ```
 
 **Available Simulator Tests:**
@@ -219,8 +196,7 @@ python communication_simulator_test.py --individual logs_validation --verbose
 - `cross_tool_continuation` - Cross-tool conversation continuation scenarios
 - `cross_tool_comprehensive` - Comprehensive cross-tool file deduplication and continuation
 - `line_number_validation` - Line number handling validation across tools
-- `logs_validation` - Docker logs validation
-- `redis_validation` - Redis conversation memory validation
+- `memory_validation` - Conversation memory validation
 - `model_thinking_config` - Model-specific thinking configuration behavior
 - `o3_model_selection` - O3 model selection and usage validation
 - `ollama_custom_url` - Ollama custom URL endpoint functionality
@@ -230,65 +206,106 @@ python communication_simulator_test.py --individual logs_validation --verbose
 - `testgen_validation` - TestGen tool validation with specific test function
 - `refactor_validation` - Refactor tool validation with codesmells
 - `conversation_chain_validation` - Conversation chain and threading validation
-- `vision_capability` - Image/vision support validation
-- `xai_models` - X.AI GROK model functionality
+- `consensus_stance` - Consensus tool validation with stance steering (for/against/neutral)
 
 **Note**: All simulator tests should be run individually for optimal testing and better error isolation.
+
+#### Run Unit Tests Only
+```bash
+# Run all unit tests (excluding integration tests that require API keys)
+python -m pytest tests/ -v -m "not integration"
+
+# Run specific test file
+python -m pytest tests/test_refactor.py -v
+
+# Run specific test function
+python -m pytest tests/test_refactor.py::TestRefactorTool::test_format_response -v
+
+# Run tests with coverage
+python -m pytest tests/ --cov=. --cov-report=html -m "not integration"
+```
+
+#### Run Integration Tests (Uses Free Local Models)
+
+**Setup Requirements:**
+```bash
+# 1. Install Ollama (if not already installed)
+# Visit https://ollama.ai or use brew install ollama
+
+# 2. Start Ollama service
+ollama serve
+
+# 3. Pull a model (e.g., llama3.2)
+ollama pull llama3.2
+
+# 4. Set environment variable for custom provider
+export CUSTOM_API_URL="http://localhost:11434"
+```
+
+**Run Integration Tests:**
+```bash
+# Run integration tests that make real API calls to local models
+python -m pytest tests/ -v -m "integration"
+
+# Run specific integration test
+python -m pytest tests/test_prompt_regression.py::TestPromptIntegration::test_chat_normal_prompt -v
+
+# Run all tests (unit + integration)
+python -m pytest tests/ -v
+```
+
+**Note**: Integration tests use the local-llama model via Ollama, which is completely FREE to run unlimited times. Requires `CUSTOM_API_URL` environment variable set to your local Ollama endpoint. They can be run safely in CI/CD but are excluded from code quality checks to keep them fast.
 
 ### Development Workflow
 
 #### Before Making Changes
-1. Ensure virtual environment is activated: `source venv/bin/activate`
+1. Ensure virtual environment is activated: `source .zen_venv/bin/activate`
 2. Run quality checks: `./code_quality_checks.sh`
-3. Check server is running: `./run-server.sh`
-4. Review relevant documentation in `docs/`
+3. Check logs to ensure server is healthy: `tail -n 50 logs/mcp_server.log`
 
 #### After Making Changes
 1. Run quality checks again: `./code_quality_checks.sh`
-2. Run relevant simulator tests: `python communication_simulator_test.py --individual <test_name>`
-3. Check logs for any issues: `docker exec zen-mcp-server tail -n 100 /tmp/mcp_server.log`
-4. Test manually with Claude Code: `claude` command in project directory
+2. Run integration tests locally: `./run_integration_tests.sh`
+3. Run quick test mode for fast validation: `python communication_simulator_test.py --quick`
+4. Run relevant specific simulator tests if needed: `python communication_simulator_test.py --individual <test_name>`
+5. Check logs for any issues: `tail -n 100 logs/mcp_server.log`
+6. Restart Claude session to use updated code
 
 #### Before Committing/PR
-1. **REQUIRED**: Run final quality check: `./code_quality_checks.sh`
-2. **REQUIRED**: All 491 unit tests must pass 100%
-3. **REQUIRED**: Run relevant simulator tests: `python communication_simulator_test.py`
-4. **REQUIRED**: All linting must pass (ruff, black, isort)
-5. Update documentation if adding features or changing behavior
-6. Follow PR title format: `feat:`, `fix:`, or `breaking:` for version bumps
+1. Final quality check: `./code_quality_checks.sh`
+2. Run integration tests: `./run_integration_tests.sh`
+3. Run quick test mode: `python communication_simulator_test.py --quick`
+4. Run full simulator test suite (optional): `./run_integration_tests.sh --with-simulator`
+5. Verify all tests pass 100%
 
 ### Common Troubleshooting
 
-#### Container Issues
+#### Server Issues
 ```bash
-# Restart containers if they're not responding
-docker stop zen-mcp-server zen-mcp-redis
+# Check if Python environment is set up correctly
 ./run-server.sh
 
-# Check container resource usage
-docker stats zen-mcp-server
+# View recent errors
+grep "ERROR" logs/mcp_server.log | tail -20
 
-# Remove containers and rebuild from scratch
-docker rm -f zen-mcp-server zen-mcp-redis
-./run-server.sh
-
-# Check Docker Compose status
-docker compose ps
+# Check virtual environment
+which python
+# Should show: .../zen-mcp-server/.zen_venv/bin/python
 ```
 
 #### Test Failures
 ```bash
+# First try quick test mode to see if it's a general issue
+python communication_simulator_test.py --quick --verbose
+
 # Run individual failing test with verbose output
 python communication_simulator_test.py --individual <test_name> --verbose
 
 # Check server logs during test execution
-docker exec zen-mcp-server tail -f /tmp/mcp_server.log
+tail -f logs/mcp_server.log
 
-# Run tests while keeping containers running for debugging
-python communication_simulator_test.py --keep-logs
-
-# For unit test failures, run specific test with verbose output
-python -m pytest tests/test_<name>.py::test_<function> -xvs
+# Run tests with debug output
+LOG_LEVEL=DEBUG python communication_simulator_test.py --individual <test_name>
 ```
 
 #### Linting Issues
@@ -336,112 +353,20 @@ docker exec zen-mcp-redis redis-cli INFO memory
 
 ### File Structure Context
 
-**Core Server Files**:
-- `server.py` - Main MCP server implementation (47K LOC)
-- `config.py` - Configuration and constants
-- `run-server.sh` - Docker container setup and management script
-
-**Test Suites**:
-- `tests/` - Unit test suite (491 tests, ~14,600 LOC)
-- `simulator_tests/` - Integration test modules (21 tests)
-- `communication_simulator_test.py` - Test runner for simulator tests
-- `code_quality_checks.sh` - Comprehensive quality check automation
-
-**Tool Implementations**:
-- `tools/analyze.py` - Smart file analysis
-- `tools/chat.py` - Collaborative thinking
-- `tools/codereview.py` - Professional code review
-- `tools/debug.py` - Expert debugging assistant
-- `tools/listmodels.py` - List available models
-- `tools/precommit.py` - Pre-commit validation
-- `tools/refactor.py` - Intelligent code refactoring
-- `tools/testgen.py` - Comprehensive test generation
-- `tools/thinkdeep.py` - Extended reasoning partner
-- `tools/tracer.py` - Static code analysis prompt generator
-- `tools/base.py` - Base tool class and utilities
-- `tools/models.py` - Tool data models
-
-**Provider Implementations**:
-- `providers/gemini.py` - Google Gemini provider
-- `providers/openai.py` - OpenAI provider
-- `providers/xai.py` - X.AI GROK provider
-- `providers/openrouter.py` - OpenRouter provider
-- `providers/custom.py` - Custom API provider (Ollama, vLLM, etc.)
-- `providers/base.py` - Base provider interface
-- `providers/registry.py` - Provider registry and management
-
-**System Prompts**:
-- `systemprompts/analyze_prompt.py` - Analyze tool system prompt
-- `systemprompts/chat_prompt.py` - Chat tool system prompt
-- `systemprompts/codereview_prompt.py` - Code review system prompt
-- `systemprompts/debug_prompt.py` - Debug tool system prompt
-- `systemprompts/precommit_prompt.py` - Precommit system prompt
-- `systemprompts/refactor_prompt.py` - Refactor system prompt (19K LOC)
-- `systemprompts/testgen_prompt.py` - Test generation system prompt
-- `systemprompts/thinkdeep_prompt.py` - Think deep system prompt
-
-**Documentation**:
-- `README.md` - Main project documentation (44K LOC)
-- `docs/advanced-usage.md` - Model configuration, thinking modes, workflows
-- `docs/adding_tools.md` - Step-by-step tool development guide
-- `docs/adding_providers.md` - Provider integration guide
-- `docs/context-revival.md` - Technical deep-dive on conversation persistence
-- `docs/custom_models.md` - Local model setup (Ollama, vLLM, LM Studio)
-- `docs/testing.md` - Test suite documentation
-- `docs/troubleshooting.md` - Common issues and debugging
-- `docs/contributions.md` - PR process and code standards
-- `docs/logging.md` - Log monitoring and debugging
-
-**Configuration Files**:
-- `.env.example` - Example environment configuration
-- `docker-compose.yml` - Docker services configuration
-- `Dockerfile` - Docker image definition
-- `pyproject.toml` - Python project configuration (linting, formatting)
-- `requirements.txt` - Python dependencies
-- `conf/custom_models.json` - Custom model aliases and configurations
-
-**Monitoring & Debugging**:
-- `log_monitor.py` - Real-time log viewer script
+- `./code_quality_checks.sh` - Comprehensive quality check script
+- `./run-server.sh` - Server setup and management
+- `communication_simulator_test.py` - End-to-end testing framework
+- `simulator_tests/` - Individual test modules
+- `tests/` - Unit test suite
+- `tools/` - MCP tool implementations
+- `providers/` - AI provider implementations
+- `systemprompts/` - System prompt definitions
+- `logs/` - Server log files
 
 ### Environment Requirements
 
-- Python 3.9+ with virtual environment activated
-- Docker and Docker Compose installed
+- Python 3.9+ with virtual environment
 - All dependencies from `requirements.txt` installed
-- At least one API key configured (GEMINI_API_KEY, OPENAI_API_KEY, XAI_API_KEY, OPENROUTER_API_KEY, or CUSTOM_API_URL)
-- Redis (automatically managed by Docker Compose)
-
-### Version Information
-
-- **Current Version**: 4.8.3
-- **Last Updated**: 2025-06-16
-- **Author**: Fahad Gilani
-- **License**: Apache 2.0
-
-### Key Technical Achievements
-
-1. **Conversation Threading** - Stateful AI-to-AI conversations in stateless MCP environment
-2. **Cross-Tool Continuation** - Context persists when switching between tools
-3. **Auto Mode** - Intelligent model selection based on task requirements
-4. **Large Context Handling** - Bypass MCP's 25K token limit via incremental updates
-5. **Context Revival** - Resume conversations even after Claude's memory resets
-6. **Multi-Provider Support** - Unified interface for 6 different AI provider types
-7. **Vision Integration** - Image analysis across all tools
-8. **Prompt Shortcuts** - Structured prompt format (`/zen:chat:o3 hello`)
-
-### Contributing
-
-For detailed contribution guidelines, see `docs/contributions.md`. Quick summary:
-
-1. Fork and clone the repository
-2. Create feature branch: `git checkout -b feat/your-feature-name`
-3. Make changes and ensure quality checks pass: `./code_quality_checks.sh`
-4. Add tests for new features (unit tests + simulator tests if applicable)
-5. Follow PR title format: `feat:`, `fix:`, or `breaking:`
-6. Submit PR with clear description
-
-**Zero-tolerance policy**: All tests must pass 100%, all linting must pass cleanly.
-
----
+- Proper API keys configured in `.env` file
 
 This guide provides everything needed to efficiently work with the Zen MCP Server codebase using Claude. Always run quality checks before and after making changes to ensure code integrity. For detailed technical information, refer to the documentation in the `docs/` directory.

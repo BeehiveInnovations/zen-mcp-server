@@ -9,7 +9,6 @@ Tests that verify OpenRouter functionality including:
 - Error handling when models are not available
 """
 
-import subprocess
 
 from .base_test import BaseSimulatorTest
 
@@ -25,39 +24,17 @@ class OpenRouterModelsTest(BaseSimulatorTest):
     def test_description(self) -> str:
         return "OpenRouter model functionality and alias mapping"
 
-    def get_recent_server_logs(self) -> str:
-        """Get recent server logs from the log file directly"""
-        try:
-            # Read logs directly from the log file
-            cmd = ["docker", "exec", self.container_name, "tail", "-n", "500", "/tmp/mcp_server.log"]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if result.returncode == 0:
-                return result.stdout
-            else:
-                self.logger.warning(f"Failed to read server logs: {result.stderr}")
-                return ""
-        except Exception as e:
-            self.logger.error(f"Failed to get server logs: {e}")
-            return ""
-
     def run_test(self) -> bool:
         """Test OpenRouter model functionality"""
         try:
             self.logger.info("Test: OpenRouter model functionality and alias mapping")
 
             # Check if OpenRouter API key is configured
-            check_cmd = [
-                "docker",
-                "exec",
-                self.container_name,
-                "python",
-                "-c",
-                'import os; print("OPENROUTER_KEY:" + str(bool(os.environ.get("OPENROUTER_API_KEY"))))',
-            ]
-            result = subprocess.run(check_cmd, capture_output=True, text=True)
+            import os
 
-            if result.returncode == 0 and "OPENROUTER_KEY:False" in result.stdout:
+            has_openrouter = bool(os.environ.get("OPENROUTER_API_KEY"))
+
+            if not has_openrouter:
                 self.logger.info("  ⚠️  OpenRouter API key not configured - skipping test")
                 self.logger.info("  ℹ️  This test requires OPENROUTER_API_KEY to be set in .env")
                 return True  # Return True to indicate test is skipped, not failed
@@ -66,7 +43,7 @@ class OpenRouterModelsTest(BaseSimulatorTest):
             self.setup_test_files()
 
             # Test 1: Flash alias mapping to OpenRouter
-            self.logger.info("  1: Testing 'flash' alias (should map to google/gemini-2.5-flash-preview-05-20)")
+            self.logger.info("  1: Testing 'flash' alias (should map to google/gemini-2.5-flash)")
 
             response1, continuation_id = self.call_mcp_tool(
                 "chat",
@@ -86,7 +63,7 @@ class OpenRouterModelsTest(BaseSimulatorTest):
                 self.logger.info(f"  ✅ Got continuation_id: {continuation_id}")
 
             # Test 2: Pro alias mapping to OpenRouter
-            self.logger.info("  2: Testing 'pro' alias (should map to google/gemini-2.5-pro-preview-06-05)")
+            self.logger.info("  2: Testing 'pro' alias (should map to google/gemini-2.5-pro)")
 
             response2, _ = self.call_mcp_tool(
                 "chat",
@@ -140,7 +117,7 @@ class OpenRouterModelsTest(BaseSimulatorTest):
             self.logger.info("  ✅ Direct OpenRouter model call completed")
 
             # Test 5: OpenRouter alias from config
-            self.logger.info("  5: Testing OpenRouter alias from config ('opus' -> anthropic/claude-3-opus)")
+            self.logger.info("  5: Testing OpenRouter alias from config ('opus' -> anthropic/claude-opus-4)")
 
             response5, _ = self.call_mcp_tool(
                 "chat",

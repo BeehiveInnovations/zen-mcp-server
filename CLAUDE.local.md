@@ -1,1 +1,0 @@
-- Before any commit / push to github, you must first always run and confirm run that code quality checks pass. Use @code_quality_checks.sh and confirm that we have 100% unit tests passing.

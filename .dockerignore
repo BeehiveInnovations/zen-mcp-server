@@ -3,70 +3,62 @@
 .gitignore
 
 # Python
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-.coverage
-.pytest_cache/
-htmlcov/
-.tox/
-.mypy_cache/
-.ruff_cache/
-
-# Virtual environments
-venv/
+.Python
 env/
-ENV/
+venv/
 .venv/
+.zen_venv/
+ENV/
+env.bak/
+venv.bak/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
+logs/*.log*
+*.log
 
 # Docker
+Dockerfile*
+docker-compose*
 .dockerignore
-Dockerfile
-docker-compose*.yml
-
-# Environment files (contain secrets)
-.env
-.env.*
-*.env
 
 # Documentation
-*.md
 docs/
-examples/
+README.md
+*.md
 
 # Tests
 tests/
-test_*.py
-*_test.py
+simulator_tests/
+test_simulation_files/
+pytest.ini
 
-# CI/CD
-.github/
-.gitlab-ci.yml
-.travis.yml
+# Development
+.env
+.env.local
+examples/
+code_quality_checks.sh
+run_integration_tests.sh
 
-# Logs
-*.log
-logs/
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# OS specific
-Thumbs.db
+# Security - Sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.csr
+secrets/
+private/

@@ -1,0 +1,73 @@
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    concurrency: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-semantic-release
+
+      - name: Verify tests pass
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          python -m pytest tests/ -v --ignore=simulator_tests/ -m "not integration"
+
+      - name: Run semantic release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          semantic-release version
+          semantic-release publish
+          
+      - name: Sync version to config.py
+        run: |
+          pip install toml
+          python scripts/sync_version.py
+          if git diff --quiet config.py; then
+            echo "No version changes in config.py"
+          else
+            git add config.py
+            git commit -m "chore: sync version to config.py [skip ci]"
+            git push
+          fi
+
+      - name: Upload build artifacts to release
+        if: hashFiles('dist/*') != ''
+        run: |
+          # Get the latest release tag
+          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          if [ ! -z "$LATEST_TAG" ]; then
+            echo "Uploading artifacts to release $LATEST_TAG"
+            gh release upload "$LATEST_TAG" dist/* --clobber
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

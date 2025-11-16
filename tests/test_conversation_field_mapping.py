@@ -3,16 +3,16 @@ Test that conversation history is correctly mapped to tool-specific fields
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from providers.base import ProviderType
 from server import reconstruct_thread_context
 from utils.conversation_memory import ConversationTurn, ThreadContext
 
 
 @pytest.mark.asyncio
+@pytest.mark.no_mock_provider
 async def test_conversation_history_field_mapping():
     """Test that enhanced prompts are mapped to prompt field for all tools"""
 
@@ -41,7 +41,7 @@ async def test_conversation_history_field_mapping():
     ]
 
     for test_case in test_cases:
-        # Create mock conversation context
+        # Create real conversation context
         mock_context = ThreadContext(
             thread_id="test-thread-123",
             tool_name=test_case["tool_name"],
@@ -66,54 +66,37 @@ async def test_conversation_history_field_mapping():
         # Mock get_thread to return our test context
         with patch("utils.conversation_memory.get_thread", return_value=mock_context):
             with patch("utils.conversation_memory.add_turn", return_value=True):
-                with patch("utils.conversation_memory.build_conversation_history") as mock_build:
-                    # Mock provider registry to avoid model lookup errors
-                    with patch("providers.registry.ModelProviderRegistry.get_provider_for_model") as mock_get_provider:
-                        from providers.base import ModelCapabilities
+                # Create arguments with continuation_id and use a test model
+                arguments = {
+                    "continuation_id": "test-thread-123",
+                    "prompt": test_case["original_value"],
+                    "absolute_file_paths": ["/test/file2.py"],
+                    "model": "flash",  # Use test model to avoid provider errors
+                }
 
-                        mock_provider = MagicMock()
-                        mock_provider.get_capabilities.return_value = ModelCapabilities(
-                            provider=ProviderType.GOOGLE,
-                            model_name="gemini-2.5-flash-preview-05-20",
-                            friendly_name="Gemini",
-                            context_window=200000,
-                            supports_extended_thinking=True,
-                        )
-                        mock_get_provider.return_value = mock_provider
-                        # Mock conversation history building
-                        mock_build.return_value = (
-                            "=== CONVERSATION HISTORY ===\nPrevious conversation content\n=== END HISTORY ===",
-                            1000,  # mock token count
-                        )
+                # Call reconstruct_thread_context
+                enhanced_args = await reconstruct_thread_context(arguments)
 
-                        # Create arguments with continuation_id
-                        arguments = {
-                            "continuation_id": "test-thread-123",
-                            "prompt": test_case["original_value"],
-                            "files": ["/test/file2.py"],
-                        }
+                # Verify the enhanced prompt is in the prompt field
+                assert "prompt" in enhanced_args
+                enhanced_value = enhanced_args["prompt"]
 
-                        # Call reconstruct_thread_context
-                        enhanced_args = await reconstruct_thread_context(arguments)
+                # Should contain conversation history
+                assert "=== CONVERSATION HISTORY" in enhanced_value  # Allow for both formats
+                assert "Previous user message" in enhanced_value
+                assert "Previous assistant response" in enhanced_value
 
-                        # Verify the enhanced prompt is in the prompt field
-                        assert "prompt" in enhanced_args
-                        enhanced_value = enhanced_args["prompt"]
+                # Should contain the new user input
+                assert "=== NEW USER INPUT ===" in enhanced_value
+                assert test_case["original_value"] in enhanced_value
 
-                        # Should contain conversation history
-                        assert "=== CONVERSATION HISTORY ===" in enhanced_value
-                        assert "Previous conversation content" in enhanced_value
-
-                        # Should contain the new user input
-                        assert "=== NEW USER INPUT ===" in enhanced_value
-                        assert test_case["original_value"] in enhanced_value
-
-                        # Should have token budget
-                        assert "_remaining_tokens" in enhanced_args
-                        assert enhanced_args["_remaining_tokens"] > 0
+                # Should have token budget
+                assert "_remaining_tokens" in enhanced_args
+                assert enhanced_args["_remaining_tokens"] > 0
 
 
 @pytest.mark.asyncio
+@pytest.mark.no_mock_provider
 async def test_unknown_tool_defaults_to_prompt():
     """Test that unknown tools default to using 'prompt' field"""
 
@@ -122,64 +105,96 @@ async def test_unknown_tool_defaults_to_prompt():
         tool_name="unknown_tool",
         created_at=datetime.now().isoformat(),
         last_updated_at=datetime.now().isoformat(),
-        turns=[],
+        turns=[
+            ConversationTurn(
+                role="user",
+                content="First message",
+                timestamp=datetime.now().isoformat(),
+            ),
+            ConversationTurn(
+                role="assistant",
+                content="First response",
+                timestamp=datetime.now().isoformat(),
+            ),
+        ],
         initial_context={},
     )
 
     with patch("utils.conversation_memory.get_thread", return_value=mock_context):
         with patch("utils.conversation_memory.add_turn", return_value=True):
-            with patch("utils.conversation_memory.build_conversation_history", return_value=("History", 500)):
-                # Mock ModelContext to avoid calculation errors
-                with patch("utils.model_context.ModelContext") as mock_model_context_class:
-                    mock_model_context = MagicMock()
-                    mock_model_context.model_name = "gemini-2.5-flash-preview-05-20"
-                    mock_model_context.calculate_token_allocation.return_value = MagicMock(
-                        total_tokens=200000,
-                        content_tokens=120000,
-                        response_tokens=80000,
-                        file_tokens=48000,
-                        history_tokens=48000,
-                        available_for_prompt=24000,
-                    )
-                    mock_model_context_class.from_arguments.return_value = mock_model_context
+            arguments = {
+                "continuation_id": "test-thread-456",
+                "prompt": "User input",
+                "model": "flash",  # Use test model for real integration
+            }
 
-                    arguments = {
-                        "continuation_id": "test-thread-456",
-                        "prompt": "User input",
-                    }
+            enhanced_args = await reconstruct_thread_context(arguments)
 
-                    enhanced_args = await reconstruct_thread_context(arguments)
-
-                    # Should default to 'prompt' field
-                    assert "prompt" in enhanced_args
-                    assert "History" in enhanced_args["prompt"]
+            # Should default to 'prompt' field
+            assert "prompt" in enhanced_args
+            assert "=== CONVERSATION HISTORY" in enhanced_args["prompt"]  # Allow for both formats
+            assert "First message" in enhanced_args["prompt"]
+            assert "First response" in enhanced_args["prompt"]
+            assert "User input" in enhanced_args["prompt"]
 
 
 @pytest.mark.asyncio
 async def test_tool_parameter_standardization():
-    """Test that all tools use standardized 'prompt' parameter"""
-    from tools.analyze import AnalyzeRequest
+    """Test that workflow tools use standardized investigation pattern"""
+    from tools.analyze import AnalyzeWorkflowRequest
     from tools.codereview import CodeReviewRequest
-    from tools.debug import DebugIssueRequest
+    from tools.debug import DebugInvestigationRequest
     from tools.precommit import PrecommitRequest
-    from tools.thinkdeep import ThinkDeepRequest
+    from tools.thinkdeep import ThinkDeepWorkflowRequest
 
-    # Test analyze tool uses prompt
-    analyze = AnalyzeRequest(files=["/test.py"], prompt="What does this do?")
-    assert analyze.prompt == "What does this do?"
+    # Test analyze tool uses workflow pattern
+    analyze = AnalyzeWorkflowRequest(
+        step="What does this do?",
+        step_number=1,
+        total_steps=1,
+        next_step_required=False,
+        findings="Initial analysis",
+        relevant_files=["/test.py"],
+    )
+    assert analyze.step == "What does this do?"
 
-    # Test debug tool uses prompt
-    debug = DebugIssueRequest(prompt="Error occurred")
-    assert debug.prompt == "Error occurred"
+    # Debug tool now uses self-investigation pattern with different fields
+    debug = DebugInvestigationRequest(
+        step="Investigating error",
+        step_number=1,
+        total_steps=3,
+        next_step_required=True,
+        findings="Initial error analysis",
+    )
+    assert debug.step == "Investigating error"
+    assert debug.findings == "Initial error analysis"
 
-    # Test codereview tool uses prompt
-    review = CodeReviewRequest(files=["/test.py"], prompt="Review this")
-    assert review.prompt == "Review this"
+    # Test codereview tool uses workflow fields
+    review = CodeReviewRequest(
+        step="Initial code review investigation",
+        step_number=1,
+        total_steps=2,
+        next_step_required=True,
+        findings="Initial review findings",
+        relevant_files=["/test.py"],
+    )
+    assert review.step == "Initial code review investigation"
+    assert review.findings == "Initial review findings"
 
-    # Test thinkdeep tool uses prompt
-    think = ThinkDeepRequest(prompt="My analysis")
-    assert think.prompt == "My analysis"
+    # Test thinkdeep tool uses workflow pattern
+    think = ThinkDeepWorkflowRequest(
+        step="My analysis", step_number=1, total_steps=1, next_step_required=False, findings="Initial thinking analysis"
+    )
+    assert think.step == "My analysis"
 
-    # Test precommit tool uses prompt (optional)
-    precommit = PrecommitRequest(path="/repo", prompt="Fix bug")
-    assert precommit.prompt == "Fix bug"
+    # Test precommit tool uses workflow fields
+    precommit = PrecommitRequest(
+        step="Validating changes for commit",
+        step_number=1,
+        total_steps=2,
+        next_step_required=True,
+        findings="Initial validation findings",
+        path="/repo",  # path only needed for step 1
+    )
+    assert precommit.step == "Validating changes for commit"
+    assert precommit.findings == "Initial validation findings"

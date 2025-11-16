@@ -6,13 +6,19 @@ organized by their provider (Gemini, OpenAI, X.AI, OpenRouter, Custom).
 It shows which providers are configured and what models can be used.
 """
 
-import os
+import logging
 from typing import Any, Optional
 
 from mcp.types import TextContent
 
-from tools.base import BaseTool, ToolRequest
+from providers.registries.custom import CustomEndpointModelRegistry
+from providers.registries.openrouter import OpenRouterModelRegistry
 from tools.models import ToolModelCategory, ToolOutput
+from tools.shared.base_models import ToolRequest
+from tools.shared.base_tool import BaseTool
+from utils.env import get_env
+
+logger = logging.getLogger(__name__)
 
 
 class ListModelsTool(BaseTool):
@@ -30,16 +36,20 @@ class ListModelsTool(BaseTool):
         return "listmodels"
 
     def get_description(self) -> str:
-        return (
-            "LIST AVAILABLE MODELS - Display all AI models organized by provider. "
-            "Shows which providers are configured, available models, their aliases, "
-            "context windows, and capabilities. Useful for understanding what models "
-            "can be used and their characteristics."
-        )
+        return "Shows which AI model providers are configured, available model names, their aliases and capabilities."
 
     def get_input_schema(self) -> dict[str, Any]:
         """Return the JSON schema for the tool's input"""
-        return {"type": "object", "properties": {}, "required": []}
+        return {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": False,
+        }
+
+    def get_annotations(self) -> Optional[dict[str, Any]]:
+        """Return tool annotations indicating this is a read-only tool"""
+        return {"readOnlyHint": True}
 
     def get_system_prompt(self) -> str:
         """No AI model needed for this tool"""
@@ -48,6 +58,9 @@ class ListModelsTool(BaseTool):
     def get_request_model(self):
         """Return the Pydantic model for request validation."""
         return ToolRequest
+
+    def requires_model(self) -> bool:
+        return False
 
     async def prepare_prompt(self, request: ToolRequest) -> str:
         """Not used for this utility tool"""
@@ -69,84 +82,130 @@ class ListModelsTool(BaseTool):
         Returns:
             Formatted list of models by provider
         """
-        from config import MODEL_CAPABILITIES_DESC
-        from providers.openrouter_registry import OpenRouterModelRegistry
+        from providers.registry import ModelProviderRegistry
+        from providers.shared import ProviderType
+        from utils.model_restrictions import get_restriction_service
 
         output_lines = ["# Available AI Models\n"]
 
-        # Check native providers
-        native_providers = {
-            "gemini": {
-                "name": "Google Gemini",
-                "env_key": "GEMINI_API_KEY",
-                "models": {
-                    "flash": "gemini-2.5-flash-preview-05-20",
-                    "pro": "gemini-2.5-pro-preview-06-05",
-                },
-            },
-            "openai": {
-                "name": "OpenAI",
-                "env_key": "OPENAI_API_KEY",
-                "models": {
-                    "o3": "o3",
-                    "o3-mini": "o3-mini",
-                    "o3-pro": "o3-pro",
-                    "o4-mini": "o4-mini",
-                    "o4-mini-high": "o4-mini-high",
-                },
-            },
-            "xai": {
-                "name": "X.AI (Grok)",
-                "env_key": "XAI_API_KEY",
-                "models": {
-                    "grok": "grok-3",
-                    "grok-3": "grok-3",
-                    "grok-3-fast": "grok-3-fast",
-                    "grok3": "grok-3",
-                    "grokfast": "grok-3-fast",
-                },
-            },
+        restriction_service = get_restriction_service()
+        restricted_models_by_provider: dict[ProviderType, list[str]] = {}
+
+        if restriction_service:
+            restricted_map = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+            for model_name, provider_type in restricted_map.items():
+                restricted_models_by_provider.setdefault(provider_type, []).append(model_name)
+
+        # Map provider types to friendly names and their models
+        provider_info = {
+            ProviderType.GOOGLE: {"name": "Google Gemini", "env_key": "GEMINI_API_KEY"},
+            ProviderType.OPENAI: {"name": "OpenAI", "env_key": "OPENAI_API_KEY"},
+            ProviderType.AZURE: {"name": "Azure OpenAI", "env_key": "AZURE_OPENAI_API_KEY"},
+            ProviderType.XAI: {"name": "X.AI (Grok)", "env_key": "XAI_API_KEY"},
+            ProviderType.DIAL: {"name": "AI DIAL", "env_key": "DIAL_API_KEY"},
         }
 
-        # Check each native provider
-        for provider_key, provider_info in native_providers.items():
-            api_key = os.getenv(provider_info["env_key"])
-            is_configured = api_key and api_key != f"your_{provider_key}_api_key_here"
+        def format_model_entry(provider, display_name: str) -> list[str]:
+            try:
+                capabilities = provider.get_capabilities(display_name)
+            except ValueError:
+                return [f"- `{display_name}` *(not recognized by provider)*"]
 
-            output_lines.append(f"## {provider_info['name']} {'✅' if is_configured else '❌'}")
+            canonical = capabilities.model_name
+            if canonical.lower() == display_name.lower():
+                header = f"- `{canonical}`"
+            else:
+                header = f"- `{display_name}` → `{canonical}`"
+
+            try:
+                context_value = capabilities.context_window or 0
+            except AttributeError:
+                context_value = 0
+            try:
+                context_value = int(context_value)
+            except (TypeError, ValueError):
+                context_value = 0
+
+            if context_value >= 1_000_000:
+                context_str = f"{context_value // 1_000_000}M context"
+            elif context_value >= 1_000:
+                context_str = f"{context_value // 1_000}K context"
+            elif context_value > 0:
+                context_str = f"{context_value} context"
+            else:
+                context_str = "unknown context"
+
+            try:
+                description = capabilities.description or "No description available"
+            except AttributeError:
+                description = "No description available"
+            lines = [header, f"  - {context_str}", f"  - {description}"]
+            if capabilities.allow_code_generation:
+                lines.append("  - Supports structured code generation")
+            return lines
+
+        # Check each native provider type
+        for provider_type, info in provider_info.items():
+            # Check if provider is enabled
+            provider = ModelProviderRegistry.get_provider(provider_type)
+            is_configured = provider is not None
+
+            output_lines.append(f"## {info['name']} {'✅' if is_configured else '❌'}")
 
             if is_configured:
                 output_lines.append("**Status**: Configured and available")
-                output_lines.append("\n**Models**:")
+                has_restrictions = bool(restriction_service and restriction_service.has_restrictions(provider_type))
 
-                for alias, full_name in provider_info["models"].items():
-                    # Get description from MODEL_CAPABILITIES_DESC
-                    desc = MODEL_CAPABILITIES_DESC.get(alias, "")
-                    if isinstance(desc, str):
-                        # Extract context window from description
-                        import re
+                if has_restrictions:
+                    restricted_names = sorted(set(restricted_models_by_provider.get(provider_type, [])))
 
-                        context_match = re.search(r"\(([^)]+context)\)", desc)
-                        context_info = context_match.group(1) if context_match else ""
+                    if restricted_names:
+                        output_lines.append("\n**Models (policy restricted)**:")
+                        for model_name in restricted_names:
+                            output_lines.extend(format_model_entry(provider, model_name))
+                    else:
+                        output_lines.append("\n*No models are currently allowed by restriction policy.*")
+                else:
+                    output_lines.append("\n**Models**:")
 
-                        output_lines.append(f"- `{alias}` → `{full_name}` - {context_info}")
+                    aliases = []
+                    for model_name, capabilities in provider.get_capabilities_by_rank():
+                        try:
+                            description = capabilities.description or "No description available"
+                        except AttributeError:
+                            description = "No description available"
 
-                        # Extract key capability
-                        if "Ultra-fast" in desc:
-                            output_lines.append("  - Fast processing, quick iterations")
-                        elif "Deep reasoning" in desc:
-                            output_lines.append("  - Extended reasoning with thinking mode")
-                        elif "Strong reasoning" in desc:
-                            output_lines.append("  - Logical problems, systematic analysis")
-                        elif "EXTREMELY EXPENSIVE" in desc:
-                            output_lines.append("  - ⚠️ Professional grade (very expensive)")
+                        try:
+                            context_window = capabilities.context_window or 0
+                        except AttributeError:
+                            context_window = 0
+
+                        if context_window >= 1_000_000:
+                            context_str = f"{context_window // 1_000_000}M context"
+                        elif context_window >= 1_000:
+                            context_str = f"{context_window // 1_000}K context"
+                        else:
+                            context_str = f"{context_window} context" if context_window > 0 else "unknown context"
+
+                        output_lines.append(f"- `{model_name}` - {context_str}")
+                        output_lines.append(f"  - {description}")
+                        if capabilities.allow_code_generation:
+                            output_lines.append("  - Supports structured code generation")
+
+                        for alias in capabilities.aliases or []:
+                            if alias != model_name:
+                                aliases.append(f"- `{alias}` → `{model_name}`")
+
+                    if aliases:
+                        output_lines.append("\n**Aliases**:")
+                        output_lines.extend(sorted(aliases))
             else:
-                output_lines.append(f"**Status**: Not configured (set {provider_info['env_key']})")
+                output_lines.append(f"**Status**: Not configured (set {info['env_key']})")
 
             output_lines.append("")
 
         # Check OpenRouter
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        openrouter_key = get_env("OPENROUTER_API_KEY")
         is_openrouter_configured = openrouter_key and openrouter_key != "your_openrouter_api_key_here"
 
         output_lines.append(f"## OpenRouter {'✅' if is_openrouter_configured else '❌'}")
@@ -156,40 +215,105 @@ class ListModelsTool(BaseTool):
             output_lines.append("**Description**: Access to multiple cloud AI providers via unified API")
 
             try:
-                registry = OpenRouterModelRegistry()
-                aliases = registry.list_aliases()
+                provider = ModelProviderRegistry.get_provider(ProviderType.OPENROUTER)
+                if provider:
+                    registry = OpenRouterModelRegistry()
 
-                # Group by provider for better organization
-                providers_models = {}
-                for alias in aliases[:20]:  # Limit to first 20 to avoid overwhelming output
-                    config = registry.resolve(alias)
-                    if config and not (hasattr(config, "is_custom") and config.is_custom):
-                        # Extract provider from model_name
-                        provider = config.model_name.split("/")[0] if "/" in config.model_name else "other"
-                        if provider not in providers_models:
-                            providers_models[provider] = []
-                        providers_models[provider].append((alias, config))
+                    def _format_context(tokens: int) -> str:
+                        if not tokens:
+                            return "?"
+                        if tokens >= 1_000_000:
+                            return f"{tokens // 1_000_000}M"
+                        if tokens >= 1_000:
+                            return f"{tokens // 1_000}K"
+                        return str(tokens)
 
-                output_lines.append("\n**Available Models** (showing top 20):")
-                for provider, models in sorted(providers_models.items()):
-                    output_lines.append(f"\n*{provider.title()}:*")
-                    for alias, config in models[:5]:  # Limit each provider to 5 models
-                        context_str = f"{config.context_window // 1000}K" if config.context_window else "?"
-                        output_lines.append(f"- `{alias}` → `{config.model_name}` ({context_str} context)")
+                    has_restrictions = bool(
+                        restriction_service and restriction_service.has_restrictions(ProviderType.OPENROUTER)
+                    )
 
-                total_models = len(aliases)
-                output_lines.append(f"\n...and {total_models - 20} more models available")
+                    if has_restrictions:
+                        restricted_names = sorted(set(restricted_models_by_provider.get(ProviderType.OPENROUTER, [])))
+
+                        output_lines.append("\n**Models (policy restricted)**:")
+                        if restricted_names:
+                            for model_name in restricted_names:
+                                try:
+                                    caps = provider.get_capabilities(model_name)
+                                except ValueError:
+                                    output_lines.append(f"- `{model_name}` *(not recognized by provider)*")
+                                    continue
+
+                                context_value = int(caps.context_window or 0)
+                                context_str = _format_context(context_value)
+                                suffix_parts = [f"{context_str} context"]
+                                if caps.supports_extended_thinking:
+                                    suffix_parts.append("thinking")
+                                suffix = ", ".join(suffix_parts)
+
+                                arrow = ""
+                                if caps.model_name.lower() != model_name.lower():
+                                    arrow = f" → `{caps.model_name}`"
+
+                                score = caps.get_effective_capability_rank()
+                                output_lines.append(f"- `{model_name}`{arrow} (score {score}, {suffix})")
+
+                            allowed_set = restriction_service.get_allowed_models(ProviderType.OPENROUTER) or set()
+                            if allowed_set:
+                                output_lines.append(
+                                    f"\n*OpenRouter models restricted by OPENROUTER_ALLOWED_MODELS: {', '.join(sorted(allowed_set))}*"
+                                )
+                        else:
+                            output_lines.append("- *No models allowed by current restriction policy.*")
+                    else:
+                        available_models = provider.list_models(respect_restrictions=True)
+                        providers_models: dict[str, list[tuple[int, str, Optional[Any]]]] = {}
+
+                        for model_name in available_models:
+                            config = registry.resolve(model_name)
+                            provider_name = "other"
+                            if config and "/" in config.model_name:
+                                provider_name = config.model_name.split("/")[0]
+                            elif "/" in model_name:
+                                provider_name = model_name.split("/")[0]
+
+                            providers_models.setdefault(provider_name, [])
+
+                            rank = config.get_effective_capability_rank() if config else 0
+                            providers_models[provider_name].append((rank, model_name, config))
+
+                        output_lines.append("\n**Available Models**:")
+                        for provider_name, models in sorted(providers_models.items()):
+                            output_lines.append(f"\n*{provider_name.title()}:*")
+                            for rank, alias, config in sorted(models, key=lambda item: (-item[0], item[1])):
+                                if config:
+                                    context_str = _format_context(getattr(config, "context_window", 0))
+                                    suffix_parts = [f"{context_str} context"]
+                                    if getattr(config, "supports_extended_thinking", False):
+                                        suffix_parts.append("thinking")
+                                    suffix = ", ".join(suffix_parts)
+
+                                    arrow = ""
+                                    if config.model_name.lower() != alias.lower():
+                                        arrow = f" → `{config.model_name}`"
+
+                                    output_lines.append(f"- `{alias}`{arrow} (score {rank}, {suffix})")
+                                else:
+                                    output_lines.append(f"- `{alias}` (score {rank})")
+                else:
+                    output_lines.append("**Error**: Could not load OpenRouter provider")
 
             except Exception as e:
+                logger.exception("Error listing OpenRouter models: %s", e)
                 output_lines.append(f"**Error loading models**: {str(e)}")
         else:
             output_lines.append("**Status**: Not configured (set OPENROUTER_API_KEY)")
-            output_lines.append("**Note**: Provides access to GPT-4, Claude, Mistral, and many more")
+            output_lines.append("**Note**: Provides access to GPT-5, O3, Mistral, and many more")
 
         output_lines.append("")
 
         # Check Custom API
-        custom_url = os.getenv("CUSTOM_API_URL")
+        custom_url = get_env("CUSTOM_API_URL")
 
         output_lines.append(f"## Custom/Local API {'✅' if custom_url else '❌'}")
 
@@ -199,12 +323,12 @@ class ListModelsTool(BaseTool):
             output_lines.append("**Description**: Local models via Ollama, vLLM, LM Studio, etc.")
 
             try:
-                registry = OpenRouterModelRegistry()
+                registry = CustomEndpointModelRegistry()
                 custom_models = []
 
                 for alias in registry.list_aliases():
                     config = registry.resolve(alias)
-                    if config and hasattr(config, "is_custom") and config.is_custom:
+                    if config:
                         custom_models.append((alias, config))
 
                 if custom_models:
@@ -230,9 +354,8 @@ class ListModelsTool(BaseTool):
         configured_count = sum(
             [
                 1
-                for p in native_providers.values()
-                if os.getenv(p["env_key"])
-                and os.getenv(p["env_key"]) != f"your_{p['env_key'].lower().replace('_api_key', '')}_api_key_here"
+                for provider_type, info in provider_info.items()
+                if ModelProviderRegistry.get_provider(provider_type) is not None
             ]
         )
         if is_openrouter_configured:
@@ -244,18 +367,19 @@ class ListModelsTool(BaseTool):
 
         # Get total available models
         try:
-            from tools.analyze import AnalyzeTool
+            from providers.registry import ModelProviderRegistry
 
-            tool = AnalyzeTool()
-            total_models = len(tool._get_available_models())
+            # Get all available models respecting restrictions
+            available_models = ModelProviderRegistry.get_available_models(respect_restrictions=True)
+            total_models = len(available_models)
             output_lines.append(f"**Total Available Models**: {total_models}")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error getting total available models: {e}")
 
         # Add usage tips
         output_lines.append("\n**Usage Tips**:")
-        output_lines.append("- Use model aliases (e.g., 'flash', 'o3', 'opus') for convenience")
-        output_lines.append("- In auto mode, Claude will select the best model for each task")
+        output_lines.append("- Use model aliases (e.g., 'flash', 'gpt5', 'opus') for convenience")
+        output_lines.append("- In auto mode, the CLI Agent will select the best model for each task")
         output_lines.append("- Custom models are only available when CUSTOM_API_URL is set")
         output_lines.append("- OpenRouter provides access to many cloud models with one API key")
 

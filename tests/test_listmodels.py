@@ -21,7 +21,7 @@ class TestListModelsTool:
     def test_tool_metadata(self, tool):
         """Test tool has correct metadata"""
         assert tool.name == "listmodels"
-        assert "LIST AVAILABLE MODELS" in tool.description
+        assert "model providers" in tool.description
         assert tool.get_request_model().__name__ == "ToolRequest"
 
     @pytest.mark.asyncio
@@ -65,9 +65,10 @@ class TestListModelsTool:
 
             # Check Gemini shows as configured
             assert "Google Gemini ✅" in content
-            assert "`flash` → `gemini-2.5-flash-preview-05-20`" in content
-            assert "`pro` → `gemini-2.5-pro-preview-06-05`" in content
+            assert "`flash` → `gemini-2.5-flash`" in content
+            assert "`pro` → `gemini-2.5-pro`" in content
             assert "1M context" in content
+            assert "Supports structured code generation" in content
 
             # Check summary
             assert "**Configured Providers**: 1" in content

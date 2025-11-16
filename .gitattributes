@@ -1,0 +1,27 @@
+# Ensure shell scripts always have LF line endings on checkout
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Python files
+*.py text eol=lf
+
+# Shell script without extension
+run-server text eol=lf
+code_quality_checks text eol=lf
+run_integration_tests text eol=lf
+
+# General text files
+*.md text
+*.txt text
+*.yml text
+*.yaml text
+*.json text
+*.xml text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

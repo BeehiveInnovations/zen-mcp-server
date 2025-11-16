@@ -1,225 +1,41 @@
 {
   "_README": {
-    "description": "Unified model configuration for multiple AI providers and endpoints, including OpenRouter",
-    "providers_supported": [
-      "OpenRouter - Access to GPT-4, Claude, Mistral, etc. via unified API",
-      "Custom API endpoints - Local models (Ollama, vLLM, LM Studio, etc.)",
-      "Self-hosted APIs - Any OpenAI-compatible endpoint"
-    ],
+    "description": "Model metadata for local/self-hosted OpenAI-compatible endpoints (Custom provider).",
     "documentation": "https://github.com/BeehiveInnovations/zen-mcp-server/blob/main/docs/custom_models.md",
-    "usage": "Models can be accessed via aliases (e.g., 'opus', 'local-llama') or full names (e.g., 'anthropic/claude-3-opus', 'llama3.2')",
-    "instructions": [
-      "Add new models by copying an existing entry and modifying it",
-      "Aliases are case-insensitive and should be unique across all models",
-      "context_window is the model's total context window size in tokens (input + output)",
-      "Set supports_* flags based on the model's actual capabilities",
-      "Set is_custom=true for models that should ONLY work with custom endpoints (Ollama, vLLM, etc.)",
-      "Models not listed here will use generic defaults (32K context window, basic features)",
-      "For OpenRouter models: Use official OpenRouter model names (e.g., 'anthropic/claude-3-opus')",
-      "For local/custom models: Use model names as they appear in your API (e.g., 'llama3.2', 'gpt-3.5-turbo')"
-    ],
+    "usage": "Each entry will be advertised by the Custom provider. Aliases are case-insensitive.",
+    "field_notes": "Matches providers/shared/model_capabilities.py.",
     "field_descriptions": {
-      "model_name": "The model identifier - OpenRouter format (e.g., 'anthropic/claude-3-opus') or custom model name (e.g., 'llama3.2')",
+      "model_name": "The model identifier e.g., 'llama3.2'",
       "aliases": "Array of short names users can type instead of the full model name",
       "context_window": "Total number of tokens the model can process (input + output combined)",
-      "supports_extended_thinking": "Whether the model supports extended reasoning tokens (currently none do via OpenRouter or custom APIs)",
+      "max_output_tokens": "Maximum number of tokens the model can generate in a single response",
+      "supports_extended_thinking": "Whether the model supports extended reasoning tokens",
       "supports_json_mode": "Whether the model can guarantee valid JSON output",
       "supports_function_calling": "Whether the model supports function/tool calling",
       "supports_images": "Whether the model can process images/visual input",
       "max_image_size_mb": "Maximum total size in MB for all images combined (capped at 40MB max for custom models)",
-      "is_custom": "Set to true for models that should ONLY be used with custom API endpoints (Ollama, vLLM, etc.). False or omitted for OpenRouter/cloud models.",
-      "description": "Human-readable description of the model"
-    },
-    "example_custom_model": {
-      "model_name": "my-local-model",
-      "aliases": ["shortname", "nickname", "abbrev"],
-      "context_window": 128000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 10.0,
-      "is_custom": true,
-      "description": "Example custom/local model for Ollama, vLLM, etc."
+      "supports_temperature": "Whether the model accepts temperature parameter in API calls (set to false for O3/O4 reasoning models)",
+      "temperature_constraint": "Type of temperature constraint: 'fixed' (fixed value), 'range' (continuous range), 'discrete' (specific values), or omit for default range",
+      "description": "Human-readable description of the model",
+      "intelligence_score": "1-20 human rating used as the primary signal for auto-mode model ordering"
     }
   },
   "models": [
     {
-      "model_name": "anthropic/claude-3-opus",
-      "aliases": ["opus", "claude-opus", "claude3-opus", "claude-3-opus"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": false,
-      "supports_function_calling": false,
-      "supports_images": true,
-      "max_image_size_mb": 5.0,
-      "description": "Claude 3 Opus - Most capable Claude model with vision"
-    },
-    {
-      "model_name": "anthropic/claude-3-sonnet",
-      "aliases": ["sonnet", "claude-sonnet", "claude3-sonnet", "claude-3-sonnet", "claude"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": false,
-      "supports_function_calling": false,
-      "supports_images": true,
-      "max_image_size_mb": 5.0,
-      "description": "Claude 3 Sonnet - Balanced performance with vision"
-    },
-    {
-      "model_name": "anthropic/claude-3-haiku",
-      "aliases": ["haiku", "claude-haiku", "claude3-haiku", "claude-3-haiku"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": false,
-      "supports_function_calling": false,
-      "supports_images": true,
-      "max_image_size_mb": 5.0,
-      "description": "Claude 3 Haiku - Fast and efficient with vision"
-    },
-    {
-      "model_name": "google/gemini-2.5-pro-preview",
-      "aliases": ["pro","gemini-pro", "gemini", "pro-openrouter"],
-      "context_window": 1048576,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": false,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "Google's Gemini 2.5 Pro via OpenRouter with vision"
-    },
-    {
-      "model_name": "google/gemini-2.5-flash-preview-05-20",
-      "aliases": ["flash","gemini-flash", "flash-openrouter", "flash-2.5"],
-      "context_window": 1048576,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": false,
-      "supports_images": true,
-      "max_image_size_mb": 15.0,
-      "description": "Google's Gemini 2.5 Flash via OpenRouter with vision"
-    },
-    {
-      "model_name": "mistral/mistral-large",
-      "aliases": ["mistral-large", "mistral"],
-      "context_window": 128000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": false,
-      "max_image_size_mb": 0.0,
-      "description": "Mistral's largest model (text-only)"
-    },
-    {
-      "model_name": "meta-llama/llama-3-70b",
-      "aliases": ["llama", "llama3", "llama3-70b", "llama-70b", "llama3-openrouter"],
-      "context_window": 8192,
-      "supports_extended_thinking": false,
-      "supports_json_mode": false,
-      "supports_function_calling": false,
-      "supports_images": false,
-      "max_image_size_mb": 0.0,
-      "description": "Meta's Llama 3 70B model (text-only)"
-    },
-    {
-      "model_name": "deepseek/deepseek-r1-0528",
-      "aliases": ["deepseek-r1", "deepseek", "r1", "deepseek-thinking"],
-      "context_window": 65536,
-      "supports_extended_thinking": true,
-      "supports_json_mode": true,
-      "supports_function_calling": false,
-      "supports_images": false,
-      "max_image_size_mb": 0.0,
-      "description": "DeepSeek R1 with thinking mode - advanced reasoning capabilities (text-only)"
-    },
-    {
-      "model_name": "perplexity/llama-3-sonar-large-32k-online",
-      "aliases": ["perplexity", "sonar", "perplexity-online"],
-      "context_window": 32768,
-      "supports_extended_thinking": false,
-      "supports_json_mode": false,
-      "supports_function_calling": false,
-      "supports_images": false,
-      "max_image_size_mb": 0.0,
-      "description": "Perplexity's online model with web search (text-only)"
-    },
-    {
-      "model_name": "openai/o3",
-      "aliases": ["o3"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "OpenAI's o3 model - well-rounded and powerful across domains with vision"
-    },
-    {
-      "model_name": "openai/o3-mini",
-      "aliases": ["o3-mini", "o3mini"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "OpenAI's o3-mini model - balanced performance and speed with vision"
-    },
-    {
-      "model_name": "openai/o3-mini-high",
-      "aliases": ["o3-mini-high", "o3mini-high"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "OpenAI's o3-mini with high reasoning effort - optimized for complex problems with vision"
-    },
-    {
-      "model_name": "openai/o3-pro",
-      "aliases": ["o3-pro", "o3pro"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "OpenAI's o3-pro model - professional-grade reasoning and analysis with vision"
-    },
-    {
-      "model_name": "openai/o4-mini",
-      "aliases": ["o4-mini", "o4mini"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "OpenAI's o4-mini model - optimized for shorter contexts with rapid reasoning and vision"
-    },
-    {
-      "model_name": "openai/o4-mini-high",
-      "aliases": ["o4-mini-high", "o4mini-high", "o4minihigh", "o4minihi"],
-      "context_window": 200000,
-      "supports_extended_thinking": false,
-      "supports_json_mode": true,
-      "supports_function_calling": true,
-      "supports_images": true,
-      "max_image_size_mb": 20.0,
-      "description": "OpenAI's o4-mini with high reasoning effort - enhanced for complex tasks with vision"
-    },
-    {
       "model_name": "llama3.2",
-      "aliases": ["local-llama", "local", "llama3.2", "ollama-llama"],
+      "aliases": [
+        "local-llama",
+        "ollama-llama"
+      ],
       "context_window": 128000,
+      "max_output_tokens": 64000,
       "supports_extended_thinking": false,
       "supports_json_mode": false,
       "supports_function_calling": false,
       "supports_images": false,
       "max_image_size_mb": 0.0,
-      "is_custom": true,
-      "description": "Local Llama 3.2 model via custom endpoint (Ollama/vLLM) - 128K context window (text-only)"
+      "description": "Local Llama 3.2 model via custom endpoint (Ollama/vLLM) - 128K context window (text-only)",
+      "intelligence_score": 6
     }
   ]
 }

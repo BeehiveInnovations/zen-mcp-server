@@ -64,7 +64,7 @@ def validate_data(data):
                 "chat",
                 {
                     "prompt": "Where is tax_rate defined in this file? Please tell me the exact line number.",
-                    "files": [test_file_path],
+                    "absolute_file_paths": [test_file_path],
                     "model": "flash",
                 },
             )
@@ -85,7 +85,7 @@ def validate_data(data):
                 "analyze",
                 {
                     "prompt": "What happens between lines 7-11 in this code? Focus on the loop logic.",
-                    "files": [test_file_path],
+                    "absolute_file_paths": [test_file_path],
                     "model": "flash",
                 },
             )
@@ -106,7 +106,7 @@ def validate_data(data):
                 "refactor",
                 {
                     "prompt": "Analyze this code for refactoring opportunities",
-                    "files": [test_file_path],
+                    "absolute_file_paths": [test_file_path],
                     "refactor_type": "codesmells",
                     "model": "flash",
                 },
@@ -145,14 +145,16 @@ def validate_data(data):
             # Test 4: Validate log patterns
             self.logger.info("  1.4: Validating line number processing in logs")
 
-            # Get logs from container
-            result = self.run_command(
-                ["docker", "exec", self.container_name, "tail", "-500", "/tmp/mcp_server.log"], capture_output=True
-            )
-
-            logs = ""
-            if result.returncode == 0:
-                logs = result.stdout.decode()
+            # Get logs from server
+            try:
+                log_file_path = "logs/mcp_server.log"
+                with open(log_file_path) as f:
+                    lines = f.readlines()
+                    logs = "".join(lines[-500:])
+            except Exception as e:
+                self.logger.error(f"Failed to read server logs: {e}")
+                logs = ""
+                pass
 
             # Check for line number formatting patterns
             line_number_patterns = ["Line numbers for", "enabled", "│", "line number"]  # The line number separator

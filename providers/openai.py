@@ -1,172 +1,136 @@
 """OpenAI model provider implementation."""
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, ClassVar, Optional
 
-from .base import (
-    FixedTemperatureConstraint,
-    ModelCapabilities,
-    ModelResponse,
-    ProviderType,
-    RangeTemperatureConstraint,
-)
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
+
 from .openai_compatible import OpenAICompatibleProvider
+from .registries.openai import OpenAIModelRegistry
+from .registry_provider_mixin import RegistryBackedProviderMixin
+from .shared import ModelCapabilities, ProviderType
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAIModelProvider(OpenAICompatibleProvider):
-    """Official OpenAI API provider (api.openai.com)."""
+class OpenAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
+    """Implementation that talks to api.openai.com using rich model metadata.
 
-    # Model configurations
-    SUPPORTED_MODELS = {
-        "o3": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-            "supports_images": True,  # O3 models support vision
-            "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
-        },
-        "o3-mini": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-            "supports_images": True,  # O3 models support vision
-            "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
-        },
-        "o3-pro-2025-06-10": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-            "supports_images": True,  # O3 models support vision
-            "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
-        },
-        # Aliases
-        "o3-pro": "o3-pro-2025-06-10",
-        "o4-mini": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-            "supports_images": True,  # O4 models support vision
-            "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
-        },
-        "o4-mini-high": {
-            "context_window": 200_000,  # 200K tokens
-            "supports_extended_thinking": False,
-            "supports_images": True,  # O4 models support vision
-            "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
-        },
-        "gpt-4.1-2025-04-14": {
-            "context_window": 1_000_000,  # 1M tokens
-            "supports_extended_thinking": False,
-            "supports_images": True,  # GPT-4.1 supports vision
-            "max_image_size_mb": 20.0,  # 20MB per OpenAI docs
-        },
-        # Shorthands
-        "mini": "o4-mini",  # Default 'mini' to latest mini model
-        "o3mini": "o3-mini",
-        "o4mini": "o4-mini",
-        "o4minihigh": "o4-mini-high",
-        "o4minihi": "o4-mini-high",
-        "gpt4.1": "gpt-4.1-2025-04-14",
-    }
+    In addition to the built-in catalogue, the provider can surface models
+    defined in ``conf/custom_models.json`` (for organisations running their own
+    OpenAI-compatible gateways) while still respecting restriction policies.
+    """
+
+    REGISTRY_CLASS = OpenAIModelRegistry
+    MODEL_CAPABILITIES: ClassVar[dict[str, ModelCapabilities]] = {}
 
     def __init__(self, api_key: str, **kwargs):
         """Initialize OpenAI provider with API key."""
+        self._ensure_registry()
         # Set default OpenAI base URL, allow override for regions/custom endpoints
         kwargs.setdefault("base_url", "https://api.openai.com/v1")
         super().__init__(api_key, **kwargs)
+        self._invalidate_capability_cache()
 
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        """Get capabilities for a specific OpenAI model."""
-        # Resolve shorthand
-        resolved_name = self._resolve_model_name(model_name)
+    # ------------------------------------------------------------------
+    # Capability surface
+    # ------------------------------------------------------------------
 
-        if resolved_name not in self.SUPPORTED_MODELS or isinstance(self.SUPPORTED_MODELS[resolved_name], str):
-            raise ValueError(f"Unsupported OpenAI model: {model_name}")
+    def _lookup_capabilities(
+        self,
+        canonical_name: str,
+        requested_name: Optional[str] = None,
+    ) -> Optional[ModelCapabilities]:
+        """Look up OpenAI capabilities from built-ins or the custom registry."""
 
-        # Check if model is allowed by restrictions
-        from utils.model_restrictions import get_restriction_service
+        self._ensure_registry()
+        builtin = super()._lookup_capabilities(canonical_name, requested_name)
+        if builtin is not None:
+            return builtin
 
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
-            raise ValueError(f"OpenAI model '{model_name}' is not allowed by restriction policy.")
+        try:
+            from .registries.openrouter import OpenRouterModelRegistry
 
-        config = self.SUPPORTED_MODELS[resolved_name]
+            registry = OpenRouterModelRegistry()
+            config = registry.get_model_config(canonical_name)
 
-        # Define temperature constraints per model
-        if resolved_name in ["o3", "o3-mini", "o3-pro", "o3-pro-2025-06-10", "o4-mini", "o4-mini-high"]:
-            # O3 and O4 reasoning models only support temperature=1.0
-            temp_constraint = FixedTemperatureConstraint(1.0)
-        else:
-            # Other OpenAI models (including GPT-4.1) support 0.0-2.0 range
-            temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
+            if config and config.provider == ProviderType.OPENAI:
+                return config
 
-        return ModelCapabilities(
-            provider=ProviderType.OPENAI,
-            model_name=model_name,
-            friendly_name="OpenAI",
-            context_window=config["context_window"],
-            supports_extended_thinking=config["supports_extended_thinking"],
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=True,
-            supports_images=config.get("supports_images", False),
-            max_image_size_mb=config.get("max_image_size_mb", 0.0),
-            temperature_constraint=temp_constraint,
-        )
+        except Exception as exc:  # pragma: no cover - registry failures are non-critical
+            logger.debug(f"Could not resolve custom OpenAI model '{canonical_name}': {exc}")
+
+        return None
+
+    def _finalise_capabilities(
+        self,
+        capabilities: ModelCapabilities,
+        canonical_name: str,
+        requested_name: str,
+    ) -> ModelCapabilities:
+        """Ensure registry-sourced models report the correct provider type."""
+
+        if capabilities.provider != ProviderType.OPENAI:
+            capabilities.provider = ProviderType.OPENAI
+        return capabilities
+
+    def _raise_unsupported_model(self, model_name: str) -> None:
+        raise ValueError(f"Unsupported OpenAI model: {model_name}")
+
+    # ------------------------------------------------------------------
+    # Provider identity
+    # ------------------------------------------------------------------
 
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
         return ProviderType.OPENAI
 
-    def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported and allowed."""
-        resolved_name = self._resolve_model_name(model_name)
+    # ------------------------------------------------------------------
+    # Provider preferences
+    # ------------------------------------------------------------------
 
-        # First check if model is supported
-        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
-            return False
+    def get_preferred_model(self, category: "ToolModelCategory", allowed_models: list[str]) -> Optional[str]:
+        """Get OpenAI's preferred model for a given category from allowed models.
 
-        # Then check if model is allowed by restrictions
-        from utils.model_restrictions import get_restriction_service
+        Args:
+            category: The tool category requiring a model
+            allowed_models: Pre-filtered list of models allowed by restrictions
 
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.OPENAI, resolved_name, model_name):
-            logger.debug(f"OpenAI model '{model_name}' -> '{resolved_name}' blocked by restrictions")
-            return False
+        Returns:
+            Preferred model name or None
+        """
+        from tools.models import ToolModelCategory
 
-        return True
+        if not allowed_models:
+            return None
 
-    def generate_content(
-        self,
-        prompt: str,
-        model_name: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.7,
-        max_output_tokens: Optional[int] = None,
-        **kwargs,
-    ) -> ModelResponse:
-        """Generate content using OpenAI API with proper model name resolution."""
-        # Resolve model alias before making API call
-        resolved_model_name = self._resolve_model_name(model_name)
+        # Helper to find first available from preference list
+        def find_first(preferences: list[str]) -> Optional[str]:
+            """Return first available model from preference list."""
+            for model in preferences:
+                if model in allowed_models:
+                    return model
+            return None
 
-        # Call parent implementation with resolved model name
-        return super().generate_content(
-            prompt=prompt,
-            model_name=resolved_model_name,
-            system_prompt=system_prompt,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens,
-            **kwargs,
-        )
+        if category == ToolModelCategory.EXTENDED_REASONING:
+            # Prefer models with extended thinking support
+            # GPT-5-Codex first for coding tasks
+            preferred = find_first(["gpt-5-codex", "gpt-5-pro", "o3", "o3-pro", "gpt-5"])
+            return preferred if preferred else allowed_models[0]
 
-    def supports_thinking_mode(self, model_name: str) -> bool:
-        """Check if the model supports extended thinking mode."""
-        # Currently no OpenAI models support extended thinking
-        # This may change with future O3 models
-        return False
+        elif category == ToolModelCategory.FAST_RESPONSE:
+            # Prefer fast, cost-efficient models
+            # GPT-5 models for speed, GPT-5-Codex after (premium pricing but cached)
+            preferred = find_first(["gpt-5", "gpt-5-mini", "gpt-5-codex", "o4-mini", "o3-mini"])
+            return preferred if preferred else allowed_models[0]
 
-    def _resolve_model_name(self, model_name: str) -> str:
-        """Resolve model shorthand to full name."""
-        # Check if it's a shorthand
-        shorthand_value = self.SUPPORTED_MODELS.get(model_name)
-        if isinstance(shorthand_value, str):
-            return shorthand_value
-        return model_name
+        else:  # BALANCED or default
+            # Prefer balanced performance/cost models
+            # Include GPT-5-Codex for coding workflows
+            preferred = find_first(["gpt-5", "gpt-5-codex", "gpt-5-pro", "gpt-5-mini", "o4-mini", "o3-mini"])
+            return preferred if preferred else allowed_models[0]
+
+
+# Load registry data at import time so dependent providers (Azure) can reuse it
+OpenAIModelProvider._ensure_registry()

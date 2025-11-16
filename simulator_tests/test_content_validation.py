@@ -22,42 +22,6 @@ class ContentValidationTest(BaseSimulatorTest):
     def test_description(self) -> str:
         return "Content validation and duplicate detection"
 
-    def get_docker_logs_since(self, since_time: str) -> str:
-        """Get docker logs since a specific timestamp"""
-        try:
-            # Check both main server and log monitor for comprehensive logs
-            cmd_server = ["docker", "logs", "--since", since_time, self.container_name]
-            cmd_monitor = ["docker", "logs", "--since", since_time, "zen-mcp-log-monitor"]
-
-            import subprocess
-
-            result_server = subprocess.run(cmd_server, capture_output=True, text=True)
-            result_monitor = subprocess.run(cmd_monitor, capture_output=True, text=True)
-
-            # Get the internal log files which have more detailed logging
-            server_log_result = subprocess.run(
-                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_server.log"], capture_output=True, text=True
-            )
-
-            activity_log_result = subprocess.run(
-                ["docker", "exec", self.container_name, "cat", "/tmp/mcp_activity.log"], capture_output=True, text=True
-            )
-
-            # Combine all logs
-            combined_logs = (
-                result_server.stdout
-                + "\n"
-                + result_monitor.stdout
-                + "\n"
-                + server_log_result.stdout
-                + "\n"
-                + activity_log_result.stdout
-            )
-            return combined_logs
-        except Exception as e:
-            self.logger.error(f"Failed to get docker logs: {e}")
-            return ""
-
     def run_test(self) -> bool:
         """Test that file processing system properly handles file deduplication"""
         try:
@@ -104,7 +68,7 @@ DATABASE_CONFIG = {
                 "chat",
                 {
                     "prompt": "Analyze this configuration file briefly",
-                    "files": [validation_file],
+                    "absolute_file_paths": [validation_file],
                     "model": "flash",
                 },
             )
@@ -123,7 +87,7 @@ DATABASE_CONFIG = {
                     "chat",
                     {
                         "prompt": "Continue analyzing this configuration file",
-                        "files": [validation_file],  # Same file should be deduplicated
+                        "absolute_file_paths": [validation_file],  # Same file should be deduplicated
                         "continuation_id": thread_id,
                         "model": "flash",
                     },
@@ -140,8 +104,12 @@ DATABASE_CONFIG = {
             response3, _ = self.call_mcp_tool(
                 "codereview",
                 {
-                    "files": [validation_file],
-                    "prompt": "Review this configuration file",
+                    "step": "Review this configuration file for quality and potential issues",
+                    "step_number": 1,
+                    "total_steps": 1,
+                    "next_step_required": False,
+                    "findings": "Starting code review of configuration file",
+                    "relevant_files": [validation_file],
                     "model": "flash",
                 },
             )
@@ -151,9 +119,9 @@ DATABASE_CONFIG = {
             else:
                 self.logger.warning("  ⚠️  Different tool failed")
 
-            # Validate file processing behavior from Docker logs
+            # Validate file processing behavior from server logs
             self.logger.info("  4: Validating file processing logs")
-            logs = self.get_docker_logs_since(start_time)
+            logs = self.get_server_logs_since(start_time)
 
             # Check for proper file embedding logs
             embedding_logs = [

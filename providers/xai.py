@@ -1,135 +1,87 @@
 """X.AI (GROK) model provider implementation."""
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, ClassVar, Optional
 
-from .base import (
-    ModelCapabilities,
-    ModelResponse,
-    ProviderType,
-    RangeTemperatureConstraint,
-)
+if TYPE_CHECKING:
+    from tools.models import ToolModelCategory
+
 from .openai_compatible import OpenAICompatibleProvider
+from .registries.xai import XAIModelRegistry
+from .registry_provider_mixin import RegistryBackedProviderMixin
+from .shared import ModelCapabilities, ProviderType
 
 logger = logging.getLogger(__name__)
 
 
-class XAIModelProvider(OpenAICompatibleProvider):
-    """X.AI GROK API provider (api.x.ai)."""
+class XAIModelProvider(RegistryBackedProviderMixin, OpenAICompatibleProvider):
+    """Integration for X.AI's GROK models exposed over an OpenAI-style API.
+
+    Publishes capability metadata for the officially supported deployments and
+    maps tool-category preferences to the appropriate GROK model.
+    """
 
     FRIENDLY_NAME = "X.AI"
 
-    # Model configurations
-    SUPPORTED_MODELS = {
-        "grok-3": {
-            "context_window": 131_072,  # 131K tokens
-            "supports_extended_thinking": False,
-        },
-        "grok-3-fast": {
-            "context_window": 131_072,  # 131K tokens
-            "supports_extended_thinking": False,
-        },
-        # Shorthands for convenience
-        "grok": "grok-3",  # Default to grok-3
-        "grok3": "grok-3",
-        "grok3fast": "grok-3-fast",
-        "grokfast": "grok-3-fast",
-    }
+    REGISTRY_CLASS = XAIModelRegistry
+    MODEL_CAPABILITIES: ClassVar[dict[str, ModelCapabilities]] = {}
 
     def __init__(self, api_key: str, **kwargs):
         """Initialize X.AI provider with API key."""
         # Set X.AI base URL
         kwargs.setdefault("base_url", "https://api.x.ai/v1")
+        self._ensure_registry()
         super().__init__(api_key, **kwargs)
-
-    def get_capabilities(self, model_name: str) -> ModelCapabilities:
-        """Get capabilities for a specific X.AI model."""
-        # Resolve shorthand
-        resolved_name = self._resolve_model_name(model_name)
-
-        if resolved_name not in self.SUPPORTED_MODELS or isinstance(self.SUPPORTED_MODELS[resolved_name], str):
-            raise ValueError(f"Unsupported X.AI model: {model_name}")
-
-        # Check if model is allowed by restrictions
-        from utils.model_restrictions import get_restriction_service
-
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.XAI, resolved_name, model_name):
-            raise ValueError(f"X.AI model '{model_name}' is not allowed by restriction policy.")
-
-        config = self.SUPPORTED_MODELS[resolved_name]
-
-        # Define temperature constraints for GROK models
-        # GROK supports the standard OpenAI temperature range
-        temp_constraint = RangeTemperatureConstraint(0.0, 2.0, 0.7)
-
-        return ModelCapabilities(
-            provider=ProviderType.XAI,
-            model_name=resolved_name,
-            friendly_name=self.FRIENDLY_NAME,
-            context_window=config["context_window"],
-            supports_extended_thinking=config["supports_extended_thinking"],
-            supports_system_prompts=True,
-            supports_streaming=True,
-            supports_function_calling=True,
-            temperature_constraint=temp_constraint,
-        )
+        self._invalidate_capability_cache()
 
     def get_provider_type(self) -> ProviderType:
         """Get the provider type."""
         return ProviderType.XAI
 
-    def validate_model_name(self, model_name: str) -> bool:
-        """Validate if the model name is supported and allowed."""
-        resolved_name = self._resolve_model_name(model_name)
+    def get_preferred_model(self, category: "ToolModelCategory", allowed_models: list[str]) -> Optional[str]:
+        """Get XAI's preferred model for a given category from allowed models.
 
-        # First check if model is supported
-        if resolved_name not in self.SUPPORTED_MODELS or not isinstance(self.SUPPORTED_MODELS[resolved_name], dict):
-            return False
+        Args:
+            category: The tool category requiring a model
+            allowed_models: Pre-filtered list of models allowed by restrictions
 
-        # Then check if model is allowed by restrictions
-        from utils.model_restrictions import get_restriction_service
+        Returns:
+            Preferred model name or None
+        """
+        from tools.models import ToolModelCategory
 
-        restriction_service = get_restriction_service()
-        if not restriction_service.is_allowed(ProviderType.XAI, resolved_name, model_name):
-            logger.debug(f"X.AI model '{model_name}' -> '{resolved_name}' blocked by restrictions")
-            return False
+        if not allowed_models:
+            return None
 
-        return True
+        if category == ToolModelCategory.EXTENDED_REASONING:
+            # Prefer GROK-4 for advanced reasoning with thinking mode
+            if "grok-4" in allowed_models:
+                return "grok-4"
+            elif "grok-3" in allowed_models:
+                return "grok-3"
+            # Fall back to any available model
+            return allowed_models[0]
 
-    def generate_content(
-        self,
-        prompt: str,
-        model_name: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.7,
-        max_output_tokens: Optional[int] = None,
-        **kwargs,
-    ) -> ModelResponse:
-        """Generate content using X.AI API with proper model name resolution."""
-        # Resolve model alias before making API call
-        resolved_model_name = self._resolve_model_name(model_name)
+        elif category == ToolModelCategory.FAST_RESPONSE:
+            # Prefer GROK-3-Fast for speed, then GROK-4
+            if "grok-3-fast" in allowed_models:
+                return "grok-3-fast"
+            elif "grok-4" in allowed_models:
+                return "grok-4"
+            # Fall back to any available model
+            return allowed_models[0]
 
-        # Call parent implementation with resolved model name
-        return super().generate_content(
-            prompt=prompt,
-            model_name=resolved_model_name,
-            system_prompt=system_prompt,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens,
-            **kwargs,
-        )
+        else:  # BALANCED or default
+            # Prefer GROK-4 for balanced use (best overall capabilities)
+            if "grok-4" in allowed_models:
+                return "grok-4"
+            elif "grok-3" in allowed_models:
+                return "grok-3"
+            elif "grok-3-fast" in allowed_models:
+                return "grok-3-fast"
+            # Fall back to any available model
+            return allowed_models[0]
 
-    def supports_thinking_mode(self, model_name: str) -> bool:
-        """Check if the model supports extended thinking mode."""
-        # Currently GROK models do not support extended thinking
-        # This may change with future GROK model releases
-        return False
 
-    def _resolve_model_name(self, model_name: str) -> str:
-        """Resolve model shorthand to full name."""
-        # Check if it's a shorthand
-        shorthand_value = self.SUPPORTED_MODELS.get(model_name)
-        if isinstance(shorthand_value, str):
-            return shorthand_value
-        return model_name
+# Load registry data at import time
+XAIModelProvider._ensure_registry()

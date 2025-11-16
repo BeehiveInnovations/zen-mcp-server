@@ -63,7 +63,7 @@ def helper_function():
         try:
             yield {
                 "directory": str(temp_dir),
-                "files": files,
+                "absolute_file_paths": files,
                 "swift_files": files[:-1],  # All but the Python file
                 "python_file": str(python_file),
             }
@@ -84,13 +84,14 @@ def helper_function():
         mock_get_provider.return_value = mock_provider
 
         directory = temp_directory_with_files["directory"]
-        expected_files = temp_directory_with_files["files"]
+        expected_files = temp_directory_with_files["absolute_file_paths"]
 
         # Create a request with the directory (not individual files)
         request_args = {
             "prompt": "Analyze this codebase structure",
-            "files": [directory],  # Directory path, not individual files
+            "absolute_file_paths": [directory],  # Directory path, not individual files
             "model": "flash",
+            "working_directory_absolute_path": directory,
         }
 
         # Execute the tool
@@ -121,10 +122,10 @@ def helper_function():
             assert any(str(Path(f).resolve()) == expected_resolved for f in captured_files)
 
     @pytest.mark.asyncio
-    @patch("utils.conversation_memory.get_redis_client")
+    @patch("utils.conversation_memory.get_storage")
     @patch("providers.ModelProviderRegistry.get_provider_for_model")
     async def test_conversation_continuation_with_directory_files(
-        self, mock_get_provider, mock_redis, tool, temp_directory_with_files
+        self, mock_get_provider, mock_storage, tool, temp_directory_with_files
     ):
         """Test that conversation continuation works correctly with directory expansion"""
         # Setup mock Redis client with in-memory storage
@@ -140,17 +141,17 @@ def helper_function():
 
         mock_client.get.side_effect = mock_get
         mock_client.setex.side_effect = mock_setex
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         # Setup mock provider
         mock_provider = create_mock_provider()
         mock_get_provider.return_value = mock_provider
 
         directory = temp_directory_with_files["directory"]
-        expected_files = temp_directory_with_files["files"]
+        expected_files = temp_directory_with_files["absolute_file_paths"]
 
         # Step 1: Create a conversation thread manually with the expanded files
-        thread_id = create_thread("chat", {"prompt": "Initial analysis", "files": [directory]})
+        thread_id = create_thread("chat", {"prompt": "Initial analysis", "absolute_file_paths": [directory]})
 
         # Add a turn with the expanded files (simulating what the fix should do)
         success = add_turn(
@@ -165,9 +166,10 @@ def helper_function():
         # Step 2: Continue the conversation with the same directory
         continuation_args = {
             "prompt": "Now focus on the Swift files specifically",
-            "files": [directory],  # Same directory again
+            "absolute_file_paths": [directory],  # Same directory again
             "model": "flash",
             "continuation_id": thread_id,
+            "working_directory_absolute_path": directory,
         }
 
         # Mock to capture file filtering behavior
@@ -196,8 +198,8 @@ def helper_function():
         # This test shows the fix is working - conversation continuation properly filters out
         # already-embedded files. The exact length depends on whether any new files are found.
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_get_conversation_embedded_files_with_expanded_files(self, mock_redis, tool, temp_directory_with_files):
+    @patch("utils.conversation_memory.get_storage")
+    def test_get_conversation_embedded_files_with_expanded_files(self, mock_storage, tool, temp_directory_with_files):
         """Test that get_conversation_embedded_files returns expanded files"""
         # Setup mock Redis client with in-memory storage
         mock_client = Mock()
@@ -212,13 +214,13 @@ def helper_function():
 
         mock_client.get.side_effect = mock_get
         mock_client.setex.side_effect = mock_setex
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         directory = temp_directory_with_files["directory"]
-        expected_files = temp_directory_with_files["files"]
+        expected_files = temp_directory_with_files["absolute_file_paths"]
 
         # Create a thread with expanded files
-        thread_id = create_thread("chat", {"prompt": "Initial analysis", "files": [directory]})
+        thread_id = create_thread("chat", {"prompt": "Initial analysis", "absolute_file_paths": [directory]})
 
         # Add a turn with expanded files
         success = add_turn(
@@ -237,8 +239,8 @@ def helper_function():
         assert set(embedded_files) == set(expected_files)
         assert directory not in embedded_files
 
-    @patch("utils.conversation_memory.get_redis_client")
-    def test_file_filtering_with_mixed_files_and_directories(self, mock_redis, tool, temp_directory_with_files):
+    @patch("utils.conversation_memory.get_storage")
+    def test_file_filtering_with_mixed_files_and_directories(self, mock_storage, tool, temp_directory_with_files):
         """Test file filtering when request contains both individual files and directories"""
         # Setup mock Redis client with in-memory storage
         mock_client = Mock()
@@ -253,13 +255,13 @@ def helper_function():
 
         mock_client.get.side_effect = mock_get
         mock_client.setex.side_effect = mock_setex
-        mock_redis.return_value = mock_client
+        mock_storage.return_value = mock_client
 
         directory = temp_directory_with_files["directory"]
         python_file = temp_directory_with_files["python_file"]
 
         # Create a thread with some expanded files
-        thread_id = create_thread("chat", {"prompt": "Initial analysis", "files": [directory]})
+        thread_id = create_thread("chat", {"prompt": "Initial analysis", "absolute_file_paths": [directory]})
 
         # Add a turn with only some of the files (simulate partial embedding)
         swift_files = temp_directory_with_files["swift_files"]
@@ -292,13 +294,14 @@ def helper_function():
         mock_get_provider.return_value = mock_provider
 
         directory = temp_directory_with_files["directory"]
-        expected_files = temp_directory_with_files["files"]
+        expected_files = temp_directory_with_files["absolute_file_paths"]
 
         # Execute the tool
         request_args = {
             "prompt": "Analyze this code",
-            "files": [directory],
+            "absolute_file_paths": [directory],
             "model": "flash",
+            "working_directory_absolute_path": directory,
         }
 
         result = await tool.execute(request_args)

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from providers import ModelProviderRegistry
-from providers.base import ProviderType
 from providers.custom import CustomProvider
+from providers.shared import ProviderType
 
 
 class TestCustomProvider:
@@ -31,44 +31,56 @@ class TestCustomProvider:
 
     def test_provider_initialization_missing_url(self):
         """Test CustomProvider raises error when URL is missing."""
-        with pytest.raises(ValueError, match="Custom API URL must be provided"):
-            CustomProvider(api_key="test-key")
+        with patch.dict(os.environ, {"CUSTOM_API_URL": ""}, clear=False):
+            with pytest.raises(ValueError, match="Custom API URL must be provided"):
+                CustomProvider(api_key="test-key")
 
     def test_validate_model_names_always_true(self):
-        """Test CustomProvider accepts any model name."""
+        """Test CustomProvider validates model names correctly."""
         provider = CustomProvider(api_key="test-key", base_url="http://localhost:11434/v1")
 
+        # Known model should validate
         assert provider.validate_model_name("llama3.2")
-        assert provider.validate_model_name("unknown-model")
-        assert provider.validate_model_name("anything")
+
+        # For custom provider, unknown models return False when not in registry
+        # This is expected behavior - custom models need to be declared in custom_models.json
+        assert not provider.validate_model_name("unknown-model")
+        assert not provider.validate_model_name("anything")
 
     def test_get_capabilities_from_registry(self):
         """Test get_capabilities returns registry capabilities when available."""
-        provider = CustomProvider(api_key="test-key", base_url="http://localhost:11434/v1")
+        # Save original environment
+        original_env = os.environ.get("OPENROUTER_ALLOWED_MODELS")
 
-        # Test with a model that should be in the registry (OpenRouter model)
-        capabilities = provider.get_capabilities("llama")
+        try:
+            # Clear any restrictions
+            os.environ.pop("OPENROUTER_ALLOWED_MODELS", None)
 
-        assert capabilities.provider == ProviderType.OPENROUTER  # llama is an OpenRouter model (is_custom=false)
-        assert capabilities.context_window > 0
+            provider = CustomProvider(api_key="test-key", base_url="http://localhost:11434/v1")
 
-        # Test with a custom model (is_custom=true)
-        capabilities = provider.get_capabilities("local-llama")
-        assert capabilities.provider == ProviderType.CUSTOM  # local-llama has is_custom=true
-        assert capabilities.context_window > 0
+            # OpenRouter-backed models should be handled by the OpenRouter provider
+            with pytest.raises(ValueError):
+                provider.get_capabilities("o3")
+
+            # Test with a custom model from the local registry
+            capabilities = provider.get_capabilities("local-llama")
+            assert capabilities.provider == ProviderType.CUSTOM
+            assert capabilities.context_window > 0
+
+        finally:
+            # Restore original environment
+            if original_env is None:
+                os.environ.pop("OPENROUTER_ALLOWED_MODELS", None)
+            else:
+                os.environ["OPENROUTER_ALLOWED_MODELS"] = original_env
 
     def test_get_capabilities_generic_fallback(self):
-        """Test get_capabilities returns generic capabilities for unknown models."""
+        """Test get_capabilities raises error for unknown models not in registry."""
         provider = CustomProvider(api_key="test-key", base_url="http://localhost:11434/v1")
 
-        capabilities = provider.get_capabilities("unknown-model-xyz")
-
-        assert capabilities.provider == ProviderType.CUSTOM
-        assert capabilities.model_name == "unknown-model-xyz"
-        assert capabilities.context_window == 32_768  # Conservative default
-        assert not capabilities.supports_extended_thinking
-        assert capabilities.supports_system_prompts
-        assert capabilities.supports_streaming
+        # Unknown models should raise ValueError when not in registry
+        with pytest.raises(ValueError, match="Unsupported model 'unknown-model-xyz' for provider custom"):
+            provider.get_capabilities("unknown-model-xyz")
 
     def test_model_alias_resolution(self):
         """Test model alias resolution works correctly."""
@@ -84,11 +96,15 @@ class TestCustomProvider:
         assert resolved_local == "llama3.2"
 
     def test_no_thinking_mode_support(self):
-        """Test CustomProvider doesn't support thinking mode."""
+        """Custom provider generic capabilities default to no thinking mode."""
         provider = CustomProvider(api_key="test-key", base_url="http://localhost:11434/v1")
 
-        assert not provider.supports_thinking_mode("llama3.2")
-        assert not provider.supports_thinking_mode("any-model")
+        # llama3.2 is a known model that should work
+        assert not provider.get_capabilities("llama3.2").supports_extended_thinking
+
+        # Unknown models should raise error
+        with pytest.raises(ValueError, match="Unsupported model 'any-model' for provider custom"):
+            provider.get_capabilities("any-model")
 
     @patch("providers.custom.OpenAICompatibleProvider.generate_content")
     def test_generate_content_with_alias_resolution(self, mock_generate):
@@ -153,7 +169,13 @@ class TestCustomProviderRegistration:
             return CustomProvider(api_key="", base_url="http://localhost:11434/v1")
 
         with patch.dict(
-            os.environ, {"OPENROUTER_API_KEY": "test-openrouter-key", "CUSTOM_API_PLACEHOLDER": "configured"}
+            os.environ,
+            {
+                "OPENROUTER_API_KEY": "test-openrouter-key",
+                "CUSTOM_API_PLACEHOLDER": "configured",
+                "OPENROUTER_ALLOWED_MODELS": "llama,anthropic/claude-opus-4.1",
+            },
+            clear=True,
         ):
             # Register both providers
             ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
@@ -180,18 +202,22 @@ class TestCustomProviderRegistration:
             return CustomProvider(api_key="", base_url="http://localhost:11434/v1")
 
         with patch.dict(
-            os.environ, {"OPENROUTER_API_KEY": "test-openrouter-key", "CUSTOM_API_PLACEHOLDER": "configured"}
+            os.environ,
+            {
+                "OPENROUTER_API_KEY": "test-openrouter-key",
+                "CUSTOM_API_PLACEHOLDER": "configured",
+                "OPENROUTER_ALLOWED_MODELS": "",
+            },
+            clear=True,
         ):
-            # Register OpenRouter first (higher priority)
-            ModelProviderRegistry.register_provider(ProviderType.OPENROUTER, OpenRouterProvider)
-            ModelProviderRegistry.register_provider(ProviderType.CUSTOM, custom_provider_factory)
+            import utils.model_restrictions
 
-            # Test model resolution - OpenRouter should win for shared aliases
-            provider_for_model = ModelProviderRegistry.get_provider_for_model("llama")
+            utils.model_restrictions._restriction_service = None
+            custom_provider = custom_provider_factory()
+            openrouter_provider = OpenRouterProvider(api_key="test-openrouter-key")
 
-            # OpenRouter should be selected first due to registration order
-            assert provider_for_model is not None
-            # The exact provider type depends on which validates the model first
+            assert not custom_provider.validate_model_name("llama")
+            assert openrouter_provider.validate_model_name("llama")
 
 
 class TestConfigureProvidersFunction:

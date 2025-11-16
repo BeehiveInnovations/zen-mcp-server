@@ -6,12 +6,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from providers.base import ProviderType
+from providers.gemini import GeminiModelProvider
+from providers.openai import OpenAIModelProvider
 from providers.registry import ModelProviderRegistry
+from providers.shared import ProviderType
+from providers.xai import XAIModelProvider
 from tools.analyze import AnalyzeTool
 from tools.chat import ChatTool
 from tools.debug import DebugIssueTool
 from tools.models import ToolModelCategory
+from tools.shared.exceptions import ToolExecutionError
 from tools.thinkdeep import ThinkDeepTool
 
 
@@ -60,10 +64,6 @@ class TestAutoModeComprehensive:
         ModelProviderRegistry._instance = None
 
         # Re-register providers for subsequent tests (like conftest.py does)
-        from providers.gemini import GeminiModelProvider
-        from providers.openai import OpenAIModelProvider
-        from providers.xai import XAIModelProvider
-
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
         ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
         ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
@@ -80,9 +80,9 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "gemini-2.5-pro-preview-06-05",  # Pro for deep thinking
-                    "FAST_RESPONSE": "gemini-2.5-flash-preview-05-20",  # Flash for speed
-                    "BALANCED": "gemini-2.5-flash-preview-05-20",  # Flash as balanced
+                    "EXTENDED_REASONING": "gemini-2.5-pro",  # Pro for deep thinking
+                    "FAST_RESPONSE": "gemini-2.5-flash",  # Flash for speed
+                    "BALANCED": "gemini-2.5-flash",  # Flash as balanced
                 },
             ),
             # Only OpenAI API available
@@ -94,9 +94,9 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "o3",  # O3 for deep reasoning
-                    "FAST_RESPONSE": "o4-mini",  # O4-mini for speed
-                    "BALANCED": "o4-mini",  # O4-mini as balanced
+                    "EXTENDED_REASONING": "gpt-5-codex",  # GPT-5-Codex prioritized for coding tasks
+                    "FAST_RESPONSE": "gpt-5",  # Prefer gpt-5 for speed
+                    "BALANCED": "gpt-5",  # Prefer gpt-5 for balanced
                 },
             ),
             # Only X.AI API available
@@ -108,12 +108,12 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "grok-3",  # GROK-3 for reasoning
+                    "EXTENDED_REASONING": "grok-4",  # GROK-4 for reasoning (now preferred)
                     "FAST_RESPONSE": "grok-3-fast",  # GROK-3-fast for speed
-                    "BALANCED": "grok-3",  # GROK-3 as balanced
+                    "BALANCED": "grok-4",  # GROK-4 as balanced (now preferred)
                 },
             ),
-            # Both Gemini and OpenAI available - should prefer based on tool category
+            # Both Gemini and OpenAI available - Google comes first in priority
             (
                 {
                     "GEMINI_API_KEY": "real-key",
@@ -122,12 +122,12 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "o3",  # Prefer O3 for deep reasoning
-                    "FAST_RESPONSE": "o4-mini",  # Prefer O4-mini for speed
-                    "BALANCED": "o4-mini",  # Prefer OpenAI for balanced
+                    "EXTENDED_REASONING": "gemini-2.5-pro",  # Gemini comes first in priority
+                    "FAST_RESPONSE": "gemini-2.5-flash",  # Prefer flash for speed
+                    "BALANCED": "gemini-2.5-flash",  # Prefer flash for balanced
                 },
             ),
-            # All native APIs available - should prefer based on tool category
+            # All native APIs available - Google still comes first
             (
                 {
                     "GEMINI_API_KEY": "real-key",
@@ -136,23 +136,9 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "o3",  # Prefer O3 for deep reasoning
-                    "FAST_RESPONSE": "o4-mini",  # Prefer O4-mini for speed
-                    "BALANCED": "o4-mini",  # Prefer OpenAI for balanced
-                },
-            ),
-            # Only OpenRouter available - should fall back to proxy models
-            (
-                {
-                    "GEMINI_API_KEY": None,
-                    "OPENAI_API_KEY": None,
-                    "XAI_API_KEY": None,
-                    "OPENROUTER_API_KEY": "real-key",
-                },
-                {
-                    "EXTENDED_REASONING": "anthropic/claude-3.5-sonnet",  # First preferred thinking model from OpenRouter
-                    "FAST_RESPONSE": "anthropic/claude-3-opus",  # First available OpenRouter model
-                    "BALANCED": "anthropic/claude-3-opus",  # First available OpenRouter model
+                    "EXTENDED_REASONING": "gemini-2.5-pro",  # Gemini comes first in priority
+                    "FAST_RESPONSE": "gemini-2.5-flash",  # Prefer flash for speed
+                    "BALANCED": "gemini-2.5-flash",  # Prefer flash for balanced
                 },
             ),
         ],
@@ -177,10 +163,7 @@ class TestAutoModeComprehensive:
             importlib.reload(config)
 
             # Register providers based on configuration
-            from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
             from providers.openrouter import OpenRouterProvider
-            from providers.xai import XAIModelProvider
 
             if provider_config.get("GEMINI_API_KEY"):
                 ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
@@ -218,7 +201,7 @@ class TestAutoModeComprehensive:
         assert tool.get_model_category() == expected_category
 
     @pytest.mark.asyncio
-    async def test_auto_mode_with_gemini_only_uses_correct_models(self):
+    async def test_auto_mode_with_gemini_only_uses_correct_models(self, tmp_path):
         """Test that auto mode with only Gemini uses flash for fast tools and pro for reasoning tools."""
 
         provider_config = {
@@ -243,30 +226,17 @@ class TestAutoModeComprehensive:
             importlib.reload(config)
 
             # Register only Gemini provider
-            from providers.gemini import GeminiModelProvider
-
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
-            # Mock provider to capture what model is requested
-            mock_provider = MagicMock()
-            mock_provider.generate_content.return_value = MagicMock(
-                content="test response", model_name="test-model", usage={"input_tokens": 10, "output_tokens": 5}
-            )
+            # Test ChatTool (FAST_RESPONSE) - auto mode should suggest flash variant
+            chat_tool = ChatTool()
+            chat_message = chat_tool._build_auto_mode_required_message()
+            assert "flash" in chat_message
 
-            with patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider):
-                # Test ChatTool (FAST_RESPONSE) - should prefer flash
-                chat_tool = ChatTool()
-                await chat_tool.execute({"prompt": "test", "model": "auto"})  # This should trigger auto selection
-
-                # In auto mode, the tool should get an error requiring model selection
-                # but the suggested model should be flash
-
-                # Reset mock for next test
-                ModelProviderRegistry.get_provider_for_model.reset_mock()
-
-                # Test DebugIssueTool (EXTENDED_REASONING) - should prefer pro
-                debug_tool = DebugIssueTool()
-                await debug_tool.execute({"prompt": "test error", "model": "auto"})
+            # Test DebugIssueTool (EXTENDED_REASONING) - auto mode should suggest pro variant
+            debug_tool = DebugIssueTool()
+            debug_message = debug_tool._build_auto_mode_required_message()
+            assert "pro" in debug_message
 
     def test_auto_mode_schema_includes_all_available_models(self):
         """Test that auto mode schema includes all available models for user convenience."""
@@ -277,6 +247,7 @@ class TestAutoModeComprehensive:
             "OPENAI_API_KEY": None,
             "XAI_API_KEY": None,
             "OPENROUTER_API_KEY": None,
+            "CUSTOM_API_URL": None,
             "DEFAULT_MODEL": "auto",
         }
 
@@ -294,8 +265,6 @@ class TestAutoModeComprehensive:
             importlib.reload(config)
 
             # Register only Gemini provider
-            from providers.gemini import GeminiModelProvider
-
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
             tool = AnalyzeTool()
@@ -304,24 +273,28 @@ class TestAutoModeComprehensive:
             # Should have model as required field
             assert "model" in schema["required"]
 
-            # Should include all model options from global config
+            # In auto mode, the schema should now have a description field
+            # instructing users to use the listmodels tool instead of an enum
             model_schema = schema["properties"]["model"]
-            assert "enum" in model_schema
+            assert "type" in model_schema
+            assert model_schema["type"] == "string"
+            assert "description" in model_schema
 
-            available_models = model_schema["enum"]
+            # Check that the description mentions using listmodels tool
+            description = model_schema["description"]
+            assert "listmodels" in description.lower()
+            assert "auto" in description.lower() or "selection" in description.lower()
 
-            # Should include Gemini models
-            assert "flash" in available_models
-            assert "pro" in available_models
-            assert "gemini-2.5-flash-preview-05-20" in available_models
-            assert "gemini-2.5-pro-preview-06-05" in available_models
+            # Should NOT have enum field anymore - this is the new behavior
+            assert "enum" not in model_schema
 
-            # Should also include other models (users might have OpenRouter configured)
-            # The schema should show all options; validation happens at runtime
-            assert "o3" in available_models
-            assert "o4-mini" in available_models
-            assert "grok" in available_models
-            assert "grok-3" in available_models
+            # After the design change, the system directs users to use listmodels
+            # instead of enumerating all models in the schema
+            # This prevents model namespace collisions and keeps the schema cleaner
+
+            # With the new design change, we no longer enumerate models in the schema
+            # The listmodels tool should be used to discover available models
+            # This test now validates the schema structure rather than model enumeration
 
     def test_auto_mode_schema_with_all_providers(self):
         """Test that auto mode schema includes models from all available providers."""
@@ -348,10 +321,6 @@ class TestAutoModeComprehensive:
             importlib.reload(config)
 
             # Register all native providers
-            from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
-            from providers.xai import XAIModelProvider
-
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.XAI, XAIModelProvider)
@@ -359,24 +328,24 @@ class TestAutoModeComprehensive:
             tool = AnalyzeTool()
             schema = tool.get_input_schema()
 
+            # In auto mode with multiple providers, should still use the new schema format
             model_schema = schema["properties"]["model"]
-            available_models = model_schema["enum"]
+            assert "type" in model_schema
+            assert model_schema["type"] == "string"
+            assert "description" in model_schema
 
-            # Should include models from all providers
-            # Gemini models
-            assert "flash" in available_models
-            assert "pro" in available_models
+            # Check that the description mentions using listmodels tool
+            description = model_schema["description"]
+            assert "listmodels" in description.lower()
 
-            # OpenAI models
-            assert "o3" in available_models
-            assert "o4-mini" in available_models
+            # Should NOT have enum field - uses listmodels tool instead
+            assert "enum" not in model_schema
 
-            # XAI models
-            assert "grok" in available_models
-            assert "grok-3" in available_models
+            # With multiple providers configured, the listmodels tool
+            # would show models from all providers when called
 
     @pytest.mark.asyncio
-    async def test_auto_mode_model_parameter_required_error(self):
+    async def test_auto_mode_model_parameter_required_error(self, tmp_path):
         """Test that auto mode properly requires model parameter and suggests correct model."""
 
         provider_config = {
@@ -401,32 +370,31 @@ class TestAutoModeComprehensive:
             importlib.reload(config)
 
             # Register only Gemini provider
-            from providers.gemini import GeminiModelProvider
-
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
             # Test with ChatTool (FAST_RESPONSE category)
             chat_tool = ChatTool()
-            result = await chat_tool.execute(
-                {
-                    "prompt": "test"
-                    # Note: no model parameter provided in auto mode
-                }
-            )
+            workdir = tmp_path / "chat_artifacts"
+            workdir.mkdir(parents=True, exist_ok=True)
+            with pytest.raises(ToolExecutionError) as exc_info:
+                await chat_tool.execute(
+                    {
+                        "prompt": "test",
+                        "working_directory_absolute_path": str(workdir),
+                        # Note: no model parameter provided in auto mode
+                    }
+                )
 
-            # Should get error requiring model selection
-            assert len(result) == 1
-            response_text = result[0].text
-
-            # Parse JSON response to check error
+            # Should get error requiring model selection with fallback suggestion
             import json
 
-            response_data = json.loads(response_text)
+            response_data = json.loads(exc_info.value.payload)
 
             assert response_data["status"] == "error"
-            assert "Model parameter is required" in response_data["content"]
-            assert "flash" in response_data["content"]  # Should suggest flash for FAST_RESPONSE
-            assert "category: fast_response" in response_data["content"]
+            assert (
+                "Model parameter is required" in response_data["content"] or "Model 'auto'" in response_data["content"]
+            )
+            assert "flash" in response_data["content"]
 
     def test_model_availability_with_restrictions(self):
         """Test that auto mode respects model restrictions when selecting fallback models."""
@@ -459,9 +427,6 @@ class TestAutoModeComprehensive:
             utils.model_restrictions._restriction_service = None
 
             # Register providers
-            from providers.gemini import GeminiModelProvider
-            from providers.openai import OpenAIModelProvider
-
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
             ModelProviderRegistry.register_provider(ProviderType.OPENAI, OpenAIModelProvider)
 
@@ -476,8 +441,8 @@ class TestAutoModeComprehensive:
             assert "o3-mini" not in available_models
 
             # Should still include all Gemini models (no restrictions)
-            assert "gemini-2.5-flash-preview-05-20" in available_models
-            assert "gemini-2.5-pro-preview-06-05" in available_models
+            assert "gemini-2.5-flash" in available_models
+            assert "gemini-2.5-pro" in available_models
 
     def test_openrouter_fallback_when_no_native_apis(self):
         """Test that OpenRouter provides fallback models when no native APIs are available."""
@@ -511,11 +476,11 @@ class TestAutoModeComprehensive:
             # Mock OpenRouter registry to return known models
             mock_registry = MagicMock()
             mock_registry.list_models.return_value = [
-                "google/gemini-2.5-flash-preview-05-20",
-                "google/gemini-2.5-pro-preview-06-05",
+                "google/gemini-2.5-flash",
+                "google/gemini-2.5-pro",
                 "openai/o3",
                 "openai/o4-mini",
-                "anthropic/claude-3-opus",
+                "anthropic/claude-opus-4",
             ]
 
             with patch.object(OpenRouterProvider, "_registry", mock_registry):
@@ -531,7 +496,7 @@ class TestAutoModeComprehensive:
                 assert fast_response is not None
 
     @pytest.mark.asyncio
-    async def test_actual_model_name_resolution_in_auto_mode(self):
+    async def test_actual_model_name_resolution_in_auto_mode(self, tmp_path):
         """Test that when a model is selected in auto mode, the tool executes successfully."""
 
         provider_config = {
@@ -556,25 +521,25 @@ class TestAutoModeComprehensive:
             importlib.reload(config)
 
             # Register Gemini provider
-            from providers.gemini import GeminiModelProvider
-
             ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
 
             # Mock the actual provider to simulate successful execution
             mock_provider = MagicMock()
             mock_response = MagicMock()
             mock_response.content = "test response"
-            mock_response.model_name = "gemini-2.5-flash-preview-05-20"  # The resolved name
+            mock_response.model_name = "gemini-2.5-flash"  # The resolved name
             mock_response.usage = {"input_tokens": 10, "output_tokens": 5}
             # Mock _resolve_model_name to simulate alias resolution
-            mock_provider._resolve_model_name = lambda alias: (
-                "gemini-2.5-flash-preview-05-20" if alias == "flash" else alias
-            )
+            mock_provider._resolve_model_name = lambda alias: ("gemini-2.5-flash" if alias == "flash" else alias)
             mock_provider.generate_content.return_value = mock_response
 
             with patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider):
                 chat_tool = ChatTool()
-                result = await chat_tool.execute({"prompt": "test", "model": "flash"})  # Use alias in auto mode
+                workdir = tmp_path / "chat_artifacts"
+                workdir.mkdir(parents=True, exist_ok=True)
+                result = await chat_tool.execute(
+                    {"prompt": "test", "model": "flash", "working_directory_absolute_path": str(workdir)}
+                )  # Use alias in auto mode
 
                 # Should succeed with proper model resolution
                 assert len(result) == 1

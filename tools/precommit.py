@@ -1,208 +1,150 @@
 """
-Tool for pre-commit validation of git changes across multiple repositories.
+Precommit Workflow tool - Step-by-step pre-commit validation with expert analysis
 
-Design Note - File Content in Multiple Sections:
-Files may legitimately appear in both "Git Diffs" and "Additional Context Files" sections:
-- Git Diffs: Shows changed lines + limited context (marked with "BEGIN DIFF" / "END DIFF")
-- Additional Context: Shows complete file content (marked with "BEGIN FILE" / "END FILE")
-This provides comprehensive context for AI analysis - not a duplication bug.
+This tool provides a structured workflow for comprehensive pre-commit validation.
+It guides the CLI agent through systematic investigation steps with forced pauses between each step
+to ensure thorough code examination, git change analysis, and issue detection before proceeding.
+The tool supports finding updates and expert analysis integration.
+
+Key features:
+- Step-by-step pre-commit investigation workflow with progress tracking
+- Context-aware file embedding (references during investigation, full content for analysis)
+- Automatic git repository discovery and change analysis
+- Expert analysis integration with external models (default)
+- Support for multiple repositories and change types
+- Configurable validation type (external with expert model or internal only)
 """
 
-import os
+import logging
 from typing import TYPE_CHECKING, Any, Literal, Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 if TYPE_CHECKING:
     from tools.models import ToolModelCategory
 
+from config import TEMPERATURE_ANALYTICAL
 from systemprompts import PRECOMMIT_PROMPT
-from utils.file_utils import translate_file_paths, translate_path_for_environment
-from utils.git_utils import find_git_repositories, get_git_status, run_git_command
-from utils.token_utils import estimate_tokens
+from tools.shared.base_models import WorkflowRequest
 
-from .base import BaseTool, ToolRequest
+from .workflow.base import WorkflowTool
 
-# Conservative fallback for token limits
-DEFAULT_CONTEXT_WINDOW = 200_000
+logger = logging.getLogger(__name__)
 
-
-class PrecommitRequest(ToolRequest):
-    """Request model for precommit tool"""
-
-    path: str = Field(
-        ...,
-        description="Starting directory to search for git repositories (must be absolute path).",
-    )
-    prompt: Optional[str] = Field(
-        None,
-        description="The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, you MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
-    )
-    compare_to: Optional[str] = Field(
-        None,
-        description="Optional: A git ref (branch, tag, commit hash) to compare against. If not provided, reviews local staged and unstaged changes.",
-    )
-    include_staged: bool = Field(
-        True,
-        description="Include staged changes in the review. Only applies if 'compare_to' is not set.",
-    )
-    include_unstaged: bool = Field(
-        True,
-        description="Include uncommitted (unstaged) changes in the review. Only applies if 'compare_to' is not set.",
-    )
-    focus_on: Optional[str] = Field(
-        None,
-        description="Specific aspects to focus on (e.g., 'logic for user authentication', 'database query efficiency').",
-    )
-    review_type: Literal["full", "security", "performance", "quick"] = Field(
-        "full", description="Type of review to perform on the changes."
-    )
-    severity_filter: Literal["critical", "high", "medium", "low", "all"] = Field(
-        "all",
-        description="Minimum severity level to report on the changes.",
-    )
-    max_depth: int = Field(
-        5,
-        description="Maximum depth to search for nested git repositories to prevent excessive recursion.",
-    )
-    temperature: Optional[float] = Field(
-        None,
-        description="Temperature for the response (0.0 to 1.0). Lower values are more focused and deterministic.",
-        ge=0.0,
-        le=1.0,
-    )
-    thinking_mode: Optional[Literal["minimal", "low", "medium", "high", "max"]] = Field(
-        None, description="Thinking depth mode for the assistant."
-    )
-    files: Optional[list[str]] = Field(
-        None,
-        description="Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
-    )
-    images: Optional[list[str]] = Field(
-        None,
-        description="Optional images showing expected UI changes, design requirements, or visual references for the changes being validated",
-    )
+# Tool-specific field descriptions for precommit workflow
+PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS = {
+    "step": (
+        "Step 1: outline how you'll validate the git changes. Later steps: report findings. Review diffs and impacts, use `relevant_files`, and avoid pasting large snippets."
+    ),
+    "step_number": "Current pre-commit step number (starts at 1).",
+    "total_steps": (
+        "Planned number of validation steps. External validation: use at most three (analysis → follow-ups → summary). Internal validation: a single step. Honour these limits when resuming via continuation_id."
+    ),
+    "next_step_required": (
+        "True to continue with another step, False when validation is complete. "
+        "CRITICAL: If total_steps>=3 or when `precommit_type = external`, set to True until the final step. "
+        "When continuation_id is provided: Follow the same validation rules based on precommit_type."
+    ),
+    "findings": "Record git diff insights, risks, missing tests, security concerns, and positives; update previous notes as you go.",
+    "files_checked": "Absolute paths for every file examined, including ruled-out candidates.",
+    "relevant_files": "Absolute paths of files involved in the change or validation (code, configs, tests, docs). Must be absolute full non-abbreviated paths.",
+    "relevant_context": "Key functions/methods touched by the change (e.g. 'Class.method', 'function_name').",
+    "issues_found": "List issues with severity (critical/high/medium/low) plus descriptions (bugs, security, performance, coverage).",
+    "precommit_type": "'external' (default, triggers expert model) or 'internal' (local-only validation).",
+    "images": "Optional absolute paths to screenshots or diagrams that aid validation.",
+    "path": "Absolute path to the repository root. Required in step 1.",
+    "compare_to": "Optional git ref (branch/tag/commit) to diff against; falls back to staged/unstaged changes.",
+    "include_staged": "Whether to inspect staged changes (ignored when `compare_to` is set).",
+    "include_unstaged": "Whether to inspect unstaged changes (ignored when `compare_to` is set).",
+    "focus_on": "Optional emphasis areas such as security, performance, or test coverage.",
+    "severity_filter": "Lowest severity to include when reporting issues.",
+}
 
 
-class Precommit(BaseTool):
-    """Tool for pre-commit validation of git changes across multiple repositories."""
+class PrecommitRequest(WorkflowRequest):
+    """Request model for precommit workflow investigation steps"""
+
+    # Required fields for each investigation step
+    step: str = Field(..., description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["step"])
+    step_number: int = Field(..., description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["step_number"])
+    total_steps: int = Field(..., description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["total_steps"])
+    next_step_required: bool = Field(..., description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["next_step_required"])
+
+    # Investigation tracking fields
+    findings: str = Field(..., description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["findings"])
+    files_checked: list[str] = Field(
+        default_factory=list, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["files_checked"]
+    )
+    relevant_files: list[str] = Field(
+        default_factory=list, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["relevant_files"]
+    )
+    relevant_context: list[str] = Field(
+        default_factory=list, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["relevant_context"]
+    )
+    issues_found: list[dict] = Field(
+        default_factory=list, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["issues_found"]
+    )
+    precommit_type: Optional[Literal["external", "internal"]] = Field(
+        "external", description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["precommit_type"]
+    )
+
+    # Optional images for visual validation
+    images: Optional[list[str]] = Field(default=None, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["images"])
+
+    # Precommit-specific fields (only used in step 1 to initialize)
+    # Required for step 1, validated in model_validator
+    path: Optional[str] = Field(None, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["path"])
+    compare_to: Optional[str] = Field(None, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["compare_to"])
+    include_staged: Optional[bool] = Field(True, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["include_staged"])
+    include_unstaged: Optional[bool] = Field(
+        True, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["include_unstaged"]
+    )
+    focus_on: Optional[str] = Field(None, description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["focus_on"])
+    severity_filter: Optional[Literal["critical", "high", "medium", "low", "all"]] = Field(
+        "all", description=PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["severity_filter"]
+    )
+
+    # Override inherited fields to exclude them from schema (except model which needs to be available)
+    temperature: Optional[float] = Field(default=None, exclude=True)
+    thinking_mode: Optional[str] = Field(default=None, exclude=True)
+
+    @model_validator(mode="after")
+    def validate_step_one_requirements(self):
+        """Ensure step 1 has required path field."""
+        if self.step_number == 1 and not self.path:
+            raise ValueError("Step 1 requires 'path' field to specify git repository location")
+        return self
+
+
+class PrecommitTool(WorkflowTool):
+    """
+    Precommit workflow tool for step-by-step pre-commit validation and expert analysis.
+
+    This tool implements a structured pre-commit validation workflow that guides users through
+    methodical investigation steps, ensuring thorough change examination, issue identification,
+    and validation before reaching conclusions. It supports complex validation scenarios including
+    multi-repository analysis, security review, performance validation, and integration testing.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.initial_request = None
+        self.git_config = {}
 
     def get_name(self) -> str:
         return "precommit"
 
     def get_description(self) -> str:
         return (
-            "PRECOMMIT VALIDATION FOR GIT CHANGES - ALWAYS use this tool before creating any git commit! "
-            "Comprehensive pre-commit validation that catches bugs, security issues, incomplete implementations, "
-            "and ensures changes match the original requirements. Searches all git repositories recursively and "
-            "provides deep analysis of staged/unstaged changes. Essential for code quality and preventing bugs. "
-            "Use this before committing, when reviewing changes, checking your changes, validating changes, "
-            "or when you're about to commit or ready to commit. Claude should proactively suggest using this tool "
-            "whenever the user mentions committing or when changes are complete. "
-            "When original request context is unavailable, Claude MUST think deeply about implementation intent, "
-            "analyze patterns across modifications, infer business logic and requirements from code changes, "
-            "and provide comprehensive insights about what was accomplished and completion status. "
-            "Choose thinking_mode based on changeset size: 'low' for small focused changes, "
-            "'medium' for standard commits (default), 'high' for large feature branches or complex refactoring, "
-            "'max' for critical releases or when reviewing extensive changes across multiple systems. "
-            "Note: If you're not currently using a top-tier model such as Opus 4 or above, these tools can provide enhanced capabilities."
+            "Validates git changes and repository state before committing with systematic analysis. "
+            "Use for multi-repository validation, security review, change impact assessment, and completeness verification. "
+            "Guides through structured investigation with expert analysis."
         )
-
-    def get_input_schema(self) -> dict[str, Any]:
-        schema = {
-            "type": "object",
-            "title": "PrecommitRequest",
-            "description": "Request model for precommit tool",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "Starting directory to search for git repositories (must be absolute path).",
-                },
-                "model": self.get_model_field_schema(),
-                "prompt": {
-                    "type": "string",
-                    "description": "The original user request description for the changes. Provides critical context for the review. If original request is limited or not available, you MUST study the changes carefully, think deeply about the implementation intent, analyze patterns across all modifications, infer the logic and requirements from the code changes and provide a thorough starting point.",
-                },
-                "compare_to": {
-                    "type": "string",
-                    "description": "Optional: A git ref (branch, tag, commit hash) to compare against. If not provided, reviews local staged and unstaged changes.",
-                },
-                "include_staged": {
-                    "type": "boolean",
-                    "default": True,
-                    "description": "Include staged changes in the review. Only applies if 'compare_to' is not set.",
-                },
-                "include_unstaged": {
-                    "type": "boolean",
-                    "default": True,
-                    "description": "Include uncommitted (unstaged) changes in the review. Only applies if 'compare_to' is not set.",
-                },
-                "focus_on": {
-                    "type": "string",
-                    "description": "Specific aspects to focus on (e.g., 'logic for user authentication', 'database query efficiency').",
-                },
-                "review_type": {
-                    "type": "string",
-                    "enum": ["full", "security", "performance", "quick"],
-                    "default": "full",
-                    "description": "Type of review to perform on the changes.",
-                },
-                "severity_filter": {
-                    "type": "string",
-                    "enum": ["critical", "high", "medium", "low", "all"],
-                    "default": "all",
-                    "description": "Minimum severity level to report on the changes.",
-                },
-                "max_depth": {
-                    "type": "integer",
-                    "default": 5,
-                    "description": "Maximum depth to search for nested git repositories to prevent excessive recursion.",
-                },
-                "temperature": {
-                    "type": "number",
-                    "description": "Temperature for the response (0.0 to 1.0). Lower values are more focused and deterministic.",
-                    "minimum": 0,
-                    "maximum": 1,
-                },
-                "thinking_mode": {
-                    "type": "string",
-                    "enum": ["minimal", "low", "medium", "high", "max"],
-                    "description": "Thinking depth mode for the assistant.",
-                },
-                "files": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Optional files or directories to provide as context (must be absolute paths). These files are not part of the changes but provide helpful context like configs, docs, or related code.",
-                },
-                "images": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Optional images showing expected UI changes, design requirements, or visual references for the changes being validated",
-                },
-                "use_websearch": {
-                    "type": "boolean",
-                    "description": "Enable web search for documentation, best practices, and current information. Particularly useful for: brainstorming sessions, architectural design discussions, exploring industry best practices, working with specific frameworks/technologies, researching solutions to complex problems, or when current documentation and community insights would enhance the analysis.",
-                    "default": True,
-                },
-                "continuation_id": {
-                    "type": "string",
-                    "description": "Thread continuation ID for multi-turn conversations. Can be used to continue conversations across different tools. Only provide this if continuing a previous conversation thread.",
-                },
-            },
-            "required": ["path"] + (["model"] if self.is_effective_auto_mode() else []),
-        }
-        return schema
 
     def get_system_prompt(self) -> str:
         return PRECOMMIT_PROMPT
 
-    def get_request_model(self):
-        return PrecommitRequest
-
     def get_default_temperature(self) -> float:
-        """Use analytical temperature for code review."""
-        from config import TEMPERATURE_ANALYTICAL
-
         return TEMPERATURE_ANALYTICAL
 
     def get_model_category(self) -> "ToolModelCategory":
@@ -211,366 +153,624 @@ class Precommit(BaseTool):
 
         return ToolModelCategory.EXTENDED_REASONING
 
-    async def prepare_prompt(self, request: PrecommitRequest) -> str:
-        """Prepare the prompt with git diff information."""
-        # Check for prompt.txt in files
-        prompt_content, updated_files = self.handle_prompt_file(request.files)
+    def get_workflow_request_model(self):
+        """Return the precommit workflow-specific request model."""
+        return PrecommitRequest
 
-        # If prompt.txt was found, use it as prompt
-        if prompt_content:
-            request.prompt = prompt_content
+    def get_input_schema(self) -> dict[str, Any]:
+        """Generate input schema using WorkflowSchemaBuilder with precommit-specific overrides."""
+        from .workflow.schema_builders import WorkflowSchemaBuilder
 
-        # Update request files list
-        if updated_files is not None:
-            request.files = updated_files
+        # Precommit workflow-specific field overrides
+        precommit_field_overrides = {
+            "step": {
+                "type": "string",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["step"],
+            },
+            "step_number": {
+                "type": "integer",
+                "minimum": 1,
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["step_number"],
+            },
+            "total_steps": {
+                "type": "integer",
+                "minimum": 3,
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["total_steps"],
+            },
+            "next_step_required": {
+                "type": "boolean",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["next_step_required"],
+            },
+            "findings": {
+                "type": "string",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["findings"],
+            },
+            "files_checked": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["files_checked"],
+            },
+            "relevant_files": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["relevant_files"],
+            },
+            "precommit_type": {
+                "type": "string",
+                "enum": ["external", "internal"],
+                "default": "external",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["precommit_type"],
+            },
+            "issues_found": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["issues_found"],
+            },
+            "images": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["images"],
+            },
+            # Precommit-specific fields (for step 1)
+            "path": {
+                "type": "string",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["path"],
+            },
+            "compare_to": {
+                "type": "string",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["compare_to"],
+            },
+            "include_staged": {
+                "type": "boolean",
+                "default": True,
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["include_staged"],
+            },
+            "include_unstaged": {
+                "type": "boolean",
+                "default": True,
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["include_unstaged"],
+            },
+            "focus_on": {
+                "type": "string",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["focus_on"],
+            },
+            "severity_filter": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low", "all"],
+                "default": "all",
+                "description": PRECOMMIT_WORKFLOW_FIELD_DESCRIPTIONS["severity_filter"],
+            },
+        }
 
-        # Check user input size at MCP transport boundary (before adding internal content)
-        user_content = request.prompt if request.prompt else ""
-        size_check = self.check_prompt_size(user_content)
-        if size_check:
-            from tools.models import ToolOutput
+        # Use WorkflowSchemaBuilder with precommit-specific tool fields
+        return WorkflowSchemaBuilder.build_schema(
+            tool_specific_fields=precommit_field_overrides,
+            model_field_schema=self.get_model_field_schema(),
+            auto_mode=self.is_effective_auto_mode(),
+            tool_name=self.get_name(),
+        )
 
-            raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**size_check).model_dump_json()}")
+    def get_required_actions(
+        self, step_number: int, confidence: str, findings: str, total_steps: int, request=None
+    ) -> list[str]:
+        """Define required actions for each investigation phase.
 
-        # Translate the path and files if running in Docker
-        translated_path = translate_path_for_environment(request.path)
-        translated_files = translate_file_paths(request.files)
+        Now includes request parameter for continuation-aware decisions.
+        """
+        # Check for continuation - fast track mode
+        if request:
+            continuation_id = self.get_request_continuation_id(request)
+            precommit_type = self.get_precommit_type(request)
+            if continuation_id and precommit_type == "external":
+                if step_number == 1:
+                    return [
+                        "Execute git status to see all changes",
+                        "Execute git diff --cached for staged changes (exclude binary files)",
+                        "Execute git diff for unstaged changes (exclude binary files)",
+                        "List any relevant untracked files as well.",
+                    ]
+                else:
+                    return ["Complete validation and proceed to expert analysis with changeset file"]
 
-        # MCP boundary check - STRICT REJECTION (check original files before translation)
-        if request.files:
-            file_size_check = self.check_total_file_size(request.files)
-            if file_size_check:
-                from tools.models import ToolOutput
+        # Extract counts for normal flow
+        findings_count = len(findings.split("\n")) if findings else 0
+        issues_count = self.get_consolidated_issues_count()
 
-                raise ValueError(f"MCP_SIZE_CHECK:{ToolOutput(**file_size_check).model_dump_json()}")
+        if step_number == 1:
+            # Initial pre-commit investigation tasks
+            return [
+                "Search for all git repositories in the specified path using appropriate tools",
+                "Check git status to identify staged, unstaged, and untracked changes as required",
+                "Execute git status to see all changes",
+                "Execute git diff --cached for staged changes (exclude binary files)",
+                "Execute git diff for unstaged changes (exclude binary files)",
+                "List any relevant untracked files as well.",
+                "Understand what functionality was added, modified, or removed",
+                "Identify the scope and intent of the changes being committed",
+                "CRITICAL: You are on step 1 - you MUST set next_step_required=True and continue to at least step 3 minimum",
+            ]
+        elif step_number == 2:
+            # Need deeper investigation
+            actions = [
+                "Examine the specific files you've identified as changed or relevant",
+                "Analyze the logic and implementation details of modifications",
+                "Check for potential issues: bugs, security risks, performance problems",
+                "Verify that changes align with good coding practices and patterns",
+                "Look for missing tests, documentation, or configuration updates",
+            ]
 
-        # Check if the path translation resulted in an error path
-        if translated_path.startswith("/inaccessible/"):
-            raise ValueError(
-                f"The path '{request.path}' is not accessible from within the Docker container. "
-                f"The Docker container can only access files within the mounted workspace. "
-                f"Please ensure the path is within the mounted directory or adjust your Docker volume mounts."
-            )
-
-        # Find all git repositories
-        repositories = find_git_repositories(translated_path, request.max_depth)
-
-        if not repositories:
-            return "No git repositories found in the specified path."
-
-        # Collect all diffs directly
-        all_diffs = []
-        repo_summaries = []
-        total_tokens = 0
-        max_tokens = DEFAULT_CONTEXT_WINDOW - 50000  # Reserve tokens for prompt and response
-
-        for repo_path in repositories:
-            repo_name = os.path.basename(repo_path) or "root"
-
-            # Get status information
-            status = get_git_status(repo_path)
-            changed_files = []
-
-            # Process based on mode
-            if request.compare_to:
-                # Validate the ref
-                is_valid_ref, err_msg = run_git_command(
-                    repo_path,
-                    ["rev-parse", "--verify", "--quiet", request.compare_to],
+            # Add step validation reminder
+            if request and request.total_steps >= 3:
+                actions.append(
+                    f"CRITICAL: You are on step 2 of {request.total_steps} minimum steps - you MUST set next_step_required=True unless this is the final step"
                 )
-                if not is_valid_ref:
-                    repo_summaries.append(
-                        {
-                            "path": repo_path,
-                            "error": f"Invalid or unknown git ref '{request.compare_to}': {err_msg}",
-                            "changed_files": 0,
-                        }
+
+            return actions
+        elif step_number >= 2 and (findings_count > 2 or issues_count > 0):
+            # Close to completion - need final verification
+            actions = [
+                "Verify all identified issues have been properly documented",
+                "Check for any missed dependencies or related files that need review",
+                "Confirm the completeness and correctness of your assessment",
+                "Ensure all security, performance, and quality concerns are captured",
+                "Validate that your findings are comprehensive and actionable",
+            ]
+
+            # Add step validation reminder
+            if request and request.total_steps >= 3 and step_number < request.total_steps:
+                actions.append(
+                    f"CRITICAL: You are on step {step_number} of {request.total_steps} minimum steps - set next_step_required=True to continue"
+                )
+            elif request and request.total_steps >= 3 and step_number >= request.total_steps:
+                actions.append(
+                    f"You are on final step {step_number} - you may now set next_step_required=False to complete"
+                )
+
+            return actions
+        else:
+            # General investigation needed
+            actions = [
+                "Continue examining the changes and their potential impact",
+                "Gather more evidence using appropriate investigation tools",
+                "Test your assumptions about the changes and their effects",
+                "Look for patterns that confirm or refute your current assessment",
+            ]
+
+            # Add step validation reminder for all other cases
+            if request and request.total_steps >= 3:
+                if step_number < request.total_steps:
+                    actions.append(
+                        f"CRITICAL: You are on step {step_number} of {request.total_steps} minimum steps - set next_step_required=True to continue"
                     )
-                    continue
+                else:
+                    actions.append(
+                        f"You are on final step {step_number} - you may now set next_step_required=False to complete"
+                    )
 
-                # Get list of changed files
-                success, files_output = run_git_command(
-                    repo_path,
-                    ["diff", "--name-only", f"{request.compare_to}...HEAD"],
+            return actions
+
+    def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
+        """
+        Decide when to call external model based on investigation completeness.
+
+        For continuations with external type, always proceed with expert analysis.
+        """
+        # Check if user requested to skip assistant model
+        if request and not self.get_request_use_assistant_model(request):
+            return False
+
+        # For continuations with external type, always proceed with expert analysis
+        continuation_id = self.get_request_continuation_id(request)
+        if continuation_id and request.precommit_type == "external":
+            return True  # Always perform expert analysis for external continuations
+
+        # Check if we have meaningful investigation data
+        return (
+            len(consolidated_findings.relevant_files) > 0
+            or len(consolidated_findings.findings) >= 2
+            or len(consolidated_findings.issues_found) > 0
+        )
+
+    def prepare_expert_analysis_context(self, consolidated_findings) -> str:
+        """Prepare context for external model call for final pre-commit validation."""
+        context_parts = [
+            f"=== PRE-COMMIT ANALYSIS REQUEST ===\\n{self.initial_request or 'Pre-commit validation initiated'}\\n=== END REQUEST ==="
+        ]
+
+        # Add investigation summary
+        investigation_summary = self._build_precommit_summary(consolidated_findings)
+        context_parts.append(
+            f"\\n=== AGENT'S PRE-COMMIT INVESTIGATION ===\\n{investigation_summary}\\n=== END INVESTIGATION ==="
+        )
+
+        # Add git configuration context if available
+        if self.git_config:
+            config_text = "\\n".join(f"- {key}: {value}" for key, value in self.git_config.items())
+            context_parts.append(f"\\n=== GIT CONFIGURATION ===\\n{config_text}\\n=== END CONFIGURATION ===")
+
+        # Add relevant methods/functions if available
+        if consolidated_findings.relevant_context:
+            methods_text = "\\n".join(f"- {method}" for method in consolidated_findings.relevant_context)
+            context_parts.append(f"\\n=== RELEVANT CODE ELEMENTS ===\\n{methods_text}\\n=== END CODE ELEMENTS ===")
+
+        # Add issues found evolution if available
+        if consolidated_findings.issues_found:
+            issues_text = "\\n".join(
+                f"[{issue.get('severity', 'unknown').upper()}] {issue.get('description', 'No description')}"
+                for issue in consolidated_findings.issues_found
+            )
+            context_parts.append(f"\\n=== ISSUES IDENTIFIED ===\\n{issues_text}\\n=== END ISSUES ===")
+
+        # Add assessment evolution if available
+        if consolidated_findings.hypotheses:
+            assessments_text = "\\n".join(
+                f"Step {h['step']}: {h['hypothesis']}" for h in consolidated_findings.hypotheses
+            )
+            context_parts.append(f"\\n=== ASSESSMENT EVOLUTION ===\\n{assessments_text}\\n=== END ASSESSMENTS ===")
+
+        # Add images if available
+        if consolidated_findings.images:
+            images_text = "\\n".join(f"- {img}" for img in consolidated_findings.images)
+            context_parts.append(
+                f"\\n=== VISUAL VALIDATION INFORMATION ===\\n{images_text}\\n=== END VISUAL INFORMATION ==="
+            )
+
+        return "\\n".join(context_parts)
+
+    def _build_precommit_summary(self, consolidated_findings) -> str:
+        """Prepare a comprehensive summary of the pre-commit investigation."""
+        summary_parts = [
+            "=== SYSTEMATIC PRE-COMMIT INVESTIGATION SUMMARY ===",
+            f"Total steps: {len(consolidated_findings.findings)}",
+            f"Files examined: {len(consolidated_findings.files_checked)}",
+            f"Relevant files identified: {len(consolidated_findings.relevant_files)}",
+            f"Code elements analyzed: {len(consolidated_findings.relevant_context)}",
+            f"Issues identified: {len(consolidated_findings.issues_found)}",
+            "",
+            "=== INVESTIGATION PROGRESSION ===",
+        ]
+
+        for finding in consolidated_findings.findings:
+            summary_parts.append(finding)
+
+        return "\\n".join(summary_parts)
+
+    def should_include_files_in_expert_prompt(self) -> bool:
+        """Include files in expert analysis for comprehensive validation."""
+        return True
+
+    def should_embed_system_prompt(self) -> bool:
+        """Embed system prompt in expert analysis for proper context."""
+        return True
+
+    def get_expert_thinking_mode(self) -> str:
+        """Use high thinking mode for thorough pre-commit analysis."""
+        return "high"
+
+    def get_expert_analysis_instruction(self) -> str:
+        """Get specific instruction for pre-commit expert analysis."""
+        return (
+            "Please provide comprehensive pre-commit validation based on the investigation findings. "
+            "Focus on identifying any remaining issues, validating the completeness of the analysis, "
+            "and providing final recommendations for commit readiness."
+        )
+
+    # Hook method overrides for precommit-specific behavior
+
+    def prepare_step_data(self, request) -> dict:
+        """
+        Map precommit-specific fields for internal processing.
+        """
+        step_data = {
+            "step": request.step,
+            "step_number": request.step_number,
+            "findings": request.findings,
+            "files_checked": request.files_checked,
+            "relevant_files": request.relevant_files,
+            "relevant_context": request.relevant_context,
+            "issues_found": request.issues_found,
+            "precommit_type": request.precommit_type,
+            "hypothesis": request.findings,  # Map findings to hypothesis for compatibility
+            "images": request.images or [],
+            "confidence": "high",  # Dummy value for workflow_mixin compatibility
+        }
+        return step_data
+
+    def should_skip_expert_analysis(self, request, consolidated_findings) -> bool:
+        """
+        Precommit workflow skips expert analysis only when precommit_type is "internal".
+        Default is always to use expert analysis (external).
+        For continuations with external type, always perform expert analysis immediately.
+        """
+        # If it's a continuation and precommit_type is external, don't skip
+        continuation_id = self.get_request_continuation_id(request)
+        if continuation_id and request.precommit_type != "internal":
+            return False  # Always do expert analysis for external continuations
+
+        return request.precommit_type == "internal" and not request.next_step_required
+
+    def store_initial_issue(self, step_description: str):
+        """Store initial request for expert analysis."""
+        self.initial_request = step_description
+
+    # Override inheritance hooks for precommit-specific behavior
+
+    def get_completion_status(self) -> str:
+        """Precommit tools use precommit-specific status."""
+        return "validation_complete_ready_for_commit"
+
+    def get_completion_data_key(self) -> str:
+        """Precommit uses 'complete_validation' key."""
+        return "complete_validation"
+
+    def get_final_analysis_from_request(self, request):
+        """Precommit tools use 'findings' field."""
+        return request.findings
+
+    def get_precommit_type(self, request) -> str:
+        """Get precommit type from request. Hook method for clean inheritance."""
+        try:
+            return request.precommit_type or "external"
+        except AttributeError:
+            return "external"  # Default to external validation
+
+    def get_consolidated_issues_count(self) -> int:
+        """Get count of issues from consolidated findings. Hook method for clean access."""
+        try:
+            return len(self.consolidated_findings.issues_found)
+        except AttributeError:
+            return 0
+
+    def get_completion_message(self) -> str:
+        """Precommit-specific completion message."""
+        return (
+            "Pre-commit validation complete. You have identified all issues "
+            "and verified commit readiness. MANDATORY: Present the user with the complete validation results "
+            "and IMMEDIATELY proceed with commit if no critical issues found, or provide specific fix guidance "
+            "if issues need resolution. Focus on actionable next steps."
+        )
+
+    def get_skip_reason(self) -> str:
+        """Precommit-specific skip reason."""
+        return (
+            "Completed comprehensive pre-commit validation with internal analysis only (no external model validation)"
+        )
+
+    def get_skip_expert_analysis_status(self) -> str:
+        """Precommit-specific expert analysis skip status."""
+        return "skipped_due_to_internal_analysis_type"
+
+    def prepare_work_summary(self) -> str:
+        """Precommit-specific work summary."""
+        return self._build_precommit_summary(self.consolidated_findings)
+
+    def get_completion_next_steps_message(self, expert_analysis_used: bool = False) -> str:
+        """
+        Precommit-specific completion message.
+
+        Args:
+            expert_analysis_used: True if expert analysis was successfully executed
+        """
+        base_message = (
+            "PRE-COMMIT VALIDATION IS COMPLETE. You may delete any `zen_precommit.changeset` created. You MUST now summarize "
+            "and present ALL validation results, identified issues with their severity levels, and exact commit recommendations. "
+            "Clearly state whether the changes are ready for commit or require fixes first. Provide concrete, actionable guidance for "
+            "any issues that need resolution—make it easy for a developer to understand exactly what needs to be "
+            "done before committing."
+        )
+
+        # Add expert analysis guidance only when expert analysis was actually used
+        if expert_analysis_used:
+            expert_guidance = self.get_expert_analysis_guidance()
+            if expert_guidance:
+                return f"{base_message}\n\n{expert_guidance}"
+
+        return base_message
+
+    def get_expert_analysis_guidance(self) -> str:
+        """
+        Get additional guidance for handling expert analysis results in pre-commit context.
+
+        Returns:
+            Additional guidance text for validating and using expert analysis findings
+        """
+        return (
+            "IMPORTANT: Expert analysis has been provided above. You MUST carefully review "
+            "the expert's validation findings and security assessments. Cross-reference the "
+            "expert's analysis with your own investigation to ensure all critical issues are "
+            "addressed. Pay special attention to any security vulnerabilities, performance "
+            "concerns, or architectural issues identified by the expert review."
+        )
+
+    def get_step_guidance_message(self, request) -> str:
+        """
+        Precommit-specific step guidance with detailed investigation instructions.
+        """
+        step_guidance = self.get_precommit_step_guidance(request.step_number, request)
+        return step_guidance["next_steps"]
+
+    def get_precommit_step_guidance(self, step_number: int, request) -> dict[str, Any]:
+        """
+        Provide step-specific guidance for precommit workflow.
+        Uses get_required_actions to determine what needs to be done,
+        then formats those actions into appropriate guidance messages.
+        """
+        # Get the required actions from the single source of truth
+        required_actions = self.get_required_actions(
+            step_number,
+            request.precommit_type or "external",  # Using precommit_type as confidence proxy
+            request.findings or "",
+            request.total_steps,
+            request,  # Pass request for continuation-aware decisions
+        )
+
+        # Check if this is a continuation to provide context-aware guidance
+        continuation_id = self.get_request_continuation_id(request)
+        is_external_continuation = continuation_id and request.precommit_type == "external"
+        is_internal_continuation = continuation_id and request.precommit_type == "internal"
+
+        # Format the guidance based on step number and continuation status
+        if step_number == 1:
+            if is_external_continuation:
+                # Fast-track mode for external continuations
+                next_steps = (
+                    "You are on step 1 of MAXIMUM 2 steps. CRITICAL: Gather and save the complete git changeset NOW. "
+                    "MANDATORY ACTIONS:\\n"
+                    + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                    + "\\n\\nMANDATORY: The changeset may be large. You MUST save the required changeset as a 'zen_precommit.changeset' file "
+                    "(replacing any existing one) in your work directory and include the FULL absolute path in relevant_files (exclude any "
+                    "binary files). ONLY include the code changes, no extra commentary."
+                    "Set next_step_required=True and step_number=2 for the next call."
                 )
-                if success and files_output.strip():
-                    changed_files = [f for f in files_output.strip().split("\n") if f]
-
-                    # Generate per-file diffs
-                    for file_path in changed_files:
-                        success, diff = run_git_command(
-                            repo_path,
-                            [
-                                "diff",
-                                f"{request.compare_to}...HEAD",
-                                "--",
-                                file_path,
-                            ],
-                        )
-                        if success and diff.strip():
-                            # Format diff with file header
-                            diff_header = (
-                                f"\n--- BEGIN DIFF: {repo_name} / {file_path} (compare to {request.compare_to}) ---\n"
-                            )
-                            diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
-                            formatted_diff = diff_header + diff + diff_footer
-
-                            # Check token limit
-                            diff_tokens = estimate_tokens(formatted_diff)
-                            if total_tokens + diff_tokens <= max_tokens:
-                                all_diffs.append(formatted_diff)
-                                total_tokens += diff_tokens
+            elif is_internal_continuation:
+                # Internal validation mode
+                next_steps = (
+                    "Continuing previous conversation with internal validation only. The analysis will build "
+                    "upon the prior findings without external model validation. REQUIRED ACTIONS:\\n"
+                    + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                )
             else:
-                # Handle staged/unstaged/untracked changes
-                staged_files = []
-                unstaged_files = []
-                untracked_files = []
-
-                if request.include_staged:
-                    success, files_output = run_git_command(repo_path, ["diff", "--name-only", "--cached"])
-                    if success and files_output.strip():
-                        staged_files = [f for f in files_output.strip().split("\n") if f]
-
-                        # Generate per-file diffs for staged changes
-                        # Each diff is wrapped with clear markers to distinguish from full file content
-                        for file_path in staged_files:
-                            success, diff = run_git_command(repo_path, ["diff", "--cached", "--", file_path])
-                            if success and diff.strip():
-                                # Use "BEGIN DIFF" markers (distinct from "BEGIN FILE" markers in utils/file_utils.py)
-                                # This allows AI to distinguish between diff context vs complete file content
-                                diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (staged) ---\n"
-                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
-                                formatted_diff = diff_header + diff + diff_footer
-
-                                # Check token limit
-                                diff_tokens = estimate_tokens(formatted_diff)
-                                if total_tokens + diff_tokens <= max_tokens:
-                                    all_diffs.append(formatted_diff)
-                                    total_tokens += diff_tokens
-
-                if request.include_unstaged:
-                    success, files_output = run_git_command(repo_path, ["diff", "--name-only"])
-                    if success and files_output.strip():
-                        unstaged_files = [f for f in files_output.strip().split("\n") if f]
-
-                        # Generate per-file diffs for unstaged changes
-                        # Same clear marker pattern as staged changes above
-                        for file_path in unstaged_files:
-                            success, diff = run_git_command(repo_path, ["diff", "--", file_path])
-                            if success and diff.strip():
-                                diff_header = f"\n--- BEGIN DIFF: {repo_name} / {file_path} (unstaged) ---\n"
-                                diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
-                                formatted_diff = diff_header + diff + diff_footer
-
-                                # Check token limit
-                                diff_tokens = estimate_tokens(formatted_diff)
-                                if total_tokens + diff_tokens <= max_tokens:
-                                    all_diffs.append(formatted_diff)
-                                    total_tokens += diff_tokens
-
-                    # Also include untracked files when include_unstaged is True
-                    # Untracked files are new files that haven't been added to git yet
-                    if status["untracked_files"]:
-                        untracked_files = status["untracked_files"]
-
-                        # For untracked files, show the entire file content as a "new file" diff
-                        for file_path in untracked_files:
-                            file_full_path = os.path.join(repo_path, file_path)
-                            if os.path.exists(file_full_path) and os.path.isfile(file_full_path):
-                                try:
-                                    with open(file_full_path, encoding="utf-8", errors="ignore") as f:
-                                        file_content = f.read()
-
-                                    # Format as a new file diff
-                                    diff_header = (
-                                        f"\n--- BEGIN DIFF: {repo_name} / {file_path} (untracked - new file) ---\n"
-                                    )
-                                    diff_content = f"+++ b/{file_path}\n"
-                                    for _line_num, line in enumerate(file_content.splitlines(), 1):
-                                        diff_content += f"+{line}\n"
-                                    diff_footer = f"\n--- END DIFF: {repo_name} / {file_path} ---\n"
-                                    formatted_diff = diff_header + diff_content + diff_footer
-
-                                    # Check token limit
-                                    diff_tokens = estimate_tokens(formatted_diff)
-                                    if total_tokens + diff_tokens <= max_tokens:
-                                        all_diffs.append(formatted_diff)
-                                        total_tokens += diff_tokens
-                                except Exception:
-                                    # Skip files that can't be read (binary, permission issues, etc.)
-                                    pass
-
-                # Combine unique files
-                changed_files = list(set(staged_files + unstaged_files + untracked_files))
-
-            # Add repository summary
-            if changed_files:
-                repo_summaries.append(
-                    {
-                        "path": repo_path,
-                        "branch": status["branch"],
-                        "ahead": status["ahead"],
-                        "behind": status["behind"],
-                        "changed_files": len(changed_files),
-                        "files": changed_files[:20],  # First 20 for summary
-                    }
+                # Normal flow for new validations
+                next_steps = (
+                    f"MANDATORY: DO NOT call the {self.get_name()} tool again immediately. You MUST first investigate "
+                    f"the git repositories and changes using appropriate tools. CRITICAL AWARENESS: You need to:\\n"
+                    + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                    + f"\\n\\nOnly call {self.get_name()} again AFTER completing your investigation. "
+                    f"When you call {self.get_name()} next time, use step_number: {step_number + 1} "
+                    f"and report specific files examined, changes analyzed, and validation findings discovered."
                 )
 
-        if not all_diffs:
-            return "No pending changes found in any of the git repositories."
-
-        # Process context files if provided using standardized file reading
-        context_files_content = []
-        context_files_summary = []
-        context_tokens = 0
-
-        if translated_files:
-            remaining_tokens = max_tokens - total_tokens
-
-            # Use centralized file handling with filtering for duplicate prevention
-            file_content, processed_files = self._prepare_file_content_for_prompt(
-                translated_files,
-                request.continuation_id,
-                "Context files",
-                max_tokens=remaining_tokens + 1000,  # Add back the reserve that was calculated
-                reserve_tokens=1000,  # Small reserve for formatting
-            )
-            self._actually_processed_files = processed_files
-
-            if file_content:
-                context_tokens = estimate_tokens(file_content)
-                context_files_content = [file_content]
-                context_files_summary.append(f"✅ Included: {len(translated_files)} context files")
+        elif step_number == 2:
+            # CRITICAL: Check if violating minimum step requirement
+            if (
+                request.total_steps >= 3
+                and request.step_number < request.total_steps
+                and not request.next_step_required
+            ):
+                next_steps = (
+                    f"ERROR: You set total_steps={request.total_steps} but next_step_required=False on step {request.step_number}. "
+                    f"This violates the minimum step requirement. You MUST set next_step_required=True until you reach the final step. "
+                    f"Call {self.get_name()} again with next_step_required=True and continue your investigation."
+                )
+            elif is_external_continuation or (not request.next_step_required and request.precommit_type == "external"):
+                # Fast-track completion or about to complete - ensure changeset is saved
+                next_steps = (
+                    "Proceeding immediately to expert analysis. "
+                    f"MANDATORY: call {self.get_name()} tool immediately again, and set next_step_required=False to "
+                    f"trigger external validation NOW. "
+                    f"MANDATORY: Include the entire changeset! The changeset may be large. You MUST save the required "
+                    f"changeset as a 'zen_precommit.changeset' file (replacing any existing one) in your work directory "
+                    f"and include the FULL absolute path in relevant_files so the expert can access the complete changeset. "
+                    f"ONLY include the code changes, no extra commentary."
+                )
             else:
-                context_files_summary.append("WARNING: No context files could be read or files too large")
+                # Normal flow - deeper analysis needed
+                next_steps = (
+                    f"STOP! Do NOT call {self.get_name()} again yet. You are on step 2 of {request.total_steps} minimum required steps. "
+                    f"MANDATORY ACTIONS before calling {self.get_name()} step {step_number + 1}:\\n"
+                    + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                    + f"\\n\\nRemember: You MUST set next_step_required=True until step {request.total_steps}. "
+                    + f"Only call {self.get_name()} again with step_number: {step_number + 1} AFTER completing these validations."
+                )
 
-            total_tokens += context_tokens
-
-        # Build the final prompt
-        prompt_parts = []
-
-        # Add original request context if provided
-        if request.prompt:
-            prompt_parts.append(f"## Original Request\n\n{request.prompt}\n")
-
-        # Add review parameters
-        prompt_parts.append("## Review Parameters\n")
-        prompt_parts.append(f"- Review Type: {request.review_type}")
-        prompt_parts.append(f"- Severity Filter: {request.severity_filter}")
-
-        if request.focus_on:
-            prompt_parts.append(f"- Focus Areas: {request.focus_on}")
-
-        if request.compare_to:
-            prompt_parts.append(f"- Comparing Against: {request.compare_to}")
-        else:
-            review_scope = []
-            if request.include_staged:
-                review_scope.append("staged")
-            if request.include_unstaged:
-                review_scope.append("unstaged")
-            prompt_parts.append(f"- Reviewing: {' and '.join(review_scope)} changes")
-
-        # Add repository summary
-        prompt_parts.append("\n## Repository Changes Summary\n")
-        prompt_parts.append(f"Found {len(repo_summaries)} repositories with changes:\n")
-
-        for idx, summary in enumerate(repo_summaries, 1):
-            prompt_parts.append(f"\n### Repository {idx}: {summary['path']}")
-            if "error" in summary:
-                prompt_parts.append(f"ERROR: {summary['error']}")
+        elif step_number >= 3:
+            if not request.next_step_required and request.precommit_type == "external":
+                # About to complete - ensure changeset is saved
+                next_steps = (
+                    "Completing validation and proceeding to expert analysis. "
+                    "MANDATORY: Save the complete git changeset as a 'zen_precommit.changeset' file "
+                    "in your work directory and include the FULL absolute path in relevant_files."
+                )
             else:
-                prompt_parts.append(f"- Branch: {summary['branch']}")
-                if summary["ahead"] or summary["behind"]:
-                    prompt_parts.append(f"- Ahead: {summary['ahead']}, Behind: {summary['behind']}")
-                prompt_parts.append(f"- Changed Files: {summary['changed_files']}")
-
-                if summary["files"]:
-                    prompt_parts.append("\nChanged files:")
-                    for file in summary["files"]:
-                        prompt_parts.append(f"  - {file}")
-                    if summary["changed_files"] > len(summary["files"]):
-                        prompt_parts.append(f"  ... and {summary['changed_files'] - len(summary['files'])} more files")
-
-        # Add context files summary if provided
-        if context_files_summary:
-            prompt_parts.append("\n## Context Files Summary\n")
-            for summary_item in context_files_summary:
-                prompt_parts.append(f"- {summary_item}")
-
-        # Add token usage summary
-        if total_tokens > 0:
-            prompt_parts.append(f"\nTotal context tokens used: ~{total_tokens:,}")
-
-        # Add the diff contents with clear section markers
-        # Each diff is wrapped with "--- BEGIN DIFF: ... ---" and "--- END DIFF: ... ---"
-        prompt_parts.append("\n## Git Diffs\n")
-        if all_diffs:
-            prompt_parts.extend(all_diffs)
+                # Later steps - final verification
+                next_steps = (
+                    f"WAIT! Your validation needs final verification. DO NOT call {self.get_name()} immediately. REQUIRED ACTIONS:\\n"
+                    + "\\n".join(f"{i+1}. {action}" for i, action in enumerate(required_actions))
+                    + f"\\n\\nREMEMBER: Ensure you have identified all potential issues and verified commit readiness. "
+                    f"Document findings with specific file references and issue descriptions, then call {self.get_name()} "
+                    f"with step_number: {step_number + 1}."
+                )
         else:
-            prompt_parts.append("--- NO DIFFS FOUND ---")
+            # Fallback for any other case - check minimum step violation first
+            if (
+                request.total_steps >= 3
+                and request.step_number < request.total_steps
+                and not request.next_step_required
+            ):
+                next_steps = (
+                    f"ERROR: You set total_steps={request.total_steps} but next_step_required=False on step {request.step_number}. "
+                    f"This violates the minimum step requirement. You MUST set next_step_required=True until step {request.total_steps}."
+                )
+            elif not request.next_step_required and request.precommit_type == "external":
+                next_steps = (
+                    "Completing validation. "
+                    "MANDATORY: Save complete git changeset as 'zen_precommit.changeset' file and include path in relevant_files, "
+                    "excluding any binary files."
+                )
+            else:
+                next_steps = (
+                    f"PAUSE VALIDATION. Before calling {self.get_name()} step {step_number + 1}, you MUST examine more code and changes. "
+                    + "Required: "
+                    + ", ".join(required_actions[:2])
+                    + ". "
+                    + f"Your next {self.get_name()} call (step_number: {step_number + 1}) must include "
+                    f"NEW evidence from actual change analysis, not just theories. NO recursive {self.get_name()} calls "
+                    f"without investigation work!"
+                )
 
-        # Add context files content if provided
-        # IMPORTANT: Files may legitimately appear in BOTH sections:
-        # - Git Diffs: Show only changed lines + limited context (what changed)
-        # - Additional Context: Show complete file content (full understanding)
-        # This is intentional design for comprehensive AI analysis, not duplication bug.
-        # Each file in this section is wrapped with "--- BEGIN FILE: ... ---" and "--- END FILE: ... ---"
-        if context_files_content:
-            prompt_parts.append("\n## Additional Context Files")
-            prompt_parts.append(
-                "The following files are provided for additional context. They have NOT been modified.\n"
-            )
-            prompt_parts.extend(context_files_content)
+        return {"next_steps": next_steps}
 
-        # Add web search instruction if enabled
-        websearch_instruction = self.get_websearch_instruction(
-            request.use_websearch,
-            """When validating changes, consider if searches for these would help:
-- Best practices for new features or patterns introduced
-- Security implications of the changes
-- Known issues with libraries or APIs being used
-- Migration guides if updating dependencies
-- Performance considerations for the implemented approach""",
-        )
+    def customize_workflow_response(self, response_data: dict, request) -> dict:
+        """
+        Customize response to match precommit workflow format.
+        """
+        # Store initial request on first step
+        if request.step_number == 1:
+            self.initial_request = request.step
+            # Store git configuration for expert analysis
+            if request.path:
+                self.git_config = {
+                    "path": request.path,
+                    "compare_to": request.compare_to,
+                    "include_staged": request.include_staged,
+                    "include_unstaged": request.include_unstaged,
+                    "severity_filter": request.severity_filter,
+                }
 
-        # Add review instructions
-        prompt_parts.append("\n## Review Instructions\n")
-        prompt_parts.append(
-            "Please review these changes according to the system prompt guidelines. "
-            "Pay special attention to alignment with the original request, completeness of implementation, "
-            "potential bugs, security issues, and any edge cases not covered."
-        )
+        # Convert generic status names to precommit-specific ones
+        tool_name = self.get_name()
+        status_mapping = {
+            f"{tool_name}_in_progress": "validation_in_progress",
+            f"pause_for_{tool_name}": "pause_for_validation",
+            f"{tool_name}_required": "validation_required",
+            f"{tool_name}_complete": "validation_complete",
+        }
 
-        # Add instruction for requesting files if needed
-        if not translated_files:
-            prompt_parts.append(
-                "\nIf you need additional context files to properly review these changes "
-                "(such as configuration files, documentation, or related code), "
-                "you may request them using the standardized JSON response format."
-            )
+        if response_data["status"] in status_mapping:
+            response_data["status"] = status_mapping[response_data["status"]]
 
-        # Combine with system prompt and websearch instruction
-        full_prompt = f"{self.get_system_prompt()}{websearch_instruction}\n\n" + "\n".join(prompt_parts)
+        # Rename status field to match precommit workflow
+        if f"{tool_name}_status" in response_data:
+            response_data["validation_status"] = response_data.pop(f"{tool_name}_status")
+            # Add precommit-specific status fields
+            response_data["validation_status"]["issues_identified"] = len(self.consolidated_findings.issues_found)
+            response_data["validation_status"]["precommit_type"] = request.precommit_type or "external"
 
-        return full_prompt
+        # Map complete_precommitworkflow to complete_validation
+        if f"complete_{tool_name}" in response_data:
+            response_data["complete_validation"] = response_data.pop(f"complete_{tool_name}")
 
-    def format_response(self, response: str, request: PrecommitRequest, model_info: Optional[dict] = None) -> str:
-        """Format the response with commit guidance"""
-        # Base response
-        formatted_response = response
+        # Map the completion flag to match precommit workflow
+        if f"{tool_name}_complete" in response_data:
+            response_data["validation_complete"] = response_data.pop(f"{tool_name}_complete")
 
-        # Add footer separator
-        formatted_response += "\n\n---\n\n"
+        return response_data
 
-        # Add commit status instruction
-        formatted_response += (
-            "COMMIT STATUS: You MUST provide a clear summary of ALL issues found to the user. "
-            "If no critical or high severity issues found, changes are ready for commit. "
-            "If critical issues are found, you MUST fix them first and then run the precommit tool again "
-            "to validate the fixes before proceeding. "
-            "Medium to low severity issues should be addressed but may not block commit. "
-            "You MUST always CONFIRM with user and show them a CLEAR summary of ALL issues before proceeding with any commit."
-        )
+    # Required abstract methods from BaseTool
+    def get_request_model(self):
+        """Return the precommit workflow-specific request model."""
+        return PrecommitRequest
 
-        return formatted_response
+    async def prepare_prompt(self, request) -> str:
+        """Not used - workflow tools use execute_workflow()."""
+        return ""  # Workflow tools use execute_workflow() directly

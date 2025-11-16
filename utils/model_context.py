@@ -60,8 +60,9 @@ class ModelContext:
     token calculations, ensuring consistency across the system.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, model_option: Optional[str] = None):
         self.model_name = model_name
+        self.model_option = model_option  # Store optional model option (e.g., "for", "against", etc.)
         self._provider = None
         self._capabilities = None
         self._token_allocation = None
@@ -72,7 +73,17 @@ class ModelContext:
         if self._provider is None:
             self._provider = ModelProviderRegistry.get_provider_for_model(self.model_name)
             if not self._provider:
-                raise ValueError(f"No provider found for model: {self.model_name}")
+                available_models = ModelProviderRegistry.get_available_model_names()
+                if available_models:
+                    available_text = ", ".join(available_models)
+                else:
+                    available_text = (
+                        "No models detected. Configure provider credentials or set DEFAULT_MODEL to a valid option."
+                    )
+
+                raise ValueError(
+                    f"Model '{self.model_name}' is not available with current API keys. Available models: {available_text}."
+                )
         return self._provider
 
     @property
