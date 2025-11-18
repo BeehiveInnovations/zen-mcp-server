@@ -152,15 +152,9 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
 
         if self._openai_client is None:
             timeout = self._timeout_override if self._timeout_override is not None else 60.0
-            self._openai_client = OpenAI(
-                api_key=self.api_key,
-                base_url=self._base_url,
-                timeout=timeout
-            )
+            self._openai_client = OpenAI(api_key=self.api_key, base_url=self._base_url, timeout=timeout)
             logger.debug(
-                "Initialized OpenAI-compatible client for Gemini with base_url=%s timeout=%s",
-                self._base_url,
-                timeout
+                "Initialized OpenAI-compatible client for Gemini with base_url=%s timeout=%s", self._base_url, timeout
             )
         return self._openai_client
 
@@ -205,7 +199,7 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                 max_output_tokens=max_output_tokens,
                 thinking_mode=thinking_mode,
                 images=images,
-                **kwargs
+                **kwargs,
             )
 
         # Otherwise, use Google native API (existing logic)
