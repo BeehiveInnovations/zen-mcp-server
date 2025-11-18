@@ -398,6 +398,18 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
         self.validate_parameters(model_name, temperature)
         resolved_model_name = self._resolve_model_name(model_name)
 
+        # Warn about ignored parameters
+        if images:
+            logger.warning(
+                "Images are not supported in OpenAI-compatible mode for Gemini. "
+                "The 'images' parameter will be ignored."
+            )
+        if thinking_mode and thinking_mode != "medium":
+            logger.warning(
+                f"thinking_mode='{thinking_mode}' is not supported in OpenAI-compatible mode for Gemini. "
+                "This parameter will be ignored."
+            )
+
         # Prepare messages for OpenAI-compatible API
         messages = []
         if system_prompt:
@@ -421,49 +433,45 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
 
         def _attempt() -> ModelResponse:
             attempt_counter["value"] += 1
-            try:
-                response = self.openai_client.chat.completions.create(**api_params)
+            response = self.openai_client.chat.completions.create(**api_params)
 
-                # Validate response has choices
-                if not response.choices or len(response.choices) == 0:
-                    raise RuntimeError(
-                        f"API returned empty choices for model {resolved_model_name}. "
-                        "This may indicate a server error or invalid request."
-                    )
-
-                # Extract content and usage
-                choice = response.choices[0]
-                content = choice.message.content if choice.message and choice.message.content else ""
-                finish_reason = choice.finish_reason if choice.finish_reason else "unknown"
-
-                # Extract token usage with defaults (using input_tokens/output_tokens for consistency)
-                usage = {
-                    "input_tokens": 0,
-                    "output_tokens": 0,
-                    "total_tokens": 0,
-                }
-                if response.usage:
-                    usage = {
-                        "input_tokens": response.usage.prompt_tokens or 0,
-                        "output_tokens": response.usage.completion_tokens or 0,
-                        "total_tokens": response.usage.total_tokens or 0,
-                    }
-
-                return ModelResponse(
-                    content=content,
-                    usage=usage,
-                    model_name=resolved_model_name,
-                    friendly_name="Gemini",
-                    provider=ProviderType.GOOGLE,
-                    metadata={
-                        "mode": "openai_compatible",
-                        "base_url": self._base_url,
-                        "finish_reason": finish_reason,
-                    },
+            # Validate response has choices
+            if not response.choices or len(response.choices) == 0:
+                raise RuntimeError(
+                    f"API returned empty choices for model {resolved_model_name}. "
+                    "This may indicate a server error or invalid request."
                 )
-            except Exception as e:
-                logger.error(f"OpenAI-compatible API call failed (attempt {attempt_counter['value']}): {e}")
-                raise
+
+            # Extract content and usage
+            choice = response.choices[0]
+            content = choice.message.content if choice.message and choice.message.content else ""
+            finish_reason = choice.finish_reason if choice.finish_reason else "unknown"
+
+            # Extract token usage with defaults (using input_tokens/output_tokens for consistency)
+            usage = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+            }
+            if response.usage:
+                usage = {
+                    "input_tokens": response.usage.prompt_tokens or 0,
+                    "output_tokens": response.usage.completion_tokens or 0,
+                    "total_tokens": response.usage.total_tokens or 0,
+                }
+
+            return ModelResponse(
+                content=content,
+                usage=usage,
+                model_name=resolved_model_name,
+                friendly_name="Gemini",
+                provider=ProviderType.GOOGLE,
+                metadata={
+                    "mode": "openai_compatible",
+                    "base_url": self._base_url,
+                    "finish_reason": finish_reason,
+                },
+            )
 
         try:
             return self._run_with_retries(

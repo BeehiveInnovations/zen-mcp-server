@@ -221,3 +221,87 @@ class TestGeminiOpenAICompatMode:
         assert provider._client is None  # Not initialized yet
         # Native client should be accessible without errors
         assert hasattr(provider, "client")
+
+    @patch("providers.gemini.OpenAI")
+    def test_warns_about_ignored_images_parameter(self, mock_openai_class):
+        """Test that images parameter triggers warning in OpenAI-compatible mode."""
+        # Setup mock OpenAI client
+        mock_client = Mock()
+        mock_openai_class.return_value = mock_client
+
+        mock_choice = Mock()
+        mock_choice.message.content = "Response"
+        mock_choice.finish_reason = "stop"
+
+        mock_response = Mock()
+        mock_response.choices = [mock_choice]
+        mock_response.usage = None
+
+        mock_client.chat.completions.create.return_value = mock_response
+
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
+
+        # Call with images parameter
+        with patch("providers.gemini.logger") as mock_logger:
+            provider.generate_content(prompt="Test", model_name="gemini-2.5-flash", images=["image1.png", "image2.png"])
+
+            # Verify warning was logged
+            mock_logger.warning.assert_called()
+            warning_call = mock_logger.warning.call_args[0][0]
+            assert "Images are not supported" in warning_call
+            assert "will be ignored" in warning_call
+
+    @patch("providers.gemini.OpenAI")
+    def test_warns_about_ignored_thinking_mode_parameter(self, mock_openai_class):
+        """Test that non-default thinking_mode triggers warning in OpenAI-compatible mode."""
+        # Setup mock OpenAI client
+        mock_client = Mock()
+        mock_openai_class.return_value = mock_client
+
+        mock_choice = Mock()
+        mock_choice.message.content = "Response"
+        mock_choice.finish_reason = "stop"
+
+        mock_response = Mock()
+        mock_response.choices = [mock_choice]
+        mock_response.usage = None
+
+        mock_client.chat.completions.create.return_value = mock_response
+
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
+
+        # Call with non-default thinking_mode
+        with patch("providers.gemini.logger") as mock_logger:
+            provider.generate_content(prompt="Test", model_name="gemini-2.5-flash", thinking_mode="high")
+
+            # Verify warning was logged
+            mock_logger.warning.assert_called()
+            warning_calls = [call[0][0] for call in mock_logger.warning.call_args_list]
+            assert any("thinking_mode" in call and "will be ignored" in call for call in warning_calls)
+
+    @patch("providers.gemini.OpenAI")
+    def test_no_warning_for_default_thinking_mode(self, mock_openai_class):
+        """Test that default thinking_mode does not trigger warning."""
+        # Setup mock OpenAI client
+        mock_client = Mock()
+        mock_openai_class.return_value = mock_client
+
+        mock_choice = Mock()
+        mock_choice.message.content = "Response"
+        mock_choice.finish_reason = "stop"
+
+        mock_response = Mock()
+        mock_response.choices = [mock_choice]
+        mock_response.usage = None
+
+        mock_client.chat.completions.create.return_value = mock_response
+
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
+
+        # Call with default thinking_mode
+        with patch("providers.gemini.logger") as mock_logger:
+            provider.generate_content(prompt="Test", model_name="gemini-2.5-flash", thinking_mode="medium")
+
+            # Verify no thinking_mode warning was logged
+            warning_calls = [call[0][0] for call in mock_logger.warning.call_args_list]
+            assert not any("thinking_mode" in call for call in warning_calls)
