@@ -110,7 +110,7 @@
       "model_name": "google/gemini-2.5-pro",
       "aliases": [
         "gemini-2.5",
-        "pro-2.5-openrouter",
+        "pro-2.5-openrouter"
       ],
       "context_window": 1048576,
       "max_output_tokens": 65536,
