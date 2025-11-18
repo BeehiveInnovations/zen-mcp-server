@@ -1676,132 +1676,62 @@ EOF
 
 # Check and update Codex CLI configuration
 check_codex_cli_integration() {
-    # Check if Codex is installed
     if ! command -v codex &> /dev/null; then
-        # Codex CLI not installed
         return 0
     fi
 
     local codex_config="$HOME/.codex/config.toml"
-    
-    # Check if zen is already configured
+    local codex_has_zen=false
     if [[ -f "$codex_config" ]] && grep -q '\[mcp_servers\.zen\]' "$codex_config" 2>/dev/null; then
-        # Already configured
-        return 0
+        codex_has_zen=true
     fi
 
-    # Ask user if they want to add Zen to Codex CLI
-    echo ""
-    read -p "Configure Zen for Codex CLI? (Y/n): " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Nn]$ ]]; then
-        print_info "Skipping Codex CLI integration"
-        return 0
-    fi
-
-    print_info "Updating Codex CLI configuration..."
-
-    # Create config directory if it doesn't exist
-    mkdir -p "$(dirname "$codex_config")" 2>/dev/null || true
-
-    # Create backup if config exists
-    if [[ -f "$codex_config" ]]; then
-        cp "$codex_config" "${codex_config}.backup_$(date +%Y%m%d_%H%M%S)"
-    fi
-
-    # Get environment variables using shared function
-    local env_vars=$(parse_env_variables)
-
-    # Write zen configuration to config.toml
-    {
+    if [[ "$codex_has_zen" == false ]]; then
         echo ""
-        echo "[mcp_servers.zen]"
-        echo "command = \"bash\""
-        echo "args = [\"-c\", \"for p in \$(which uvx 2>/dev/null) \$HOME/.local/bin/uvx /opt/homebrew/bin/uvx /usr/local/bin/uvx uvx; do [ -x \\\"\$p\\\" ] && exec \\\"\$p\\\" --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server; done; echo 'uvx not found' >&2; exit 1\"]"
-        echo "tool_timeout_sec = 1200"
+        read -p "Configure Zen for Codex CLI? (Y/n): " -n 1 -r
         echo ""
-        echo "[mcp_servers.zen.env]"
-        echo "PATH = \"/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:\$HOME/.local/bin:\$HOME/.cargo/bin:\$HOME/bin\""
-        if [[ -n "$env_vars" ]]; then
-            # Convert KEY=VALUE format to TOML KEY = "VALUE" format
-            while IFS= read -r line; do
-                if [[ -n "$line" && "$line" =~ ^([^=]+)=(.*)$ ]]; then
-                    local key="${BASH_REMATCH[1]}"
-                    local value="${BASH_REMATCH[2]}"
-                    # Escape backslashes first, then double quotes for TOML compatibility
-                    local escaped_value
-                    escaped_value=$(echo "$value" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
-                    echo "$key = \"$escaped_value\""
-                fi
-            done <<< "$env_vars"
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            print_info "Skipping Codex CLI integration"
+            return 0
         fi
-    } >> "$codex_config"
 
-    if [[ $? -eq 0 ]]; then
-        print_success "Successfully configured Codex CLI"
-        echo "  Config: $codex_config"
-        echo "  Restart Codex CLI to use Zen MCP Server"
+        print_info "Updating Codex CLI configuration..."
 
-        if ! grep -Eq '^\s*web_search\s*=' "$codex_config" 2>/dev/null; then
+        mkdir -p "$(dirname "$codex_config")" 2>/dev/null || true
+
+        if [[ -f "$codex_config" ]]; then
+            cp "$codex_config" "${codex_config}.backup_$(date +%Y%m%d_%H%M%S)"
+        fi
+
+        local env_vars=$(parse_env_variables)
+
+        {
             echo ""
-            print_info "Web search lets Codex pull fresh documentation for Zen's API lookup tooling."
-            read -p "Enable Codex CLI web search tool? (Y/n): " -n 1 -r
+            echo "[mcp_servers.zen]"
+            echo "command = \"bash\""
+            echo "args = [\"-c\", \"for p in \$(which uvx 2>/dev/null) \$HOME/.local/bin/uvx /opt/homebrew/bin/uvx /usr/local/bin/uvx uvx; do [ -x \\\"\$p\\\" ] && exec \\\"\$p\\\" --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server; done; echo 'uvx not found' >&2; exit 1\"]"
+            echo "tool_timeout_sec = 1200"
             echo ""
-            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-                if grep -Eq '^\s*\[tools\]' "$codex_config" 2>/dev/null; then
-                    if ! python3 - "$codex_config" <<'PY'
-import sys
-from pathlib import Path
-
-cfg_path = Path(sys.argv[1])
-content = cfg_path.read_text().splitlines()
-output = []
-in_tools = False
-added = False
-
-for line in content:
-    stripped = line.strip()
-    if stripped.startswith("[") and stripped.endswith("]"):
-        if in_tools and not added:
-            output.append("web_search = true")
-            added = True
-        in_tools = stripped == "[tools]"
-        output.append(line)
-        continue
-    if in_tools and stripped.startswith("web_search"):
-        added = True
-    output.append(line)
-
-if in_tools and not added:
-    output.append("web_search = true")
-
-cfg_path.write_text("\n".join(output) + "\n")
-PY
-                    then
-                        print_error "Failed to enable Codex web search tool. Add 'web_search = true' under [tools] in $codex_config manually."
-                    else
-                        print_success "Enabled Codex web search tool"
+            echo "[mcp_servers.zen.env]"
+            echo "PATH = \"/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:\$HOME/.local/bin:\$HOME/.cargo/bin:\$HOME/bin\""
+            if [[ -n "$env_vars" ]]; then
+                while IFS= read -r line; do
+                    if [[ -n "$line" && "$line" =~ ^([^=]+)=(.*)$ ]]; then
+                        local key="${BASH_REMATCH[1]}"
+                        local value="${BASH_REMATCH[2]}"
+                        local escaped_value
+                        escaped_value=$(echo "$value" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+                        echo "$key = \"$escaped_value\""
                     fi
-                else
-                    {
-                        echo ""
-                        echo "[tools]"
-                        echo "web_search = true"
-                    } >> "$codex_config" && print_success "Enabled Codex web search tool" || \
-                        print_error "Failed to enable Codex web search tool. Add 'web_search = true' under [tools] in $codex_config manually."
-                fi
-            else
-                print_info "Skipping Codex web search tool enablement"
+                done <<< "$env_vars"
             fi
-        fi
-    else
-        print_error "Failed to update Codex CLI config"
-        echo "Manual config location: $codex_config"
-        echo "Add this configuration:"
-        
-        # Generate example with actual environment variables for error case
-        env_vars=$(parse_env_variables)
-cat << EOF
+        } >> "$codex_config"
+
+        if [[ $? -ne 0 ]]; then
+            print_error "Failed to update Codex CLI config"
+            echo "Manual config location: $codex_config"
+            echo "Add this configuration:"
+cat <<'CODExEOF'
 [mcp_servers.zen]
 command = "sh"
 args = ["-c", "exec \$(which uvx 2>/dev/null || echo uvx) --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server"]
@@ -1809,19 +1739,123 @@ tool_timeout_sec = 1200
 
 [mcp_servers.zen.env]
 PATH = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:\$HOME/.local/bin:\$HOME/.cargo/bin:\$HOME/bin"
-EOF
-        
-        # Add environment variable examples only if they exist
-        if [[ -n "$env_vars" ]]; then
-            while IFS= read -r line; do
-                if [[ -n "$line" && "$line" =~ ^([^=]+)=(.*)$ ]]; then
-                    local key="${BASH_REMATCH[1]}"
-                    echo "${key} = \"your_$(echo "${key}" | tr '[:upper:]' '[:lower:]')\""
+
+[features]
+web_search_request = true
+CODExEOF
+
+            if [[ -n "$env_vars" ]]; then
+                while IFS= read -r line; do
+                    if [[ -n "$line" && "$line" =~ ^([^=]+)=(.*)$ ]]; then
+                        local key="${BASH_REMATCH[1]}"
+                        echo "${key} = \"your_$(echo "${key}" | tr '[:upper:]' '[:lower:]')\""
+                    fi
+                done <<< "$env_vars"
+            else
+                echo "GEMINI_API_KEY = \"your_gemini_api_key_here\""
+            fi
+            return 0
+        fi
+
+        print_success "Successfully configured Codex CLI"
+        echo "  Config: $codex_config"
+        echo "  Restart Codex CLI to use Zen MCP Server"
+        codex_has_zen=true
+    else
+        print_info "Codex CLI already configured; refreshing Codex settings..."
+    fi
+
+    if [[ "$codex_has_zen" == true ]]; then
+        if ! grep -Eq '^\s*web_search_request\s*=' "$codex_config" 2>/dev/null; then
+            echo ""
+            print_info "Web search requests let Codex pull fresh documentation for Zen's API lookup tooling."
+            read -p "Enable Codex CLI web search requests? (Y/n): " -n 1 -r
+            echo ""
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                if grep -Eq '^\s*\[features\]' "$codex_config" 2>/dev/null; then
+                    if ! python3 - "$codex_config" <<'PY'
+import sys
+from pathlib import Path
+
+cfg_path = Path(sys.argv[1])
+content = cfg_path.read_text().splitlines()
+output = []
+in_features = False
+added = False
+
+for line in content:
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        if in_features and not added:
+            output.append("web_search_request = true")
+            added = True
+        in_features = stripped == "[features]"
+        output.append(line)
+        continue
+    if in_features and stripped.startswith("web_search_request"):
+        added = True
+    output.append(line)
+
+if in_features and not added:
+    output.append("web_search_request = true")
+
+cfg_path.write_text("\n".join(output) + "\n")
+PY
+                    then
+                        print_error "Failed to enable Codex web search request feature. Add 'web_search_request = true' under [features] in $codex_config manually."
+                    else
+                        print_success "Enabled Codex web search request feature"
+                    fi
+                else
+                    {
+                        echo ""
+                        echo "[features]"
+                        echo "web_search_request = true"
+                    } >> "$codex_config" && print_success "Enabled Codex web search request feature" || \
+                        print_error "Failed to enable Codex web search request feature. Add 'web_search_request = true' under [features] in $codex_config manually."
                 fi
-            done <<< "$env_vars"
-        else
-            # Show GEMINI_API_KEY example if no environment variables exist
-            echo "GEMINI_API_KEY = \"your_gemini_api_key_here\""
+            else
+                print_info "Skipping Codex web search request feature"
+            fi
+        fi
+
+        if grep -Eq '^\s*\[tools\]' "$codex_config" 2>/dev/null && \
+           grep -Eq '^\s*web_search\s*=' "$codex_config" 2>/dev/null; then
+            local removal_status
+            if removal_status=$(python3 - "$codex_config" <<'PY' | tr -d '\n'
+import sys
+from pathlib import Path
+
+cfg_path = Path(sys.argv[1])
+lines = cfg_path.read_text().splitlines()
+output = []
+in_tools = False
+removed = False
+
+for line in lines:
+    stripped = line.strip()
+    if stripped.startswith('[') and stripped.endswith(']'):
+        in_tools = stripped == '[tools]'
+        output.append(line)
+        continue
+    if in_tools and stripped.startswith('web_search'):
+        removed = True
+        continue
+    output.append(line)
+
+if removed:
+    cfg_path.write_text("\n".join(output) + "\n")
+    print('REMOVED', end='')
+else:
+    print('UNCHANGED', end='')
+PY
+); then
+                if [[ "$removal_status" == "REMOVED" ]]; then
+                    print_success "Removed deprecated Codex [tools].web_search entry"
+                fi
+            else
+                print_warning "Failed to clean up deprecated Codex [tools].web_search entry; remove manually from $codex_config"
+            fi
         fi
     fi
 }
