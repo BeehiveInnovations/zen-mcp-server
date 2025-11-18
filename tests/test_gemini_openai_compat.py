@@ -1,7 +1,9 @@
 """Unit tests for Gemini OpenAI-compatible mode."""
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from providers.gemini import GeminiModelProvider
 from providers.shared import ModelResponse, ProviderType
 
@@ -11,49 +13,34 @@ class TestGeminiOpenAICompatMode:
 
     def test_should_use_openai_compatible_with_v1_suffix(self):
         """Test auto-detection when base_url ends with /v1."""
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
         assert provider._use_openai_compatible is True
 
     def test_should_use_openai_compatible_without_v1_suffix(self):
         """Test native mode when base_url does not end with /v1."""
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://generativelanguage.googleapis.com"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://generativelanguage.googleapis.com")
         assert provider._use_openai_compatible is False
 
-    @patch.dict('os.environ', {'GEMINI_USE_OPENAI_COMPATIBLE': 'true'})
+    @patch.dict("os.environ", {"GEMINI_USE_OPENAI_COMPATIBLE": "true"})
     def test_should_use_openai_compatible_with_env_var(self):
         """Test explicit environment variable triggers OpenAI-compatible mode."""
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com")
         assert provider._use_openai_compatible is True
 
     def test_openai_client_raises_error_in_native_mode(self):
         """Test accessing openai_client in native mode raises error."""
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://generativelanguage.googleapis.com"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://generativelanguage.googleapis.com")
 
         with pytest.raises(RuntimeError, match="not in OpenAI-compatible mode"):
             _ = provider.openai_client
 
-    @patch('providers.gemini.OpenAI')
+    @patch("providers.gemini.OpenAI")
     def test_openai_client_initialization(self, mock_openai_class):
         """Test OpenAI client is properly initialized."""
         mock_client = Mock()
         mock_openai_class.return_value = mock_client
 
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
 
         # Access openai_client to trigger initialization
         client = provider.openai_client
@@ -61,12 +48,12 @@ class TestGeminiOpenAICompatMode:
         # Verify OpenAI was called with correct parameters
         mock_openai_class.assert_called_once()
         call_kwargs = mock_openai_class.call_args[1]
-        assert call_kwargs['api_key'] == "test-key"
-        assert call_kwargs['base_url'] == "https://api.example.com/v1"
-        assert 'timeout' in call_kwargs
+        assert call_kwargs["api_key"] == "test-key"
+        assert call_kwargs["base_url"] == "https://api.example.com/v1"
+        assert "timeout" in call_kwargs
         assert client == mock_client
 
-    @patch('providers.gemini.OpenAI')
+    @patch("providers.gemini.OpenAI")
     def test_generate_content_openai_compatible_success(self, mock_openai_class):
         """Test successful API call in OpenAI-compatible mode."""
         # Setup mock OpenAI client
@@ -90,16 +77,10 @@ class TestGeminiOpenAICompatMode:
         mock_client.chat.completions.create.return_value = mock_response
 
         # Create provider and call generate_content
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
 
         result = provider.generate_content(
-            prompt="Test prompt",
-            model_name="gemini-2.5-flash",
-            system_prompt="System prompt",
-            temperature=0.7
+            prompt="Test prompt", model_name="gemini-2.5-flash", system_prompt="System prompt", temperature=0.7
         )
 
         # Verify the result
@@ -114,7 +95,7 @@ class TestGeminiOpenAICompatMode:
         assert result.metadata["mode"] == "openai_compatible"
         assert result.metadata["finish_reason"] == "stop"
 
-    @patch('providers.gemini.OpenAI')
+    @patch("providers.gemini.OpenAI")
     def test_generate_content_empty_choices_raises_error(self, mock_openai_class):
         """Test that empty choices list raises RuntimeError."""
         # Setup mock OpenAI client
@@ -128,19 +109,13 @@ class TestGeminiOpenAICompatMode:
         mock_client.chat.completions.create.return_value = mock_response
 
         # Create provider
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
 
         # Should raise RuntimeError
         with pytest.raises(RuntimeError, match="API returned empty choices"):
-            provider.generate_content(
-                prompt="Test prompt",
-                model_name="gemini-2.5-flash"
-            )
+            provider.generate_content(prompt="Test prompt", model_name="gemini-2.5-flash")
 
-    @patch('providers.gemini.OpenAI')
+    @patch("providers.gemini.OpenAI")
     def test_generate_content_usage_field_mapping(self, mock_openai_class):
         """Test usage field correctly maps prompt_tokens to input_tokens."""
         # Setup mock
@@ -162,15 +137,9 @@ class TestGeminiOpenAICompatMode:
 
         mock_client.chat.completions.create.return_value = mock_response
 
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
 
-        result = provider.generate_content(
-            prompt="Test",
-            model_name="gemini-2.5-pro"
-        )
+        result = provider.generate_content(prompt="Test", model_name="gemini-2.5-pro")
 
         # Verify field mapping
         assert "input_tokens" in result.usage
@@ -179,7 +148,7 @@ class TestGeminiOpenAICompatMode:
         assert result.usage["input_tokens"] == 100
         assert result.usage["output_tokens"] == 200
 
-    @patch('providers.gemini.OpenAI')
+    @patch("providers.gemini.OpenAI")
     def test_generate_content_none_usage_defaults_to_zero(self, mock_openai_class):
         """Test that None usage returns default zeros."""
         mock_client = Mock()
@@ -195,22 +164,16 @@ class TestGeminiOpenAICompatMode:
 
         mock_client.chat.completions.create.return_value = mock_response
 
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
 
-        result = provider.generate_content(
-            prompt="Test",
-            model_name="gemini-2.5-flash"
-        )
+        result = provider.generate_content(prompt="Test", model_name="gemini-2.5-flash")
 
         # Verify default values
         assert result.usage["input_tokens"] == 0
         assert result.usage["output_tokens"] == 0
         assert result.usage["total_tokens"] == 0
 
-    @patch('providers.gemini.OpenAI')
+    @patch("providers.gemini.OpenAI")
     def test_generate_content_api_parameters(self, mock_openai_class):
         """Test that correct parameters are passed to OpenAI API."""
         mock_client = Mock()
@@ -226,17 +189,14 @@ class TestGeminiOpenAICompatMode:
 
         mock_client.chat.completions.create.return_value = mock_response
 
-        provider = GeminiModelProvider(
-            api_key="test-key",
-            base_url="https://api.example.com/v1"
-        )
+        provider = GeminiModelProvider(api_key="test-key", base_url="https://api.example.com/v1")
 
         provider.generate_content(
             prompt="User prompt",
             model_name="gemini-2.5-pro",
             system_prompt="System instruction",
             temperature=0.8,
-            max_output_tokens=1000
+            max_output_tokens=1000,
         )
 
         # Verify API was called with correct parameters
@@ -260,4 +220,4 @@ class TestGeminiOpenAICompatMode:
         assert provider._use_openai_compatible is False
         assert provider._client is None  # Not initialized yet
         # Native client should be accessible without errors
-        assert hasattr(provider, 'client')
+        assert hasattr(provider, "client")
