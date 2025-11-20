@@ -108,8 +108,8 @@ class TestAutoModeComprehensive:
                     "OPENROUTER_API_KEY": None,
                 },
                 {
-                    "EXTENDED_REASONING": "grok-4-fast-reasoning",  # GROK-4-Fast-Reasoning for cost-efficient reasoning
-                    "FAST_RESPONSE": "grok-4-fast-non-reasoning",  # GROK-4-Fast-Non-Reasoning for fastest responses
+                    "EXTENDED_REASONING": "grok-4-1-fast-reasoning",  # GROK-4.1-Fast-Reasoning (latest) for cost-efficient reasoning
+                    "FAST_RESPONSE": "grok-4-1-fast-non-reasoning",  # GROK-4.1-Fast-Non-Reasoning (latest) for fastest responses
                     "BALANCED": "grok-4",  # GROK-4 as balanced (still preferred)
                 },
             ),
