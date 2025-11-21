@@ -291,7 +291,12 @@ class TestXAIProvider:
         # Shorthand "grokfast" should be allowed (resolves to grok-3-fast)
         assert provider.validate_model_name("grokfast") is True
 
-    @patch.dict(os.environ, {"XAI_ALLOWED_MODELS": "grok,grok-3,grok-4"})
+    @patch.dict(
+        os.environ,
+        {
+            "XAI_ALLOWED_MODELS": "grok,grok-3,grok-4-1-fast,grok-4",
+        },
+    )
     def test_both_shorthand_and_full_name_allowed(self):
         """Test that both shorthand and full name can be allowed."""
         # Clear cached restriction service
