@@ -2,6 +2,58 @@
 
 <!-- version list -->
 
+## v9.4.1 (2025-11-21)
+
+### Bug Fixes
+
+- Regression https://github.com/BeehiveInnovations/zen-mcp-server/issues/338
+  ([`aceddb6`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/aceddb655fc36918108b3da1f926bdd4e94875a2))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`c4461a4`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/c4461a466fab9c647b0a5035328c4d0f3e28f647))
+
+
+## v9.4.0 (2025-11-18)
+
+### Bug Fixes
+
+- Failing test for gemini 3.0 pro open router
+  ([`19a2a89`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/19a2a89b12c5dec53aea21a4244aff7796a5e049))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`d3de61f`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/d3de61f8787ab60261d09f2c7f362c50d2093799))
+
+### Features
+
+- Gemini 3.0 Pro Preview for Open Router
+  ([`bbfdfac`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/bbfdfac511668e8ae60f9b9b5d41eb9ab55d74cf))
+
+### Refactoring
+
+- Enable search on codex CLI
+  ([`1579d9f`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/1579d9f806a653bb04c9c73ab304cdd0e78fbdfa))
+
+
+## v9.3.1 (2025-11-18)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`d256098`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/d2560983402abf084608f7750f05407a8d3e20a0))
+
+
+## v9.3.0 (2025-11-18)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`3748d47`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/3748d47faba7d871f2dd379f2c8646aa8cd3c6e9))
+
+
 ## v9.2.2 (2025-11-18)
 
 ### Bug Fixes

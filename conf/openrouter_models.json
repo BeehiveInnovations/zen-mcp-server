@@ -87,12 +87,30 @@
       "intelligence_score": 8
     },
     {
-      "model_name": "google/gemini-2.5-pro",
+      "model_name": "google/gemini-3-pro-preview",
       "aliases": [
         "pro",
         "gemini-pro",
         "gemini",
+        "gemini3",
         "pro-openrouter"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "description": "Google's Gemini 3.0 Pro via OpenRouter with vision",
+      "intelligence_score": 18
+    },
+    {
+      "model_name": "google/gemini-2.5-pro",
+      "aliases": [
+        "gemini-2.5",
+        "pro-2.5-openrouter"
       ],
       "context_window": 1048576,
       "max_output_tokens": 65536,
