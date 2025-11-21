@@ -64,7 +64,7 @@ The curated defaults in `conf/openrouter_models.json` include popular entries su
 | `gpt5.1`, `gpt-5.1`, `5.1` | `openai/gpt-5.1` | Flagship GPT-5.1 with reasoning and vision |
 | `gpt5.1-codex`, `codex-5.1` | `openai/gpt-5.1-codex` | Agentic coding specialization (Responses API) |
 | `codex-mini`, `gpt5.1-codex-mini` | `openai/gpt-5.1-codex-mini` | Cost-efficient Codex variant with streaming |
-| `grok-4-1-fast`, `grok-4-1-fast-reasoning` | `x-ai/grok-4.1-fast` | Frontier multimodal model optimized for high-performance agentic tool calling with 2M context window |
+| `grok`, `grok-4-1-fast`, `grok-4-1-fast-reasoning` | `x-ai/grok-4.1-fast` | Frontier multimodal model optimized for high-performance agentic tool calling with 2M context window |
 | `grok-code-fast`, `grokcodefast` | `x-ai/grok-code-fast-1` | Speedy reasoning model specialized for agentic coding |
 
 Consult the JSON file for the full list, aliases, and capability flags. Add new entries as OpenRouter releases additional models.
@@ -105,7 +105,7 @@ xAI's recent release introduced `grok-4-1-fast`, `grok-4-1-fast-non-reasoning`, 
 | `grok-4-1-fast-non-reasoning` | 2M context, ultra-fast text-to-text generation | No reasoning support; optimized for speed and stability; high-throughput tasks |
 | `grok-code-fast-1` | 256K context, specialized for agentic coding | Streaming enabled; `allow_code_generation=true`; optimized for coding workflows |
 
-These entries include convenient aliases (`grok-4-1-fast-reasoning`, `grok-4-1-fast-reasoning-latest`, `grok-code-fast`, `grokcodefast`) plus capability flags (`supports_extended_thinking`, `allow_code_generation`). Copy the manifest if you operate custom deployment names so downstream providers inherit the same metadata.
+These entries include convenient aliases (`grok`, `grok-4-1-fast-reasoning`, `grok-4-1-fast-reasoning-latest`, `grok-code-fast`, `grokcodefast`) plus capability flags (`supports_extended_thinking`, `allow_code_generation`). Note that the `grok` alias now resolves to `grok-4-1-fast` (the latest flagship model). Copy the manifest if you operate custom deployment names so downstream providers inherit the same metadata.
 
 Because providers load the manifests on import, you can tweak capabilities without touching Python. Restart the server after editing the JSON files so changes are picked up.
 

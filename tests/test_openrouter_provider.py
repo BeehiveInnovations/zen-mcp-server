@@ -27,7 +27,10 @@ class TestOpenRouterProvider:
         assert "X-Title" in OpenRouterProvider.DEFAULT_HEADERS
 
         # Test with environment variables
-        with patch.dict(os.environ, {"OPENROUTER_REFERER": "https://myapp.com", "OPENROUTER_TITLE": "My App"}):
+        with patch.dict(
+            os.environ,
+            {"OPENROUTER_REFERER": "https://myapp.com", "OPENROUTER_TITLE": "My App"},
+        ):
             from importlib import reload
 
             import providers.openrouter
@@ -64,7 +67,10 @@ class TestOpenRouterProvider:
         assert caps.friendly_name == "OpenRouter (openai/o3)"
 
         # Test with a model not in registry - should raise error
-        with pytest.raises(ValueError, match="Unsupported model 'unknown-model' for provider openrouter"):
+        with pytest.raises(
+            ValueError,
+            match="Unsupported model 'unknown-model' for provider openrouter",
+        ):
             provider.get_capabilities("unknown-model")
 
         # Test with model that has provider prefix - should get generic capabilities
@@ -91,7 +97,7 @@ class TestOpenRouterProvider:
         assert provider._resolve_model_name("mistral") == "mistralai/mistral-large-2411"
         assert provider._resolve_model_name("grok-4") == "x-ai/grok-4"
         assert provider._resolve_model_name("grok4") == "x-ai/grok-4"
-        assert provider._resolve_model_name("grok") == "x-ai/grok-4"
+        assert provider._resolve_model_name("grok") == "x-ai/grok-4.1-fast"
         assert provider._resolve_model_name("deepseek") == "deepseek/deepseek-r1-0528"
         assert provider._resolve_model_name("r1") == "deepseek/deepseek-r1-0528"
 
@@ -137,7 +143,12 @@ class TestOpenRouterAutoMode:
         self.registry._initialized_providers.clear()
 
         self._original_env = {}
-        for key in ["OPENROUTER_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "DEFAULT_MODEL"]:
+        for key in [
+            "OPENROUTER_API_KEY",
+            "GEMINI_API_KEY",
+            "OPENAI_API_KEY",
+            "DEFAULT_MODEL",
+        ]:
             self._original_env[key] = os.environ.get(key)
 
     def teardown_method(self):

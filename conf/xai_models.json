@@ -28,9 +28,7 @@
       "model_name": "grok-4",
       "friendly_name": "X.AI (Grok 4)",
       "aliases": [
-        "grok",
-        "grok4",
-        "grok-4"
+        "grok4"
       ],
       "intelligence_score": 16,
       "description": "GROK-4 (256K context) - Frontier multimodal reasoning model with advanced capabilities",
@@ -87,6 +85,7 @@
       "model_name": "grok-4-1-fast",
       "friendly_name": "X.AI (Grok 4.1 Fast Reasoning)",
       "aliases": [
+        "grok",
         "grok-4-1-fast-reasoning",
         "grok-4-1-fast-reasoning-latest"
       ],

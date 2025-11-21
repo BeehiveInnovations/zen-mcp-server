@@ -83,7 +83,7 @@ class TestSupportedModelsAliases:
             assert isinstance(config.aliases, list), f"{model_name} aliases must be a list"
 
         # Test specific aliases
-        assert "grok" in provider.MODEL_CAPABILITIES["grok-4"].aliases
+        assert "grok" in provider.MODEL_CAPABILITIES["grok-4-1-fast"].aliases
         assert "grok4" in provider.MODEL_CAPABILITIES["grok-4"].aliases
         assert "grok3" in provider.MODEL_CAPABILITIES["grok-3"].aliases
         assert "grok3fast" in provider.MODEL_CAPABILITIES["grok-3-fast"].aliases
@@ -94,7 +94,7 @@ class TestSupportedModelsAliases:
         assert "grokcodefast" in provider.MODEL_CAPABILITIES["grok-code-fast-1"].aliases
 
         # Test alias resolution
-        assert provider._resolve_model_name("grok") == "grok-4"
+        assert provider._resolve_model_name("grok") == "grok-4-1-fast"
         assert provider._resolve_model_name("grok4") == "grok-4"
         assert provider._resolve_model_name("grok3") == "grok-3"
         assert provider._resolve_model_name("grok3fast") == "grok-3-fast"
@@ -106,7 +106,7 @@ class TestSupportedModelsAliases:
         assert provider._resolve_model_name("grokcodefast") == "grok-code-fast-1"
 
         # Test case insensitive resolution
-        assert provider._resolve_model_name("Grok") == "grok-4"
+        assert provider._resolve_model_name("Grok") == "grok-4-1-fast"
         assert provider._resolve_model_name("GROKFAST") == "grok-3-fast"
         assert provider._resolve_model_name("GrokCodeFast") == "grok-code-fast-1"
 

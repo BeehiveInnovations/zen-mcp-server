@@ -454,8 +454,7 @@
       "model_name": "x-ai/grok-4",
       "aliases": [
         "grok-4",
-        "grok4",
-        "grok"
+        "grok4"
       ],
       "context_window": 256000,
       "max_output_tokens": 256000,
@@ -472,6 +471,7 @@
     {
       "model_name": "x-ai/grok-4.1-fast",
       "aliases": [
+        "grok",
         "grok-4-1-fast",
         "grok-4-1-fast-reasoning"
       ],
