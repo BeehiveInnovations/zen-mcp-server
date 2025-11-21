@@ -470,11 +470,10 @@
       "intelligence_score": 15
     },
     {
-      "model_name": "x-ai/grok-4-fast",
+      "model_name": "x-ai/grok-4.1-fast",
       "aliases": [
-        "grok-4-fast",
-        "grok4fast",
-        "grok-4-fast-reasoning"
+        "grok-4-1-fast",
+        "grok-4-1-fast-reasoning"
       ],
       "context_window": 2000000,
       "max_output_tokens": 2000000,
@@ -485,7 +484,7 @@
       "max_image_size_mb": 20.0,
       "supports_temperature": true,
       "temperature_constraint": "range",
-      "description": "xAI's Grok 4 Fast via OpenRouter - Cost-efficient reasoning model with 2M context window",
+      "description": "xAI's Grok 4.1 Fast via OpenRouter - Best agentic tool calling model that shines in real-world use cases like customer support and deep research. 2M context window. Reasoning can be enabled/disabled using the reasoning parameter.",
       "intelligence_score": 15
     },
     {

@@ -84,15 +84,14 @@
       "supports_temperature": true
     },
     {
-      "model_name": "grok-4-fast",
-      "friendly_name": "X.AI (Grok 4 Fast Reasoning)",
+      "model_name": "grok-4-1-fast",
+      "friendly_name": "X.AI (Grok 4.1 Fast Reasoning)",
       "aliases": [
-        "grok-4-fast-reasoning",
-        "grok4fast",
-        "grok-4-fast-reasoning-latest"
+        "grok-4-1-fast-reasoning",
+        "grok-4-1-fast-reasoning-latest"
       ],
       "intelligence_score": 15,
-      "description": "GROK-4 Fast Reasoning (2M context) - Cost-efficient reasoning model with frontier-level performance and exceptional token efficiency",
+      "description": "GROK-4.1 Fast Reasoning (2M context) - Frontier multimodal model optimized for high-performance agentic tool calling with cost-efficient reasoning and exceptional token efficiency",
       "context_window": 2000000,
       "max_output_tokens": 2000000,
       "supports_extended_thinking": true,
@@ -105,14 +104,13 @@
       "max_image_size_mb": 20.0
     },
     {
-      "model_name": "grok-4-fast-non-reasoning",
-      "friendly_name": "X.AI (Grok 4 Fast Non-Reasoning)",
+      "model_name": "grok-4-1-fast-non-reasoning",
+      "friendly_name": "X.AI (Grok 4.1 Fast Non-Reasoning)",
       "aliases": [
-        "grok-4-fast-non-reasoning",
-        "grok4fast-non-reasoning"
+        "grok-4-1-fast-non-reasoning"
       ],
       "intelligence_score": 13,
-      "description": "GROK-4 Fast Non-Reasoning (2M context) - Ultra-fast text-to-text generation optimized for speed and stability without advanced reasoning",
+      "description": "GROK-4.1 Fast Non-Reasoning (2M context) - Ultra-fast text-to-text generation optimized for speed and stability without advanced reasoning",
       "context_window": 2000000,
       "max_output_tokens": 2000000,
       "supports_extended_thinking": false,
