@@ -25,7 +25,7 @@ You need at least one API key. Choose based on your needs:
 **Gemini (Google):**
 - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
 - Generate an API key
-- **Note**: For Gemini 2.5 Pro, use a paid API key (free tier has limited access)
+- **Note**: For Gemini 3.0 / 2.5 Pro, use a paid API key (free tier has limited access)
 
 **OpenAI:**
 - Visit [OpenAI Platform](https://platform.openai.com/api-keys)

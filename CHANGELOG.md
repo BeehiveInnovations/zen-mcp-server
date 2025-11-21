@@ -2,6 +2,112 @@
 
 <!-- version list -->
 
+## v9.4.0 (2025-11-18)
+
+### Bug Fixes
+
+- Failing test for gemini 3.0 pro open router
+  ([`19a2a89`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/19a2a89b12c5dec53aea21a4244aff7796a5e049))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`d3de61f`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/d3de61f8787ab60261d09f2c7f362c50d2093799))
+
+### Features
+
+- Gemini 3.0 Pro Preview for Open Router
+  ([`bbfdfac`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/bbfdfac511668e8ae60f9b9b5d41eb9ab55d74cf))
+
+### Refactoring
+
+- Enable search on codex CLI
+  ([`1579d9f`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/1579d9f806a653bb04c9c73ab304cdd0e78fbdfa))
+
+
+## v9.3.1 (2025-11-18)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`d256098`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/d2560983402abf084608f7750f05407a8d3e20a0))
+
+
+## v9.3.0 (2025-11-18)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`3748d47`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/3748d47faba7d871f2dd379f2c8646aa8cd3c6e9))
+
+
+## v9.2.2 (2025-11-18)
+
+### Bug Fixes
+
+- **build**: Include clink resources in package
+  ([`e9ac1ce`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/e9ac1ce3354fbb124a72190702618f94266b8459))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`749bc73`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/749bc7307949fa0b0e026bfcfbd546d7619eba8b))
+
+
+## v9.2.1 (2025-11-18)
+
+### Bug Fixes
+
+- **server**: Iterate provider instances during shutdown
+  ([`d40fc83`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/d40fc83d7549293372f3d20cc599a79ec355acef))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`84f6c4f`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/84f6c4fb241257b611f4b954c22a6b9340007a73))
+
+
+## v9.2.0 (2025-11-18)
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`7a1de64`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/7a1de6477aae88bfe7a2f677faf0794169651354))
+
+### Documentation
+
+- Streamline advanced usage guide by reorganizing table of contents for improved navigation
+  ([`698d391`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/698d391b26a0dd565eada8bfa6e67e549ce1dd20))
+
+- Update .env.example to include new GPT-5.1 model options and clarify existing model descriptions
+  ([`dbbfef2`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/dbbfef292c67ed54f90f7612c9c14d4095bd6c45))
+
+- Update advanced usage and configuration to include new GPT-5.1 models and enhance tool parameters
+  ([`807c9df`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/807c9df70e3b54031ec6beea10f3975455b36dfb))
+
+### Features
+
+- Add new GPT-5.1 models to configuration files and update model selection logic in OpenAI provider
+  ([`8e9aa23`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/8e9aa2304d5e9ea9a9f8dc2a13a27a1ced6b1608))
+
+- Enhance model support by adding GPT-5.1 to .gitignore and updating cassette maintenance
+  documentation for dual-model testing
+  ([`f713d8a`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/f713d8a354a37c32a806c98994e6f949ecd64237))
+
+
+## v9.1.4 (2025-11-18)
+
+### Bug Fixes
+
+- Replaced deprecated Codex web search configuration
+  ([`2ec64ba`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/2ec64ba7489acc586846b25eedf94a4f05d5bd2d))
+
+### Chores
+
+- Sync version to config.py [skip ci]
+  ([`4d3d177`](https://github.com/BeehiveInnovations/zen-mcp-server/commit/4d3d177d91370097ca7ac4f922fa3a8b69ce3250))
+
+
 ## v9.1.3 (2025-10-22)
 
 ### Bug Fixes
