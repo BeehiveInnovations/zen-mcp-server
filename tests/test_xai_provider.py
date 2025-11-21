@@ -377,7 +377,7 @@ class TestXAIProvider:
         assert "grok3fast" in grok3fast_config.aliases
         assert "grokfast" in grok3fast_config.aliases
 
-        # Check new Grok-4.1 Fast models
+        # Check new Grok-4-1 Fast models
         grok4_1_fast_config = provider.MODEL_CAPABILITIES["grok-4-1-fast"]
         assert grok4_1_fast_config.context_window == 2_000_000
         assert grok4_1_fast_config.supports_extended_thinking is True
