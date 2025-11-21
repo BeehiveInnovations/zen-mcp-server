@@ -107,7 +107,7 @@
       "model_name": "grok-4-1-fast-non-reasoning",
       "friendly_name": "X.AI (Grok 4.1 Fast Non-Reasoning)",
       "aliases": [
-        "grok-4-1-fast-non-reasoning"
+        "grok-4-1-fast-non-reasoning-latest"
       ],
       "intelligence_score": 13,
       "description": "GROK-4.1 Fast Non-Reasoning (2M context) - Ultra-fast text-to-text generation optimized for speed and stability without advanced reasoning",
