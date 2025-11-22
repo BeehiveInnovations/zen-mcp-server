@@ -49,9 +49,9 @@ class CLIClientConfig(BaseModel):
     additional_args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: PositiveInt | None = Field(default=None)
-    max_retries: PositiveInt | None = Field(
+    max_retries: NonNegativeInt | None = Field(
         default=None,
-        description="Maximum number of retry attempts on retryable errors (e.g., rate limits). Defaults to 3.",
+        description="Maximum number of retry attempts on retryable errors (e.g., rate limits). Defaults to 3. Set to 0 to disable retries.",
     )
     retry_delays: list[float] | None = Field(
         default=None,
