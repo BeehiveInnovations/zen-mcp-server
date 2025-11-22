@@ -91,7 +91,7 @@ class ResolvedCLIClient(BaseModel):
     config_args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: int
-    max_retries: int = Field(default=3)
+    max_retries: NonNegativeInt = Field(default=3)
     retry_delays: list[float] = Field(default_factory=lambda: [3.0, 6.0, 12.0])
     parser: str
     runner: str | None = None
