@@ -144,8 +144,8 @@ class ClinkRegistry:
         )
 
         # Use configured retry settings or defaults
-        max_retries = raw.max_retries if raw.max_retries is not None else 3
-        retry_delays = raw.retry_delays if raw.retry_delays is not None else [3.0, 6.0, 12.0]
+        max_retries = raw.max_retries if raw.max_retries is not None else DEFAULT_MAX_RETRIES
+        retry_delays = raw.retry_delays if raw.retry_delays is not None else DEFAULT_RETRY_DELAYS
 
         parser_name = internal_defaults.parser
         if not parser_name:
