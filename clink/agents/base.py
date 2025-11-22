@@ -64,6 +64,54 @@ class BaseCLIAgent:
         # Files and images are already embedded into the prompt by the tool; they are
         # accepted here only to keep parity with SimpleTool callers.
         _ = (files, images)
+
+        # Execute with retry logic
+        max_attempts = self.client.max_retries + 1  # max_retries is number of retries, not attempts
+        last_error: CLIAgentError | None = None
+
+        for attempt in range(max_attempts):
+            try:
+                return await self._execute_once(role=role, prompt=prompt, system_prompt=system_prompt)
+            except CLIAgentError as exc:
+                last_error = exc
+
+                # Check if this is a retryable error
+                if not self._is_retryable_error(exc):
+                    raise
+
+                # If this was the last attempt, raise the error
+                if attempt >= max_attempts - 1:
+                    raise
+
+                # Calculate delay for this attempt
+                delay_index = min(attempt, len(self.client.retry_delays) - 1)
+                delay = self.client.retry_delays[delay_index] if self.client.retry_delays else 0
+
+                self._logger.warning(
+                    "CLI '%s' attempt %d/%d failed with retryable error: %s. Retrying in %.1fs...",
+                    self.client.name,
+                    attempt + 1,
+                    max_attempts,
+                    exc,
+                    delay,
+                )
+
+                if delay > 0:
+                    await asyncio.sleep(delay)
+
+        # Should never reach here, but if we do, raise the last error
+        if last_error:
+            raise last_error
+        raise CLIAgentError(f"CLI '{self.client.name}' failed after {max_attempts} attempts")
+
+    async def _execute_once(
+        self,
+        *,
+        role: ResolvedCLIRole,
+        prompt: str,
+        system_prompt: str | None = None,
+    ) -> AgentOutput:
+        """Execute the CLI command once without retry logic."""
         # The runner simply executes the configured CLI command for the selected role.
         command = self._build_command(role=role, system_prompt=system_prompt)
         env = self._build_environment()
@@ -206,6 +254,29 @@ class BaseCLIAgent:
     # ------------------------------------------------------------------
     # Error recovery hooks
     # ------------------------------------------------------------------
+
+    def _is_retryable_error(self, error: CLIAgentError) -> bool:
+        """Check if an error should trigger a retry attempt.
+
+        Args:
+            error: The CLI agent error to check
+
+        Returns:
+            True if the error is retryable (e.g., rate limit), False otherwise
+        """
+        # Check stderr and stdout for rate limit indicators
+        combined_output = f"{error.stderr} {error.stdout}".lower()
+
+        # Check for HTTP 429 status code or rate limit messages
+        rate_limit_indicators = [
+            "429",
+            "rate limit",
+            "quota",
+            "too many requests",
+            "resource_exhausted",
+        ]
+
+        return any(indicator in combined_output for indicator in rate_limit_indicators)
 
     def _recover_from_error(
         self,

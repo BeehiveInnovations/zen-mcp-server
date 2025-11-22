@@ -8,6 +8,8 @@
     "sonnet"
   ],
   "env": {},
+  "max_retries": 5,
+  "retry_delays": [3.0, 6.0, 12.0, 24.0, 48.0],
   "roles": {
     "default": {
       "prompt_path": "systemprompts/clink/default.txt",

@@ -49,6 +49,14 @@ class CLIClientConfig(BaseModel):
     additional_args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: PositiveInt | None = Field(default=None)
+    max_retries: PositiveInt | None = Field(
+        default=None,
+        description="Maximum number of retry attempts on retryable errors (e.g., rate limits). Defaults to 3.",
+    )
+    retry_delays: list[float] | None = Field(
+        default=None,
+        description="List of delay durations (in seconds) between retry attempts. Defaults to [3, 6, 12].",
+    )
     roles: dict[str, CLIRoleConfig] = Field(default_factory=dict)
     output_to_file: OutputCaptureConfig | None = None
 
@@ -83,6 +91,8 @@ class ResolvedCLIClient(BaseModel):
     config_args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: int
+    max_retries: int = Field(default=3)
+    retry_delays: list[float] = Field(default_factory=lambda: [3.0, 6.0, 12.0])
     parser: str
     runner: str | None = None
     roles: dict[str, ResolvedCLIRole]
