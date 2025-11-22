@@ -75,14 +75,11 @@ class BaseCLIAgent:
 
         # Execute with retry logic
         max_attempts = self.client.max_retries + 1  # max_retries is number of retries, not attempts
-        last_error: CLIAgentError | None = None
 
         for attempt in range(max_attempts):
             try:
                 return await self._execute_once(role=role, prompt=prompt, system_prompt=system_prompt)
             except CLIAgentError as exc:
-                last_error = exc
-
                 # Check if this is a retryable error
                 if not self._is_retryable_error(exc):
                     raise
