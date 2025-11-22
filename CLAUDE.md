@@ -2,6 +2,25 @@
 
 This file contains essential commands and workflows for developing and maintaining the Zen MCP Server when working with Claude. Use these instructions to efficiently run quality checks, manage the server, check logs, and run tests.
 
+## Project Overview
+
+**Zen MCP Server v4.8.3** - A Model Context Protocol server that enables Claude to orchestrate multiple AI models (Gemini, O3, GROK, OpenRouter, Ollama, custom endpoints) for collaborative development.
+
+**Current Status**:
+- ✅ Production-ready with 491 unit tests + 21 simulator tests
+- ✅ 100% test pass requirement enforced via CI/CD
+- ✅ Docker-based deployment with Redis for conversation threading
+- ✅ Comprehensive documentation (9 guides in docs/)
+- ✅ Multi-provider support (Gemini, OpenAI, X.AI, OpenRouter, Custom APIs)
+
+**Key Features**:
+- **AI-to-AI Conversation Threading** - Multi-turn conversations between Claude and other models
+- **Cross-Tool Continuation** - Context persists across different tools (analyze → codereview)
+- **Context Revival** - Resume conversations even after Claude's memory resets
+- **Auto Mode** - Claude intelligently selects best model for each task
+- **Vision Support** - Image analysis across all tools
+- **10 Specialized Tools** - chat, thinkdeep, codereview, precommit, debug, analyze, refactor, tracer, testgen, listmodels
+
 ## Quick Reference Commands
 
 ### Code Quality Checks
@@ -18,7 +37,7 @@ source venv/bin/activate
 
 This script automatically runs:
 - Ruff linting with auto-fix
-- Black code formatting 
+- Black code formatting
 - Import sorting with isort
 - Complete unit test suite (excluding integration tests)
 - Verification that all checks pass 100%
@@ -38,6 +57,9 @@ This script automatically runs:
 ```bash
 # Run setup script (handles everything)
 ./run-server.sh
+
+# Start server and follow logs automatically
+./run-server.sh -f
 ```
 
 This script will:
@@ -119,7 +141,7 @@ API keys to ensure the models are working and the server is able to communicate 
 
 **IMPORTANT**: After any code changes, restart your Claude session for the changes to take effect.
 
-#### Run All Simulator Tests
+**Run All Simulator Tests:**
 ```bash
 # Run the complete test suite
 python communication_simulator_test.py
@@ -167,7 +189,7 @@ python communication_simulator_test.py --tests basic_conversation content_valida
 python communication_simulator_test.py --individual memory_validation --verbose
 ```
 
-Available simulator tests include:
+**Available Simulator Tests:**
 - `basic_conversation` - Basic conversation flow with chat tool
 - `content_validation` - Content validation and duplicate detection
 - `per_tool_deduplication` - File deduplication for individual tools
@@ -297,6 +319,36 @@ isort .
 ruff check .
 black --check .
 isort --check-only .
+
+# View specific linting errors
+ruff check . --output-format=full
+```
+
+#### API Key Issues
+```bash
+# Verify .env file exists and has correct format
+cat .env
+
+# Restart server after updating .env
+./run-server.sh
+
+# Test API connectivity with listmodels tool
+# (requires Claude Code session)
+```
+
+#### Redis Issues
+```bash
+# Check Redis is running
+docker exec zen-mcp-redis redis-cli ping
+
+# View conversation keys in Redis
+docker exec zen-mcp-redis redis-cli KEYS "conversation:*"
+
+# Clear all conversation data (for testing)
+docker exec zen-mcp-redis redis-cli FLUSHDB
+
+# Check Redis memory usage
+docker exec zen-mcp-redis redis-cli INFO memory
 ```
 
 ### File Structure Context
@@ -317,4 +369,4 @@ isort --check-only .
 - All dependencies from `requirements.txt` installed
 - Proper API keys configured in `.env` file
 
-This guide provides everything needed to efficiently work with the Zen MCP Server codebase using Claude. Always run quality checks before and after making changes to ensure code integrity.
+This guide provides everything needed to efficiently work with the Zen MCP Server codebase using Claude. Always run quality checks before and after making changes to ensure code integrity. For detailed technical information, refer to the documentation in the `docs/` directory.
