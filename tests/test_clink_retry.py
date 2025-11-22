@@ -1,14 +1,12 @@
 """Tests for clink retry and backoff logic."""
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from pathlib import Path
 
 import pytest
 
 from clink.agents.base import AgentOutput, BaseCLIAgent, CLIAgentError
 from clink.models import ResolvedCLIClient, ResolvedCLIRole
 from clink.parsers.base import ParsedCLIResponse
-from pathlib import Path
 
 
 @pytest.fixture
@@ -225,25 +223,17 @@ def test_is_retryable_error():
     )
 
     # Test rate limit errors are retryable
-    rate_limit_error = CLIAgentError(
-        "Error", returncode=1, stdout="", stderr="429 rate limit exceeded"
-    )
+    rate_limit_error = CLIAgentError("Error", returncode=1, stdout="", stderr="429 rate limit exceeded")
     assert agent._is_retryable_error(rate_limit_error)
 
     # Test quota errors are retryable
-    quota_error = CLIAgentError(
-        "Error", returncode=1, stdout="quota exceeded", stderr=""
-    )
+    quota_error = CLIAgentError("Error", returncode=1, stdout="quota exceeded", stderr="")
     assert agent._is_retryable_error(quota_error)
 
     # Test resource exhausted errors are retryable
-    resource_error = CLIAgentError(
-        "Error", returncode=1, stdout="", stderr="resource_exhausted"
-    )
+    resource_error = CLIAgentError("Error", returncode=1, stdout="", stderr="resource_exhausted")
     assert agent._is_retryable_error(resource_error)
 
     # Test non-retryable errors
-    normal_error = CLIAgentError(
-        "Error", returncode=1, stdout="", stderr="command not found"
-    )
+    normal_error = CLIAgentError("Error", returncode=1, stdout="", stderr="command not found")
     assert not agent._is_retryable_error(normal_error)
