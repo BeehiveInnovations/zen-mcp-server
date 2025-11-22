@@ -10,6 +10,8 @@ from pathlib import Path
 
 from clink.constants import (
     CONFIG_DIR,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_RETRY_DELAYS,
     DEFAULT_TIMEOUT_SECONDS,
     INTERNAL_DEFAULTS,
     PROJECT_ROOT,

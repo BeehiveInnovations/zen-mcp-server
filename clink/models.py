@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, PositiveInt, field_validator
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, field_validator
 
 
 class OutputCaptureConfig(BaseModel):

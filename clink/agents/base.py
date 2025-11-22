@@ -47,6 +47,14 @@ class CLIAgentError(RuntimeError):
 class BaseCLIAgent:
     """Execute a configured CLI command and parse its output."""
 
+    _RETRYABLE_ERROR_INDICATORS = (
+        "429",
+        "rate limit",
+        "quota",
+        "too many requests",
+        "resource_exhausted",
+    )
+
     def __init__(self, client: ResolvedCLIClient):
         self.client = client
         self._parser: BaseParser = get_parser(client.parser)
@@ -98,11 +106,6 @@ class BaseCLIAgent:
 
                 if delay > 0:
                     await asyncio.sleep(delay)
-
-        # Should never reach here, but if we do, raise the last error
-        if last_error:
-            raise last_error
-        raise CLIAgentError(f"CLI '{self.client.name}' failed after {max_attempts} attempts")
 
     async def _execute_once(
         self,
@@ -266,17 +269,7 @@ class BaseCLIAgent:
         """
         # Check stderr and stdout for rate limit indicators
         combined_output = f"{error.stderr} {error.stdout}".lower()
-
-        # Check for HTTP 429 status code or rate limit messages
-        rate_limit_indicators = [
-            "429",
-            "rate limit",
-            "quota",
-            "too many requests",
-            "resource_exhausted",
-        ]
-
-        return any(indicator in combined_output for indicator in rate_limit_indicators)
+        return any(indicator in combined_output for indicator in self._RETRYABLE_ERROR_INDICATORS)
 
     def _recover_from_error(
         self,
