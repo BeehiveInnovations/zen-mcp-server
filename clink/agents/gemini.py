@@ -49,6 +49,10 @@ class GeminiAgent(BaseCLIAgent):
         err_type = error_block.get("type")
         detail_message = error_block.get("message")
 
+        combined_lower = combined.lower()
+        if any(indicator in combined_lower for indicator in self._RETRYABLE_ERROR_INDICATORS):
+            return None
+
         prologue = combined[:brace_index].strip()
         lines: list[str] = []
         if prologue and (not detail_message or prologue not in detail_message):

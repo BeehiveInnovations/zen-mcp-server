@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
+import re
 import shlex
 import shutil
 import tempfile
@@ -47,6 +49,21 @@ class CLIAgentError(RuntimeError):
 class BaseCLIAgent:
     """Execute a configured CLI command and parse its output."""
 
+    _RETRYABLE_ERROR_INDICATORS = (
+        "429",
+        "rate limit",
+        "quota",
+        "too many requests",
+        "resource_exhausted",
+    )
+
+    _NON_RETRYABLE_QUOTA_INDICATORS = (
+        "quota exceeded",
+        "quota_exceeded",
+        "insufficient_quota",
+        "quota limit",
+    )
+
     def __init__(self, client: ResolvedCLIClient):
         self.client = client
         self._parser: BaseParser = get_parser(client.parser)
@@ -64,6 +81,73 @@ class BaseCLIAgent:
         # Files and images are already embedded into the prompt by the tool; they are
         # accepted here only to keep parity with SimpleTool callers.
         _ = (files, images)
+
+        # Execute with retry logic
+        attempt = 0
+
+        while True:
+            try:
+                return await self._execute_once(role=role, prompt=prompt, system_prompt=system_prompt)
+            except CLIAgentError as exc:
+                # Determine error type and strategy
+                error_type = self._get_error_type(exc)
+
+                if error_type == "none":
+                    raise
+
+                # Select strategy based on error type
+                if error_type == "quota":
+                    max_retries = self.client.quota_max_retries
+                    delays = self.client.quota_retry_delays
+                    strategy_name = "quota"
+                else:
+                    max_retries = self.client.max_retries
+                    delays = self.client.retry_delays
+                    strategy_name = "rate_limit"
+
+                # Check if we've exceeded max retries for this strategy
+                if attempt >= max_retries:
+                    raise
+
+                attempt += 1
+
+                # Calculate delay
+                delay_index = min(attempt - 1, len(delays) - 1)
+                base_delay = delays[delay_index] if delays else 0
+
+                retry_after_delay = self._extract_retry_after(exc)
+                if retry_after_delay is not None:
+                    delay = retry_after_delay
+                else:
+                    # Apply jitter
+                    jitter = random.uniform(-0.2 * base_delay, 0.2 * base_delay) if base_delay > 0 else 0
+                    delay = max(0.1, base_delay + jitter)
+
+                self._logger.warning(
+                    "CLI '%s' attempt %d/%d failed with %s error: %s. "
+                    "Retrying in %.1fs... (stderr: %s, stdout: %s, returncode: %s)",
+                    self.client.name,
+                    attempt,
+                    max_retries + 1,  # Display total attempts (1 initial + retries)
+                    strategy_name,
+                    exc,
+                    delay,
+                    exc.stderr[:200] if exc.stderr else "None",
+                    exc.stdout[:200] if exc.stdout else "None",
+                    exc.returncode,
+                )
+
+                if delay > 0:
+                    await asyncio.sleep(delay)
+
+    async def _execute_once(
+        self,
+        *,
+        role: ResolvedCLIRole,
+        prompt: str,
+        system_prompt: str | None = None,
+    ) -> AgentOutput:
+        """Execute the CLI command once without retry logic."""
         # The runner simply executes the configured CLI command for the selected role.
         command = self._build_command(role=role, system_prompt=system_prompt)
         env = self._build_environment()
@@ -206,6 +290,53 @@ class BaseCLIAgent:
     # ------------------------------------------------------------------
     # Error recovery hooks
     # ------------------------------------------------------------------
+
+    def _get_error_type(self, error: CLIAgentError) -> str:
+        """Determine the type of error for retry logic.
+
+        Returns:
+            "quota": For retryable quota errors
+            "rate_limit": For transient rate limit errors
+            "none": For non-retryable errors
+        """
+        combined_output = f"{error.stderr} {error.stdout}".lower()
+
+        if any(indicator in combined_output for indicator in self._NON_RETRYABLE_QUOTA_INDICATORS):
+            return "none"
+
+        # Specific check for quota errors that are retryable
+        if "quota" in combined_output:
+            return "quota"
+
+        if any(indicator in combined_output for indicator in self._RETRYABLE_ERROR_INDICATORS):
+            return "rate_limit"
+
+        return "none"
+
+    def _is_retryable_error(self, error: CLIAgentError) -> bool:
+        """Check if an error should trigger a retry attempt.
+
+        Args:
+            error: The CLI agent error to check
+
+        Returns:
+            True if the error is retryable (e.g., rate limit), False otherwise
+        """
+        return self._get_error_type(error) != "none"
+
+    def _extract_retry_after(self, error: CLIAgentError) -> float | None:
+        """Extract retry-after delay from error if available."""
+        combined_output = f"{error.stderr} {error.stdout}"
+
+        match = re.search(r"retry[_\s-]?after[:\s]+(\d+)", combined_output, re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+
+        match = re.search(r"quota will reset after (\d+)s", combined_output, re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+
+        return None
 
     def _recover_from_error(
         self,

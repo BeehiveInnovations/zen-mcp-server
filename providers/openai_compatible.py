@@ -3,6 +3,7 @@
 import copy
 import ipaddress
 import logging
+import os
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -431,9 +432,9 @@ class OpenAICompatibleProvider(ModelProvider):
         # For responses endpoint, we only add parameters that are explicitly supported
         # Remove unsupported chat completion parameters that may cause API errors
 
-        # Retry logic with progressive delays
-        max_retries = 4
-        retry_delays = [1, 3, 5, 8]
+        max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "4"))
+        retry_delays_str = os.getenv("OPENAI_RETRY_DELAYS", "1,3,5,8")
+        retry_delays = [float(d.strip()) for d in retry_delays_str.split(",")]
         attempt_counter = {"value": 0}
 
         def _attempt() -> ModelResponse:
@@ -623,9 +624,9 @@ class OpenAICompatibleProvider(ModelProvider):
                 **kwargs,
             )
 
-        # Retry logic with progressive delays
-        max_retries = 4  # Total of 4 attempts
-        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
+        max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "4"))
+        retry_delays_str = os.getenv("OPENAI_RETRY_DELAYS", "1,3,5,8")
+        retry_delays = [float(d.strip()) for d in retry_delays_str.split(",")]
         attempt_counter = {"value": 0}
 
         def _attempt() -> ModelResponse:

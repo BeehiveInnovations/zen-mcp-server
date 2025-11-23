@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, PositiveInt, field_validator
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, field_validator
 
 
 class OutputCaptureConfig(BaseModel):
@@ -49,6 +49,22 @@ class CLIClientConfig(BaseModel):
     additional_args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: PositiveInt | None = Field(default=None)
+    max_retries: NonNegativeInt | None = Field(
+        default=None,
+        description="Maximum number of retry attempts on retryable errors (e.g., rate limits). Defaults to 3. Set to 0 to disable retries.",
+    )
+    retry_delays: list[float] | None = Field(
+        default=None,
+        description="List of delay durations (in seconds) between retry attempts. Defaults to [3, 6, 12].",
+    )
+    quota_max_retries: NonNegativeInt | None = Field(
+        default=None,
+        description="Maximum number of retry attempts for quota errors. Defaults to 6.",
+    )
+    quota_retry_delays: list[float] | None = Field(
+        default=None,
+        description="List of delay durations (in seconds) between retry attempts for quota errors. Defaults to [60, 300, 600, 1200, 1800, 3600].",
+    )
     roles: dict[str, CLIRoleConfig] = Field(default_factory=dict)
     output_to_file: OutputCaptureConfig | None = None
 
@@ -83,6 +99,10 @@ class ResolvedCLIClient(BaseModel):
     config_args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: int
+    max_retries: NonNegativeInt = Field(default=3)
+    retry_delays: list[float] = Field(default_factory=lambda: [3.0, 6.0, 12.0])
+    quota_max_retries: NonNegativeInt = Field(default=6)
+    quota_retry_delays: list[float] = Field(default_factory=lambda: [60.0, 300.0, 600.0, 1200.0, 1800.0, 3600.0])
     parser: str
     runner: str | None = None
     roles: dict[str, ResolvedCLIRole]

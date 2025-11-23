@@ -10,6 +10,8 @@ from pathlib import Path
 
 from clink.constants import (
     CONFIG_DIR,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_RETRY_DELAYS,
     DEFAULT_TIMEOUT_SECONDS,
     INTERNAL_DEFAULTS,
     PROJECT_ROOT,
@@ -143,6 +145,10 @@ class ClinkRegistry:
             internal_defaults.timeout_seconds if internal_defaults else DEFAULT_TIMEOUT_SECONDS
         )
 
+        # Use configured retry settings or defaults
+        max_retries = raw.max_retries if raw.max_retries is not None else DEFAULT_MAX_RETRIES
+        retry_delays = raw.retry_delays if raw.retry_delays is not None else DEFAULT_RETRY_DELAYS
+
         parser_name = internal_defaults.parser
         if not parser_name:
             raise RegistryLoadError(
@@ -164,6 +170,8 @@ class ClinkRegistry:
             config_args=config_args,
             env=env,
             timeout_seconds=int(timeout_seconds),
+            max_retries=int(max_retries),
+            retry_delays=list(retry_delays),
             parser=parser_name,
             runner=runner_name,
             roles=roles,
