@@ -2,6 +2,7 @@
 
 import base64
 import logging
+import os
 from typing import TYPE_CHECKING, ClassVar, Optional
 
 if TYPE_CHECKING:
@@ -201,9 +202,9 @@ class GeminiModelProvider(RegistryBackedProviderMixin, ModelProvider):
                 actual_thinking_budget = int(max_thinking_tokens * self.THINKING_BUDGETS[effective_thinking_mode])
                 generation_config.thinking_config = types.ThinkingConfig(thinking_budget=actual_thinking_budget)
 
-        # Retry logic with progressive delays
-        max_retries = 4  # Total of 4 attempts
-        retry_delays = [1, 3, 5, 8]  # Progressive delays: 1s, 3s, 5s, 8s
+        max_retries = int(os.getenv("GEMINI_MAX_RETRIES", "4"))
+        retry_delays_str = os.getenv("GEMINI_RETRY_DELAYS", "1,3,5,8")
+        retry_delays = [float(d.strip()) for d in retry_delays_str.split(",")]
         attempt_counter = {"value": 0}
 
         def _attempt() -> ModelResponse:

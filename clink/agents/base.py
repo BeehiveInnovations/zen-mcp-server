@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
+import re
 import shlex
 import shutil
 import tempfile
@@ -50,9 +52,15 @@ class BaseCLIAgent:
     _RETRYABLE_ERROR_INDICATORS = (
         "429",
         "rate limit",
-        "quota",
         "too many requests",
         "resource_exhausted",
+    )
+
+    _NON_RETRYABLE_QUOTA_INDICATORS = (
+        "quota exceeded",
+        "quota_exceeded",
+        "insufficient_quota",
+        "quota limit",
     )
 
     def __init__(self, client: ResolvedCLIClient):
@@ -88,17 +96,27 @@ class BaseCLIAgent:
                 if attempt >= max_attempts - 1:
                     raise
 
-                # Calculate delay for this attempt
                 delay_index = min(attempt, len(self.client.retry_delays) - 1)
-                delay = self.client.retry_delays[delay_index] if self.client.retry_delays else 0
+                base_delay = self.client.retry_delays[delay_index] if self.client.retry_delays else 0
+
+                retry_after_delay = self._extract_retry_after(exc)
+                if retry_after_delay is not None:
+                    delay = retry_after_delay
+                else:
+                    jitter = random.uniform(-0.2 * base_delay, 0.2 * base_delay) if base_delay > 0 else 0
+                    delay = max(0.1, base_delay + jitter)
 
                 self._logger.warning(
-                    "CLI '%s' attempt %d/%d failed with retryable error: %s. Retrying in %.1fs...",
+                    "CLI '%s' attempt %d/%d failed with retryable error: %s. "
+                    "Retrying in %.1fs... (stderr: %s, stdout: %s, returncode: %s)",
                     self.client.name,
                     attempt + 1,
                     max_attempts,
                     exc,
                     delay,
+                    exc.stderr[:200] if exc.stderr else "None",
+                    exc.stdout[:200] if exc.stdout else "None",
+                    exc.returncode,
                 )
 
                 if delay > 0:
@@ -264,9 +282,26 @@ class BaseCLIAgent:
         Returns:
             True if the error is retryable (e.g., rate limit), False otherwise
         """
-        # Check stderr and stdout for rate limit indicators
         combined_output = f"{error.stderr} {error.stdout}".lower()
+
+        if any(indicator in combined_output for indicator in self._NON_RETRYABLE_QUOTA_INDICATORS):
+            return False
+
         return any(indicator in combined_output for indicator in self._RETRYABLE_ERROR_INDICATORS)
+
+    def _extract_retry_after(self, error: CLIAgentError) -> float | None:
+        """Extract retry-after delay from error if available."""
+        combined_output = f"{error.stderr} {error.stdout}"
+
+        match = re.search(r"retry[_\s-]?after[:\s]+(\d+)", combined_output, re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+
+        match = re.search(r"quota will reset after (\d+)s", combined_output, re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+
+        return None
 
     def _recover_from_error(
         self,
