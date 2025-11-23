@@ -194,12 +194,12 @@ async def test_retry_delay_applied(mock_client, mock_role):
         images=[],
     )
 
-    # Verify delays were applied (allow 10% margin for execution time)
+    # Verify delays were applied (allow 20% jitter + execution time margin)
     assert len(call_times) == 3
-    # First retry delay should be ~1.0s
-    assert 0.9 <= (call_times[1] - call_times[0]) <= 1.5
-    # Second retry delay should be ~2.0s
-    assert 1.8 <= (call_times[2] - call_times[1]) <= 2.5
+    # First retry delay should be ~1.0s (0.8 to 1.2 with jitter)
+    assert 0.7 <= (call_times[1] - call_times[0]) <= 1.5
+    # Second retry delay should be ~2.0s (1.6 to 2.4 with jitter)
+    assert 1.5 <= (call_times[2] - call_times[1]) <= 2.6
 
 
 def test_is_retryable_error():
@@ -237,3 +237,50 @@ def test_is_retryable_error():
     # Test non-retryable errors
     normal_error = CLIAgentError("Error", returncode=1, stdout="", stderr="command not found")
     assert not agent._is_retryable_error(normal_error)
+
+
+@pytest.mark.asyncio
+async def test_retry_on_quota_error(mock_client, mock_role):
+    """Test that agent uses quota retry strategy for quota errors."""
+    # Configure mock client with distinct quota settings
+    mock_client.quota_max_retries = 3
+    mock_client.quota_retry_delays = [0.1, 0.2, 0.3]  # Short delays for test
+    mock_client.max_retries = 1  # Different from quota retries
+
+    agent = BaseCLIAgent(mock_client)
+
+    call_count = 0
+
+    async def mock_execute(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count < 4:
+            # First three calls fail with quota error
+            # "quota" must be in stderr/stdout and NOT "quota exceeded"
+            raise CLIAgentError(
+                "Quota error",
+                returncode=1,
+                stdout="",
+                stderr="429 Quota error",
+            )
+        return AgentOutput(
+            parsed=ParsedCLIResponse(content="Success", metadata={}),
+            sanitized_command=["test"],
+            returncode=0,
+            stdout="Success",
+            stderr="",
+            duration_seconds=1.0,
+            parser_name="test_parser",
+        )
+
+    agent._execute_once = mock_execute
+
+    result = await agent.run(
+        role=mock_role,
+        prompt="test prompt",
+        files=[],
+        images=[],
+    )
+
+    assert result.parsed.content == "Success"
+    assert call_count == 4  # Initial + 3 retries

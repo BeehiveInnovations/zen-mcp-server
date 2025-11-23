@@ -83,36 +83,53 @@ class BaseCLIAgent:
         _ = (files, images)
 
         # Execute with retry logic
-        max_attempts = self.client.max_retries + 1  # max_retries is number of retries, not attempts
+        attempt = 0
 
-        for attempt in range(max_attempts):
+        while True:
             try:
                 return await self._execute_once(role=role, prompt=prompt, system_prompt=system_prompt)
             except CLIAgentError as exc:
-                # Check if this is a retryable error
-                if not self._is_retryable_error(exc):
+                # Determine error type and strategy
+                error_type = self._get_error_type(exc)
+
+                if error_type == "none":
                     raise
 
-                # If this was the last attempt, raise the error
-                if attempt >= max_attempts - 1:
+                # Select strategy based on error type
+                if error_type == "quota":
+                    max_retries = self.client.quota_max_retries
+                    delays = self.client.quota_retry_delays
+                    strategy_name = "quota"
+                else:
+                    max_retries = self.client.max_retries
+                    delays = self.client.retry_delays
+                    strategy_name = "rate_limit"
+
+                # Check if we've exceeded max retries for this strategy
+                if attempt >= max_retries:
                     raise
 
-                delay_index = min(attempt, len(self.client.retry_delays) - 1)
-                base_delay = self.client.retry_delays[delay_index] if self.client.retry_delays else 0
+                attempt += 1
+
+                # Calculate delay
+                delay_index = min(attempt - 1, len(delays) - 1)
+                base_delay = delays[delay_index] if delays else 0
 
                 retry_after_delay = self._extract_retry_after(exc)
                 if retry_after_delay is not None:
                     delay = retry_after_delay
                 else:
+                    # Apply jitter
                     jitter = random.uniform(-0.2 * base_delay, 0.2 * base_delay) if base_delay > 0 else 0
                     delay = max(0.1, base_delay + jitter)
 
                 self._logger.warning(
-                    "CLI '%s' attempt %d/%d failed with retryable error: %s. "
+                    "CLI '%s' attempt %d/%d failed with %s error: %s. "
                     "Retrying in %.1fs... (stderr: %s, stdout: %s, returncode: %s)",
                     self.client.name,
-                    attempt + 1,
-                    max_attempts,
+                    attempt,
+                    max_retries + 1,  # Display total attempts (1 initial + retries)
+                    strategy_name,
                     exc,
                     delay,
                     exc.stderr[:200] if exc.stderr else "None",
@@ -274,6 +291,28 @@ class BaseCLIAgent:
     # Error recovery hooks
     # ------------------------------------------------------------------
 
+    def _get_error_type(self, error: CLIAgentError) -> str:
+        """Determine the type of error for retry logic.
+
+        Returns:
+            "quota": For retryable quota errors
+            "rate_limit": For transient rate limit errors
+            "none": For non-retryable errors
+        """
+        combined_output = f"{error.stderr} {error.stdout}".lower()
+
+        if any(indicator in combined_output for indicator in self._NON_RETRYABLE_QUOTA_INDICATORS):
+            return "none"
+
+        # Specific check for quota errors that are retryable
+        if "quota" in combined_output:
+            return "quota"
+
+        if any(indicator in combined_output for indicator in self._RETRYABLE_ERROR_INDICATORS):
+            return "rate_limit"
+
+        return "none"
+
     def _is_retryable_error(self, error: CLIAgentError) -> bool:
         """Check if an error should trigger a retry attempt.
 
@@ -283,12 +322,7 @@ class BaseCLIAgent:
         Returns:
             True if the error is retryable (e.g., rate limit), False otherwise
         """
-        combined_output = f"{error.stderr} {error.stdout}".lower()
-
-        if any(indicator in combined_output for indicator in self._NON_RETRYABLE_QUOTA_INDICATORS):
-            return False
-
-        return any(indicator in combined_output for indicator in self._RETRYABLE_ERROR_INDICATORS)
+        return self._get_error_type(error) != "none"
 
     def _extract_retry_after(self, error: CLIAgentError) -> float | None:
         """Extract retry-after delay from error if available."""
