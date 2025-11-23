@@ -1615,7 +1615,7 @@ check_gemini_cli_integration() {
 # Wrapper script for Gemini CLI compatibility
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
-exec .zen_venv/bin/python server.py "$@"
+exec .zen_venv/bin/python server.py "$@" 2> logs/wrapper_stderr.log
 EOF
         chmod +x "$zen_wrapper"
         print_success "Created zen-mcp-server wrapper script"
