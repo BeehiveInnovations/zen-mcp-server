@@ -2,4 +2,4 @@
 # Wrapper script for Gemini CLI compatibility
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
-exec .zen_venv/bin/python server.py "$@" 2> logs/wrapper_stderr.log
+exec .zen_venv/bin/python -u server.py "$@" 2> logs/wrapper_stderr.log
