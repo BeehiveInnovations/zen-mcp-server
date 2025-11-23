@@ -50,10 +50,7 @@ class GeminiAgent(BaseCLIAgent):
         detail_message = error_block.get("message")
 
         combined_lower = combined.lower()
-        if any(
-            indicator in combined_lower
-            for indicator in ("429", "rate limit", "quota", "too many requests", "resource_exhausted")
-        ):
+        if any(indicator in combined_lower for indicator in self._RETRYABLE_ERROR_INDICATORS):
             return None
 
         prologue = combined[:brace_index].strip()

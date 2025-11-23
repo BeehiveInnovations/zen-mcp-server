@@ -226,9 +226,9 @@ def test_is_retryable_error():
     rate_limit_error = CLIAgentError("Error", returncode=1, stdout="", stderr="429 rate limit exceeded")
     assert agent._is_retryable_error(rate_limit_error)
 
-    # Test quota errors are retryable
+    # Test non-retryable quota errors (permanent failures)
     quota_error = CLIAgentError("Error", returncode=1, stdout="quota exceeded", stderr="")
-    assert agent._is_retryable_error(quota_error)
+    assert not agent._is_retryable_error(quota_error)
 
     # Test resource exhausted errors are retryable
     resource_error = CLIAgentError("Error", returncode=1, stdout="", stderr="resource_exhausted")

@@ -52,6 +52,7 @@ class BaseCLIAgent:
     _RETRYABLE_ERROR_INDICATORS = (
         "429",
         "rate limit",
+        "quota",
         "too many requests",
         "resource_exhausted",
     )
