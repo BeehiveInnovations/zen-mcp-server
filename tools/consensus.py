@@ -445,8 +445,8 @@ of the evidence, even when it strongly points in one direction.""",
 
     async def run_models_concurrently(self, model_specs: list[dict], request):
         """Run multiple model consultations concurrently."""
-        tasks = [asyncio.create_task(self._consult_model_with_timing(spec, request)) for spec in model_specs]
-        return await asyncio.gather(*tasks, return_exceptions=True)
+        coroutines = [self._consult_model_with_timing(spec, request) for spec in model_specs]
+        return await asyncio.gather(*coroutines, return_exceptions=True)
 
     async def execute_workflow(self, arguments: dict[str, Any]) -> list:
         """Override execute_workflow to handle concurrent model consultations."""

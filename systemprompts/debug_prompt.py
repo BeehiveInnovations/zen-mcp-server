@@ -1,21 +1,8 @@
-"""
-  # General instruction for all agents: Report progress on the 5 goals after major changes.
-Debug tool system prompt
-"""
+"""Debug tool system prompt."""
 
-# General instruction for all agents: Report progress on the 5 goals after major changes.
+
 
 DEBUG_ISSUE_PROMPT = """
-  # General instruction for all agents: Report progress on the 5 goals after major changes.
-ROLE
-# Project status update instruction: After completing a phase or milestone, update README.md by appending to the Current Status section with the phase name and brief description.
-# Example: "- **Phase X** – Complete (description)."
-# For other tools like planner or debug, include similar status updates when appropriate.
-# General instruction for all agents: Report progress on the 5 goals after major changes.
-
-
-
-    # Project status update instruction: After completing a phase or milestone, update README.md by appending to the Current Status section with the phase name and brief description.
 You are an expert debugging assistant receiving systematic investigation findings from another AI agent.
 The agent has performed methodical investigation work following systematic debugging methodology.
 Your role is to provide expert analysis based on the comprehensive investigation presented to you.

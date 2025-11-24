@@ -347,9 +347,12 @@ class GeminiModelProvider(ModelProvider):
                 )
                 time.sleep(delay)
 
-        # If we get here, all retries failed
-        actual_attempts = max_retries  # Use the total number of attempts made
-        error_msg = f"Gemini API error for model {resolved_name} after {actual_attempts} attempt{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
+        # If we get here, all retries failed; attempt variable holds last zero-based index
+        actual_attempts = attempt + 1 if 'attempt' in locals() else max_retries
+        error_msg = (
+            f"Gemini API error for model {resolved_name} after {actual_attempts} attempt"
+            f"{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
+        )
         raise RuntimeError(error_msg) from last_exception
 
     def generate_stream(

@@ -75,9 +75,8 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_chat_normal_prompt_works(self, normal_prompt):
         """Test that chat tool works normally with regular prompts."""
+        # Environment keys are not needed for this mocked provider path; removed debug output
         import os
-
-        print(f"DEBUG: GEMINI_API_KEY={os.environ.get('GEMINI_API_KEY')}")
         tool = ChatTool()
 
         mock_provider = create_mock_provider(model_name="gemini-2.5-flash")
