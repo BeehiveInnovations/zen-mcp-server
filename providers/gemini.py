@@ -348,7 +348,7 @@ class GeminiModelProvider(ModelProvider):
                 time.sleep(delay)
 
         # If we get here, all retries failed; attempt variable holds last zero-based index
-        actual_attempts = attempt + 1 if "attempt" in locals() else max_retries
+        actual_attempts = attempt + 1
         error_msg = (
             f"Gemini API error for model {resolved_name} after {actual_attempts} attempt"
             f"{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
