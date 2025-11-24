@@ -8,11 +8,10 @@ SDKs and secrets within the MCP server.
 
 import logging
 import os
-from typing import Any, Optional
+from typing import Optional
 
 from .base import (
     ModelCapabilities,
-    ModelProvider,
     ModelResponse,
     ProviderType,
     RangeTemperatureConstraint,
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 class GatewayProvider(OpenAICompatibleProvider):
     """
     Unified Gateway Provider.
-    
+
     Routes all requests to a configured gateway (Bifrost/LiteLLM).
     Inherits from OpenAICompatibleProvider as most gateways speak the OpenAI protocol.
     """
@@ -66,7 +65,7 @@ class GatewayProvider(OpenAICompatibleProvider):
     def validate_model_name(self, model_name: str) -> bool:
         """
         Validate if the model is supported.
-        
+
         The Gateway handles routing, so we generally accept any model name
         and let the gateway reject it if invalid.
         """
@@ -75,7 +74,7 @@ class GatewayProvider(OpenAICompatibleProvider):
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         """
         Get capabilities for a model.
-        
+
         Since the gateway abstracts the underlying model, we return generic
         capabilities unless we have specific overrides.
         """

@@ -497,7 +497,7 @@ class TestRegistryIntegration:
             "gemini-2.5-flash",
         ]
 
-        def get_provider_side_effect(provider_type):
+        def get_provider_side_effect(provider_type, index=0, **kwargs):
             if provider_type == ProviderType.OPENAI:
                 return mock_openai
             elif provider_type == ProviderType.GOOGLE:
@@ -509,8 +509,8 @@ class TestRegistryIntegration:
         # Set up registry with providers
         registry = ModelProviderRegistry()
         registry._providers = {
-            ProviderType.OPENAI: type(mock_openai),
-            ProviderType.GOOGLE: type(mock_gemini),
+            ProviderType.OPENAI: [type(mock_openai)],
+            ProviderType.GOOGLE: [type(mock_gemini)],
         }
 
         with patch.dict(os.environ, {"OPENAI_ALLOWED_MODELS": "o3-mini", "GOOGLE_ALLOWED_MODELS": "gemini-2.5-flash"}):
@@ -642,7 +642,7 @@ class TestAutoModeWithRestrictions:
 
         mock_openai.get_preferred_model = get_preferred_model
 
-        def get_provider_side_effect(provider_type):
+        def get_provider_side_effect(provider_type, index=0, **kwargs):
             if provider_type == ProviderType.OPENAI:
                 return mock_openai
             return None
@@ -651,7 +651,7 @@ class TestAutoModeWithRestrictions:
 
         # Set up registry
         registry = ModelProviderRegistry()
-        registry._providers = {ProviderType.OPENAI: type(mock_openai)}
+        registry._providers = {ProviderType.OPENAI: [type(mock_openai)]}
 
         with patch.dict(os.environ, {"OPENAI_ALLOWED_MODELS": "o4-mini"}):
             # Clear cached restriction service

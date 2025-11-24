@@ -335,6 +335,7 @@ class TestConsensusTool:
     async def test_concurrent_execution(self):
         """Test concurrent execution of models."""
         import json
+
         tool = ConsensusTool()
 
         # Mock _consult_model to return immediately with a result

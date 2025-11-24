@@ -30,6 +30,18 @@ class MinimalTestProvider(ModelProvider):
         """Not needed for image validation tests."""
         raise NotImplementedError("Not needed for image validation tests")
 
+    def generate_stream(
+        self,
+        prompt: str,
+        model_name: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_output_tokens: Optional[int] = None,
+        **kwargs,
+    ):
+        """Not needed for image validation tests."""
+        raise NotImplementedError("Not needed for image validation tests")
+
     def count_tokens(self, text: str, model_name: str) -> int:
         """Not needed for image validation tests."""
         raise NotImplementedError("Not needed for image validation tests")

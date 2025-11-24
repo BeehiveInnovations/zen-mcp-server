@@ -10,6 +10,8 @@ from providers.base import ProviderType
 from providers.gemini import GeminiModelProvider
 from providers.openai_provider import OpenAIModelProvider
 
+pytestmark = pytest.mark.no_mock_provider
+
 
 class TestModelProviderRegistry:
     """Test the model provider registry"""

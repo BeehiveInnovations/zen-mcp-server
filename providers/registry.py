@@ -17,6 +17,8 @@ class ModelProviderRegistry:
     """Registry for managing model providers."""
 
     _instance = None
+    _providers: dict[ProviderType, list[type[ModelProvider]]]
+    _initialized_providers: dict[ProviderType, list[ModelProvider | None]]
 
     # Provider priority order for model selection
     # Native APIs first, then custom endpoints, then catch-all providers
@@ -36,9 +38,9 @@ class ModelProviderRegistry:
             cls._instance = super().__new__(cls)
             # Initialize instance dictionaries on first creation
             # Map ProviderType -> list of provider classes
-            cls._instance._providers: dict[ProviderType, list[type[ModelProvider]]] = {}
+            cls._instance._providers = {}
             # Map ProviderType -> list of initialized provider instances (aligned by index)
-            cls._instance._initialized_providers: dict[ProviderType, list[ModelProvider | None]] = {}
+            cls._instance._initialized_providers = {}
             logging.debug(f"REGISTRY: Created instance {cls._instance}")
         return cls._instance
 
@@ -71,9 +73,7 @@ class ModelProviderRegistry:
             instance._initialized_providers.pop(provider_type, None)
 
     @classmethod
-    def get_provider(
-        cls, provider_type: ProviderType, force_new: bool = False, index: int = 0
-    ) -> ModelProvider | None:
+    def get_provider(cls, provider_type: ProviderType, force_new: bool = False, index: int = 0) -> ModelProvider | None:
         """Get an initialized provider instance.
 
         Args:
@@ -156,30 +156,19 @@ class ModelProviderRegistry:
         Returns:
             ModelProvider instance that supports this model
         """
-        logging.debug(f"get_provider_for_model called with model_name='{model_name}'")
-
         # Check providers in priority order
         instance = cls()
-        logging.debug(f"Registry instance: {instance}")
-        logging.debug(f"Available providers in registry: {list(instance._providers.keys())}")
 
         for provider_type in cls.PROVIDER_PRIORITY_ORDER:
             if provider_type in instance._providers:
-                logging.debug(f"Found {provider_type} in registry")
                 # Iterate through all providers of this type (e.g., multiple CLIs)
                 provider_list = instance._providers[provider_type]
                 for i in range(len(provider_list)):
                     # Get or create provider instance
                     provider = cls.get_provider(provider_type, index=i)
                     if provider and provider.validate_model_name(model_name):
-                        logging.debug(f"{provider_type} (index {i}) validates model {model_name}")
                         return provider
-                    else:
-                        logging.debug(f"{provider_type} (index {i}) does not validate model {model_name}")
-            else:
-                logging.debug(f"{provider_type} not found in registry")
 
-        logging.debug(f"No provider found for model {model_name}")
         return None
 
     @classmethod
@@ -349,14 +338,15 @@ class ModelProviderRegistry:
 
         effective_category = tool_category or ToolModelCategory.BALANCED
         first_available_model = None
+        instance = cls()
 
         # Ask each provider for their preference in priority order
         for provider_type in cls.PROVIDER_PRIORITY_ORDER:
-            if provider_type not in cls._instance._providers:
+            if provider_type not in instance._providers:
                 continue
 
             # Iterate through all providers of this type
-            provider_count = len(cls._instance._providers[provider_type])
+            provider_count = len(instance._providers[provider_type])
             for i in range(provider_count):
                 provider = cls.get_provider(provider_type, index=i)
                 if provider:
@@ -444,31 +434,3 @@ def load_model_library():
 
 MODEL_LIBRARY = load_model_library()
 
-
-def get_provider_for_model(model_name: str) -> ModelProvider | None:
-    """Get provider for a specific model name."""
-    # Load model config from library
-    model_config = MODEL_LIBRARY.get("models", {}).get(model_name)
-    if not model_config:
-        # Fallback to custom_models.json lookup
-        from .custom import get_custom_model_config
-
-        model_config = get_custom_model_config(model_name)
-
-    if model_config:
-        upstream = model_config.get("upstream_provider", "unknown")
-        if upstream == "openrouter" and os.getenv("KILO_PREFERRED", "true").lower() == "true":
-            # Route OpenRouter models to Kilo first
-            if os.getenv("KILO_API_KEY"):
-                return ModelProviderRegistry.get_provider(ProviderType.KILO)
-        # Route to specific provider based on upstream
-        provider_type = getattr(ProviderType, upstream.upper(), None)
-        if provider_type:
-            return ModelProviderRegistry.get_provider(provider_type)
-
-    # Original priority fallback
-    for provider_type in ModelProviderRegistry.PROVIDER_PRIORITY_ORDER:
-        provider = ModelProviderRegistry.get_provider(provider_type)
-        if provider.validate_model_name(model_name):
-            return provider
-    return None

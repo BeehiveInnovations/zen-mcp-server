@@ -6,7 +6,8 @@ import logging
 import os
 import time
 from abc import abstractmethod
-from typing import Iterator, Optional
+from collections.abc import Iterator
+from typing import Optional
 from urllib.parse import urlparse
 
 from openai import OpenAI
@@ -44,7 +45,7 @@ class OpenAICompatibleProvider(ModelProvider):
         self.base_url = base_url
         self.organization = kwargs.get("organization")
         self.allowed_models = self._parse_allowed_models()
-        
+
         # Flag to force usage of responses endpoint (for future-proofing)
         self.use_responses_endpoint = kwargs.get("use_responses_endpoint", False)
 
@@ -452,7 +453,6 @@ class OpenAICompatibleProvider(ModelProvider):
         system_prompt: Optional[str] = None,
         temperature: float = 0.3,
         max_output_tokens: Optional[int] = None,
-        images: Optional[list[str]] = None,
         **kwargs,
     ) -> ModelResponse:
         """Generate content using the OpenAI-compatible API.
@@ -468,6 +468,8 @@ class OpenAICompatibleProvider(ModelProvider):
         Returns:
             ModelResponse with generated content and metadata
         """
+        images = kwargs.get("images")
+        
         # Validate model name against allow-list
         if not self.validate_model_name(model_name):
             raise ValueError(f"Model '{model_name}' not in allowed models list. Allowed models: {self.allowed_models}")
@@ -680,7 +682,7 @@ class OpenAICompatibleProvider(ModelProvider):
         }
 
         # Check model capabilities once to determine parameter support
-        resolved_model = self._resolve_model_name(model_name)
+        # resolved_model = self._resolve_model_name(model_name)  # Not used, commented out
 
         # Use the effective temperature we calculated earlier
         if effective_temperature is not None:

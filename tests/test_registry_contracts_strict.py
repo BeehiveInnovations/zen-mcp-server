@@ -3,13 +3,14 @@ Focused contract tests for the provider registry that avoid brittle
 dependencies on concrete provider implementations.
 """
 
-import os
-from typing import Iterator
+from collections.abc import Iterator
 
 import pytest
 
 from providers.base import ModelCapabilities, ModelProvider, ModelResponse, ProviderType, RangeTemperatureConstraint
 from providers.registry import ModelProviderRegistry
+
+pytestmark = pytest.mark.no_mock_provider
 
 
 class FakeProvider(ModelProvider):

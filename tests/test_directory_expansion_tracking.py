@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from providers.registry import ModelProviderRegistry
 from tests.mock_helpers import create_mock_provider
 from tools.chat import ChatTool
 from tools.models import ToolOutput
@@ -74,7 +75,7 @@ def helper_function():
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     @pytest.mark.asyncio
-    @patch("providers.ModelProviderRegistry.get_provider_for_model")
+    @patch.object(ModelProviderRegistry, "get_provider_for_model")
     async def test_directory_expansion_tracked_in_conversation_memory(
         self, mock_get_provider, tool, temp_directory_with_files
     ):
@@ -93,8 +94,25 @@ def helper_function():
             "model": "flash",
         }
 
-        # Execute the tool
-        result = await tool.execute(request_args)
+        # Execute the tool with mocked provider/model context to avoid real API calls
+        mock_provider.generate_content.return_value.content = "Directory analysis complete"
+        from utils.model_context import TokenAllocation
+
+        with patch.object(
+            ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
+        ), patch("utils.model_context.ModelContext") as MockModelContext:
+            mock_ctx = MockModelContext.return_value
+            mock_ctx.provider = mock_provider
+            mock_ctx.model_name = "flash"
+            mock_ctx.calculate_token_allocation.return_value = TokenAllocation(
+                total_tokens=1_048_576,
+                content_tokens=838_861,
+                response_tokens=209_715,
+                file_tokens=335_544,
+                history_tokens=335_544,
+            )
+
+            result = await tool.execute(request_args)
 
         # Verify the tool executed successfully
         assert result is not None
@@ -122,7 +140,7 @@ def helper_function():
 
     @pytest.mark.asyncio
     @patch("utils.conversation_memory.get_storage")
-    @patch("providers.ModelProviderRegistry.get_provider_for_model")
+    @patch.object(ModelProviderRegistry, "get_provider_for_model")
     async def test_conversation_continuation_with_directory_files(
         self, mock_get_provider, mock_storage, tool, temp_directory_with_files
     ):
@@ -181,7 +199,17 @@ def helper_function():
 
         with patch.object(tool, "filter_new_files", side_effect=capture_filtering_mock):
             # Execute continuation - this should not re-embed the same files
-            result = await tool.execute(continuation_args)
+            mock_provider.generate_content.return_value.content = "Continuation OK"
+            from utils.model_context import ModelContext
+
+            model_context = ModelContext("flash")
+            model_context._provider = mock_provider
+            model_context._capabilities = mock_provider.get_capabilities.return_value
+
+            with patch.object(
+                ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
+            ), patch("utils.model_context.ModelContext", return_value=model_context):
+                result = await tool.execute(continuation_args)
 
         # Verify the tool executed successfully
         assert result is not None
@@ -284,7 +312,7 @@ def helper_function():
         # In this case, since we only embedded Swift files, the directory might still be included
 
     @pytest.mark.asyncio
-    @patch("providers.ModelProviderRegistry.get_provider_for_model")
+    @patch.object(ModelProviderRegistry, "get_provider_for_model")
     async def test_actually_processed_files_stored_correctly(self, mock_get_provider, tool, temp_directory_with_files):
         """Test that _actually_processed_files is stored correctly after file processing"""
         # Setup mock provider

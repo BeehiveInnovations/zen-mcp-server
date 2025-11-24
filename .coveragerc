@@ -1,5 +1,5 @@
 [run]
-source = gemini_server
+source = .
 omit = 
     */tests/*
     */venv/*

@@ -70,7 +70,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "python", "/usr/local/bin/healthcheck.py"]
+      test: ["CMD", "python", "/app/docker/scripts/healthcheck.py"]
       interval: 30s
       timeout: 10s
       retries: 3

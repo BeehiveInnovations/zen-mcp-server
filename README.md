@@ -41,6 +41,8 @@ The Supervisor and worker nodes resolve models through `agent/llm_factory.py`, k
 
 Docker Compose example with gateway + Redis: `docker/docker-compose.gateway.yml`.
 
+For copy-pastable commands (env block, Docker stack, simulator tests), see `docs/GATEWAY_PLAYBOOK.md`.
+
 ## Quick Start
 
 ### 1. Installation

@@ -3,8 +3,12 @@
 import os
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from providers.base import ProviderType
 from providers.openai_provider import OpenAIModelProvider
+
+pytestmark = pytest.mark.no_mock_provider
 
 
 class TestOpenAIProvider:

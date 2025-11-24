@@ -8,6 +8,8 @@ import pytest
 from providers.base import ProviderType
 from providers.xai import XAIModelProvider
 
+pytestmark = pytest.mark.no_mock_provider
+
 
 class TestXAIProvider:
     """Test X.AI provider functionality."""

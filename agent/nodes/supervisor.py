@@ -11,16 +11,19 @@ from typing import Literal
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from pydantic import BaseModel
 
-from agent.state import AgentState
 from agent.llm_factory import get_llm
+from agent.state import AgentState
 
 # List of available worker nodes
 MEMBERS = ["Architect", "Coder", "Researcher", "Reviewer", "Debugger", "Terminal", "Utilities"]
 
+
 # Define the routing schema
 class Route(BaseModel):
     """The next worker to act."""
+
     next: Literal["Architect", "Coder", "Researcher", "Reviewer", "Debugger", "Terminal", "Utilities", "FINISH"]
+
 
 # System prompt for the supervisor
 SUPERVISOR_SYSTEM_PROMPT = """You are the Supervisor of the Zen MCP Server.
@@ -41,36 +44,34 @@ Available Workers:
 4. Do not do the work yourself; delegate to the workers.
 """
 
+
 def _supervisor_llm():
     """Return LLM for supervisor using factory (respects gateway/direct toggle)."""
     # Allow override via SUPERVISOR_MODEL else fall back to LLM_MODEL or default
     override_model = os.getenv("SUPERVISOR_MODEL")
     return get_llm(model=override_model, temperature=0)
 
+
 def supervisor_node(state: AgentState) -> dict:
     """
     The Supervisor node function.
-    
+
     Decides the next step in the graph.
     """
     llm = _supervisor_llm()
-    
+
     # Create the routing chain
     # We use with_structured_output to force the LLM to choose a valid route
-    supervisor_chain = (
-        ChatPromptTemplate.from_messages([
+    supervisor_chain = ChatPromptTemplate.from_messages(
+        [
             ("system", SUPERVISOR_SYSTEM_PROMPT),
             MessagesPlaceholder(variable_name="messages"),
             ("system", "Given the conversation above, who should act next? Select one of: {members} or FINISH."),
-        ])
-        | llm.with_structured_output(Route)
-    )
-    
+        ]
+    ) | llm.with_structured_output(Route)
+
     # Invoke the chain
-    result = supervisor_chain.invoke({
-        "messages": state["messages"],
-        "members": ", ".join(MEMBERS)
-    })
-    
+    result = supervisor_chain.invoke({"messages": state["messages"], "members": ", ".join(MEMBERS)})
+
     # Return the decision
     return {"next": result.next}
