@@ -1,106 +1,212 @@
 # Zen MCP Server – Coldaine Augmented Fork
 
-This repository is Coldaine’s maintained and augmented fork of the original BeehiveInnovations/zen-mcp-server. It layers extensive planning for LangGraph-based multi-agent flows, custom provider endpoints, and tooling that reflects Coldaine’s local-first, CLI-centric workflows. Treat this repo as the authoritative source for the fork—documentation and scripts no longer mirror upstream defaults.
+This repository provides **16 sophisticated AI-powered tools** with workflow capabilities, conversation memory, and multi-provider support. A **LangGraph multi-agent architecture** is in development for future migration.
 
-## Fork Scope
-- Adds comprehensive research docs (LangGraph architecture, tool consolidation, CLI integration) that chart the upcoming multi-agent refactor.
-- Maintains custom model registries (`conf/custom_models.json`) and consensus defaults tuned for Coldaine’s API keys and infrastructure.
-- Ships extra helper scripts (`patch/`, `docker/scripts/`, PowerShell variants) to keep the fork cross-platform and reproducible without upstream dependencies.
+## Current Architecture: Tool/Registry System ✅ PRODUCTION READY
 
-## Key Goals
-1. **LangGraph Migration**: Transition to a stateful, multi-agent architecture using LangGraph.
-2. **Unified Model Gateway**: Integrate Bifrost/LiteLLM to centralize API key management and routing.
-3. **Tool Consolidation**: Streamline 16 tools into ~9 core agents (Architect, Coder, Researcher, etc.).
-4. **State Persistence**: Implement Redis-based checkpointing for robust conversation memory.
-5. **CLI Execution**: Support SSH-based remote command execution.
+The server provides 16 specialized tools that handle complex development workflows through AI-powered analysis and multi-step processes.
+
+### Core Capabilities
+- **16 Production Tools**: Chat, analysis, debugging, code review, security auditing, and more
+- **Conversation Memory**: Multi-turn AI-to-AI conversations with context preservation
+- **Multi-Provider Support**: OpenAI, Gemini, OpenRouter, XAI, DIAL, and custom endpoints
+- **Workflow Automation**: Step-by-step analysis with expert validation
+- **Model Selection**: Auto mode or manual model selection per task
+- **File Analysis**: Comprehensive codebase analysis with intelligent context management
+
+## Future Architecture: LangGraph Multi-Agent 🔄 IN DEVELOPMENT
+
+A multi-agent system with Supervisor routing to specialized workers (Architect, Coder, Researcher, etc.) is being developed. See [`docs/MIGRATION_GUIDE.md`](docs/MIGRATION_GUIDE.md) for migration details.
+
+### Gateway vs Direct Provider Mode
+
+The experimental LangGraph layer supports **dynamic routing through a unified gateway** (Bifrost/LiteLLM) or **direct provider SDKs**. Control this via environment variables:
+
+```bash
+# Gateway mode (centralized credential + policy management)
+USE_GATEWAY=true
+GATEWAY_URL=http://localhost:8080/langchain
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+
+# Direct mode (talk to providers individually)
+USE_GATEWAY=false
+OPENAI_API_KEY=sk-openai...
+GEMINI_API_KEY=...            # Optional if switching provider
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+```
+
+The Supervisor and worker nodes resolve models through `agent/llm_factory.py`, keeping graph code provider‑agnostic. Override the Supervisor’s specific model with `SUPERVISOR_MODEL` if needed.
+
+Docker Compose example with gateway + Redis: `docker/docker-compose.gateway.yml`.
 
 ## Quick Start
-1. Clone: `git clone https://github.com/Coldaine/zen-mcp-server.git && cd zen-mcp-server`
-2. Env: Copy .env.example to .env; configure `UNIFIED_LLM_GATEWAY` and `REDIS_URL`.
-3. Run: `./run-server.sh`
-4. Use: In Claude Code or Gemini CLI, reference "zen" server for multi-agent workflows.
 
-## Setup
-- Install: Python 3.10+, uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
-- Keys: See .env.example (API keys are now managed by the Gateway, not the MCP server).
-- Tools: Agents are orchestrated by LangGraph; configuration via `conf/agents.json` (upcoming).
+### 1. Installation
+```bash
+git clone https://github.com/Coldaine/zen-mcp-server.git && cd zen-mcp-server
+python -m pip install -e .
+```
 
-For details, see `docs/MIGRATION_MASTER_PLAN.md`.
+### 2. Configuration
+```bash
+cp .env.example .env
+# Edit .env with your API keys (at least one required)
+```
 
-License: Apache 2.0
+### 3. Run Server
+```bash
+./run-server.sh
+```
 
-## Current Project Status
-- **Phase 0: Preparation** – Complete (Documentation aligned, Master Plan created).
-- **Phase 1: Foundation & Dependencies** – Pending (Gateway integration, Redis setup).
-- **Phase 2: LangGraph Core Implementation** – Pending (StateGraph, Supervisor).
-- **Phase 3: Tool Consolidation** – Pending (Refactoring tools into agents).
-- **Phase 4: Cutover & Cleanup** – Pending.
-- **Phase 2: Core Tool Refactor (Consensus)** – Pending (parallel calls, randomized stances).
-- **Phase 3: Testing Overhaul (Live Qwen)** – Pending.
-- **Phase 4: Advanced Integration (Headless CLI)** – Pending.
+### 4. Use with Claude Desktop
+Add to your Claude Desktop configuration:
+```json
+{
+  "mcpServers": {
+    "zen": {
+      "command": "python",
+      "args": ["server.py"],
+      "cwd": "/path/to/zen-mcp-server"
+    }
+  }
+}
+```
 
-**Milestone Updates:**
-- README refactored and pushed.
-- CLI instructions organized in docs/refactor/.
-- _ModelLibrary.json recovered and committed.
-- Agent prompts updated to include status reporting.
+## Setup Requirements
 
+- **Python**: 3.10+ recommended
+- **API Keys**: At least one provider (OpenAI, Gemini, OpenRouter, XAI, DIAL, or custom)
+- **Optional**: uv for faster installs (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
-- **Phase 1: Foundational Setup (Registry, Models, Defaults)** – Complete (GLM default set).
-## Current Project Status
-- **Prep Phase: Documentation Reorganization** – Complete (README refactored, CLI instructions organized in docs/refactor/, _ModelLibrary.json recovered, index.md added).
-- **Phase 1: Foundational Setup (Registry, Models, Defaults)** – Pending (Kilo substitution, model merge, GLM default).
-- **Phase 2: Core Tool Refactor (Consensus)** – Pending (parallel calls, randomized stances).
-- **Phase 3: Testing Overhaul (Live Qwen)** – Pending.
-- **Phase 4: Advanced Integration (Headless CLI)** – Pending.
+## Available Tools
 
-**Milestone Updates:**
-- README refactored and pushed.
-- CLI instructions organized in docs/refactor/.
-- _ModelLibrary.json recovered and committed.
-- Agent prompts updated to include status reporting.
+| Tool | Purpose | Key Features |
+|------|---------|-------------|
+| **chat** | Interactive development | Conversation memory, multi-turn dialogue |
+| **thinkdeep** | Deep analysis | Expert validation, step-by-step reasoning |
+| **planner** | Project planning | Sequential workflow, task breakdown |
+| **consensus** | Multi-model analysis | Parallel model consultation, consensus building |
+| **codereview** | Code quality | Step-by-step review, expert analysis |
+| **debug** | Issue resolution | Root cause analysis, investigation workflow |
+| **secaudit** | Security analysis | OWASP Top 10, compliance checks |
+| **analyze** | File analysis | Comprehensive codebase investigation |
+| **refactor** | Code improvement | Refactoring strategies, validation |
+| **testgen** | Test creation | Automated test generation |
+| **docgen** | Documentation | Auto-generated documentation |
+| **tracer** | Execution analysis | Call path tracing, control flow |
+| **precommit** | Validation | Pre-commit checks, compliance |
+| **challenge** | Critical thinking | Avoid automatic agreement |
+| **listmodels** | Model info | Available models by provider |
+| **version** | Server info | Version and system information |
 
+## Configuration
 
-- **Phase 1: Foundational Setup (Registry, Models, Defaults)** – Complete (GLM default set).
-## Current Project Status
-- **Prep Phase: Documentation Reorganization** – Complete (README refactored, CLI instructions organized in docs/refactor/, _ModelLibrary.json recovered, index.md added).
-- **Phase 1: Foundational Setup (Registry, Models, Defaults)** – Pending (Kilo substitution, model merge, GLM default).
-- **Phase 2: Core Tool Refactor (Consensus)** – Pending (parallel calls, randomized stances).
-- **Phase 3: Testing Overhaul (Live Qwen)** – Pending.
-- **Phase 4: Advanced Integration (Headless CLI)** – Pending.
+### Required API Keys
+Configure at least one provider in `.env`:
 
-**Milestone Updates:**
-- README refactored and pushed.
-- CLI instructions organized in docs/refactor/.
-- _ModelLibrary.json recovered and committed.
-- Agent prompts updated to include status reporting.
+```bash
+# OpenAI (recommended for GPT models)
+OPENAI_API_KEY=your_openai_key_here
 
+# Google Gemini (recommended for Flash/Pro models)
+GEMINI_API_KEY=your_gemini_key_here
 
-- **Phase 1: Foundational Setup (Registry, Models, Defaults)** – Complete (GLM default set).
-## Current Project Status
-- **Prep Phase: Documentation Reorganization** – Complete (README refactored, CLI instructions organized in docs/refactor/, _ModelLibrary.json recovered, index.md added).
-- **Phase 1: Foundational Setup (Registry, Models, Defaults)** – Pending (Kilo substitution, model merge, GLM default).
-- **Phase 2: Core Tool Refactor (Consensus)** – Pending (parallel calls, randomized stances).
-- **Phase 3: Testing Overhaul (Live Qwen)** – Pending.
-- **Phase 4: Advanced Integration (Headless CLI)** – Pending.
+# OpenRouter (access to multiple models)
+OPENROUTER_API_KEY=your_openrouter_key_here
 
-**Milestone Updates:**
-- README refactored and pushed.
-- CLI instructions organized in docs/refactor/.
-- _ModelLibrary.json recovered and committed.
-- Agent prompts updated to include status reporting.
+# X.AI (GROK models)
+XAI_API_KEY=your_xai_key_here
 
+# DIAL (enterprise unified access)
+DIAL_API_KEY=your_dial_key_here
 
-## Current Project Status
+# Custom endpoints (Ollama, vLLM, etc.)
+CUSTOM_API_URL=http://localhost:11434/v1
+CUSTOM_API_KEY=  # Leave empty for Ollama
+```
 
-- **Phase 1: Foundational Setup** – Complete (GLM default set, registry updated, models merged, Kilo routing configured).
-- **Phase 2: Core Tool Refactor (Consensus)** – Pending.
-- **Phase 3: Testing Overhaul (Live Qwen)** – Pending.
-- **Phase 4: Advanced Integration (Headless CLI)** – Pending.
+### Optional Settings
+```bash
+# Default model (auto lets Claude choose best model)
+DEFAULT_MODEL=auto
 
-## Current Project Status
+# Tool selection (disable non-essential tools)
+DISABLED_TOOLS=analyze,refactor,testgen,secaudit,docgen,tracer
 
-- **Phase 1: Foundational Setup** – Complete (GLM default set).
-- **Phase 2: Core Tool Refactor (Consensus)** – Pending.
-- **Phase 3: Testing Overhaul (Live Qwen)** – Pending.
-- **Phase 4: Advanced Integration (Headless CLI)** – Pending.
+# Conversation settings
+CONVERSATION_TIMEOUT_HOURS=3
+MAX_CONVERSATION_TURNS=20
+
+# Logging level
+LOG_LEVEL=INFO
+```
+
+## Documentation
+
+- **[Project Status](docs/PROJECT_STATUS.md)**: Current implementation status
+- **[Migration Guide](docs/MIGRATION_GUIDE.md)**: LangGraph migration path
+- **[Architecture Alignment](docs/ARCHITECTURE_ALIGNMENT.md)**: Technical decisions
+- **[Migration Master Plan](docs/MIGRATION_MASTER_PLAN.md)**: Detailed LangGraph roadmap
+
+## Development
+
+### Running Tests
+```bash
+# Full test suite
+python -m pytest
+
+# Specific tool tests
+python -m pytest tests/test_consensus.py -v
+
+# Integration tests
+./run_integration_tests.sh
+```
+
+### Development Setup
+```bash
+# Install development dependencies
+python -m pip install -r requirements-dev.txt
+
+# Code formatting
+black .
+isort .
+ruff check .
+```
+
+## Fork Scope
+
+This fork enhances the original with:
+- **Advanced Workflow Tools**: Sophisticated multi-step analysis with expert validation
+- **Conversation Memory**: Persistent AI-to-AI conversations across tool interactions
+- **Multi-Provider Support**: Unified access to all major AI providers
+- **Custom Model Registry**: Tailored model configurations and defaults
+- **Cross-Platform Scripts**: PowerShell variants and Docker support
+- **Comprehensive Testing**: Extensive test coverage with integration scenarios
+
+## Project Status & Migration
+
+### Current System: Tool/Registry Architecture ✅ PRODUCTION READY
+- **16 sophisticated tools** with workflow capabilities and conversation memory
+- **Multi-provider support** for all major AI providers
+- **Comprehensive testing** with integration scenarios
+- **Production stability** with extensive real-world usage
+
+### Future System: LangGraph Multi-Agent 🔄 IN DEVELOPMENT
+- **2/7 nodes implemented** (Supervisor, Researcher)
+- **Dynamic LLM factory** (`agent/llm_factory.py`) enabling gateway toggle
+- **State persistence** with Redis checkpointing
+- **Agent orchestration** for complex workflows
+- **Migration path** documented in [`docs/MIGRATION_GUIDE.md`](docs/MIGRATION_GUIDE.md)
+
+### Quick Status Reference
+- **For immediate use**: Current tool/registry system is fully functional
+- **For development**: LangGraph system available for testing
+- **For planning**: See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for detailed progress
+
+---
+
+**License**: Apache 2.0
+
+**Note**: Use the current tool/registry system for production work. The LangGraph system is experimental and intended for development and testing.

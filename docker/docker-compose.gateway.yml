@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: ..
+    container_name: zen-mcp-server
+    environment:
+      - USE_GATEWAY=true
+      - GATEWAY_URL=http://gateway:8080/langchain
+      - LLM_PROVIDER=openai
+      - LLM_MODEL=gpt-4o-mini
+      - UNIFIED_LLM_API_KEY=dummy-key
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - gateway
+      - redis
+    networks:
+      - zen-net
+    ports:
+      - "8000:8000"
+    command: ["python", "server_graph.py"]
+
+  gateway:
+    image: maximhq/bifrost:latest
+    container_name: bifrost-gateway
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    ports:
+      - "8080:8080"
+    networks:
+      - zen-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: zen-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - zen-net
+
+networks:
+  zen-net:
+    driver: bridge

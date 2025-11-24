@@ -8,12 +8,11 @@ based on the conversation history and the current state.
 import os
 from typing import Literal
 
-from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 
 from agent.state import AgentState
+from agent.llm_factory import get_llm
 
 # List of available worker nodes
 MEMBERS = ["Architect", "Coder", "Researcher", "Reviewer", "Debugger", "Terminal", "Utilities"]
@@ -42,21 +41,11 @@ Available Workers:
 4. Do not do the work yourself; delegate to the workers.
 """
 
-def get_llm():
-    """Get the configured LLM instance pointing to the Gateway."""
-    api_key = os.getenv("UNIFIED_LLM_API_KEY", "sk-dummy-key")
-    base_url = os.getenv("UNIFIED_LLM_GATEWAY", "http://localhost:8080/v1")
-    
-    # Ensure base_url is correct for langchain_openai
-    if not base_url.endswith("/v1"):
-        base_url = f"{base_url.rstrip('/')}/v1"
-        
-    return ChatOpenAI(
-        model="gpt-4o", # The gateway will route this, or we can make it configurable
-        api_key=SecretStr(api_key),
-        base_url=base_url,
-        temperature=0
-    )
+def _supervisor_llm():
+    """Return LLM for supervisor using factory (respects gateway/direct toggle)."""
+    # Allow override via SUPERVISOR_MODEL else fall back to LLM_MODEL or default
+    override_model = os.getenv("SUPERVISOR_MODEL")
+    return get_llm(model=override_model, temperature=0)
 
 def supervisor_node(state: AgentState) -> dict:
     """
@@ -64,7 +53,7 @@ def supervisor_node(state: AgentState) -> dict:
     
     Decides the next step in the graph.
     """
-    llm = get_llm()
+    llm = _supervisor_llm()
     
     # Create the routing chain
     # We use with_structured_output to force the LLM to choose a valid route
