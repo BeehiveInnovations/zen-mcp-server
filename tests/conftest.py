@@ -4,6 +4,7 @@ Pytest configuration for Zen MCP Server tests
 
 import asyncio
 import importlib
+import inspect
 import os
 import sys
 from pathlib import Path
@@ -14,6 +15,48 @@ import pytest
 parent_dir = Path(__file__).resolve().parent.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
+
+# Optional pytest-asyncio integration -------------------------------------------------
+try:
+    import pytest_asyncio  # type: ignore  # noqa: F401
+
+    HAS_PYTEST_ASYNCIO = True
+    pytest_plugins = ("pytest_asyncio",)
+except ImportError:  # pragma: no cover - exercised only when plugin missing
+    HAS_PYTEST_ASYNCIO = False
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_pyfunc_call(pyfuncitem):
+    """Run async tests via asyncio.run when pytest-asyncio is unavailable.
+
+    Pytest normally relies on pytest-asyncio (or anyio) to manage event loops. Some
+    restricted environments—like GitHub’s semantic checks—omit that plugin, which
+    would cause coroutine tests to error at collection time. This hook detects those
+    cases and executes coroutine tests manually, while deferring entirely whenever
+    pytest-asyncio is installed so we do not attempt to nest event loops.
+    """
+
+    if HAS_PYTEST_ASYNCIO:
+        return None
+
+    testfunction = pyfuncitem.obj
+    if not inspect.iscoroutinefunction(testfunction):
+        return None
+
+    argnames = getattr(pyfuncitem._fixtureinfo, "argnames", ()) or ()
+    kwargs = {name: pyfuncitem.funcargs[name] for name in argnames}
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(testfunction(**kwargs))
+        return True
+
+    # If a loop is already running (rare without pytest-asyncio), allow pytest's
+    # default handling to avoid RuntimeError("asyncio.run() cannot be called...")
+    return None
+
 
 # --------------------------------------------------------------------
 # Test environment setup
