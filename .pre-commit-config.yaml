@@ -1,38 +1,36 @@
----
 default_stages: [pre-commit, pre-push]
+default_language_version:
+  python: python3
+exclude: |
+  (?x)^(\
+    \.git/|\
+    \.venv/|\
+    venv/|\
+    \.zen_venv/|\
+    __pycache__/|\
+    \.pytest_cache/|\
+    logs/|\
+    dist/|\
+    build/|\
+    test_simulation_files/\
+  )
 repos:
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.8
     hooks:
-      - id: black
-
+      - id: ruff
+        args: ["--fix"]
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 5.13.2
     hooks:
       - id: isort
         args: ["--profile", "black"]
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.8
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
     hooks:
-      - id: ruff
-        args: [--fix]
-
-# Configuration for specific tools
-default_language_version:
-  python: python3
-
-# Exclude patterns
-exclude: |
-  (?x)^(
-    \.git/|
-    \.venv/|
-    venv/|
-    \.zen_venv/|
-    __pycache__/|
-    \.pytest_cache/|
-    logs/|
-    dist/|
-    build/|
-    test_simulation_files/
-  )
+      - id: black
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer

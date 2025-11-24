@@ -68,8 +68,8 @@ def create_graph():
     if redis_url:
         try:
             from langgraph.checkpoint.redis import RedisSaver
-            # from redis import Redis  # Not used, commented out to avoid lint error
 
+            # from redis import Redis  # Not used, commented out to avoid lint error
             # Create Redis client
             # We need to parse the URL or pass it directly if supported
             # RedisSaver.from_conn_string is available in newer versions

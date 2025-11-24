@@ -61,7 +61,7 @@ graph TD
     A --> F[Debugger ⏳]
     A --> G[Terminal ⏳]
     A --> H[Utilities ⏳]
-    
+
     C --> I[analyze + refactor tools]
     D --> J[chat + planner tools]
     E --> K[codereview + secaudit + precommit]
@@ -87,7 +87,7 @@ def architect_node(state: AgentState) -> dict:
     """Architect node using existing analyze/refactor tools"""
     # Extract task from state
     task = extract_task_from_state(state)
-    
+
     # Use existing tools with LangGraph state management
     if task.type == "analysis":
         tool = AnalyzeTool()
@@ -95,7 +95,7 @@ def architect_node(state: AgentState) -> dict:
     elif task.type == "refactoring":
         tool = RefactorTool()
         result = await tool.execute(task.parameters)
-    
+
     # Convert tool output to LangGraph state format
     return {"messages": [format_message_for_langgraph(result)]}
 ```
@@ -134,7 +134,7 @@ ZEN_ARCHITECTURE=auto        # Smart selection based on task
 # Unified server entry point
 def create_server():
     architecture = os.getenv('ZEN_ARCHITECTURE', 'tools')
-    
+
     if architecture == 'langgraph':
         return create_langgraph_server()
     elif architecture == 'auto':

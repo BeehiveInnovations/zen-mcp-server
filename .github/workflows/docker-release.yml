@@ -18,7 +18,7 @@ jobs:
   docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,24 +65,24 @@ jobs:
         run: |
           RELEASE_TAG="${{ github.event.release.tag_name }}"
           DOCKER_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
-          
+
           # Add Docker information to the release
           gh release edit "$RELEASE_TAG" --notes-file - << EOF
           ${{ github.event.release.body }}
-          
+
           ---
-          
+
           ## 🐳 Docker Images
-          
+
           This release is available as Docker images:
-          
+
           $(echo "$DOCKER_TAGS" | sed 's/ghcr.io/- `ghcr.io/g' | sed 's/ /`\n/g')
-          
+
           **Quick start with Docker:**
           \`\`\`bash
           docker pull ghcr.io/${{ github.repository }}:$RELEASE_TAG
           \`\`\`
-          
+
           **Claude Desktop configuration:**
           \`\`\`json
           {

@@ -4,13 +4,7 @@ import logging
 import os
 from typing import Optional
 
-from .base import (
-    FixedTemperatureConstraint,
-    ModelCapabilities,
-    ModelResponse,
-    ProviderType,
-    RangeTemperatureConstraint,
-)
+from .base import FixedTemperatureConstraint, ModelCapabilities, ModelResponse, ProviderType, RangeTemperatureConstraint
 from .openai_compatible import OpenAICompatibleProvider
 from .openrouter_registry import OpenRouterModelRegistry
 

@@ -7,11 +7,7 @@ handles missing files without crashing.
 
 from unittest.mock import Mock
 
-from utils.conversation_memory import (
-    ConversationTurn,
-    ThreadContext,
-    build_conversation_history,
-)
+from utils.conversation_memory import ConversationTurn, ThreadContext, build_conversation_history
 
 
 class TestConversationMissingFiles:

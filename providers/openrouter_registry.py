@@ -9,11 +9,7 @@ from typing import Optional
 # Import handled via importlib.resources.files() calls directly
 from utils.file_utils import read_json_file
 
-from .base import (
-    ModelCapabilities,
-    ProviderType,
-    create_temperature_constraint,
-)
+from .base import ModelCapabilities, ProviderType, create_temperature_constraint
 
 
 class OpenRouterModelRegistry:

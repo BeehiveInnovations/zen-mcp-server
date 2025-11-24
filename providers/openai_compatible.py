@@ -12,12 +12,7 @@ from urllib.parse import urlparse
 
 from openai import OpenAI
 
-from .base import (
-    ModelCapabilities,
-    ModelProvider,
-    ModelResponse,
-    ProviderType,
-)
+from .base import ModelCapabilities, ModelProvider, ModelResponse, ProviderType
 
 
 class OpenAICompatibleProvider(ModelProvider):
@@ -469,7 +464,7 @@ class OpenAICompatibleProvider(ModelProvider):
             ModelResponse with generated content and metadata
         """
         images = kwargs.get("images")
-        
+
         # Validate model name against allow-list
         if not self.validate_model_name(model_name):
             raise ValueError(f"Model '{model_name}' not in allowed models list. Allowed models: {self.allowed_models}")

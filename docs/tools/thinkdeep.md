@@ -11,7 +11,7 @@ The `thinkdeep` tool provides extended reasoning capabilities, offering a second
 ## Example Prompt
 
 ```
-Think deeper about my authentication design with pro using max thinking mode and brainstorm to come up 
+Think deeper about my authentication design with pro using max thinking mode and brainstorm to come up
 with the best architecture for my project
 ```
 

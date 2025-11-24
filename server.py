@@ -58,10 +58,7 @@ from mcp.types import (  # noqa: E402
     ToolsCapability,
 )
 
-from config import (  # noqa: E402
-    DEFAULT_MODEL,
-    __version__,
-)
+from config import DEFAULT_MODEL, __version__  # noqa: E402
 from tools import (  # noqa: E402
     AnalyzeTool,
     ChallengeTool,

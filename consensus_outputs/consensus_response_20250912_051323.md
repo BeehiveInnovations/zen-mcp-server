@@ -17,21 +17,21 @@
 ### Response 1: qwen3:0.6b (for)
 **Status:** success
 
-> 
+>
 
 ---
 
 ### Response 2: qwen3:0.6b (against)
 **Status:** success
 
-> 
+>
 
 ---
 
 ### Response 3: qwen3:0.6b (neutral)
 **Status:** success
 
-> 
+>
 
 ---
 

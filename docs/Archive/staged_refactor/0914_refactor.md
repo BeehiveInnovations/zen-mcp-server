@@ -27,7 +27,7 @@ This document consolidates the commits from the fork point (`12090646ee83f236831
   ```
   - Headers updated in 67548a8: Added `X-KiloCode-Version` and specific User-Agent for proxy validation.
 - **Scope**: Affects provider initialization, model resolution, and API calls; comprehensive test coverage added (~200 lines).
- 
+
 ### Goal
 The primary goal was to enhance flexibility in accessing Kilo-hosted models by supporting both direct Kilo API (`https://api.kilocodex.com/v1`) and OpenRouter proxy (`https://api.kilocode.ai/api/openrouter/`) endpoints, without disrupting existing OpenRouter setups. This enables users to leverage Kilo's ecosystem (e.g., via KILO_API_KEY for lower latency/direct access) while maintaining backward compatibility through fallback logic and env var controls (KILO_PREFERRED). The prefix support (kilo:/openrouter:) simplifies model referencing, and strict header requirements ensure proxy compatibility. Overall, this refactor aims to reduce dependency on third-party proxies, improve performance, and provide seamless integration options for Kilo-specific models like qwen/qwen3-max.
 
@@ -62,7 +62,7 @@ The primary goal was to enhance flexibility in accessing Kilo-hosted models by s
   ```
   - Logging added: DEBUG for dispatch, per-model status/latency, aggregation summary.
   - Response metadata updated: "workflow_type": "concurrent_multi_model_consensus", "execution_mode": "concurrent".
- 
+
 ### Goal
 The goal was to address latency bottlenecks in multi-model consensus workflows by replacing sequential execution with parallel asyncio-based consultations, while preserving deterministic output ordering (via zip) and external API compatibility (single MCP response). This minimal refactor (no new persistence/caching) focuses on performance gains for >=2 models, with robust exception handling to continue on partial failures. The design doc ensures scoped changes, emphasizing error normalization and timing for observability. Ultimately, it improves tool efficiency for complex analyses without altering client-facing behavior, aligning with best practices for async Python in AI workflows.
 
@@ -75,7 +75,7 @@ The goal was to address latency bottlenecks in multi-model consensus workflows b
   - Added CLI bridge provider with args handling, registration logic, and hybrid routing.
   - Simplified to single logical model (codex-cli) for reduced complexity.
   - Improved conflict resolution and documentation for integration.
- 
+
 ### Goal
 The objective was to enable seamless CLI-based access to advanced models like Codex (GPT-5) via a bridge provider, addressing integration challenges in MCP environments. This includes robust registration, argument validation, and hybrid routing to resolve provider conflicts (e.g., overlapping models), with model restrictions for security. Simplification to a single logical model streamlines maintenance, while enhanced tests ensure stability. The goal is to expand the system's extensibility for CLI tools, facilitating easier adoption in development workflows and reducing direct API dependencies, ultimately bridging MCP servers with command-line AI interactions.
 
@@ -89,7 +89,7 @@ The objective was to enable seamless CLI-based access to advanced models like Co
   - Updated models for local efficiency (qwen3:0.6b preferred over llama3.2/flash).
   - Added env sanitization, vision model support (local-only), and timing logs for concurrency.
   - Standardized logging across tests; marked vision tests as xfail pending investigation.
- 
+
 ### Goal
 The aim was to enhance testing reliability and local development experience by standardizing on efficient models (qwen3:0.6b for lower resource use) and improving test infrastructure. This includes better error isolation (env sanitization), observability (consistent logs/timing), and support for vision capabilities (local models like llava/moondream, with xfail for ongoing issues). Lint fixes and stability improvements ensure green builds, while concurrent testing validates performance refactors. Overall, this theme focuses on making the codebase more maintainable and testable, reducing flakiness, and preparing for advanced features like vision without compromising CI/CD.
 
@@ -102,7 +102,7 @@ The aim was to enhance testing reliability and local development experience by s
   - Added design docs, changelog entries, and usage guides.
   - Scripts for better dev setup (CLI integration, env verification).
   - Cleanup: Removed obsolete files; applied style fixes.
- 
+
 ### Goal
 This theme targeted improving project maintainability and onboarding through comprehensive documentation and housekeeping. Design docs (e.g., consensus refactor) guide implementations, while README/changelog updates (e.g., Kilo usage, v5.12.0 features) aid users. Chore commits ensure code quality (ruff/isort) and dev ease (scripts for integrations, gitignore updates). The goal is to reduce technical debt, enhance discoverability of new features (CLI/Kilo), and provide clear paths for contributors, ultimately fostering a more professional, accessible codebase.
 

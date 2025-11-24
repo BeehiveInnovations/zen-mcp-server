@@ -47,7 +47,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           semantic-release version
           semantic-release publish
-          
+
       - name: Sync version to config.py
         run: |
           pip install toml

@@ -25,24 +25,24 @@ The consensus tool orchestrates multiple AI models to provide diverse perspectiv
 
 **For/Against Analysis:**
 ```
-Use zen consensus with flash taking a supportive stance and pro being critical to evaluate whether 
+Use zen consensus with flash taking a supportive stance and pro being critical to evaluate whether
 we should migrate from REST to GraphQL for our API
 ```
 
 **Multi-Model Technical Decision:**
 ```
-Get consensus from o3, flash, and pro on our new authentication architecture. Have o3 focus on 
+Get consensus from o3, flash, and pro on our new authentication architecture. Have o3 focus on
 security implications, flash on implementation speed, and pro stay neutral for overall assessment
 ```
 
 **Natural Language Stance Assignment:**
 ```
-Use consensus tool with gemini being "for" the proposal and grok being "against" to debate 
+Use consensus tool with gemini being "for" the proposal and grok being "against" to debate
 whether we should adopt microservices architecture
 ```
 
 ```
-I want to work on module X and Y, unsure which is going to be more popular with users of my app. 
+I want to work on module X and Y, unsure which is going to be more popular with users of my app.
 Get a consensus from gemini supporting the idea for implementing X, grok opposing it, and flash staying neutral
 ```
 

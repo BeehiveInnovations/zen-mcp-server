@@ -36,10 +36,10 @@ def create_mock_provider(
     provider.base_url = base_url or "https://api.example.com/v1"
     provider.organization = organization or "test-org"
     provider.use_responses_endpoint = False
-    
+
     # Mock the internal client for providers that use it
     mock_client = Mock()
-    
+
     # Mock chat completions response
     mock_response = Mock()
     mock_message = Mock()
@@ -48,15 +48,15 @@ def create_mock_provider(
     mock_choice.message = mock_message
     mock_response.choices = [mock_choice]
     mock_response.usage = Mock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
-    
+
     mock_client.chat.completions.create.return_value = mock_response
-    
+
     # Mock responses endpoint (for o3-pro)
     mock_responses_response = Mock()
     mock_responses_response.output_text = "Mock response content"
     mock_responses_response.usage = Mock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
     mock_client.responses.create.return_value = mock_responses_response
-    
+
     provider._client = mock_client
 
     # Mock for ``generate_content``; tests set ``content`` on the returned mock.
@@ -65,6 +65,7 @@ def create_mock_provider(
     # Mock for ``generate_stream`` – returns a generator
     def mock_generate_stream(*args, **kwargs):
         yield Mock(content="[STREAM_RESPONSE]", usage={}, model_name=model_name, metadata={})
+
     provider.generate_stream = mock_generate_stream
 
     # Token counting

@@ -117,7 +117,7 @@ Each mode would inherit the same workflow infrastructure but customize:
 **Overlaps Identified:**
 
 1. **Common Workflow Base:** All three use step-by-step workflow patterns
-2. **Different Purposes:** 
+2. **Different Purposes:**
    - testgen: Planning → Code generation
    - docgen: Planning → Documentation generation
    - refactor: Analysis → Recommendations (handled in Category 2)
@@ -170,7 +170,7 @@ However, the consolidation benefit is moderate because:
 
 These could partially consolidate, but the heterogeneity suggests keeping them separate:
 - thinkdeep is investigation-focused
-- planner is planning-focused  
+- planner is planning-focused
 - consensus is multi-model-focused
 
 **Recommendation:** Keep separate. The consolidation benefit (~40-50%) doesn't justify the complexity.
@@ -251,22 +251,22 @@ All follow similar pattern:
 ```python
 def prepare_expert_analysis_context(self, consolidated_findings) -> str:
     context_parts = [...]
-    
+
     # Add investigation summary (similar structure in all)
     investigation_summary = self._build_*_summary(consolidated_findings)
     context_parts.append(f"=== AGENT'S *_INVESTIGATION ===\n{investigation_summary}...")
-    
+
     # Add relevant files (identical in all)
     if consolidated_findings.relevant_files:
         file_content, _ = self._prepare_file_content_for_prompt(...)
-    
+
     # Add issues (similar in 5 of 6)
     if consolidated_findings.issues_found:
         issues_text = "\n".join(
             f"[{issue.get('severity')}] {issue.get('description')}"
             for issue in consolidated_findings.issues_found
         )
-    
+
     return "\n".join(context_parts)
 ```
 
@@ -279,7 +279,7 @@ All use similar pattern:
 def should_call_expert_analysis(self, consolidated_findings, request=None) -> bool:
     if request and not self.get_request_use_assistant_model(request):
         return False
-    
+
     return (
         len(consolidated_findings.relevant_files) > 0
         or len(consolidated_findings.findings) >= 2
@@ -311,10 +311,10 @@ Create `universal_analyzer.py` (single tool with 7 modes):
 class UniversalAnalyzerTool(WorkflowTool):
     def __init__(self):
         self.analysis_mode = "code_analysis"  # Set by first request
-        
+
     def get_name(self) -> str:
         return "analyze"  # Keep same name for backward compatibility
-        
+
     def get_description(self) -> str:
         return "Systematic analysis with modes for debugging, code review, refactoring, security audit, precommit validation, or code tracing"
 ```
@@ -332,12 +332,12 @@ class AnalysisRequest(WorkflowRequest):
     relevant_files: list[str]
     relevant_context: list[str]
     confidence: str  # or mode-specific variants
-    
+
     # Shared optional fields
     issues_found: list[dict]
     images: Optional[list[str]]
     backtrack_from_step: Optional[int]
-    
+
     # Universal mode selector
     analysis_mode: Literal[
         "code_analysis",      # analyze.py
@@ -348,7 +348,7 @@ class AnalysisRequest(WorkflowRequest):
         "precommit",          # precommit.py
         "trace"               # tracer.py
     ]
-    
+
     # Mode-specific configuration
     analysis_type: Optional[str]  # for code_analysis mode
     review_type: Optional[str]    # for code_review mode
@@ -389,7 +389,7 @@ Create `code_generator.py` (single tool with modes):
 class CodeGeneratorTool(WorkflowTool):
     def get_name(self) -> str:
         return "generate"
-    
+
     def get_input_schema(self) -> dict:
         return WorkflowSchemaBuilder.build_schema(
             tool_specific_fields={
@@ -707,7 +707,7 @@ TOTAL: 9 tools (vs 16 currently)
 - chat, challenge, listmodels, version (no changes)
 - thinkdeep, planner, consensus (keep separate, manageable)
 
-### Medium Risk  
+### Medium Risk
 - Analysis tool consolidation (7 tools → 1)
   - Risk: User confusion with new "mode" system
   - Mitigation: Create strong backward compatibility, keep tool names as aliases
@@ -741,4 +741,3 @@ The Zen MCP Server has significant consolidation opportunities:
    - thinkdeep, planner, consensus (unique paradigms, low consolidation benefit)
 
 **Final Recommendation:** Implement Priority 1 consolidation to reduce from 16 tools to 9, maintaining user-facing functionality through backward-compatible aliases while reducing code maintenance burden by approximately 50%.
-

@@ -6,11 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from server import (
-    apply_tool_filter,
-    parse_disabled_tools_env,
-    validate_disabled_tools,
-)
+from server import apply_tool_filter, parse_disabled_tools_env, validate_disabled_tools
 
 
 # Mock the tool classes since we're testing the filtering logic

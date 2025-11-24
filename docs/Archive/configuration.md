@@ -30,7 +30,7 @@ OPENAI_API_KEY=your-openai-key
 GEMINI_API_KEY=your_gemini_api_key_here
 # Get from: https://makersuite.google.com/app/apikey
 
-# OpenAI API  
+# OpenAI API
 OPENAI_API_KEY=your_openai_api_key_here
 # Get from: https://platform.openai.com/api-keys
 
@@ -70,7 +70,7 @@ DEFAULT_MODEL=auto  # Claude picks best model for each task (recommended)
 **Available Models:**
 - **`auto`**: Claude automatically selects the optimal model
 - **`pro`** (Gemini 2.5 Pro): Extended thinking, deep analysis
-- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses  
+- **`flash`** (Gemini 2.0 Flash): Ultra-fast responses
 - **`o3`**: Strong logical reasoning (200K context)
 - **`o3-mini`**: Balanced speed/quality (200K context)
 - **`o4-mini`**: Latest reasoning model, optimized for shorter contexts
@@ -87,7 +87,7 @@ DEFAULT_THINKING_MODE_THINKDEEP=high
 
 # Available modes and token consumption:
 #   minimal: 128 tokens   - Quick analysis, fastest response
-#   low:     2,048 tokens - Light reasoning tasks  
+#   low:     2,048 tokens - Light reasoning tasks
 #   medium:  8,192 tokens - Balanced reasoning
 #   high:    16,384 tokens - Complex analysis (recommended for thinkdeep)
 #   max:     32,768 tokens - Maximum reasoning depth
@@ -104,7 +104,7 @@ Control which models can be used from each provider for cost control, compliance
 # OpenAI model restrictions
 OPENAI_ALLOWED_MODELS=o3-mini,o4-mini,mini
 
-# Gemini model restrictions  
+# Gemini model restrictions
 GOOGLE_ALLOWED_MODELS=flash,pro
 
 # X.AI GROK model restrictions
@@ -163,8 +163,8 @@ CUSTOM_MODELS_CONFIG_PATH=/path/to/your/custom_models.json
 **Conversation Settings:**
 ```env
 # How long AI-to-AI conversation threads persist in memory (hours)
-# Conversations are auto-purged when claude closes its MCP connection or 
-# when a session is quit / re-launched 
+# Conversations are auto-purged when claude closes its MCP connection or
+# when a session is quit / re-launched
 CONVERSATION_TIMEOUT_HOURS=5
 
 # Maximum conversation turns (each exchange = 2 turns)

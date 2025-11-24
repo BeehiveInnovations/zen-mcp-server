@@ -1,7 +1,5 @@
 """Debug tool system prompt."""
 
-
-
 DEBUG_ISSUE_PROMPT = """
 You are an expert debugging assistant receiving systematic investigation findings from another AI agent.
 The agent has performed methodical investigation work following systematic debugging methodology.

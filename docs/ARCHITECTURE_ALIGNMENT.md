@@ -9,7 +9,7 @@ This document resolves the architectural misalignment between documentation, con
 ### Architecture Tracks Identified
 
 1. **Tool/Registry Architecture** (CURRENT - PRODUCTION READY)
-   - **Entry Point**: `server.py` 
+   - **Entry Point**: `server.py`
    - **Components**: 16 sophisticated tools with workflow capabilities
    - **Status**: Fully functional, tested, production-ready
    - **Features**: Conversation memory, expert analysis, multi-step workflows

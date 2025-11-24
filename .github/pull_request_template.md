@@ -4,7 +4,7 @@
 
 ### Version Bumping Types (trigger semantic release):
 - `feat: <description>` - New features → **MINOR** version bump (1.1.0 → 1.2.0)
-- `fix: <description>` - Bug fixes → **PATCH** version bump (1.1.0 → 1.1.1) 
+- `fix: <description>` - Bug fixes → **PATCH** version bump (1.1.0 → 1.1.1)
 - `perf: <description>` - Performance improvements → **PATCH** version bump (1.1.0 → 1.1.1)
 
 ### Breaking Changes (trigger MAJOR version bump):

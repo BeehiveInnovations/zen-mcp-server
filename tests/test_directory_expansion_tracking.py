@@ -98,9 +98,10 @@ def helper_function():
         mock_provider.generate_content.return_value.content = "Directory analysis complete"
         from utils.model_context import TokenAllocation
 
-        with patch.object(
-            ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
-        ), patch("utils.model_context.ModelContext") as MockModelContext:
+        with (
+            patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider),
+            patch("utils.model_context.ModelContext") as MockModelContext,
+        ):
             mock_ctx = MockModelContext.return_value
             mock_ctx.provider = mock_provider
             mock_ctx.model_name = "flash"
@@ -206,9 +207,10 @@ def helper_function():
             model_context._provider = mock_provider
             model_context._capabilities = mock_provider.get_capabilities.return_value
 
-            with patch.object(
-                ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
-            ), patch("utils.model_context.ModelContext", return_value=model_context):
+            with (
+                patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider),
+                patch("utils.model_context.ModelContext", return_value=model_context),
+            ):
                 result = await tool.execute(continuation_args)
 
         # Verify the tool executed successfully

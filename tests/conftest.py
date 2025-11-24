@@ -7,7 +7,6 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -249,7 +248,4 @@ def live_client():
     if not available_keys:
         pytest.skip("No real API keys found. Set at least one provider API key to run live tests.")
 
-    return {
-        "keys": available_keys,
-        "providers": list(available_keys.keys())
-    }
+    return {"keys": available_keys, "providers": list(available_keys.keys())}

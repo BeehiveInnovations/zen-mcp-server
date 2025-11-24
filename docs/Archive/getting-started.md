@@ -80,7 +80,7 @@ Choose your AI coding assistant and add the corresponding configuration:
     "zen": {
       "command": "sh",
       "args": [
-        "-c", 
+        "-c",
         "for p in $(which uvx 2>/dev/null) $HOME/.local/bin/uvx /opt/homebrew/bin/uvx /usr/local/bin/uvx uvx; do [ -x \"$p\" ] && exec \"$p\" --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server; done; echo 'uvx not found' >&2; exit 1"
       ],
       "env": {
@@ -99,7 +99,7 @@ Create `.mcp.json` in your project root:
 {
   "mcpServers": {
     "zen": {
-      "command": "sh", 
+      "command": "sh",
       "args": [
         "-c",
         "for p in $(which uvx 2>/dev/null) $HOME/.local/bin/uvx /opt/homebrew/bin/uvx /usr/local/bin/uvx uvx; do [ -x \"$p\" ] && exec \"$p\" --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server; done; echo 'uvx not found' >&2; exit 1"
@@ -123,7 +123,7 @@ Edit `~/.gemini/settings.json`:
       "command": "sh",
       "args": [
         "-c",
-        "for p in $(which uvx 2>/dev/null) $HOME/.local/bin/uvx /opt/homebrew/bin/uvx /usr/local/bin/uvx uvx; do [ -x \"$p\" ] && exec \"$p\" --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server; done; echo 'uvx not found' >&2; exit 1"  
+        "for p in $(which uvx 2>/dev/null) $HOME/.local/bin/uvx /opt/homebrew/bin/uvx /usr/local/bin/uvx uvx; do [ -x \"$p\" ] && exec \"$p\" --from git+https://github.com/BeehiveInnovations/zen-mcp-server.git zen-mcp-server; done; echo 'uvx not found' >&2; exit 1"
       ],
       "env": {
         "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:~/.local/bin",
@@ -175,7 +175,7 @@ cd zen-mcp-server
 
 **What the setup script does:**
 - ✅ Creates Python virtual environment
-- ✅ Installs all dependencies  
+- ✅ Installs all dependencies
 - ✅ Creates .env file for API keys
 - ✅ Configures Claude integrations
 - ✅ Provides copy-paste configuration
@@ -199,7 +199,7 @@ nano .env
 Add your API keys (at least one required):
 ```env
 # Choose your providers (at least one required)
-GEMINI_API_KEY=your-gemini-api-key-here      # For Gemini models  
+GEMINI_API_KEY=your-gemini-api-key-here      # For Gemini models
 OPENAI_API_KEY=your-openai-api-key-here      # For O3, GPT-5
 XAI_API_KEY=your-xai-api-key-here            # For Grok models
 OPENROUTER_API_KEY=your-openrouter-key       # For multiple models
@@ -207,7 +207,7 @@ OPENROUTER_API_KEY=your-openrouter-key       # For multiple models
 # DIAL Platform (optional)
 DIAL_API_KEY=your-dial-api-key-here
 DIAL_API_HOST=https://core.dialx.ai          # Default host (optional)
-DIAL_API_VERSION=2024-12-01-preview          # API version (optional) 
+DIAL_API_VERSION=2024-12-01-preview          # API version (optional)
 DIAL_ALLOWED_MODELS=o3,gemini-2.5-pro       # Restrict models (optional)
 
 # Custom/Local models (Ollama, vLLM, etc.)
@@ -217,7 +217,7 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 ```
 
 **Important notes:**
-- ⭐ **No restart needed** - Changes take effect immediately 
+- ⭐ **No restart needed** - Changes take effect immediately
 - ⭐ If multiple APIs configured, native APIs take priority over OpenRouter
 - ⭐ Configure model aliases in [`conf/custom_models.json`](../conf/custom_models.json)
 
@@ -230,7 +230,7 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 
 ### For Claude Code CLI:
 1. Exit any existing Claude session
-2. Run `claude` from your project directory  
+2. Run `claude` from your project directory
 3. Try: `"Use zen to chat about Python best practices"`
 
 ### For Gemini CLI:
@@ -245,7 +245,7 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 ```
 "Use zen to list available models"
 "Chat with zen about the best approach for API design"
-"Use zen thinkdeep with gemini pro about scaling strategies"  
+"Use zen thinkdeep with gemini pro about scaling strategies"
 "Debug this error with o3: [paste error]"
 ```
 
@@ -263,7 +263,7 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 ```
 
 **Specify the model:**
-```  
+```
 "Use zen with gemini pro to review this complex algorithm"
 "Debug with o3 using zen for logical analysis"
 "Get flash to quickly format this code via zen"
@@ -272,14 +272,14 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 **Multi-model workflows:**
 ```
 "Use zen to get consensus from pro and o3 on this architecture"
-"Code review with gemini, then precommit validation with o3"  
+"Code review with gemini, then precommit validation with o3"
 "Analyze with flash, then deep dive with pro if issues found"
 ```
 
 ### Quick Tool Reference:
 
 **🤝 Collaboration**: `chat`, `thinkdeep`, `planner`, `consensus`
-**🔍 Code Analysis**: `analyze`, `codereview`, `debug`, `precommit`  
+**🔍 Code Analysis**: `analyze`, `codereview`, `debug`, `precommit`
 **⚒️ Development**: `refactor`, `testgen`, `secaudit`, `docgen`
 **🔧 Utilities**: `challenge`, `tracer`, `listmodels`, `version`
 
@@ -313,7 +313,7 @@ CUSTOM_MODEL_NAME=llama3.2                   # Default model name
 ### Performance Issues
 
 **Slow responses:**
-- Use faster models: `flash` instead of `pro`  
+- Use faster models: `flash` instead of `pro`
 - Lower thinking modes: `minimal` or `low` instead of `high`
 - Restrict model access to prevent expensive model selection
 
@@ -354,13 +354,13 @@ OPENAI_ALLOWED_MODELS=o4-mini,o3-mini
 ```
 
 ### Cost-Optimized Setup
-```env  
+```env
 DEFAULT_MODEL=flash
 GEMINI_API_KEY=your-key
 GOOGLE_ALLOWED_MODELS=flash
 ```
 
-### High-Performance Setup  
+### High-Performance Setup
 ```env
 DEFAULT_MODEL=auto
 GEMINI_API_KEY=your-key

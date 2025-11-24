@@ -57,4 +57,3 @@ body:
         - All users
     validations:
       required: true
-

@@ -36,12 +36,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import functions to test
-from utils.file_utils import (
-    expand_paths,
-    is_home_directory_root,
-    read_file_content,
-    resolve_and_validate_path,
-)
+from utils.file_utils import expand_paths, is_home_directory_root, read_file_content, resolve_and_validate_path
 
 
 def test_home_directory_patterns():

@@ -348,7 +348,7 @@ class GeminiModelProvider(ModelProvider):
                 time.sleep(delay)
 
         # If we get here, all retries failed; attempt variable holds last zero-based index
-        actual_attempts = attempt + 1 if 'attempt' in locals() else max_retries
+        actual_attempts = attempt + 1 if "attempt" in locals() else max_retries
         error_msg = (
             f"Gemini API error for model {resolved_name} after {actual_attempts} attempt"
             f"{'s' if actual_attempts > 1 else ''}: {str(last_exception)}"
@@ -413,7 +413,7 @@ class GeminiModelProvider(ModelProvider):
 
         # First check if model is supported
         if resolved_name not in self.SUPPORTED_MODELS:
-            return False        # Then check if model is allowed by restrictions
+            return False  # Then check if model is allowed by restrictions
         from utils.model_restrictions import get_restriction_service
 
         restriction_service = get_restriction_service()

@@ -18,7 +18,7 @@ source venv/bin/activate
 
 This script automatically runs:
 - Ruff linting with auto-fix
-- Black code formatting 
+- Black code formatting
 - Import sorting with isort
 - Complete unit test suite (excluding integration tests)
 - Verification that all checks pass 100%
@@ -93,7 +93,7 @@ tail -f logs/mcp_activity.log | grep -E "(TOOL_CALL|TOOL_COMPLETED|ERROR|WARNING
 # Main server log (all activity including debug info) - 20MB max, 10 backups
 tail -f logs/mcp_server.log
 
-# Tool activity only (TOOL_CALL, TOOL_COMPLETED, etc.) - 20MB max, 5 backups  
+# Tool activity only (TOOL_CALL, TOOL_COMPLETED, etc.) - 20MB max, 5 backups
 tail -f logs/mcp_activity.log
 ```
 
@@ -115,7 +115,7 @@ matches = LogUtils.search_logs_for_pattern("TOOL_CALL.*debug")
 ### Testing
 
 Simulation tests are available to test the MCP server in a 'live' scenario, using your configured
-API keys to ensure the models are working and the server is able to communicate back and forth. 
+API keys to ensure the models are working and the server is able to communicate back and forth.
 
 **IMPORTANT**: After any code changes, restart your Claude session for the changes to take effect.
 

@@ -2,13 +2,7 @@
 
 from typing import Optional
 
-from providers.base import (
-    ModelCapabilities,
-    ModelProvider,
-    ModelResponse,
-    ProviderType,
-    create_temperature_constraint,
-)
+from providers.base import ModelCapabilities, ModelProvider, ModelResponse, ProviderType, create_temperature_constraint
 
 
 class FakeModelProvider(ModelProvider):

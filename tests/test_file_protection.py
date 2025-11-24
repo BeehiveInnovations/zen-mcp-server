@@ -8,12 +8,7 @@ Test file protection mechanisms to ensure MCP doesn't scan:
 from pathlib import Path
 from unittest.mock import patch
 
-from utils.file_utils import (
-    expand_paths,
-    get_user_home_directory,
-    is_home_directory_root,
-    is_mcp_directory,
-)
+from utils.file_utils import expand_paths, get_user_home_directory, is_home_directory_root, is_mcp_directory
 
 
 class TestMCPDirectoryDetection:

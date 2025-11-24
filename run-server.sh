@@ -81,7 +81,7 @@ clear_python_cache() {
 # Get cross-platform Python executable path from venv
 get_venv_python_path() {
     local venv_path="$1"
-    
+
     # Convert to absolute path for consistent behavior across shell environments
     local abs_venv_path
     abs_venv_path=$(cd "$(dirname "$venv_path")" && pwd)/$(basename "$venv_path")
@@ -885,7 +885,7 @@ install_dependencies() {
     # If pip is still not available after retries, try to bootstrap it
     if [[ "$pip_available" == false ]]; then
         print_warning "pip is not available in the Python environment after $max_attempts attempts"
-        
+
         # Enhanced diagnostic information for debugging
         print_info "Diagnostic information:"
         print_info "  Python executable: $python_cmd"
@@ -893,7 +893,7 @@ install_dependencies() {
         print_info "  Python executable permissions: $(ls -la "$python_cmd" 2>/dev/null || echo "Cannot check")"
         print_info "  Virtual environment path: $VENV_PATH"
         print_info "  Virtual environment exists: $(if [[ -d "$VENV_PATH" ]]; then echo "Yes"; else echo "No"; fi)"
-        
+
         print_info "Attempting to bootstrap pip..."
 
         # Extract the base python command for bootstrap (fallback to python3)
@@ -1170,7 +1170,7 @@ check_api_keys() {
 # Parse .env file and extract all valid environment variables
 parse_env_variables() {
     local env_vars=""
-    
+
     if [[ -f .env ]]; then
         # Read .env file and extract non-empty, non-comment variables
         while IFS= read -r line; do
@@ -1178,18 +1178,18 @@ parse_env_variables() {
             if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# && "$line" =~ ^[[:space:]]*([^=]+)=(.*)$ ]]; then
                 local key="${BASH_REMATCH[1]}"
                 local value="${BASH_REMATCH[2]}"
-                
+
                 # Clean up key (remove leading/trailing whitespace)
                 key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                
+
                 # Skip if value is empty or just whitespace
                 if [[ -n "$value" && ! "$value" =~ ^[[:space:]]*$ ]]; then
                     # Clean up value (remove leading/trailing whitespace and quotes)
                     value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"//;s/"$//')
-                    
+
                     # Remove inline comments (everything after # that's not in quotes)
                     value=$(echo "$value" | sed 's/[[:space:]]*#.*$//')
-                    
+
                     # Skip if value is a placeholder or empty after comment removal
                     if [[ ! "$value" =~ ^your_.*_here$ && "$value" != "your_" && -n "$value" && ! "$value" =~ ^[[:space:]]*$ ]]; then
                         env_vars+="$key=$value"$'\n'
@@ -1203,7 +1203,7 @@ parse_env_variables() {
     if [[ -z "$env_vars" ]]; then
         local api_keys=(
             "GEMINI_API_KEY"
-            "OPENAI_API_KEY" 
+            "OPENAI_API_KEY"
             "XAI_API_KEY"
             "DIAL_API_KEY"
             "OPENROUTER_API_KEY"
@@ -1225,7 +1225,7 @@ parse_env_variables() {
             fi
         done
     fi
-    
+
     echo "$env_vars"
 }
 
@@ -1268,7 +1268,7 @@ check_claude_cli_integration() {
             # Re-add with correct Python command and environment variables
             local env_vars=$(parse_env_variables)
             local env_args=""
-            
+
             # Convert environment variables to -e arguments
             if [[ -n "$env_vars" ]]; then
                 while IFS= read -r line; do
@@ -1277,7 +1277,7 @@ check_claude_cli_integration() {
                     fi
                 done <<< "$env_vars"
             fi
-            
+
             local claude_cmd="claude mcp add zen -s user$env_args -- \"$python_cmd\" \"$server_path\""
             if eval "$claude_cmd" 2>/dev/null; then
                 print_success "Updated Zen to become a standalone script with environment variables"
@@ -1301,7 +1301,7 @@ check_claude_cli_integration() {
                 # Re-add with current path and environment variables
                 local env_vars=$(parse_env_variables)
                 local env_args=""
-                
+
                 # Convert environment variables to -e arguments
                 if [[ -n "$env_vars" ]]; then
                     while IFS= read -r line; do
@@ -1310,7 +1310,7 @@ check_claude_cli_integration() {
                         fi
                     done <<< "$env_vars"
                 fi
-                
+
                 local claude_cmd="claude mcp add zen -s user$env_args -- \"$python_cmd\" \"$server_path\""
                 if eval "$claude_cmd" 2>/dev/null; then
                     print_success "Updated Zen with current path and environment variables"
@@ -1332,7 +1332,7 @@ check_claude_cli_integration() {
         if [[ $REPLY =~ ^[Nn]$ ]]; then
             local env_vars=$(parse_env_variables)
             local env_args=""
-            
+
             # Convert environment variables to -e arguments for manual command
             if [[ -n "$env_vars" ]]; then
                 while IFS= read -r line; do
@@ -1341,18 +1341,18 @@ check_claude_cli_integration() {
                     fi
                 done <<< "$env_vars"
             fi
-            
+
             print_info "To add manually later, run:"
             echo "  claude mcp add zen -s user$env_args -- $python_cmd $server_path"
             return 0
         fi
 
         print_info "Registering Zen with Claude Code..."
-        
+
         # Add with environment variables
         local env_vars=$(parse_env_variables)
         local env_args=""
-        
+
         # Convert environment variables to -e arguments
         if [[ -n "$env_vars" ]]; then
             while IFS= read -r line; do
@@ -1361,7 +1361,7 @@ check_claude_cli_integration() {
                 fi
             done <<< "$env_vars"
         fi
-        
+
         local claude_cmd="claude mcp add zen -s user$env_args -- \"$python_cmd\" \"$server_path\""
         if eval "$claude_cmd" 2>/dev/null; then
             print_success "Successfully added Zen to Claude Code with environment variables"
@@ -1442,12 +1442,12 @@ except Exception as e:
         local env_vars=$(parse_env_variables)
         local temp_file=$(mktemp)
         local env_file=$(mktemp)
-        
+
         # Write environment variables to a temporary file for Python to read
         if [[ -n "$env_vars" ]]; then
             echo "$env_vars" > "$env_file"
         fi
-        
+
         python3 -c "
 import json
 import sys
@@ -1488,23 +1488,23 @@ config['mcpServers']['zen'] = zen_config
 with open('$temp_file', 'w') as f:
     json.dump(config, f, indent=2)
 " && mv "$temp_file" "$config_path"
-        
+
         # Clean up temporary env file
         rm -f "$env_file" 2>/dev/null || true
 
     else
         print_info "Creating new Claude Desktop config..."
-        
+
         # Create new config with environment variables
         local env_vars=$(parse_env_variables)
         local temp_file=$(mktemp)
         local env_file=$(mktemp)
-        
+
         # Write environment variables to a temporary file for Python to read
         if [[ -n "$env_vars" ]]; then
             echo "$env_vars" > "$env_file"
         fi
-        
+
         python3 -c "
 import json
 import sys
@@ -1537,7 +1537,7 @@ config['mcpServers']['zen'] = zen_config
 with open('$temp_file', 'w') as f:
     json.dump(config, f, indent=2)
 " && mv "$temp_file" "$config_path"
-        
+
         # Clean up temporary env file
         rm -f "$env_file" 2>/dev/null || true
     fi
@@ -1551,7 +1551,7 @@ with open('$temp_file', 'w') as f:
         print_error "Failed to update Claude Desktop config"
         echo "Manual config location: $config_path"
         echo "Add this configuration:"
-        
+
         # Generate example with actual environment variables for error case
         example_env=""
         env_vars=$(parse_env_variables)
@@ -1561,7 +1561,7 @@ with open('$temp_file', 'w') as f:
                 if [[ -n "$line" && "$line" =~ ^([^=]+)=(.*)$ ]]; then
                     local key="${BASH_REMATCH[1]}"
                     local value="your_$(echo "${key}" | tr '[:upper:]' '[:lower:]')"
-                    
+
                     if [[ "$first_entry" == true ]]; then
                         first_entry=false
                         example_env="      \"$key\": \"$value\""
@@ -1571,7 +1571,7 @@ with open('$temp_file', 'w') as f:
                 fi
             done <<< "$env_vars"
         fi
-        
+
         cat << EOF
 {
   "mcpServers": {
@@ -1691,7 +1691,7 @@ check_codex_cli_integration() {
     fi
 
     local codex_config="$HOME/.codex/config.toml"
-    
+
     # Check if zen is already configured
     if [[ -f "$codex_config" ]] && grep -q '\[mcp_servers\.zen\]' "$codex_config" 2>/dev/null; then
         # Already configured
@@ -1752,7 +1752,7 @@ check_codex_cli_integration() {
         print_error "Failed to update Codex CLI config"
         echo "Manual config location: $codex_config"
         echo "Add this configuration:"
-        
+
         # Generate example with actual environment variables for error case
         env_vars=$(parse_env_variables)
         cat << EOF
@@ -1763,7 +1763,7 @@ args = ["-c", "exec \$(which uvx 2>/dev/null || echo uvx) --from git+https://git
 [mcp_servers.zen.env]
 PATH = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:\$HOME/.local/bin:\$HOME/.cargo/bin:\$HOME/bin"
 EOF
-        
+
         # Add environment variable examples only if they exist
         if [[ -n "$env_vars" ]]; then
             while IFS= read -r line; do
@@ -1812,7 +1812,7 @@ display_config_instructions() {
     print_info "2. For Claude Desktop:"
     echo "   Add this configuration to your Claude Desktop config file:"
     echo ""
-    
+
     # Generate example with actual environment variables that exist
     example_env=""
     env_vars=$(parse_env_variables)
@@ -1822,7 +1822,7 @@ display_config_instructions() {
             if [[ -n "$line" && "$line" =~ ^([^=]+)=(.*)$ ]]; then
                 local key="${BASH_REMATCH[1]}"
                 local value="your_$(echo "${key}" | tr '[:upper:]' '[:lower:]')"
-                
+
                 if [[ "$first_entry" == true ]]; then
                     first_entry=false
                     example_env="           \"$key\": \"$value\""
@@ -1832,7 +1832,7 @@ display_config_instructions() {
             fi
         done <<< "$env_vars"
     fi
-    
+
     cat << EOF
    {
      "mcpServers": {
@@ -1899,12 +1899,12 @@ display_setup_instructions() {
     printf '%*s\n' "$((${#setup_header} + 12))" | tr ' ' '='
     echo ""
     print_success "Zen is ready to use!"
-    
+
     # Display enabled/disabled tools if DISABLED_TOOLS is configured
     if [[ -n "${DISABLED_TOOLS:-}" ]]; then
         echo ""
         print_info "Tool Configuration:"
-        
+
         # Dynamically discover all available tools from the tools directory
         # Excludes: __pycache__, shared modules, models.py, listmodels.py, version.py
         local all_tools=()
@@ -1917,16 +1917,16 @@ display_setup_instructions() {
                 fi
             fi
         done
-        
+
         # Convert DISABLED_TOOLS to array
         IFS=',' read -ra disabled_array <<< "$DISABLED_TOOLS"
-        
+
         # Trim whitespace from disabled tools
         local disabled_tools=()
         for tool in "${disabled_array[@]}"; do
             disabled_tools+=("$(echo "$tool" | xargs)")
         done
-        
+
         # Determine enabled tools
         local enabled_tools=()
         for tool in "${all_tools[@]}"; do
@@ -1941,7 +1941,7 @@ display_setup_instructions() {
                 enabled_tools+=("$tool")
             fi
         done
-        
+
         # Display enabled tools
         echo ""
         echo -e "  ${GREEN}Enabled Tools (${#enabled_tools[@]}):${NC}"
@@ -1953,7 +1953,7 @@ display_setup_instructions() {
             enabled_list+="$tool"
         done
         echo "    $enabled_list"
-        
+
         # Display disabled tools
         echo ""
         echo -e "  ${YELLOW}Disabled Tools (${#disabled_tools[@]}):${NC}"
@@ -1965,7 +1965,7 @@ display_setup_instructions() {
             disabled_list+="$tool"
         done
         echo "    $disabled_list"
-        
+
         echo ""
         echo "  To enable more tools, edit the DISABLED_TOOLS variable in .env"
     fi

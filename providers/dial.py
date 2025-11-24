@@ -6,12 +6,7 @@ import threading
 import time
 from typing import Optional
 
-from .base import (
-    ModelCapabilities,
-    ModelResponse,
-    ProviderType,
-    create_temperature_constraint,
-)
+from .base import ModelCapabilities, ModelResponse, ProviderType, create_temperature_constraint
 from .openai_compatible import OpenAICompatibleProvider
 
 logger = logging.getLogger(__name__)

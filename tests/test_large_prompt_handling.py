@@ -6,17 +6,16 @@ prompts that exceed the 50,000 character limit by requesting
 Claude to save them to a file and resend.
 """
 
+import importlib
 import json
 import os
 import shutil
 import tempfile
-import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
 from mcp.types import TextContent
 
-import config
 from config import MCP_PROMPT_SIZE_LIMIT
 from providers.registry import ModelProviderRegistry
 from tests.mock_helpers import create_mock_provider
@@ -76,7 +75,6 @@ class TestLargePromptHandling:
     async def test_chat_normal_prompt_works(self, normal_prompt):
         """Test that chat tool works normally with regular prompts."""
         # Environment keys are not needed for this mocked provider path; removed debug output
-        import os
         tool = ChatTool()
 
         mock_provider = create_mock_provider(model_name="gemini-2.5-flash")
@@ -89,9 +87,10 @@ class TestLargePromptHandling:
 
         # This test runs in the test environment which uses dummy keys
         # The chat tool will return an error for dummy keys, which is expected
-        with patch.object(
-            ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
-        ), patch("utils.model_context.ModelContext", return_value=model_context):
+        with (
+            patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider),
+            patch("utils.model_context.ModelContext", return_value=model_context),
+        ):
             result = await tool.execute({"prompt": normal_prompt, "model": "gemini-2.5-flash"})
 
         assert len(result) == 1
@@ -130,9 +129,10 @@ class TestLargePromptHandling:
         try:
             # This test runs in the test environment which uses dummy keys
             # The chat tool will return an error for dummy keys, which is expected
-            with patch.object(
-                ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
-            ), patch("utils.model_context.ModelContext", return_value=model_context):
+            with (
+                patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider),
+                patch("utils.model_context.ModelContext", return_value=model_context),
+            ):
                 result = await tool.execute({"prompt": "", "files": [temp_prompt_file], "model": "gemini-2.5-flash"})
 
             assert len(result) == 1
@@ -154,7 +154,6 @@ class TestLargePromptHandling:
     @pytest.mark.asyncio
     async def test_codereview_large_focus(self, large_prompt):
         """Test that codereview tool detects large focus_on field using real integration testing."""
-        import importlib
         import os
 
         tool = CodeReviewTool()
@@ -323,8 +322,9 @@ class TestLargePromptHandling:
         mock_provider.validate_model_name.return_value = True
 
         # Mock ModelContext to return our mock provider
-        with patch("utils.model_context.ModelContext") as MockModelContext, patch.object(
-            ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
+        with (
+            patch("utils.model_context.ModelContext") as MockModelContext,
+            patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider),
         ):
             mock_ctx_instance = MockModelContext.return_value
             mock_ctx_instance.provider = mock_provider
@@ -362,8 +362,9 @@ class TestLargePromptHandling:
         )
         mock_provider.validate_model_name.return_value = True
 
-        with patch("utils.model_context.ModelContext") as MockModelContext, patch.object(
-            ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider
+        with (
+            patch("utils.model_context.ModelContext") as MockModelContext,
+            patch.object(ModelProviderRegistry, "get_provider_for_model", return_value=mock_provider),
         ):
             mock_ctx_instance = MockModelContext.return_value
             mock_ctx_instance.provider = mock_provider
@@ -381,7 +382,7 @@ class TestLargePromptHandling:
 
         tool = ChatTool()
         bad_file = "/nonexistent/prompt.txt"
-        
+
         mock_provider = create_mock_provider(model_name="gemini-2.5-flash", context_window=1_048_576)
         mock_provider.generate_content.return_value.content = "Success"
 
@@ -427,7 +428,7 @@ class TestLargePromptHandling:
 
         # Mock a huge conversation history that would exceed MCP limits if incorrectly checked
         huge_history = "x" * (MCP_PROMPT_SIZE_LIMIT * 2)  # 100K chars = way over 50K limit
-        
+
         mock_provider = create_mock_provider("flash")
         mock_provider.generate_content.return_value.content = "Weather is sunny"
 
@@ -496,14 +497,15 @@ class TestLargePromptHandling:
         """
         import os
         from unittest.mock import patch
-        
-        # Force register provider
-        from providers.registry import ModelProviderRegistry
+
         from providers.base import ProviderType
         from providers.gemini import GeminiModelProvider
-        
+
+        # Force register provider
+        from providers.registry import ModelProviderRegistry
+
         ModelProviderRegistry.register_provider(ProviderType.GOOGLE, GeminiModelProvider)
-        
+
         tool = ChatTool()
 
         with patch.dict(os.environ, {"GEMINI_API_KEY": "dummy-key-for-tests"}):

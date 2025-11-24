@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 class ExampleModelProvider(ModelProvider):
     """Example model provider implementation."""
-    
+
     # Define models using ModelCapabilities objects (like Gemini provider)
     SUPPORTED_MODELS = {
         "example-large": ModelCapabilities(
@@ -79,32 +79,32 @@ class ExampleModelProvider(ModelProvider):
             aliases=["small", "fast"],
         ),
     }
-    
+
     def __init__(self, api_key: str, **kwargs):
         super().__init__(api_key, **kwargs)
         # Initialize your API client here
-    
+
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         resolved_name = self._resolve_model_name(model_name)
-        
+
         if resolved_name not in self.SUPPORTED_MODELS:
             raise ValueError(f"Unsupported model: {model_name}")
-        
+
         # Apply restrictions if needed
         from utils.model_restrictions import get_restriction_service
         restriction_service = get_restriction_service()
         if not restriction_service.is_allowed(ProviderType.EXAMPLE, resolved_name, model_name):
             raise ValueError(f"Model '{model_name}' is not allowed.")
-        
+
         return self.SUPPORTED_MODELS[resolved_name]
-    
-    def generate_content(self, prompt: str, model_name: str, system_prompt: Optional[str] = None, 
+
+    def generate_content(self, prompt: str, model_name: str, system_prompt: Optional[str] = None,
                         temperature: float = 0.7, max_output_tokens: Optional[int] = None, **kwargs) -> ModelResponse:
         resolved_name = self._resolve_model_name(model_name)
-        
+
         # Your API call logic here
         # response = your_api_client.generate(...)
-        
+
         return ModelResponse(
             content="Generated response",  # From your API
             usage={"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
@@ -112,17 +112,17 @@ class ExampleModelProvider(ModelProvider):
             friendly_name="Example",
             provider=ProviderType.EXAMPLE,
         )
-    
+
     def count_tokens(self, text: str, model_name: str) -> int:
         return len(text) // 4  # Simple estimation
-    
+
     def get_provider_type(self) -> ProviderType:
         return ProviderType.EXAMPLE
-    
+
     def validate_model_name(self, model_name: str) -> bool:
         resolved_name = self._resolve_model_name(model_name)
         return resolved_name in self.SUPPORTED_MODELS
-    
+
     def supports_thinking_mode(self, model_name: str) -> bool:
         capabilities = self.get_capabilities(model_name)
         return capabilities.supports_extended_thinking
@@ -141,9 +141,9 @@ from .openai_compatible import OpenAICompatibleProvider
 
 class ExampleProvider(OpenAICompatibleProvider):
     """Example OpenAI-compatible provider."""
-    
+
     FRIENDLY_NAME = "Example"
-    
+
     # Define models using ModelCapabilities (consistent with other providers)
     SUPPORTED_MODELS = {
         "example-model-large": ModelCapabilities(
@@ -156,24 +156,24 @@ class ExampleProvider(OpenAICompatibleProvider):
             aliases=["large", "big"],
         ),
     }
-    
+
     def __init__(self, api_key: str, **kwargs):
         kwargs.setdefault("base_url", "https://api.example.com/v1")
         super().__init__(api_key, **kwargs)
-    
+
     def get_capabilities(self, model_name: str) -> ModelCapabilities:
         resolved_name = self._resolve_model_name(model_name)
         if resolved_name not in self.SUPPORTED_MODELS:
             raise ValueError(f"Unsupported model: {model_name}")
         return self.SUPPORTED_MODELS[resolved_name]
-    
+
     def get_provider_type(self) -> ProviderType:
         return ProviderType.EXAMPLE
-    
+
     def validate_model_name(self, model_name: str) -> bool:
         resolved_name = self._resolve_model_name(model_name)
         return resolved_name in self.SUPPORTED_MODELS
-    
+
     def generate_content(self, prompt: str, model_name: str, **kwargs) -> ModelResponse:
         # IMPORTANT: Resolve aliases before API call
         resolved_model_name = self._resolve_model_name(model_name)
@@ -188,7 +188,7 @@ Add environment variable mapping in `providers/registry.py`:
 # In _get_api_key_for_provider method:
 key_mapping = {
     ProviderType.GOOGLE: "GEMINI_API_KEY",
-    ProviderType.OPENAI: "OPENAI_API_KEY", 
+    ProviderType.OPENAI: "OPENAI_API_KEY",
     ProviderType.EXAMPLE: "EXAMPLE_API_KEY",  # Add this
 }
 ```
@@ -213,7 +213,7 @@ if example_key:
 ```python
 PROVIDER_PRIORITY_ORDER = [
     ProviderType.GOOGLE,
-    ProviderType.OPENAI, 
+    ProviderType.OPENAI,
     ProviderType.EXAMPLE,     # Add your provider here
     ProviderType.CUSTOM,      # Local models
     ProviderType.OPENROUTER,  # Catch-all (keep last)
@@ -256,7 +256,7 @@ assert caps.provider == ProviderType.EXAMPLE
 ### Provider Priority
 When a user requests a model, providers are checked in priority order:
 1. **Native providers** (Gemini, OpenAI, Example) - handle their specific models
-2. **Custom provider** - handles local/self-hosted models  
+2. **Custom provider** - handles local/self-hosted models
 3. **OpenRouter** - catch-all for everything else
 
 ### Model Validation
@@ -289,7 +289,7 @@ Without this, API calls with aliases like `"large"` will fail because your API d
 
 - **Be specific in model validation** - only accept models you actually support
 - **Use ModelCapabilities objects** consistently (like Gemini provider)
-- **Include descriptive aliases** for better user experience  
+- **Include descriptive aliases** for better user experience
 - **Add error handling** and logging for debugging
 - **Test with real API calls** to verify everything works
 - **Follow the existing patterns** in `providers/gemini.py` and `providers/custom.py`
@@ -307,7 +307,7 @@ Without this, API calls with aliases like `"large"` will fail because your API d
 ## Examples
 
 See existing implementations:
-- **Full provider**: `providers/gemini.py` 
+- **Full provider**: `providers/gemini.py`
 - **OpenAI-compatible**: `providers/custom.py`
 - **Base classes**: `providers/base.py`
 

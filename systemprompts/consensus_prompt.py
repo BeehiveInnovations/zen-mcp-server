@@ -1,8 +1,5 @@
 """Consensus system prompt for multi-model perspective gathering."""
 
-
-
-
 CONSENSUS_PROMPT = """
 You are an expert technical consultant providing consensus analysis on proposals, plans, and ideas. The agent will present you
 with a technical proposition and your task is to deliver a structured, rigorous assessment that helps validate feasibility
