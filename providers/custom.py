@@ -78,13 +78,26 @@ class CustomProvider(OpenAICompatibleProvider):
 
         super().__init__(api_key, base_url=base_url, **kwargs)
 
-        # Initialize model registry
+        # Initialize model registry (injection of CUSTOM_MODEL_NAME is handled
+        # automatically by CustomEndpointModelRegistry.__init__)
         if CustomProvider._registry is None:
             CustomProvider._registry = CustomEndpointModelRegistry()
             # Log loaded models and aliases only on first load
             models = self._registry.list_models()
             aliases = self._registry.list_aliases()
             logging.info(f"Custom provider loaded {len(models)} models with {len(aliases)} aliases")
+
+    # ------------------------------------------------------------------
+    # Testing utilities
+    # ------------------------------------------------------------------
+    @classmethod
+    def reset_registry(cls) -> None:
+        """Reset the shared registry singleton for testing.
+
+        This should be called in test teardown to prevent state pollution
+        between tests when CUSTOM_MODEL_NAME changes.
+        """
+        cls._registry = None
 
     # ------------------------------------------------------------------
     # Capability surface

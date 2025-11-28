@@ -59,6 +59,11 @@ class TestAutoModeCustomProviderOnly:
         # Clear provider registry by resetting singleton instance
         ModelProviderRegistry._instance = None
 
+        # Clear CustomProvider registry to prevent state pollution
+        from providers.custom import CustomProvider
+
+        CustomProvider.reset_registry()
+
     def test_reproduce_auto_mode_custom_provider_only_issue(self):
         """Test the fix for auto mode failing when only custom provider is configured."""
 
@@ -206,3 +211,98 @@ class TestAutoModeCustomProviderOnly:
 
             except Exception as e:
                 pytest.fail(f"Getting fallback model failed: {e}")
+
+    def test_custom_model_name_injection(self):
+        """Test that CUSTOM_MODEL_NAME is dynamically injected into registry.
+
+        This tests the fix for GitHub issue #344 where auto mode fails
+        when only CUSTOM_API_URL is configured without models in custom_models.json.
+        """
+        # Use a unique model name not in custom_models.json
+        unique_model = "my-custom-llm-model"
+
+        test_env = {
+            "CUSTOM_API_URL": "http://localhost:11434/v1",
+            "CUSTOM_API_KEY": "",
+            "CUSTOM_MODEL_NAME": unique_model,
+            "DEFAULT_MODEL": "auto",
+        }
+
+        with patch.dict(os.environ, test_env, clear=False):
+            # Clear other provider keys
+            for key in ["GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "OPENROUTER_API_KEY", "DIAL_API_KEY"]:
+                if key in os.environ:
+                    del os.environ[key]
+
+            # Reload config
+            import config
+
+            importlib.reload(config)
+
+            # Reset registry to force re-initialization
+            from providers.custom import CustomProvider
+
+            CustomProvider._registry = None
+
+            # Register custom provider - this should inject CUSTOM_MODEL_NAME
+            ModelProviderRegistry.register_provider(ProviderType.CUSTOM, CustomProvider)
+
+            # Verify the model was injected
+            custom_provider = ModelProviderRegistry.get_provider(ProviderType.CUSTOM)
+            assert custom_provider is not None
+
+            # Check model is in registry
+            resolved = custom_provider._registry.resolve(unique_model)
+            assert resolved is not None, f"Model '{unique_model}' should be injected into registry"
+            assert resolved.model_name == unique_model
+
+            # Check auto mode returns the injected model
+            from tools.models import ToolModelCategory
+
+            fallback_model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.FAST_RESPONSE)
+            print(f"Fallback model with injected CUSTOM_MODEL_NAME: {fallback_model}")
+
+            # Should return either the injected model or an existing model, not gemini-2.5-flash
+            assert fallback_model != "gemini-2.5-flash", "Should not fall back to Gemini when custom model is injected"
+
+    def test_custom_model_name_visible_in_all_registry_instances(self):
+        """Test that CUSTOM_MODEL_NAME is visible in independently created registry instances.
+
+        This tests the fix for GitHub issue #327 where listmodels and other tools
+        create their own CustomEndpointModelRegistry instances and couldn't see
+        the user's CUSTOM_MODEL_NAME.
+        """
+        unique_model = "my-independent-model"
+
+        test_env = {
+            "CUSTOM_API_URL": "http://localhost:11434/v1",
+            "CUSTOM_API_KEY": "",
+            "CUSTOM_MODEL_NAME": unique_model,
+        }
+
+        with patch.dict(os.environ, test_env, clear=False):
+            # Clear other provider keys
+            for key in ["GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "OPENROUTER_API_KEY", "DIAL_API_KEY"]:
+                if key in os.environ:
+                    del os.environ[key]
+
+            # Create a NEW registry instance (simulating what listmodels does)
+            from providers.registries.custom import CustomEndpointModelRegistry
+
+            new_registry = CustomEndpointModelRegistry()
+
+            # The new instance should automatically have the injected model
+            resolved = new_registry.resolve(unique_model)
+            assert resolved is not None, (
+                f"Model '{unique_model}' should be visible in independently created registry. "
+                "This verifies the fix for issue #327 where listmodels couldn't see CUSTOM_MODEL_NAME."
+            )
+            assert resolved.model_name == unique_model
+
+            # Verify it's in the model list
+            models = new_registry.list_models()
+            assert unique_model in models, f"Model '{unique_model}' should be in list_models()"
+
+            # Verify it's in the alias map
+            aliases = new_registry.list_aliases()
+            assert unique_model.lower() in aliases, f"Model '{unique_model}' should be in list_aliases()"
