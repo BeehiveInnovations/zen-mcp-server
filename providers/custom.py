@@ -78,58 +78,14 @@ class CustomProvider(OpenAICompatibleProvider):
 
         super().__init__(api_key, base_url=base_url, **kwargs)
 
-        # Initialize model registry
+        # Initialize model registry (injection of CUSTOM_MODEL_NAME is handled
+        # automatically by CustomEndpointModelRegistry.__init__)
         if CustomProvider._registry is None:
             CustomProvider._registry = CustomEndpointModelRegistry()
-            # Inject CUSTOM_MODEL_NAME if specified and not already in registry
-            self._inject_custom_model_if_needed()
             # Log loaded models and aliases only on first load
             models = self._registry.list_models()
             aliases = self._registry.list_aliases()
             logging.info(f"Custom provider loaded {len(models)} models with {len(aliases)} aliases")
-
-    # ------------------------------------------------------------------
-    # Dynamic model injection
-    # ------------------------------------------------------------------
-    def _inject_custom_model_if_needed(self) -> None:
-        """Inject CUSTOM_MODEL_NAME into registry if not already present.
-
-        This ensures auto mode works when only CUSTOM_API_URL is configured,
-        even if the model isn't declared in custom_models.json.
-        See: https://github.com/BeehiveInnovations/zen-mcp-server/issues/344
-        """
-        custom_model_name = get_env("CUSTOM_MODEL_NAME", "") or ""
-        if not custom_model_name:
-            return
-
-        # Check if model already exists in registry
-        if self._registry.resolve(custom_model_name):
-            logging.debug(f"Model '{custom_model_name}' already in registry, skipping injection")
-            return
-
-        # Create a basic capability entry for the custom model
-        capability = ModelCapabilities(
-            provider=ProviderType.CUSTOM,
-            model_name=custom_model_name,
-            friendly_name=f"Custom ({custom_model_name})",
-            description="Custom model via CUSTOM_MODEL_NAME environment variable",
-            context_window=128000,  # Conservative default
-            max_output_tokens=16000,  # Conservative default
-            intelligence_score=10,  # Mid-range default
-            supports_extended_thinking=False,
-            supports_json_mode=False,
-            supports_function_calling=False,
-            supports_images=False,
-        )
-
-        # Inject into registry maps
-        self._registry.model_map[custom_model_name] = capability
-        self._registry.alias_map[custom_model_name.lower()] = custom_model_name
-
-        logging.info(
-            f"Injected CUSTOM_MODEL_NAME '{custom_model_name}' into registry "
-            f"(auto mode will now work with custom endpoint)"
-        )
 
     # ------------------------------------------------------------------
     # Capability surface
