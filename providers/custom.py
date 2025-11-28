@@ -88,6 +88,18 @@ class CustomProvider(OpenAICompatibleProvider):
             logging.info(f"Custom provider loaded {len(models)} models with {len(aliases)} aliases")
 
     # ------------------------------------------------------------------
+    # Testing utilities
+    # ------------------------------------------------------------------
+    @classmethod
+    def reset_registry(cls) -> None:
+        """Reset the shared registry singleton for testing.
+
+        This should be called in test teardown to prevent state pollution
+        between tests when CUSTOM_MODEL_NAME changes.
+        """
+        cls._registry = None
+
+    # ------------------------------------------------------------------
     # Capability surface
     # ------------------------------------------------------------------
     def _lookup_capabilities(

@@ -59,6 +59,11 @@ class TestAutoModeCustomProviderOnly:
         # Clear provider registry by resetting singleton instance
         ModelProviderRegistry._instance = None
 
+        # Clear CustomProvider registry to prevent state pollution
+        from providers.custom import CustomProvider
+
+        CustomProvider.reset_registry()
+
     def test_reproduce_auto_mode_custom_provider_only_issue(self):
         """Test the fix for auto mode failing when only custom provider is configured."""
 

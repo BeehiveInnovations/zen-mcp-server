@@ -29,6 +29,15 @@ class CustomEndpointModelRegistry(CapabilityModelRegistry):
         # Inject CUSTOM_MODEL_NAME after loading config
         self._inject_custom_model_if_needed()
 
+    def reload(self) -> None:
+        """Reload config from file and re-inject CUSTOM_MODEL_NAME.
+
+        Overrides base class to ensure CUSTOM_MODEL_NAME is preserved
+        after configuration hot-reload.
+        """
+        super().reload()
+        self._inject_custom_model_if_needed()
+
     def _inject_custom_model_if_needed(self) -> None:
         """Inject CUSTOM_MODEL_NAME into registry if not already present.
 
@@ -63,7 +72,7 @@ class CustomEndpointModelRegistry(CapabilityModelRegistry):
         self.model_map[custom_model_name] = capability
         self.alias_map[custom_model_name.lower()] = custom_model_name
 
-        logging.info(
+        logging.debug(
             f"Injected CUSTOM_MODEL_NAME '{custom_model_name}' into registry "
             f"(listmodels and auto mode will now include this model)"
         )
