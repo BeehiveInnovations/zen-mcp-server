@@ -206,3 +206,56 @@ class TestAutoModeCustomProviderOnly:
 
             except Exception as e:
                 pytest.fail(f"Getting fallback model failed: {e}")
+
+    def test_custom_model_name_injection(self):
+        """Test that CUSTOM_MODEL_NAME is dynamically injected into registry.
+
+        This tests the fix for GitHub issue #344 where auto mode fails
+        when only CUSTOM_API_URL is configured without models in custom_models.json.
+        """
+        # Use a unique model name not in custom_models.json
+        unique_model = "my-custom-llm-model"
+
+        test_env = {
+            "CUSTOM_API_URL": "http://localhost:11434/v1",
+            "CUSTOM_API_KEY": "",
+            "CUSTOM_MODEL_NAME": unique_model,
+            "DEFAULT_MODEL": "auto",
+        }
+
+        with patch.dict(os.environ, test_env, clear=False):
+            # Clear other provider keys
+            for key in ["GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY", "OPENROUTER_API_KEY", "DIAL_API_KEY"]:
+                if key in os.environ:
+                    del os.environ[key]
+
+            # Reload config
+            import config
+
+            importlib.reload(config)
+
+            # Reset registry to force re-initialization
+            from providers.custom import CustomProvider
+
+            CustomProvider._registry = None
+
+            # Register custom provider - this should inject CUSTOM_MODEL_NAME
+            ModelProviderRegistry.register_provider(ProviderType.CUSTOM, CustomProvider)
+
+            # Verify the model was injected
+            custom_provider = ModelProviderRegistry.get_provider(ProviderType.CUSTOM)
+            assert custom_provider is not None
+
+            # Check model is in registry
+            resolved = custom_provider._registry.resolve(unique_model)
+            assert resolved is not None, f"Model '{unique_model}' should be injected into registry"
+            assert resolved.model_name == unique_model
+
+            # Check auto mode returns the injected model
+            from tools.models import ToolModelCategory
+
+            fallback_model = ModelProviderRegistry.get_preferred_fallback_model(ToolModelCategory.FAST_RESPONSE)
+            print(f"Fallback model with injected CUSTOM_MODEL_NAME: {fallback_model}")
+
+            # Should return either the injected model or an existing model, not gemini-2.5-flash
+            assert fallback_model != "gemini-2.5-flash", "Should not fall back to Gemini when custom model is injected"
